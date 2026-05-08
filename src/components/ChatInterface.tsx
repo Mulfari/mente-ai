@@ -40,6 +40,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [pendingPreviews, setPendingPreviews] = useState<Record<string, string>>({});
@@ -51,6 +52,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: d }) => {
       setIsLoggedIn(!!d.session);
+      if (d.session?.user?.email) setUserEmail(d.session.user.email);
     });
   }, []);
 
@@ -79,6 +81,35 @@ export default function ChatInterface({ userId }: { userId: string }) {
   useEffect(() => {
     loadConversations();
   }, [userId, isLoggedIn]);
+
+  // Realtime subscription for conversations
+  useEffect(() => {
+    if (!isLoggedIn || !userId) return;
+
+    const channel = supabase
+      .channel("conversations-sidebar")
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "conversations",
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        if (payload.eventType === "INSERT") {
+          const conv = payload.new as Conversation;
+          setConversations(prev => {
+            if (prev.find(c => c.id === conv.id)) return prev;
+            return [conv, ...prev];
+          });
+        } else if (payload.eventType === "DELETE") {
+          setConversations(prev => prev.filter(c => c.id !== payload.old.id));
+        } else if (payload.eventType === "UPDATE") {
+          setConversations(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isLoggedIn, userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -369,9 +400,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors hover:bg-[var(--surface-hover)]"
               style={{ color: "var(--text-secondary)" }}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-md shrink-0"
-                style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>U</div>
-              <span className="flex-1 text-left text-sm font-medium" style={{ color: "var(--text-primary)" }}>Mi cuenta</span>
-              <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
+              </div>
+              <div className="flex-1 text-left overflow-hidden">
+                <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
+                  {userEmail ? userEmail.split("@")[0] : "Mi cuenta"}
+                </p>
+                <p className="text-xs truncate" style={{ color: "var(--text-tertiary)" }}>Mi cuenta</p>
+              </div>
+              <svg className="w-4 h-4 opacity-50 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
@@ -379,6 +417,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
             {showMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl shadow-2xl overflow-hidden"
                 style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                {userEmail && (
+                  <div className="px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
+                    <p className="text-xs truncate" style={{ color: "var(--text-tertiary)" }}>{userEmail}</p>
+                  </div>
+                )}
                 <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
                   className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--danger)]/10"
                   style={{ color: "var(--danger)" }}>
