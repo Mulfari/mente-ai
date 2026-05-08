@@ -351,22 +351,7 @@ export default function ChatInterface({
             <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Mulfai</span>
           </div>
 
-          {isLoggedIn && remaining <= 500 && remaining > 0 && (
-            <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
-              style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--warning)" }}>
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {remaining} msgs
-            </div>
-          )}
-
-          {isDisabled && (
-            <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
-              style={{ backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid var(--danger)", color: "var(--danger)" }}>
-              Límite alcanzado
-            </div>
-          )}
+          <div className="w-5 md:w-0" />
         </header>
 
         {/* Messages */}
