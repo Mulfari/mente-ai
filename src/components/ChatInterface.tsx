@@ -10,6 +10,8 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  attachments?: string[];
+  _previewUrls?: Record<string, string>;
 };
 
 type Conversation = {
@@ -40,6 +42,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const [pendingPreviews, setPendingPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -163,7 +166,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
       if (attachments.length + newFiles.length >= 3) break;
       if (file.size > 5 * 1024 * 1024) continue; // 5MB limit
       newFiles.push(file);
-      newUrls[file.name + file.size] = URL.createObjectURL(file);
+      const key = file.name + file.size;
+      const url = URL.createObjectURL(file);
+      newUrls[key] = url;
+      setPendingPreviews(prev => ({ ...prev, [key]: url }));
     }
 
     setAttachments(prev => [...prev, ...newFiles]);
@@ -207,14 +213,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setPreviewUrls({});
     setSending(true);
     autoResize();
+
+    // Keep previews for display in chat bubble
+    const savedPreviews = { ...previewUrls };
+
     if (!conv) return;
 
     const { data: inserted } = await supabase
       .from("messages")
-      .insert({ conversation_id: conv.id, role: "user", content: userMsg })
+      .insert({ conversation_id: conv.id, role: "user", content: userMsg, attachments: filesToSend.map(f => f.name) })
       .select()
       .single();
-    if (inserted) setMessages(prev => [...prev, inserted]);
+    if (inserted) {
+      setMessages(prev => [...prev, { ...inserted, _previewUrls: savedPreviews }]);
+    }
 
     try {
       const convId = conv.id;
@@ -491,7 +503,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         boxShadow: msg.role === "assistant" ? "0 4px 12px rgba(0,0,0,0.2)" : "none",
                       }}>
                       {msg.role === "user" ? (
-                        <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                        <>
+                          {msg._previewUrls && (
+                            <div className="flex flex-wrap gap-1.5 mb-2">
+                              {Object.values(msg._previewUrls).map((url, i) => (
+                                <img key={i} src={url} alt="adjunto"
+                                  className="rounded-lg object-cover"
+                                  style={{ width: "120px", height: "120px", borderRadius: "10px" }} />
+                              ))}
+                            </div>
+                          )}
+                          <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
+                        </>
                       ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
