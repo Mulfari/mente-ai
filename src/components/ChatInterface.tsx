@@ -361,18 +361,22 @@ export default function ChatInterface({ userId }: { userId: string }) {
     <div className="flex h-screen" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
-        className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-72 flex flex-col transition-transform duration-200 md:translate-x-0 md:relative`}
+        className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-72 flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{ backgroundColor: "var(--surface)" }}>
         {/* Sidebar header */}
         <div className="flex items-center justify-between p-5 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-md"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
+            <div className="relative w-9 h-9">
+              <div className="absolute inset-0 rounded-xl rotate-45" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }} />
+              <div className="absolute inset-0 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.3.5 2.5 1.4 3.3L7 12l1.5 1.5 1.9-1.9c.7.4 1.5.6 2.4.6 1.5 0 2.8-.6 3.8-1.6L18.2 12l1.5 1.5 -1.5 1.5c1.8 1.8 2.8 4.3 2.8 7 0 5-4 9-9 9-2.4 0-4.6-.9-6.3-2.5L2 22l-1.5-1.5L3.2 18c-1.8-2-2.9-4.7-2.9-7.5C.3 4.7 5.7 2 12 2z"/>
+                </svg>
+              </div>
             </div>
-            <span className="text-lg font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+            <span className="text-lg font-black tracking-tighter" style={{ color: "var(--text-primary)" }}>
+              <span style={{ color: "var(--primary)" }}>M</span>ulfai
+            </span>
           </div>
           <button onClick={() => setShowSidebar(false)} className="md:hidden p-2 rounded-xl hover:bg-[var(--surface-hover)] transition-colors" style={{ color: "var(--text-secondary)" }}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
