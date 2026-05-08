@@ -55,7 +55,7 @@ export default function AuthModal({ onSuccess }: { onSuccess?: () => void }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Mente AI</h2>
+          <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Mulfai</h2>
         </div>
 
         <div className="flex rounded-xl p-1 mb-5" style={{ backgroundColor: "var(--background)" }}>

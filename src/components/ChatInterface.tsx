@@ -233,7 +233,7 @@ export default function ChatInterface({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
-            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Mente AI</span>
+            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Mulfai</span>
           </div>
           <button onClick={() => setShowSidebar(false)} className="md:hidden p-1 rounded hover:bg-[var(--surface-hover)]" style={{ color: "var(--text-secondary)" }}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -348,10 +348,10 @@ export default function ChatInterface({
 
           <div className="flex items-center gap-2 mx-auto md:mx-0">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
-            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Mente AI</span>
+            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Mulfai</span>
           </div>
 
-          {remaining <= 500 && remaining > 0 && (
+          {isLoggedIn && remaining <= 500 && remaining > 0 && (
             <div className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full"
               style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--warning)" }}>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -381,7 +381,7 @@ export default function ChatInterface({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </div>
-                <h1 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Mente AI</h1>
+                <h1 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Mulfai</h1>
                 <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
                   {isDisabled ? "Límite semanal alcanzado" : "Tu asistente IA personal"}
                 </p>
@@ -407,7 +407,7 @@ export default function ChatInterface({
                 {!isLoggedIn && (
                   <div className="max-w-sm mx-auto">
                     <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-                      Inicia sesión para chatear con Mente AI
+                      Inicia sesión para chatear con Mulfai
                     </p>
                     <button onClick={() => setShowAuthPrompt(true)}
                       className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
@@ -535,7 +535,7 @@ export default function ChatInterface({
             {/* Footer hint */}
             <div className="flex items-center justify-center gap-3 mt-3">
               <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                Mente AI puede cometer errores. Verifica información importante.
+                Mulfai puede cometer errores. Verifica información importante.
               </p>
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>·</span>
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>

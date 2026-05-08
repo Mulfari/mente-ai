@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Mente AI",
+  title: "Mulfai",
   description: "Tu asistente inteligente de chat",
 };
 
