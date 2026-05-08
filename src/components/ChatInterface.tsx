@@ -210,7 +210,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           content: result.message, created_at: new Date().toISOString(),
         }]);
 
-        if (messages.filter(m => m.role === "user").length === 0) {
+        if (conv.title === "Nueva conversación") {
           const title = userMsg.slice(0, 50) + (userMsg.length > 50 ? "..." : "");
           await supabase.from("conversations")
             .update({ title, updated_at: new Date().toISOString() })

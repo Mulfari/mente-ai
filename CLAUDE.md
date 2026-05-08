@@ -18,9 +18,12 @@ Chat AI tipo ChatGPT con cuentas gestionadas por admin. Sin registro público �
 - `ANTHROPIC_API_KEY`
 - `ANTHROPIC_BASE_URL`
 
+- Admin panel at `/admin` — only `jscmulfari@gmail.com` can access
+  - Ver usuarios, activar/cancelar cuentas, agregar semanas de suscripción, eliminar
+  - Sin límites de mensajes
+
 ## RLS
-- Usuarios: solo ven sus propios datos
-- Admins: ven y gestionan todos los perfiles
+- RLS deshabilitado en todas las tablas (security issue a resolver)
 
 ## Modelo de negocio
 - Admin activa cuentas manualmente
