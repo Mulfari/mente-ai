@@ -33,17 +33,18 @@ export async function POST(request: Request) {
       }, { status: 429 });
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.ANTHROPIC_API_KEY || "";
     const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
+
+    const headers = new Headers();
+    headers.set("Authorization", `Bearer ${apiKey}`);
+    headers.set("Content-Type", "application/json");
+    headers.set("anthropic-version", "2023-06-01");
+    headers.set("x-api-key", apiKey);
 
     const response = await fetch(`${baseUrl}/v1/messages`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01",
-        "x-api-key": apiKey,
-      },
+      headers,
       body: JSON.stringify({
         model: "claude-opus-4.6-1m",
         max_tokens: 2048,
