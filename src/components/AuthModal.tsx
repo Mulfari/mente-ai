@@ -32,24 +32,8 @@ export default function AuthModal({ onSuccess }: { onSuccess?: () => void }) {
         onSuccess ? onSuccess() : window.location.reload();
       }
     } else {
-      const { data: existing } = await supabase
-        .from("profiles").select("id").eq("email", email).single();
-      if (existing) {
-        setError("Este correo ya está registrado.");
-        setLoading(false);
-        return;
-      }
-
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email, password
-      });
-      if (signUpError) {
-        setError(signUpError.message);
-        setLoading(false);
-        return;
-      }
-
-      const userId = authData.user?.id;
+      const startDate = new Date().toISOString();
+      const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
       if (coupon.trim()) {
         const { data: couponData } = await supabase
@@ -62,44 +46,59 @@ export default function AuthModal({ onSuccess }: { onSuccess?: () => void }) {
           return;
         }
 
-        const startDate = new Date().toISOString();
-        const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        const { error: signUpError } = await supabase.auth.signUp({ email, password });
+        if (signUpError) {
+          setError(signUpError.message);
+          setLoading(false);
+          return;
+        }
 
-        await supabase.from("profiles").insert({
-          id: userId,
-          email,
-          status: "active",
-          subscription_weeks: 1,
-          subscription_start: startDate,
-          weekly_limit: 100,
-          weekly_reset_at: endDate,
-        });
+        const { data: authUser } = await supabase.auth.getUser();
+        const userId = authUser.user?.id;
 
-        await supabase.from("coupons").update({
-          used_by: userId,
-          used_by_email: email,
-          used_at: startDate,
-        }).eq("id", couponData.id);
+        if (userId) {
+          await supabase.from("profiles").upsert({
+            id: userId,
+            status: "active",
+            subscription_weeks: 1,
+            subscription_start: startDate,
+            weekly_limit: 100,
+            weekly_reset_at: endDate,
+            used_coupon_id: couponData.id,
+          });
+          await supabase.from("coupons").update({
+            used_by: userId,
+            used_by_email: email,
+            used_at: startDate,
+          }).eq("id", couponData.id);
+        }
 
-        const { error: profileError } = await supabase.auth.signInWithPassword({ email, password });
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         setLoading(false);
-        if (!profileError) {
+        if (!signInError) {
           onSuccess ? onSuccess() : window.location.reload();
           return;
         }
-        setSuccess("¡Cuenta creada y activada! Ya puedes iniciar sesión.");
+        setSuccess("¡Cuenta creada y activada! Inicia sesión.");
         setMode("login");
         setCoupon("");
         setPassword("");
       } else {
-        await supabase.from("profiles").insert({
-          id: userId,
-          email,
-          status: "inactive",
-          subscription_weeks: 0,
-          weekly_limit: 0,
-        });
+        const { error: signUpError } = await supabase.auth.signUp({ email, password });
         setLoading(false);
+        if (signUpError) {
+          setError(signUpError.message);
+          return;
+        }
+        const { data: authUser } = await supabase.auth.getUser();
+        if (authUser.user?.id) {
+          await supabase.from("profiles").upsert({
+            id: authUser.user.id,
+            status: "inactive",
+            subscription_weeks: 0,
+            weekly_limit: 0,
+          });
+        }
         setSuccess("¡Cuenta creada! Solicita un código de cupón para activar tu cuenta.");
         setMode("login");
         setCoupon("");
