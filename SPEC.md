@@ -14,7 +14,7 @@ Plataforma de chat AI tipo ChatGPT, con cuentas gestionadas por un administrador
 ## Tech Stack
 
 - **Frontend:** Next.js (App Router)
-- **Auth:** Supabase (email/contraseña)
+- **Auth:** Supabase (email/contraseña) — project: `swioimqjygpolttiequz`
 - **Chat API:** Custom con la API proxy existente (`api.selectapi.vip`)
 - **Deploy:** Vercel
 
