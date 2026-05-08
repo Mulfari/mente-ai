@@ -5,7 +5,8 @@ import AuthModal from "@/components/AuthModal";
 
 export default async function ChatPage() {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getSession();
+  const user = data.session?.user ?? null;
 
   if (!user) {
     redirect("/");
