@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReactMarkdown from "react-markdown";
-import AuthModal from "./AuthModal";
+import dynamic from "next/dynamic";
+const AuthModal = dynamic(() => import("./AuthModal"));
 
 type Message = {
   id: string;
@@ -59,10 +60,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
       setIsLoggedIn(!!d.session);
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+      if (session?.user?.email) setUserEmail(session.user.email);
+      if (session) loadConversations();
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
-    if (!userId || !isLoggedIn) return;
+    if (!isLoggedIn) return;
     supabase
       .from("profiles")
       .select("subscription_weeks, subscription_start, weekly_limit")
