@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AuthModal() {
@@ -11,6 +11,15 @@ export default function AuthModal() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        const el = document.getElementById("auth-overlay");
+        if (el) el.style.display = "flex";
+      }
+    });
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,11 +46,10 @@ export default function AuthModal() {
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}>
+    <div id="auth-overlay" className="fixed inset-0 flex items-center justify-center z-50 p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)", display: "none" }}>
       <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
         style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-        {/* Logo */}
         <div className="text-center mb-6">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
             style={{ backgroundColor: "var(--primary)" }}>
@@ -52,7 +60,6 @@ export default function AuthModal() {
           <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>Mente AI</h2>
         </div>
 
-        {/* Tabs */}
         <div className="flex rounded-xl p-1 mb-5" style={{ backgroundColor: "var(--background)" }}>
           {(["login", "register"] as const).map(m => (
             <button key={m} onClick={() => { setMode(m); setError(""); setSuccess(""); }}
@@ -66,7 +73,6 @@ export default function AuthModal() {
           ))}
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-3">
           <input type="email" placeholder="Correo electrónico" value={email}
             onChange={e => setEmail(e.target.value)} required
