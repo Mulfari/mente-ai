@@ -47,12 +47,18 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData?.error?.message || `API Error: ${response.status}`;
+      console.error("API response error:", response.status, errorData);
+      const errorMsg = errorData?.error?.message || errorData?.message || `API Error: ${response.status}`;
       return NextResponse.json({ error: errorMsg }, { status: response.status });
     }
 
     const data = await response.json();
-    const aiMessage = data.content?.[0]?.text || "Sin respuesta del modelo.";
+    console.log("API response:", JSON.stringify(data).slice(0, 300));
+
+    // El contenido es un array, buscar el bloque de texto (ignorar thinking)
+    const content = data.content || [];
+    const textBlock = content.find((c: any) => c.type === "text");
+    const aiMessage = textBlock?.text || "Sin respuesta del modelo.";
 
     return NextResponse.json({ message: aiMessage });
 
