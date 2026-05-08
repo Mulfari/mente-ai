@@ -55,22 +55,13 @@ const SUGGESTIONS = [
   "Dame ideas para un negocio online",
 ];
 
-export default function ChatInterface({
-  userId,
-  weeklyUsed: initialUsed,
-  weeklyLimit
-}: {
-  userId: string;
-  weeklyUsed: number;
-  weeklyLimit: number;
-}) {
+export default function ChatInterface({ userId }: { userId: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [weeklyUsed, setWeeklyUsed] = useState(initialUsed);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -218,7 +209,6 @@ export default function ChatInterface({
           id: Date.now().toString(), role: "assistant",
           content: result.message, created_at: new Date().toISOString(),
         }]);
-        setWeeklyUsed(p => p + 1);
 
         if (messages.filter(m => m.role === "user").length === 0) {
           const title = userMsg.slice(0, 50) + (userMsg.length > 50 ? "..." : "");
@@ -240,8 +230,7 @@ export default function ChatInterface({
     setTimeout(() => { autoResize(); textareaRef.current?.focus(); }, 0);
   }
 
-  const remaining = weeklyLimit - weeklyUsed;
-  const isDisabled = remaining <= 0 || !isLoggedIn;
+  const isDisabled = !isLoggedIn;
 
   return (
     <div className="flex h-screen" style={{ backgroundColor: "var(--background)" }}>

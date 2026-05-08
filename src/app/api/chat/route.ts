@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("status, weekly_used, weekly_msg_limit")
+      .select("status, subscription_weeks, subscription_start")
       .eq("id", user.id)
       .single();
 
@@ -24,13 +24,6 @@ export async function POST(request: Request) {
 
     if (!message?.trim()) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
-    }
-
-    // Check weekly limit
-    if (profile.weekly_used >= profile.weekly_msg_limit) {
-      return NextResponse.json({
-        error: "Has alcanzado tu límite semanal. Espera hasta el próximo lunes o contacta al administrador."
-      }, { status: 429 });
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
@@ -60,12 +53,6 @@ export async function POST(request: Request) {
 
     const data = await response.json();
     const aiMessage = data.content?.[0]?.text || "Sin respuesta del modelo.";
-
-    // Increment weekly counter
-    await supabase
-      .from("profiles")
-      .update({ weekly_used: profile.weekly_used + 1 })
-      .eq("id", user.id);
 
     return NextResponse.json({ message: aiMessage });
 
