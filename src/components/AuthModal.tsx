@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function AuthModal() {
+export default function AuthModal({ onSuccess }: { onSuccess?: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -13,12 +13,8 @@ export default function AuthModal() {
   const supabase = createClient();
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        const el = document.getElementById("auth-overlay");
-        if (el) el.style.display = "flex";
-      }
-    });
+    const el = document.getElementById("auth-overlay");
+    if (el) el.style.display = "flex";
   }, []);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -31,7 +27,9 @@ export default function AuthModal() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) setError(error.message);
-      else window.location.reload();
+      else {
+        onSuccess ? onSuccess() : window.location.reload();
+      }
     } else {
       const { error } = await supabase.auth.signUp({ email, password });
       setLoading(false);

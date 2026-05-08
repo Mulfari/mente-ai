@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReactMarkdown from "react-markdown";
+import AuthModal from "./AuthModal";
 
 type Message = {
   id: string;
@@ -41,11 +42,20 @@ export default function ChatInterface({
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: d }) => {
+      setIsLoggedIn(!!d.session);
+    });
+  }, []);
+
   async function loadConversations() {
+    if (!isLoggedIn) return;
     const { data } = await supabase
       .from("conversations")
       .select("id, title, updated_at")
@@ -68,7 +78,7 @@ export default function ChatInterface({
 
   useEffect(() => {
     loadConversations();
-  }, [userId]);
+  }, [userId, isLoggedIn]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -83,6 +93,7 @@ export default function ChatInterface({
   }
 
   async function newConversation() {
+    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     const { data } = await supabase
       .from("conversations")
       .insert({ user_id: userId, title: "Nueva conversación" })
@@ -97,6 +108,7 @@ export default function ChatInterface({
   }
 
   async function selectConv(conv: Conversation) {
+    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     setActiveConv(conv);
     await loadMessages(conv.id);
     setShowSidebar(false);
@@ -120,6 +132,8 @@ export default function ChatInterface({
 
   async function sendMessage() {
     if (!input.trim() || sending) return;
+
+    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
 
     let conv = activeConv;
     if (!conv) {
@@ -203,7 +217,7 @@ export default function ChatInterface({
   }
 
   const remaining = weeklyLimit - weeklyUsed;
-  const isDisabled = remaining <= 0;
+  const isDisabled = remaining <= 0 || !isLoggedIn;
 
   return (
     <div className="flex h-screen" style={{ backgroundColor: "var(--background)" }}>
@@ -373,7 +387,7 @@ export default function ChatInterface({
                 </p>
 
                 {/* Suggestion cards */}
-                {!isDisabled && (
+                {isLoggedIn && !isDisabled && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
                     {[
                       "Explícame un tema complejo de forma simple",
@@ -387,6 +401,19 @@ export default function ChatInterface({
                         {suggestion}
                       </button>
                     ))}
+                  </div>
+                )}
+
+                {!isLoggedIn && (
+                  <div className="max-w-sm mx-auto">
+                    <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+                      Inicia sesión para chatear con Mente AI
+                    </p>
+                    <button onClick={() => setShowAuthPrompt(true)}
+                      className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
+                      style={{ backgroundColor: "var(--primary)", color: "white" }}>
+                      Iniciar sesión
+                    </button>
                   </div>
                 )}
               </div>
@@ -489,7 +516,7 @@ export default function ChatInterface({
                     sendMessage();
                   }
                 }}
-                placeholder={isDisabled ? "Límite alcanzado" : "Escribe un mensaje..."}
+                placeholder={isLoggedIn ? (isDisabled ? "Límite alcanzado" : "Escribe un mensaje...") : "Inicia sesión para chatear..."}
                 disabled={isDisabled || sending}
                 rows={1}
                 className="flex-1 text-sm outline-none resize-none bg-transparent placeholder-opacity-50"
@@ -518,6 +545,7 @@ export default function ChatInterface({
           </div>
         </div>
       </div>
+      {showAuthPrompt && <AuthModal onSuccess={() => { setShowAuthPrompt(false); setIsLoggedIn(true); }} />}
     </div>
   );
 }
