@@ -23,6 +23,43 @@ function formatTime(dateStr: string) {
   return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 }
 
+const CAPABILITIES = [
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+      </svg>
+    ),
+    title: "Asistente inteligente",
+    desc: "Pregunta lo que quieras, siempre disponible",
+  },
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+      </svg>
+    ),
+    title: "Escribe y crea",
+    desc: "Correos, ensayos, código y más",
+  },
+  {
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+    title: "Respuestas instantáneas",
+    desc: "Pensando, resumiendo y explicando",
+  },
+];
+
+const SUGGESTIONS = [
+  "Explícame física cuántica como si tuviera 10 años",
+  "Ayúdame a planificar un viaje a Europa",
+  "Escribe un poema sobre la tecnología",
+  "Dame ideas para un negocio online",
+];
+
 export default function ChatInterface({
   userId,
   weeklyUsed: initialUsed,
@@ -226,16 +263,17 @@ export default function ChatInterface({
         className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-72 flex flex-col transition-transform duration-200 md:translate-x-0 md:relative`}
         style={{ backgroundColor: "var(--surface)" }}>
         {/* Sidebar header */}
-        <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: "var(--border)" }}>
+        <div className="flex items-center justify-between p-4 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: "var(--primary)" }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: "var(--primary)" }}>
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
-            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+            <span className="text-base font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
           </div>
-          <button onClick={() => setShowSidebar(false)} className="md:hidden p-1 rounded hover:bg-[var(--surface-hover)]" style={{ color: "var(--text-secondary)" }}>
+          <button onClick={() => setShowSidebar(false)} className="md:hidden p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors" style={{ color: "var(--text-secondary)" }}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -243,23 +281,22 @@ export default function ChatInterface({
         </div>
 
         {/* New chat button */}
-        <div className="p-3">
+        <div className="p-3 shrink-0">
           <button onClick={newConversation}
-            className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95"
             style={{ backgroundColor: "var(--primary)", color: "white" }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nueva conversación
+            Nuevo chat
           </button>
         </div>
 
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto px-2 pb-3">
-          <p className="text-xs font-semibold uppercase tracking-wider px-2 py-2" style={{ color: "var(--text-tertiary)" }}>Historial</p>
           {conversations.length === 0 ? (
-            <div className="px-2 py-4 text-center">
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin conversaciones</p>
+            <div className="px-3 py-6 text-center">
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin historial</p>
             </div>
           ) : (
             <div className="space-y-0.5">
@@ -272,15 +309,12 @@ export default function ChatInterface({
                     color: activeConv?.id === conv.id ? "var(--primary)" : "var(--text-secondary)",
                     backgroundColor: activeConv?.id === conv.id ? "rgba(16,163,127,0.1)" : "transparent",
                   }}>
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 shrink-0 opacity-60" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                   <span className="flex-1 truncate">{conv.title}</span>
-                  <span className="text-xs shrink-0 opacity-0 group-hover:opacity-60" style={{ color: "var(--text-tertiary)" }}>
-                    {formatTime(conv.updated_at)}
-                  </span>
                   <button onClick={(e) => deleteConv(conv.id, e)}
-                    className="shrink-0 opacity-0 group-hover:opacity-60 p-1 rounded hover:bg-[var(--danger)]/10 transition-all"
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-[var(--danger)]/10 transition-all"
                     style={{ color: "var(--danger)" }}>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -293,28 +327,22 @@ export default function ChatInterface({
         </div>
 
         {/* Bottom */}
-        <div className="p-3 border-t" style={{ borderColor: "var(--border)" }}>
+        <div className="p-3 border-t shrink-0" style={{ borderColor: "var(--border)" }}>
           <div className="relative">
             <button onClick={() => setShowMenu(!showMenu)}
-              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-[var(--surface-hover)]"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-[var(--surface-hover)]"
               style={{ color: "var(--text-secondary)" }}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
                 style={{ backgroundColor: "var(--primary)", color: "white" }}>U</div>
-              <span className="flex-1 text-left truncate">Mi cuenta</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <span className="flex-1 text-left truncate text-sm" style={{ color: "var(--text-primary)" }}>Mi cuenta</span>
+              <svg className="w-4 h-4 shrink-0 opacity-60" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
 
             {showMenu && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 rounded-xl shadow-xl py-1 overflow-hidden"
+              <div className="absolute bottom-full left-0 right-0 mb-1 rounded-xl shadow-xl overflow-hidden"
                 style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-                <div className="px-3 py-2 mb-1" style={{ borderBottom: "1px solid var(--border)" }}>
-                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Semanal</p>
-                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                    {remaining} mensajes restantes
-                  </p>
-                </div>
                 <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
                   className="w-full flex items-center gap-2 px-3 py-2.5 text-sm transition-colors hover:bg-[var(--danger)]/10"
                   style={{ color: "var(--danger)" }}>
@@ -337,65 +365,82 @@ export default function ChatInterface({
       {/* Main area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-14 flex items-center justify-between px-4 shrink-0 border-b"
+        <header className="h-14 flex items-center justify-center px-4 shrink-0 border-b md:hidden"
           style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
           <button onClick={() => setShowSidebar(true)}
-            className="p-2 rounded-xl hover:bg-[var(--surface-hover)] transition-colors md:hidden" style={{ color: "var(--text-secondary)" }}>
+            className="absolute left-4 p-2 rounded-xl hover:bg-[var(--surface-hover)] transition-colors" style={{ color: "var(--text-secondary)" }}>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-
-          <div className="flex items-center gap-2 mx-auto md:mx-0">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
-            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Mulfai</span>
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 rounded-md flex items-center justify-center" style={{ backgroundColor: "var(--primary)" }}>
+              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+              </svg>
+            </div>
+            <span className="text-sm font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
           </div>
-
-          <div className="w-5 md:w-0" />
         </header>
 
         {/* Messages */}
         <main className="flex-1 overflow-y-auto">
           {messages.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
-              <div className="text-center max-w-lg">
-                {/* Large logo */}
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg"
-                  style={{ backgroundColor: "var(--primary)" }}>
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
+              <div className="w-full max-w-xl">
+                {/* Hero */}
+                <div className="text-center mb-10">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-5"
+                    style={{ backgroundColor: "var(--primary)" }}>
+                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </div>
+                  <h1 className="text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Mulfai</h1>
+                  <p className="text-base" style={{ color: "var(--text-secondary)" }}>
+                    Tu asistente de IA personal
+                  </p>
                 </div>
-                <h1 className="text-2xl font-semibold mb-2" style={{ color: "var(--text-primary)" }}>Mulfai</h1>
-                <p className="text-sm mb-8" style={{ color: "var(--text-secondary)" }}>
-                  {isDisabled ? "Límite semanal alcanzado" : "Tu asistente IA personal"}
-                </p>
 
-                {/* Suggestion cards */}
+                {/* Capabilities grid */}
+                {CAPABILITIES.map((cap, i) => (
+                  <div key={i} className="flex items-start gap-3 px-4 py-3 rounded-xl mb-2 transition-colors"
+                    style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                    <div className="shrink-0 mt-0.5" style={{ color: "var(--primary)" }}>
+                      {cap.icon}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium mb-0.5" style={{ color: "var(--text-primary)" }}>{cap.title}</p>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{cap.desc}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Suggestions */}
                 {isLoggedIn && !isDisabled && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md mx-auto">
-                    {[
-                      "Explícame un tema complejo de forma simple",
-                      "Ayúdame a escribir un correo profesional",
-                      "Resuelve un problema técnico que tengo",
-                      "Genera ideas creativas para un proyecto",
-                    ].map((suggestion, i) => (
-                      <button key={i} onClick={() => setInput(suggestion)}
-                        className="text-left px-4 py-3 rounded-xl text-sm transition-all hover:bg-[var(--surface)] active:scale-95"
-                        style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                        {suggestion}
-                      </button>
-                    ))}
+                  <div className="mt-6">
+                    <p className="text-xs font-medium text-center mb-3" style={{ color: "var(--text-tertiary)" }}>
+                      Prueba preguntarme
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {SUGGESTIONS.map((s, i) => (
+                        <button key={i} onClick={() => setInput(s)}
+                          className="text-left px-4 py-2.5 rounded-xl text-xs transition-all hover:bg-[var(--surface)] active:scale-[0.98]"
+                          style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                          {s}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 
                 {!isLoggedIn && (
-                  <div className="max-w-sm mx-auto">
+                  <div className="mt-6 text-center">
                     <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-                      Inicia sesión para chatear con Mulfai
+                      Inicia sesión para comenzar a chatear
                     </p>
                     <button onClick={() => setShowAuthPrompt(true)}
-                      className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
+                      className="px-8 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
                       style={{ backgroundColor: "var(--primary)", color: "white" }}>
                       Iniciar sesión
                     </button>
@@ -405,71 +450,72 @@ export default function ChatInterface({
             </div>
           ) : loading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="flex items-center gap-2" style={{ color: "var(--text-secondary)" }}>
+              <div className="flex items-center gap-2.5" style={{ color: "var(--text-secondary)" }}>
                 <div className="w-5 h-5 border-2 rounded-full animate-spin"
                   style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
                 <span className="text-sm">Cargando...</span>
               </div>
             </div>
           ) : (
-            <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+            <div className="max-w-2xl mx-auto px-4 py-8">
               {messages.map((msg) => (
-                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} animate-fade-in group`}>
+                <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-6 animate-fade-in group`}>
                   {msg.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center mr-3 mt-1 shrink-0 shadow-md"
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 mt-1 shrink-0"
                       style={{ backgroundColor: "var(--primary)" }}>
                       <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                       </svg>
                     </div>
                   )}
-                  <div className="relative max-w-[85%]">
+                  <div className="relative max-w-[80%]">
                     <div
-                      className="px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm"
+                      className="px-4 py-3 rounded-2xl text-sm leading-relaxed"
                       style={{
                         backgroundColor: msg.role === "user" ? "var(--primary)" : "var(--surface)",
                         color: msg.role === "user" ? "white" : "var(--text-primary)",
-                        borderRadius: msg.role === "user" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
-                        boxShadow: msg.role === "assistant" ? "0 2px 8px rgba(0,0,0,0.3)" : "none",
+                        borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                       }}>
                       {msg.role === "user" ? (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       ) : (
-                        <div className="prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-transparent prose-pre:p-0">
+                        <div className="prose prose-invert prose-sm max-w-none">
                           <ReactMarkdown>{msg.content}</ReactMarkdown>
                         </div>
                       )}
                     </div>
-                    {/* Actions */}
-                    <div className={`flex items-center gap-1 mt-1 ${msg.role === "user" ? "justify-end" : "justify-start"} opacity-0 group-hover:opacity-100 transition-opacity`}>
-                      <button onClick={() => copyMessage(msg.content, msg.id)}
-                        className="p-1 rounded-md hover:bg-[var(--surface-hover)] transition-colors"
-                        style={{ color: "var(--text-tertiary)" }} title="Copiar">
-                        {copiedId === msg.id ? (
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        )}
-                      </button>
-                    </div>
+                    {/* Action */}
+                    {msg.role === "assistant" && (
+                      <div className="flex items-center gap-1 mt-1.5 justify-start opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => copyMessage(msg.content, msg.id)}
+                          className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors"
+                          style={{ color: "var(--text-tertiary)" }}>
+                          {copiedId === msg.id ? (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
 
               {sending && (
-                <div className="flex justify-start animate-fade-in">
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center mr-3 mt-1 shrink-0"
+                <div className="flex justify-start mb-6 animate-fade-in">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-3 mt-1 shrink-0"
                     style={{ backgroundColor: "var(--primary)" }}>
                     <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                   </div>
-                  <div className="px-4 py-3 rounded-2xl shadow-sm text-sm"
-                    style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", borderRadius: "18px 18px 18px 4px", boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+                  <div className="px-4 py-3 rounded-2xl text-sm"
+                    style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", borderRadius: "16px 16px 16px 4px" }}>
                     <span className="inline-flex items-center gap-1.5">
                       {[0, 150, 300].map((delay, i) => (
                         <span key={i} className="w-2 h-2 rounded-full animate-pulse-dot"
@@ -488,8 +534,7 @@ export default function ChatInterface({
         {/* Input area */}
         <div className="px-4 pb-6 pt-2 shrink-0">
           <div className="max-w-2xl mx-auto">
-            {/* Input container */}
-            <div className="flex items-end gap-3 px-4 py-3 rounded-2xl shadow-lg transition-all"
+            <div className="flex items-end gap-2 px-4 py-3 rounded-2xl transition-all"
               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
               <textarea
                 ref={textareaRef}
@@ -501,31 +546,21 @@ export default function ChatInterface({
                     sendMessage();
                   }
                 }}
-                placeholder={isLoggedIn ? (isDisabled ? "Límite alcanzado" : "Escribe un mensaje...") : "Inicia sesión para chatear..."}
+                placeholder={isLoggedIn ? "Escribe un mensaje..." : "Inicia sesión para chatear..."}
                 disabled={isDisabled || sending}
                 rows={1}
-                className="flex-1 text-sm outline-none resize-none bg-transparent placeholder-opacity-50"
+                className="flex-1 text-sm outline-none resize-none bg-transparent"
                 style={{ color: "var(--text-primary)", maxHeight: "200px" }}
               />
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || sending || isDisabled}
-                className="shrink-0 p-2.5 rounded-xl transition-all hover:opacity-90 active:scale-90 disabled:opacity-30"
+                className="shrink-0 p-2 rounded-xl transition-all hover:opacity-90 active:scale-90 disabled:opacity-30"
                 style={{ backgroundColor: "var(--primary)", color: "white" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
-            </div>
-            {/* Footer hint */}
-            <div className="flex items-center justify-center gap-3 mt-3">
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                Mulfai puede cometer errores. Verifica información importante.
-              </p>
-              <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>·</span>
-              <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                Enter = enviar · Shift+Enter = nueva línea
-              </span>
             </div>
           </div>
         </div>
