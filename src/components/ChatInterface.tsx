@@ -42,6 +42,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [attachments, setAttachments] = useState<File[]>([]);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [pendingPreviews, setPendingPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -121,6 +122,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
       ta.style.height = "auto";
       ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
     }
+  }
+
+  function formatTime(dateStr: string) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    if (isToday) return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + " · " +
+      d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
   }
 
   
@@ -537,6 +547,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     </div>
                   )}
                   <div className="relative max-w-[78%]">
+                    {/* Sender label */}
+                    <p className={`text-xs font-semibold mb-1.5 ${msg.role === "user" ? "text-right" : ""}`}
+                      style={{ color: msg.role === "user" ? "rgba(255,255,255,0.6)" : "var(--text-tertiary)" }}>
+                      {msg.role === "user" ? "Tú" : "Mulfai"}
+                    </p>
                     <div
                       className="px-5 py-3.5 rounded-2xl text-sm leading-relaxed"
                       style={{
@@ -551,8 +566,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             <div className="flex flex-wrap gap-1.5 mb-2">
                               {Object.values(msg._previewUrls).map((url, i) => (
                                 <img key={i} src={url} alt="adjunto"
-                                  className="rounded-lg object-cover"
-                                  style={{ width: "120px", height: "120px", borderRadius: "10px" }} />
+                                  onClick={() => setLightboxUrl(url)}
+                                  className="rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                  style={{ width: "120px", height: "120px" }} />
                               ))}
                             </div>
                           )}
@@ -564,10 +580,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         </div>
                       )}
                     </div>
-                    {msg.role === "assistant" && (
-                      <div className="flex items-center gap-1 mt-1.5 justify-start opacity-0 group-hover:opacity-100 transition-all">
+                    {/* Timestamp + copy */}
+                    <div className={`flex items-center gap-1.5 mt-1.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                      {msg.role === "assistant" && (
                         <button onClick={() => copyMessage(msg.content, msg.id)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors opacity-0 group-hover:opacity-100"
                           style={{ color: "var(--text-tertiary)" }}>
                           {copiedId === msg.id ? (
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -579,8 +596,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             </svg>
                           )}
                         </button>
-                      </div>
-                    )}
+                      )}
+                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                        {formatTime(msg.created_at)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -690,6 +710,23 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
       </div>
       {showAuthPrompt && <AuthModal onSuccess={() => { setShowAuthPrompt(false); setIsLoggedIn(true); }} />}
+      {lightboxUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)" }}
+          onClick={() => setLightboxUrl(null)}>
+          <button className="absolute top-4 right-4 p-2.5 rounded-xl transition-colors hover:bg-white/10"
+            style={{ color: "white" }}
+            onClick={() => setLightboxUrl(null)}>
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img src={lightboxUrl} alt="Vista completa"
+            className="rounded-2xl shadow-2xl cursor-zoom-out"
+            style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain" }}
+            onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }
