@@ -37,10 +37,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [menuView, setMenuView] = useState<"main" | "account">("main");
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
+  const [profile, setProfile] = useState<{subscription_weeks?: number; subscription_start?: string; weekly_limit?: number} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
@@ -56,6 +60,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
     });
   }, []);
+
+  useEffect(() => {
+    if (!userId || !isLoggedIn) return;
+    supabase
+      .from("profiles")
+      .select("subscription_weeks, subscription_start, weekly_limit")
+      .eq("id", userId)
+      .single()
+      .then(({ data }) => { if (data) setProfile(data); });
+  }, [userId, isLoggedIn]);
 
   async function loadConversations() {
     if (!isLoggedIn) return;
@@ -115,6 +129,22 @@ export default function ChatInterface({ userId }: { userId: string }) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!showMenu) return;
+    function handler(e: MouseEvent) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        menuBtnRef.current && !menuBtnRef.current.contains(e.target as Node)
+      ) {
+        setShowMenu(false);
+        setMenuView("main");
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showMenu]);
 
   function autoResize() {
     const ta = textareaRef.current;
@@ -405,8 +435,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         {/* Bottom */}
         <div className="p-4 border-t shrink-0" style={{ borderColor: "var(--border)" }}>
-          <div className="relative">
-            <button onClick={() => setShowMenu(!showMenu)}
+          <div className="relative" ref={menuRef}>
+            <button ref={menuBtnRef} onClick={() => setShowMenu(!showMenu)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors hover:bg-[var(--surface-hover)]"
               style={{ color: "var(--text-secondary)" }}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shadow-md shrink-0"
@@ -414,32 +444,64 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
               </div>
               <div className="flex-1 text-left overflow-hidden">
-                <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-                  {userEmail ? userEmail.split("@")[0] : "Mi cuenta"}
-                </p>
-                <p className="text-xs truncate" style={{ color: "var(--text-tertiary)" }}>Mi cuenta</p>
+                <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>Mi cuenta</p>
+                <p className="text-xs truncate" style={{ color: "var(--text-tertiary)" }}>{userEmail}</p>
               </div>
               <svg className="w-4 h-4 opacity-50 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
             {showMenu && (
               <div className="absolute bottom-full left-0 right-0 mb-2 rounded-xl shadow-2xl overflow-hidden"
                 style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-                {userEmail && (
-                  <div className="px-4 py-3 border-b" style={{ borderColor: "var(--border)" }}>
-                    <p className="text-xs truncate" style={{ color: "var(--text-tertiary)" }}>{userEmail}</p>
-                  </div>
+                {menuView === "main" ? (
+                  <>
+                    <button onClick={() => setMenuView("account")}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--surface-hover)]"
+                      style={{ color: "var(--text-primary)" }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      Límite de cuenta
+                    </button>
+                    <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--danger)]/10"
+                      style={{ color: "var(--danger)" }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Cerrar sesión
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button onClick={() => setMenuView("main")}
+                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm border-b transition-colors hover:bg-[var(--surface-hover)]"
+                      style={{ borderColor: "var(--border)", color: "var(--text-tertiary)" }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Volver
+                    </button>
+                    <div className="px-4 py-4">
+                      <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>Límite semanal</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--border)" }}>
+                          <div className="h-full rounded-full transition-all" style={{ background: "linear-gradient(90deg, var(--primary), #0d8b6a)", width: profile?.weekly_limit ? "60%" : "0%" }} />
+                        </div>
+                        <span className="text-sm font-semibold shrink-0" style={{ color: "var(--primary)" }}>
+                          {profile?.weekly_limit ? "60%" : "0%"}
+                        </span>
+                      </div>
+                      {profile?.subscription_weeks != null && (
+                        <p className="text-xs mt-2" style={{ color: "var(--text-tertiary)" }}>
+                          {profile.subscription_weeks} semana{profile.subscription_weeks !== 1 ? "s" : ""} restante{profile.subscription_weeks !== 1 ? "s" : ""}
+                        </p>
+                      )}
+                    </div>
+                  </>
                 )}
-                <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:bg-[var(--danger)]/10"
-                  style={{ color: "var(--danger)" }}>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  Cerrar sesión
-                </button>
               </div>
             )}
           </div>
