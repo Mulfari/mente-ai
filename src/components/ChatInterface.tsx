@@ -89,15 +89,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     }
   }
 
-  function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve((reader.result as string).split(",")[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
+  
   async function newConversation() {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     const { data } = await supabase
@@ -136,14 +128,40 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  function compressImage(file: File, maxWidth = 1280, quality = 0.7): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let { width, height } = img;
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", quality).split(",")[1]);
+        };
+        img.onerror = reject;
+        img.src = e.target!.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     const newFiles: File[] = [];
     const newUrls: Record<string, string> = { ...previewUrls };
 
     for (const file of files) {
-      if (attachments.length + newFiles.length >= 5) break;
-      if (file.size > 10 * 1024 * 1024) continue; // 10MB limit
+      if (attachments.length + newFiles.length >= 3) break;
+      if (file.size > 5 * 1024 * 1024) continue; // 5MB limit
       newFiles.push(file);
       newUrls[file.name + file.size] = URL.createObjectURL(file);
     }
@@ -205,8 +223,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const contentParts: any[] = [{ type: "text", text: userMsg }];
       for (const file of filesToSend) {
         if (file.type.startsWith("image/")) {
-          const base64 = await fileToBase64(file);
-          contentParts.push({ type: "image", source: { type: "base64", media_type: file.type, data: base64 } });
+          const base64 = await compressImage(file);
+          contentParts.push({ type: "image", source: { type: "base64", media_type: "image/jpeg", data: base64 } });
         }
       }
 
@@ -565,7 +583,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               {/* Attachment button */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                disabled={attachments.length >= 5 || isDisabled || sending}
+                disabled={attachments.length >= 3 || isDisabled || sending}
                 className="shrink-0 p-2.5 rounded-xl transition-all hover:bg-[var(--surface-hover)] disabled:opacity-30"
                 style={{ color: "var(--text-secondary)" }}
                 title="Adjuntar imagen">
