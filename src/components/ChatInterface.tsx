@@ -366,15 +366,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* Sidebar header */}
         <div className="flex items-center justify-between p-5 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-3">
-            <div className="relative w-9 h-9">
-              <div className="absolute inset-0 rounded-xl rotate-45" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }} />
-              <div className="absolute inset-0 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
-                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.3.5 2.5 1.4 3.3L7 12l1.5 1.5 1.9-1.9c.7.4 1.5.6 2.4.6 1.5 0 2.8-.6 3.8-1.6L18.2 12l1.5 1.5 -1.5 1.5c1.8 1.8 2.8 4.3 2.8 7 0 5-4 9-9 9-2.4 0-4.6-.9-6.3-2.5L2 22l-1.5-1.5L3.2 18c-1.8-2-2.9-4.7-2.9-7.5C.3 4.7 5.7 2 12 2z"/>
-                </svg>
-              </div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+              <svg className="w-5 h-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M3 4h2l2.5 8.5L10 5.5 12.5 12.5 15 5.5l2.5 8.5H17L14.5 4h2l-3 10H6L3 4z"/>
+              </svg>
             </div>
-            <span className="text-lg font-black tracking-tighter" style={{ color: "var(--text-primary)" }}>
+            <span className="text-lg font-black tracking-tight" style={{ color: "var(--text-primary)" }}>
               <span style={{ color: "var(--primary)" }}>M</span>ulfai
             </span>
           </div>

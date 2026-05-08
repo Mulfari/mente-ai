@@ -12,12 +12,26 @@ export async function POST(request: Request) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("status, subscription_weeks, subscription_start")
+      .select("status, subscription_weeks, subscription_start, weekly_limit, messages_used, weekly_reset_at")
       .eq("id", user.id)
       .single();
 
-    if (!profile || profile.status !== "active") {
+    if (!profile) {
+      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
+    }
+
+    if (profile.status === "inactive") {
+      return NextResponse.json({ error: "Cuenta inactiva. Solicita un código de cupón para activar tu cuenta." }, { status: 403 });
+    }
+
+    if (profile.status !== "active") {
       return NextResponse.json({ error: "Cuenta no activa" }, { status: 403 });
+    }
+
+    const messagesUsed = profile.messages_used ?? 0;
+    const weeklyLimit = profile.weekly_limit ?? 100;
+    if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) {
+      return NextResponse.json({ error: "Has alcanzado tu límite semanal de mensajes." }, { status: 429 });
     }
 
     const { message, conversation_id, attachments } = await request.json();
@@ -57,11 +71,17 @@ export async function POST(request: Request) {
     }
 
     const data = await response.json();
-    
+
     // El contenido es un array, buscar el bloque de texto (ignorar thinking)
     const responseContent = data.content || [];
     const textBlock = responseContent.find((c: any) => c.type === "text");
     const aiMessage = textBlock?.text || "Sin respuesta del modelo.";
+
+    // Incrementar contador de mensajes usados
+    await supabase
+      .from("profiles")
+      .update({ messages_used: profile.messages_used + 1 })
+      .eq("id", user.id);
 
     return NextResponse.json({ message: aiMessage });
 
