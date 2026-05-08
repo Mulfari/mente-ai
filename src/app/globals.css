@@ -1,31 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --primary: #2563EB;
-  --secondary: #1E40AF;
-  --accent: #60A5FA;
-  --background: #0F172A;
-  --surface: #1E293B;
-  --border: #334155;
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --success: #22C55E;
-  --warning: #F59E0B;
+  --primary: #10A37F;
+  --primary-hover: #0D8B6A;
+  --background: #212121;
+  --surface: #2A2A2A;
+  --surface-hover: #333333;
+  --border: #3A3A3A;
+  --text-primary: #ECECEC;
+  --text-secondary: #A1A1A1;
+  --text-tertiary: #6B6B6B;
   --danger: #EF4444;
+  --warning: #F59E0B;
+  --user-bubble: #10A37F;
 }
 
 @theme inline {
   --color-primary: var(--primary);
-  --color-secondary: var(--secondary);
-  --color-accent: var(--accent);
+  --color-primary-hover: var(--primary-hover);
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-border: var(--border);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
+  --color-text-tertiary: var(--text-tertiary);
   --color-danger: var(--danger);
+  --color-warning: var(--warning);
   --font-sans: var(--font-inter);
 }
 
@@ -44,18 +45,30 @@ body {
 
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: var(--surface);
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 3px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--text-tertiary);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-dot {
+  animation: pulse 1.4s ease-in-out infinite;
 }
