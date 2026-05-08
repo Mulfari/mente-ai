@@ -18,35 +18,6 @@ type Conversation = {
   updated_at: string;
 };
 
-const CAPABILITIES = [
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-      </svg>
-    ),
-    title: "Asistente inteligente",
-    desc: "Pregunta lo que quieras, siempre disponible",
-  },
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-      </svg>
-    ),
-    title: "Escribe y crea",
-    desc: "Correos, ensayos, código y más",
-  },
-  {
-    icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    ),
-    title: "Respuestas instantáneas",
-    desc: "Pensando, resumiendo y explicando",
-  },
-];
 
 const SUGGESTIONS = [
   "Explícame física cuántica como si tuviera 10 años",
@@ -67,6 +38,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
@@ -115,6 +89,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
     }
   }
 
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function newConversation() {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     const { data } = await supabase
@@ -153,8 +136,36 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setTimeout(() => setCopiedId(null), 2000);
   }
 
+  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    const newFiles: File[] = [];
+    const newUrls: Record<string, string> = { ...previewUrls };
+
+    for (const file of files) {
+      if (attachments.length + newFiles.length >= 5) break;
+      if (file.size > 10 * 1024 * 1024) continue; // 10MB limit
+      newFiles.push(file);
+      newUrls[file.name + file.size] = URL.createObjectURL(file);
+    }
+
+    setAttachments(prev => [...prev, ...newFiles]);
+    setPreviewUrls(newUrls);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeAttachment(name: string, size: number) {
+    const key = name + size;
+    URL.revokeObjectURL(previewUrls[key]);
+    setAttachments(prev => prev.filter(f => !(f.name === name && f.size === size)));
+    setPreviewUrls(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  }
+
   async function sendMessage() {
-    if (!input.trim() || sending) return;
+    if ((!input.trim() && attachments.length === 0) || sending) return;
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
 
     let conv = activeConv;
@@ -172,7 +183,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
     }
 
     const userMsg = input.trim();
+    const filesToSend = [...attachments];
     setInput("");
+    setAttachments([]);
+    setPreviewUrls({});
     setSending(true);
     autoResize();
     if (!conv) return;
@@ -186,10 +200,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
     try {
       const convId = conv.id;
+
+      // Build message content for API
+      const contentParts: any[] = [{ type: "text", text: userMsg }];
+      for (const file of filesToSend) {
+        if (file.type.startsWith("image/")) {
+          const base64 = await fileToBase64(file);
+          contentParts.push({ type: "image", source: { type: "base64", media_type: file.type, data: base64 } });
+        }
+      }
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, conversation_id: convId }),
+        body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts }),
       });
       const result = await res.json();
 
@@ -386,24 +410,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   </p>
                 </div>
 
-                {/* Capabilities */}
-                <div className="grid grid-cols-1 gap-2 mb-6">
-                  {CAPABILITIES.map((cap, i) => (
-                    <div key={i}
-                      className="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all cursor-default hover:scale-[1.01] hover:shadow-md"
-                      style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: "linear-gradient(135deg, rgba(16,163,127,0.15), rgba(16,163,127,0.05))" }}>
-                        <div style={{ color: "var(--primary)" }}>{cap.icon}</div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>{cap.title}</p>
-                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{cap.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
+                
                 {/* Suggestions */}
                 {isLoggedIn && !isDisabled && (
                   <div className="mt-6">
@@ -522,8 +529,53 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* Input area */}
         <div className="px-4 pb-6 pt-2 shrink-0">
           <div className="max-w-2xl mx-auto">
+            {/* Attachment previews */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {attachments.map((file, i) => {
+                  const key = file.name + file.size;
+                  const isImage = file.type.startsWith("image/");
+                  return (
+                    <div key={i} className="relative group">
+                      {isImage ? (
+                        <img src={previewUrls[key]} alt={file.name}
+                          className="w-14 h-14 rounded-xl object-cover border"
+                          style={{ borderColor: "var(--border)" }} />
+                      ) : (
+                        <div className="w-14 h-14 rounded-xl flex items-center justify-center border"
+                          style={{ borderColor: "var(--border)", backgroundColor: "var(--surface)" }}>
+                          <svg className="w-5 h-5" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                      )}
+                      <button onClick={() => removeAttachment(file.name, file.size)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center text-xs shadow-md"
+                        style={{ backgroundColor: "var(--danger)", color: "white" }}>
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="flex items-end gap-2 px-5 py-4 rounded-2xl shadow-lg transition-all"
               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 8px 32px rgba(0,0,0,0.25)" }}>
+              {/* Attachment button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={attachments.length >= 5 || isDisabled || sending}
+                className="shrink-0 p-2.5 rounded-xl transition-all hover:bg-[var(--surface-hover)] disabled:opacity-30"
+                style={{ color: "var(--text-secondary)" }}
+                title="Adjuntar imagen">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
+              <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple
+                onChange={handleFileSelect} className="hidden" />
+
               <textarea
                 ref={textareaRef}
                 value={input}
@@ -542,7 +594,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               />
               <button
                 onClick={sendMessage}
-                disabled={!input.trim() || sending || isDisabled}
+                disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled}
                 className="shrink-0 p-3 rounded-xl transition-all hover:opacity-90 active:scale-90 disabled:opacity-30"
                 style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 4px 12px rgba(16,163,127,0.3)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">

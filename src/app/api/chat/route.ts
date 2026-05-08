@@ -20,9 +20,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cuenta no activa" }, { status: 403 });
     }
 
-    const { message, conversation_id } = await request.json();
+    const { message, conversation_id, attachments } = await request.json();
 
-    if (!message?.trim()) {
+    if (!message?.trim() && (!attachments || attachments.length === 0)) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
     }
 
@@ -35,38 +35,37 @@ export async function POST(request: Request) {
     headers.set("anthropic-version", "2023-06-01");
     headers.set("x-api-key", apiKey);
 
+    // Build content array — puede ser texto solo o texto + imágenes
+    const requestContent = attachments && attachments.length > 0
+      ? attachments
+      : [{ type: "text", text: message }];
+
     const response = await fetch(`${baseUrl}/v1/messages`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         model: "claude-opus-4.6-1m",
         max_tokens: 2048,
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: requestContent }],
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      console.error("API response error:", response.status, errorData);
       const errorMsg = errorData?.error?.message || errorData?.message || `API Error: ${response.status}`;
       return NextResponse.json({ error: errorMsg }, { status: response.status });
     }
 
     const data = await response.json();
-    console.log("API response:", JSON.stringify(data).slice(0, 300));
-
+    
     // El contenido es un array, buscar el bloque de texto (ignorar thinking)
-    const content = data.content || [];
-    const textBlock = content.find((c: any) => c.type === "text");
+    const responseContent = data.content || [];
+    const textBlock = responseContent.find((c: any) => c.type === "text");
     const aiMessage = textBlock?.text || "Sin respuesta del modelo.";
 
     return NextResponse.json({ message: aiMessage });
 
-  } catch (error: any) {
-    console.error("Chat API error:", error);
-    return NextResponse.json(
-      { error: "Error interno del servidor" },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
