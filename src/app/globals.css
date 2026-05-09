@@ -3,13 +3,13 @@
 :root {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #212121;
-  --surface: #2A2A2A;
-  --surface-hover: #333333;
-  --border: #3A3A3A;
-  --text-primary: #ECECEC;
-  --text-secondary: #A1A1A1;
-  --text-tertiary: #6B6B6B;
+  --background: #0f0f0f;
+  --surface: #1a1a1a;
+  --surface-hover: #222222;
+  --border: #2e2e2e;
+  --text-primary: #f0f0f0;
+  --text-secondary: #a0a0a0;
+  --text-tertiary: #666666;
   --danger: #EF4444;
   --warning: #F59E0B;
   --user-bubble: #10A37F;
@@ -34,6 +34,10 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--text-primary);
@@ -43,8 +47,18 @@ body {
   min-height: 100vh;
 }
 
+/* Subtle noise texture on background */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
@@ -62,7 +76,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn 0.25s ease-out forwards;
 }
 
 @keyframes pulse {
@@ -71,4 +85,56 @@ body {
 }
 .animate-pulse-dot {
   animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Markdown prose styling */
+.prose {
+  color: var(--text-primary);
+}
+.prose p {
+  margin: 0.6em 0;
+}
+.prose p:first-child {
+  margin-top: 0;
+}
+.prose p:last-child {
+  margin-bottom: 0;
+}
+.prose code {
+  background: rgba(255,255,255,0.08);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: monospace;
+}
+.prose pre {
+  background: rgba(255,255,255,0.05);
+  padding: 1em;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 0.8em 0;
+}
+.prose pre code {
+  background: none;
+  padding: 0;
+}
+.prose ul, .prose ol {
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+.prose li {
+  margin: 0.2em 0;
+}
+.prose strong {
+  font-weight: 600;
+}
+.prose a {
+  color: var(--primary);
+  text-decoration: underline;
+}
+.prose blockquote {
+  border-left: 3px solid var(--primary);
+  padding-left: 0.8em;
+  color: var(--text-secondary);
+  margin: 0.5em 0;
 }
