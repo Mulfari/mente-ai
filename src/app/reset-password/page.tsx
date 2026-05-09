@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 export default async function ResetPasswordPage({
   searchParams,
@@ -9,12 +10,21 @@ export default async function ResetPasswordPage({
   const token = params.token as string | undefined;
   const type = params.type as string | undefined;
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
-  // If there's a recovery token in URL, set it
-  if (token && type === "recovery" && user) {
-    // User is already set via session from the token
+  // If there's a recovery token, set it to establish the session
+  let sessionEstablished = false;
+  if (token && type === "recovery") {
+    const { data, error } = await supabase.auth.verifyOtp({
+      type: "recovery",
+      email: "", // token contains the email
+      token,
+    }).catch(() => ({ data: null, error: true }));
+    if (!error && data?.session) {
+      sessionEstablished = true;
+    }
   }
+
+  const { data: { user } } = await supabase.auth.getUser();
 
   return (
     <main className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--background)" }}>
@@ -34,7 +44,7 @@ export default async function ResetPasswordPage({
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Restablecer contraseña</p>
         </div>
 
-        {!user && !token ? (
+        {(!sessionEstablished && !user) ? (
           <div className="text-center">
             <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
               style={{ backgroundColor: "rgba(239,68,68,0.1)" }}>
@@ -51,6 +61,7 @@ export default async function ResetPasswordPage({
           </div>
         ) : (
           <form action="/api/auth/reset-password/confirm" method="POST">
+            <input type="hidden" name="token" value={token || ""} />
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-secondary)" }}>
