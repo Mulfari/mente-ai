@@ -11,6 +11,8 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   created_at: string;
+  user_id?: string;
+  conversation_id?: string;
   attachments?: string[];
   _previewUrls?: Record<string, string>;
 };
@@ -48,8 +50,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [profile, setProfile] = useState<{subscription_weeks?: number; subscription_start?: string; weekly_limit?: number; messages_used?: number} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
+  const [notification, setNotification] = useState<string | null>(null);
+  const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
-  const [pendingPreviews, setPendingPreviews] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -136,6 +139,49 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
     return () => { supabase.removeChannel(channel); };
   }, [isLoggedIn, userId]);
+
+  // Realtime for new messages in active conversation
+  useEffect(() => {
+    if (!isLoggedIn || !userId || !activeConv) return;
+
+    const channel = supabase
+      .channel(`messages-${activeConv.id}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `conversation_id=eq.${activeConv.id}`,
+      }, (payload) => {
+        const msg = payload.new as Message;
+        if (msg.role === "assistant") {
+          setMessages(prev => {
+            if (prev.find(m => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+          if (document.hidden && "Notification" in window) {
+            if (Notification.permission === "granted") {
+              new Notification("Mulfai", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
+            } else if (Notification.permission !== "denied") {
+              Notification.requestPermission().then(p => {
+                if (p === "granted") new Notification("Mulfai", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
+              });
+            }
+            setNotification("Nuevo mensaje de Mulfai");
+            if (notifTimer.current) clearTimeout(notifTimer.current);
+            notifTimer.current = setTimeout(() => setNotification(null), 5000);
+          }
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isLoggedIn, userId, activeConv?.id]);
+
+  useEffect(() => {
+    if (isLoggedIn && "Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, [isLoggedIn]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -251,7 +297,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const key = file.name + file.size;
       const url = URL.createObjectURL(file);
       newUrls[key] = url;
-      setPendingPreviews(prev => ({ ...prev, [key]: url }));
     }
 
     setAttachments(prev => [...prev, ...newFiles]);
@@ -330,13 +375,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const result = await res.json();
 
       if (result.error) {
-        const isRateLimit = res.status === 429;
+        const errorCode = result.code || 500;
         setMessages(prev => [...prev, {
           id: Date.now().toString(), role: "assistant",
-          content: result.error + (isRateLimit ? " ⏳" : ""),
-          created_at: new Date().toISOString(),
+          content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString(),
         }]);
-        if (isRateLimit) textareaRef.current?.focus();
+        textareaRef.current?.focus();
       } else if (result.message) {
         const { data: aiMsg } = await supabase
           .from("messages")
@@ -350,7 +394,28 @@ export default function ChatInterface({ userId }: { userId: string }) {
         }]);
 
         if (conv.title === "Nueva conversación") {
-          const title = userMsg.slice(0, 50) + (userMsg.length > 50 ? "..." : "");
+          // Generar título inteligente con la conversación
+          const chatHistory = messages.map(m => ({
+            role: m.role,
+            content: m.content
+          }));
+          const titlePrompt = `Genera un título corto de máximo 5 palabras en español que resuma esta conversación. Solo responde con el título, sin comillas ni puntuación.`;
+          const titleRes = await fetch("/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: titlePrompt,
+              conversation_id: convId,
+              attachments: chatHistory.length > 2
+                ? [{ type: "text", text: `Resumen de la conversación:\nUser: ${messages[0]?.content}\nAssistant: ${messages[1]?.content?.slice(0, 100)}\nUser: ${messages[2]?.content?.slice(0, 100)}` }]
+                : [{ type: "text", text: messages.map(m => `${m.role}: ${m.content}`).join("\n") }]
+            }),
+          });
+          const titleResult = await titleRes.json();
+          let title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
+          if (titleResult.message) {
+            title = titleResult.message.trim().slice(0, 50);
+          }
           await supabase.from("conversations")
             .update({ title, updated_at: new Date().toISOString() })
             .eq("id", convId);
@@ -791,6 +856,25 @@ export default function ChatInterface({ userId }: { userId: string }) {
           setShowAuthPrompt(false);
           window.location.reload();
         }} onClose={() => setShowAuthPrompt(false)} />}
+      {notification && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-fade-in"
+          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--primary)", color: "var(--text-primary)" }}>
+          <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </div>
+          <span className="text-sm font-medium">{notification}</span>
+          <button onClick={() => setNotification(null)}
+            className="ml-2 p-1 rounded-lg transition-colors hover:bg-[var(--surface-hover)]"
+            style={{ color: "var(--text-tertiary)" }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
       {lightboxUrl && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)" }}

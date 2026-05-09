@@ -165,6 +165,27 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
             {loading ? "Cargando..." : mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
           </button>
 
+          {mode === "login" && (
+            <button type="button" onClick={async () => {
+              setError("");
+              if (!email) { setError("Ingresa tu correo para recuperar la contraseña"); return; }
+              setLoading(true);
+              const res = await fetch("/api/auth/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+              });
+              setLoading(false);
+              const data = await res.json();
+              if (data.success) setSuccess("Revisa tu correo para restablecer la contraseña.");
+              else setError("Error 500. Por favor intente nuevamente.");
+            }}
+              className="w-full py-2 text-xs text-center transition-colors hover:underline"
+              style={{ color: "var(--text-tertiary)" }}>
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
+
           {mode === "register" && !coupon && (
             <p className="text-xs text-center" style={{ color: "var(--text-tertiary)" }}>
               Sin cupón la cuenta queda pendiente de activación.
