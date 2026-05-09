@@ -53,14 +53,30 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
         setError(signUpError.message);
         return;
       }
-      setSuccess("¡Cuenta creada exitosamente!");
-      const timer = setTimeout(() => {
-        setMode("login");
-        setSuccess("");
-        setPassword("");
-        setConfirmPassword("");
-      }, 2500);
-      setRedirectTimer(timer);
+      // Get user id and create profile
+      const { data: authUser } = await supabase.auth.getUser();
+      if (authUser.user?.id) {
+        await supabase.from("profiles").upsert({
+          id: authUser.user.id,
+          status: "active",
+          subscription_weeks: 0,
+          weekly_limit: 0,
+        });
+      }
+      // Auto-login after registration
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setSuccess("¡Cuenta creada! Ahora puedes iniciar sesión.");
+        const timer = setTimeout(() => {
+          setMode("login");
+          setSuccess("");
+          setPassword("");
+          setConfirmPassword("");
+        }, 2500);
+        setRedirectTimer(timer);
+      } else {
+        onSuccess ? onSuccess() : window.location.reload();
+      }
     }
   }
 
