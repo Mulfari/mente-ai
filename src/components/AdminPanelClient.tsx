@@ -11,6 +11,8 @@ type Profile = {
   subscription_start: string | null;
   role: string;
   created_at: string;
+  used_coupon_label: string | null;
+  used_coupon_label_color: string | null;
 };
 
 type Coupon = {
@@ -21,7 +23,14 @@ type Coupon = {
   used_by: string | null;
   used_by_email: string | null;
   used_at: string | null;
+  duration_days: number | null;
+  label: string | null;
+  color: string | null;
+  is_unlimited: boolean;
 };
+
+type CouponType = "trial" | "weekly" | "unlimited";
+type CouponFilter = "all" | "available" | "used";
 
 type Tab = "users" | "coupons";
 type Toast = { id: string; type: "success" | "error"; message: string };
@@ -38,6 +47,8 @@ export default function AdminPanel() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [newCouponCount, setNewCouponCount] = useState(1);
   const [generatingCoupons, setGeneratingCoupons] = useState(false);
+  const [selectedCouponType, setSelectedCouponType] = useState<CouponType>("weekly");
+  const [couponFilter, setCouponFilter] = useState<CouponFilter>("all");
   const supabase = createClient();
 
   function showToast(type: "success" | "error", message: string) {
@@ -65,6 +76,8 @@ export default function AdminPanel() {
         subscription_start: p.subscription_start,
         role: p.role,
         created_at: authUser?.created_at || p.created_at,
+        used_coupon_label: p.used_coupon_label ?? null,
+        used_coupon_label_color: p.used_coupon_label_color ?? null,
       } as Profile;
     });
 
@@ -135,7 +148,7 @@ export default function AdminPanel() {
     showToast("success", "Usuario eliminado");
   }
 
-  async function generateCoupons(count: number) {
+  async function generateCoupons(count: number, type: CouponType) {
     setGeneratingCoupons(true);
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const codes: string[] = [];
@@ -145,12 +158,24 @@ export default function AdminPanel() {
       codes.push(code);
     }
     const adminUser = (await supabase.auth.getUser()).data.user;
-    const inserts = codes.map(c => ({ code: c, created_by: adminUser?.id }));
+
+    const couponConfig: Record<CouponType, { duration_days: number | null; label: string; color: string; is_unlimited: boolean }> = {
+      trial: { duration_days: 3, label: "Prueba gratuita", color: "#F59E0B", is_unlimited: false },
+      weekly: { duration_days: 7, label: "Suscripcion semanal", color: "#10A37F", is_unlimited: false },
+      unlimited: { duration_days: null, label: "Acceso ilimitado", color: "#8b5cf6", is_unlimited: true },
+    };
+    const config = couponConfig[type];
+
+    const inserts = codes.map(c => ({
+      code: c,
+      created_by: adminUser?.id,
+      ...config,
+    }));
     const { error } = await supabase.from("coupons").insert(inserts);
     setGeneratingCoupons(false);
     if (error) showToast("error", "Error al generar cupones");
     else {
-      showToast("success", `${count} cupon(es) generado(s)`);
+      showToast("success", `${count} cupon(es) ${type === "trial" ? "de prueba" : type === "weekly" ? "semanales" : "ilimitados"} generado(s)`);
       loadCoupons();
     }
   }
@@ -189,6 +214,12 @@ export default function AdminPanel() {
     used: coupons.filter(c => c.used_by != null).length,
     unused: coupons.filter(c => c.used_by == null).length,
   };
+
+  const filteredCoupons = coupons.filter(c => {
+    if (couponFilter === "available") return !c.used_by;
+    if (couponFilter === "used") return !!c.used_by;
+    return true;
+  });
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
@@ -303,17 +334,29 @@ export default function AdminPanel() {
           </div>
           {activeTab === "coupons" && (
             <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-1 p-1 rounded-xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                {([["trial", "Prueba"], ["weekly", "Semanal"], ["unlimited", "Ilimitado"]] as const).map(([t, label]) => (
+                  <button key={t} onClick={() => setSelectedCouponType(t as CouponType)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                    style={{
+                      backgroundColor: selectedCouponType === t ? (t === "trial" ? "#F59E0B" : t === "weekly" ? "#10A37F" : "#8b5cf6") : "transparent",
+                      color: selectedCouponType === t ? "white" : "var(--text-secondary)",
+                    }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
               <input type="number" min="1" max="50" value={newCouponCount}
                 onChange={e => setNewCouponCount(parseInt(e.target.value) || 1)}
                 className="w-16 px-3 py-2 rounded-xl text-sm text-center outline-none"
                 style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
-              <button onClick={() => generateCoupons(newCouponCount)} disabled={generatingCoupons}
+              <button onClick={() => generateCoupons(newCouponCount, selectedCouponType)} disabled={generatingCoupons}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40"
                 style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                 </svg>
-                {generatingCoupons ? "Generando..." : "Generar cupones"}
+                {generatingCoupons ? "Generando..." : "Generar"}
               </button>
             </div>
           )}
@@ -321,21 +364,35 @@ export default function AdminPanel() {
 
         {/* Coupon stats */}
         {activeTab === "coupons" && (
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-              <span style={{ color: "var(--text-tertiary)" }}>Total</span>
-              <span className="font-bold" style={{ color: "var(--text-primary)" }}>{couponStats.total}</span>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
+                style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                <span style={{ color: "var(--text-tertiary)" }}>Total</span>
+                <span className="font-bold" style={{ color: "var(--text-primary)" }}>{couponStats.total}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
+                style={{ backgroundColor: "rgba(16,163,127,0.12)", border: "1px solid rgba(16,163,127,0.2)" }}>
+                <span style={{ color: "var(--primary)" }}>Usados</span>
+                <span className="font-bold" style={{ color: "var(--primary)" }}>{couponStats.used}</span>
+              </div>
+              <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
+                style={{ backgroundColor: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                <span style={{ color: "var(--warning)" }}>Disponibles</span>
+                <span className="font-bold" style={{ color: "var(--warning)" }}>{couponStats.unused}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "rgba(16,163,127,0.12)", border: "1px solid rgba(16,163,127,0.2)" }}>
-              <span style={{ color: "var(--primary)" }}>Usados</span>
-              <span className="font-bold" style={{ color: "var(--primary)" }}>{couponStats.used}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.2)" }}>
-              <span style={{ color: "var(--warning)" }}>Disponibles</span>
-              <span className="font-bold" style={{ color: "var(--warning)" }}>{couponStats.unused}</span>
+            <div className="flex items-center gap-1 p-1 rounded-xl self-start sm:self-auto" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              {([["all", "Todos"], ["available", "Disp."], ["used", "Usados"]] as const).map(([f, label]) => (
+                <button key={f} onClick={() => setCouponFilter(f as CouponFilter)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    backgroundColor: couponFilter === f ? "var(--primary)" : "transparent",
+                    color: couponFilter === f ? "white" : "var(--text-secondary)",
+                  }}>
+                  {label}
+                </button>
+              ))}
             </div>
           </div>
         )}
@@ -430,6 +487,12 @@ export default function AdminPanel() {
                                     Admin
                                   </span>
                                 )}
+                                {user.used_coupon_label && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                                    style={{ backgroundColor: user.used_coupon_label_color ? `${user.used_coupon_label_color}22` : "rgba(139,92,246,0.15)", color: user.used_coupon_label_color || "#8b5cf6" }}>
+                                    {user.used_coupon_label}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -455,7 +518,7 @@ export default function AdminPanel() {
                               <div>
                                 <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Suscripcion</p>
                                 <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                                  {user.subscription_weeks} semana{user.subscription_weeks !== 1 ? "s" : ""}
+                                  {user.subscription_weeks < 0 ? "∞" : `${user.subscription_weeks} semana${user.subscription_weeks !== 1 ? "s" : ""}`}
                                   {endDateStr && <span className="text-xs font-normal ml-2" style={{ color: "var(--text-tertiary)" }}>hasta {endDateStr}</span>}
                                 </p>
                               </div>
@@ -548,7 +611,7 @@ export default function AdminPanel() {
               </div>
             ) : (
               <div className="space-y-2">
-                {coupons.map(c => (
+                {filteredCoupons.map(c => (
                   <div key={c.id}
                     className="flex items-center gap-4 px-5 py-4 rounded-2xl"
                     style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -558,6 +621,18 @@ export default function AdminPanel() {
                           style={{ backgroundColor: "var(--background)", color: "var(--primary)" }}>
                           {c.code}
                         </code>
+                        {c.color && (
+                          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                        )}
+                        {c.label && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{
+                              backgroundColor: c.color ? `${c.color}22` : "rgba(245,158,11,0.12)",
+                              color: c.color || "var(--warning)",
+                            }}>
+                            {c.label}
+                          </span>
+                        )}
                         <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                           style={{
                             backgroundColor: c.used_by ? "rgba(16,163,127,0.12)" : "rgba(245,158,11,0.12)",
