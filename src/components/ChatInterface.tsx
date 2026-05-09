@@ -137,7 +137,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
         } else if (payload.eventType === "DELETE") {
           setConversations(prev => prev.filter(c => c.id !== payload.old.id));
         } else if (payload.eventType === "UPDATE") {
-          setConversations(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
+          setConversations(prev => {
+            const updated = prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c);
+            // Ocultar conversaciones que quedaron vacías (sin mensajes y título original)
+            return updated.filter(c => c.title !== "Nueva conversación");
+          });
         }
       })
       .subscribe();
@@ -228,17 +232,32 @@ export default function ChatInterface({ userId }: { userId: string }) {
   
   async function newConversation() {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
-    const { data } = await supabase
+    // Limpiar conversaciones vacías antes de crear nueva
+    const { data: convs } = await supabase
       .from("conversations")
-      .insert({ user_id: userId, title: "Nueva conversación" })
-      .select()
-      .single();
-    if (data) {
-      setConversations([data, ...conversations]);
-      setActiveConv(data);
-      setMessages([]);
-      setShowSidebar(false);
+      .select("id, title, messages(count)")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false });
+    if (convs) {
+      // Eliminar conversaciones sin mensajes (vacías)
+      const toDelete = convs.filter((c: any) => {
+        const msgs = c.messages as any[];
+        return !msgs || msgs.length === 0 || (msgs.length > 0 && msgs[0].count === 0);
+      });
+      for (const c of toDelete) {
+        await supabase.from("conversations").delete().eq("id", c.id);
+      }
+      // Mantener solo conversaciones con mensajes o título personalizado
+      const filtered = convs.filter((c: any) => {
+        const msgs = c.messages as any[];
+        return (msgs && msgs.length > 0 && (msgs[0].count ?? 0) > 0) || c.title !== "Nueva conversación";
+      });
+      setConversations(filtered);
     }
+    // No crear registro en DB — solo resetear estado local
+    setActiveConv(null);
+    setMessages([]);
+    setShowSidebar(false);
   }
 
   async function selectConv(conv: Conversation) {
