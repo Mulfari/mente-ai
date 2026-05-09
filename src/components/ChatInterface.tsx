@@ -361,20 +361,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
       loadConversations();
     }
 
+    const convId = conv!.id;
     const { data: inserted } = await supabase
       .from("messages")
-      .insert({ conversation_id: conv.id, role: "user", content: s, attachments: [] })
+      .insert({ conversation_id: convId, role: "user", content: s, attachments: [] })
       .select().single();
     if (inserted) setMessages(prev => [...prev, inserted]);
 
     try {
-      const convId = conv.id;
       const contentParts: any[] = [{ type: "text", text: s }];
 
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: s, conversation_id: convId, attachments: contentParts }),
+        body: JSON.stringify({ message: s, conversation_id: conv!.id, attachments: contentParts }),
       });
       const result = await res.json();
 
@@ -382,13 +382,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const errorCode = result.code || 500;
         setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString() }]);
       } else if (result.message) {
-        const { data: aiMsg } = await supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: result.message }).select().single();
+        const { data: aiMsg } = await supabase.from("messages").insert({ conversation_id: conv!.id, role: "assistant", content: result.message }).select().single();
         if (aiMsg) setMessages(prev => [...prev, aiMsg]);
         else setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: result.message, created_at: new Date().toISOString() }]);
 
         const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
-        await supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
-        setActiveConv({ ...conv, title });
+        await supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", conv!.id);
+        setActiveConv({ ...conv!, title });
         loadConversations();
       }
     } catch {
