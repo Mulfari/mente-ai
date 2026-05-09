@@ -20,6 +20,7 @@ type Message = {
 type Conversation = {
   id: string;
   title: string;
+  created_at: string;
   updated_at: string;
 };
 
@@ -94,9 +95,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (!isLoggedIn) return;
     const { data } = await supabase
       .from("conversations")
-      .select("id, title, updated_at")
+      .select("id, title, created_at, updated_at")
       .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(20);
     if (data) setConversations(data);
   }
@@ -344,6 +345,64 @@ export default function ChatInterface({ userId }: { userId: string }) {
       delete next[key];
       return next;
     });
+  }
+
+  async function submitSuggestion(s: string) {
+    if (sending) return;
+    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
+    setInput(s);
+    autoResize();
+
+    let conv = activeConv;
+    if (!conv) {
+      const { data } = await supabase.from("conversations").insert({ user_id: userId, title: "Nueva conversación" }).select().single();
+      if (data) { setConversations([data, ...conversations]); conv = data; setActiveConv(data); loadConversations(); } else return;
+    }
+
+    const filesToSend: File[] = [];
+    setInput("");
+    setAttachments([]);
+    setPreviewUrls({});
+    setSending(true);
+    setSuggestions([]);
+
+    const { data: inserted } = await supabase
+      .from("messages")
+      .insert({ conversation_id: conv.id, role: "user", content: s, attachments: [] })
+      .select().single();
+    if (inserted) setMessages(prev => [...prev, inserted]);
+
+    try {
+      const convId = conv.id;
+      const contentParts: any[] = [{ type: "text", text: s }];
+
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: s, conversation_id: convId, attachments: contentParts }),
+      });
+      const result = await res.json();
+
+      if (result.error) {
+        const errorCode = result.code || 500;
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString() }]);
+        textareaRef.current?.focus();
+      } else if (result.message) {
+        const { data: aiMsg } = await supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: result.message }).select().single();
+        if (aiMsg) setMessages(prev => [...prev, aiMsg]);
+        else setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: result.message, created_at: new Date().toISOString() }]);
+
+        const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
+        await supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
+        setActiveConv({ ...conv, title });
+        loadConversations();
+      }
+    } catch {
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexión. Intenta de nuevo.", created_at: new Date().toISOString() }]);
+    }
+
+    setSending(false);
+    setTimeout(() => { autoResize(); textareaRef.current?.focus(); }, 0);
   }
 
   async function sendMessage() {
@@ -661,18 +720,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {suggestions.map((s, i) => (
-                            <button key={i} onClick={async () => {
-                              setInput(s);
-                              textareaRef.current?.focus();
-                              setTimeout(() => {
-                                const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
-                                  window.HTMLTextAreaElement.prototype, "value"
-                                )?.set;
-                                if (nativeTextAreaValueSetter) nativeTextAreaValueSetter.call(textareaRef.current, s);
-                                textareaRef.current?.dispatchEvent(new Event("input", { bubbles: true }));
-                              }, 50);
-                              setTimeout(() => { sendMessage(); }, 100);
-                            }}
+                            <button key={i} onClick={() => submitSuggestion(s)}
                               className="text-left px-4 py-2.5 rounded-lg text-xs transition-all flex items-center gap-2 group"
                               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
                               <span className="w-5 h-5 rounded flex items-center justify-center shrink-0"

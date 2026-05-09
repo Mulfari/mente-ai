@@ -7,6 +7,7 @@ type Conversation = {
   id: string;
   title: string;
   updated_at: string;
+  created_at: string;
 };
 
 export default function Sidebar({ userId }: { userId: string }) {
@@ -17,9 +18,9 @@ export default function Sidebar({ userId }: { userId: string }) {
   async function loadConversations() {
     const { data } = await supabase
       .from("conversations")
-      .select("id, title, updated_at")
+      .select("id, title, created_at, updated_at")
       .eq("user_id", userId)
-      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(20);
     if (data) setConversations(data);
     setLoading(false);
@@ -28,6 +29,16 @@ export default function Sidebar({ userId }: { userId: string }) {
   useEffect(() => {
     loadConversations();
   }, [userId]);
+
+  function formatDate(dateStr: string) {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return "Hoy";
+    if (diffDays === 1) return "Ayer";
+    if (diffDays < 7) return d.toLocaleDateString("es-ES", { weekday: "short" });
+    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  }
 
   return (
     <aside
@@ -71,19 +82,24 @@ export default function Sidebar({ userId }: { userId: string }) {
             Sin conversaciones
           </p>
         ) : (
-          conversations.map((conv) => (
+          conversations.map((conv, idx) => (
             <a
               key={conv.id}
               href={`/chat?c=${conv.id}`}
-              className="flex items-center gap-2 w-full px-3 py-2 rounded-xl text-sm mb-1 transition-colors truncate"
-              style={{ color: "var(--text-secondary)" }}
+              className="flex flex-col gap-0.5 w-full px-3 py-2.5 rounded-xl text-sm mb-1 transition-colors group animate-slide-in"
+              style={{ color: "var(--text-secondary)", animationDelay: `${idx * 30}ms` } as React.CSSProperties}
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--background)")}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              <span className="truncate">{conv.title}</span>
+              <div className="flex items-center gap-2">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                <span className="truncate font-medium group-hover:text-[var(--text-primary)]">{conv.title}</span>
+              </div>
+              <div className="text-[10px] pl-5" style={{ color: "var(--text-tertiary)" }}>
+                {formatDate(conv.created_at)}
+              </div>
             </a>
           ))
         )}
