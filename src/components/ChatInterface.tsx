@@ -350,21 +350,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
   async function submitSuggestion(s: string) {
     if (sending) return;
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
-    setInput(s);
-    autoResize();
+    setSending(true);
+    setSuggestions([]);
 
     let conv = activeConv;
     if (!conv) {
       const { data } = await supabase.from("conversations").insert({ user_id: userId, title: "Nueva conversación" }).select().single();
-      if (data) { setConversations([data, ...conversations]); conv = data; setActiveConv(data); loadConversations(); } else return;
+      if (data) { setConversations([data, ...conversations]); conv = data; setActiveConv(data); loadConversations(); } else { setSending(false); return; }
+    } else {
+      loadConversations();
     }
-
-    const filesToSend: File[] = [];
-    setInput("");
-    setAttachments([]);
-    setPreviewUrls({});
-    setSending(true);
-    setSuggestions([]);
 
     const { data: inserted } = await supabase
       .from("messages")
@@ -386,7 +381,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
       if (result.error) {
         const errorCode = result.code || 500;
         setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString() }]);
-        textareaRef.current?.focus();
       } else if (result.message) {
         const { data: aiMsg } = await supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: result.message }).select().single();
         if (aiMsg) setMessages(prev => [...prev, aiMsg]);
