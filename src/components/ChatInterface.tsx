@@ -654,7 +654,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       <>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {suggestions.map((s, i) => (
-                            <button key={i} onClick={() => {
+                            <button key={i} onClick={async () => {
                               setInput(s);
                               textareaRef.current?.focus();
                               setTimeout(() => {
@@ -664,6 +664,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 if (nativeTextAreaValueSetter) nativeTextAreaValueSetter.call(textareaRef.current, s);
                                 textareaRef.current?.dispatchEvent(new Event("input", { bubbles: true }));
                               }, 50);
+                              setTimeout(() => { sendMessage(); }, 100);
                             }}
                               className="text-left px-4 py-2.5 rounded-lg text-xs transition-all flex items-center gap-2 group"
                               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
