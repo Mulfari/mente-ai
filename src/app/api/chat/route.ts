@@ -169,6 +169,7 @@ export async function POST(request: Request) {
       body: JSON.stringify({
         model: "claude-opus-4.6-1m",
         max_tokens: 4096,
+        stream: true,
         messages: allMessages,
       }),
     });
@@ -180,11 +181,66 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: errorMsg, code: errorCode }, { status: response.status });
     }
 
-    const data = await response.json();
-    const responseContent = data.content || [];
-    const textBlock = responseContent.find((c: any) => c.type === "text");
-    const aiMessage = textBlock?.text || "Sin respuesta del modelo.";
+    // Streaming response
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader();
+        if (!reader) {
+          controller.close();
+          return;
+        }
+        try {
+          const decoder = new TextDecoder();
+          let buffer = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines.pop() || "";
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const jsonStr = line.slice(6);
+                if (jsonStr === "[DONE]") {
+                  controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+                  continue;
+                }
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  const textEvent = parsed.content?.find((c: any) => c.type === "text");
+                  if (textEvent?.text) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: textEvent.text })}\n\n`));
+                  }
+                } catch { /* ignore parse errors */ }
+              }
+            }
+          }
+          // Flush remaining buffer
+          if (buffer.trim()) {
+            if (buffer.startsWith("data: ")) {
+              const jsonStr = buffer.slice(6);
+              if (jsonStr !== "[DONE]") {
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  const textEvent = parsed.content?.find((c: any) => c.type === "text");
+                  if (textEvent?.text) {
+                    controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: textEvent.text })}\n\n`));
+                  }
+                } catch { /* ignore */ }
+              }
+            }
+          }
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        } catch {
+          controller.close();
+        } finally {
+          reader.releaseLock();
+        }
+      }
+    });
 
+    // Update usage count immediately when stream starts (not after completion)
     await supabase
       .from("profiles")
       .update({
@@ -193,7 +249,13 @@ export async function POST(request: Request) {
       })
       .eq("id", user.id);
 
-    return NextResponse.json({ message: aiMessage });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
+    });
 
   } catch (err: any) {
     if (err.name === "AbortError" || err.message?.includes("fetch")) {

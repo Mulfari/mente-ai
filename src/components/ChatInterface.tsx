@@ -49,6 +49,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+  const [streamText, setStreamText] = useState("");
+  const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -356,30 +358,84 @@ export default function ChatInterface({ userId }: { userId: string }) {
     try {
       const contentParts: any[] = [{ type: "text", text: s }];
 
+      // Streaming message placeholder
+      const msgId = Date.now().toString() + "-suggest";
+      const streamCreatedAt = new Date().toISOString();
+      setMessages(prev => [...prev, {
+        id: msgId, role: "assistant", content: "", created_at: streamCreatedAt,
+      }]);
+      setStreamingMsgId(msgId);
+      setStreamText("");
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: s, conversation_id: conv!.id, attachments: contentParts }),
+        body: JSON.stringify({ message: s, conversation_id: convId, attachments: contentParts }),
       });
-      const result = await res.json();
 
-      if (result.error) {
-        const errorCode = result.code || 500;
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString() }]);
-        lastErrorRef.current = { message: s, conversationId: conv!.id, attachments: contentParts };
-      } else if (result.message) {
+      if (!res.ok) {
+        const result = await res.json();
+        const errorCode = result.code || res.status;
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: `Error ${errorCode}. Por favor intente nuevamente.` } : m));
+        lastErrorRef.current = { message: s, conversationId: convId, attachments: contentParts };
+        setStreamingMsgId(null);
+      } else {
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
+
+        if (!reader) {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+          lastErrorRef.current = { message: s, conversationId: convId, attachments: contentParts };
+          setStreamingMsgId(null);
+        } else {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split("\n");
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  const dataStr = line.slice(6);
+                  if (dataStr === "[DONE]" || dataStr === "") continue;
+                  try {
+                    const parsed = JSON.parse(dataStr);
+                    if (parsed.delta) {
+                      fullText += parsed.delta;
+                      setStreamText(fullText);
+                      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
+                    }
+                  } catch { /* ignore */ }
+                }
+              }
+            }
+          } catch {
+            if (fullText === "") {
+              setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+              lastErrorRef.current = { message: s, conversationId: convId, attachments: contentParts };
+            }
+          } finally {
+            reader.releaseLock();
+          }
+        }
+
+        setStreamingMsgId(null);
         lastErrorRef.current = null;
-        const { data: aiMsg } = await supabase.from("messages").insert({ conversation_id: conv!.id, role: "assistant", content: result.message }).select().single();
-        if (aiMsg) setMessages(prev => [...prev, aiMsg]);
-        else setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: result.message, created_at: new Date().toISOString() }]);
+
+        if (fullText) {
+          await supabase.from("messages").insert({
+            conversation_id: convId, role: "assistant", content: fullText,
+          });
+        }
 
         const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
-        await supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", conv!.id);
+        await supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
         setActiveConv({ ...conv!, title });
         loadConversations();
       }
     } catch {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexión. Intenta de nuevo.", created_at: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString() }]);
     }
 
     setSending(false);
@@ -438,43 +494,96 @@ export default function ChatInterface({ userId }: { userId: string }) {
         }
       }
 
+      // Create streaming message placeholder
+      const msgId = Date.now().toString();
+      const streamCreatedAt = new Date().toISOString();
+      setMessages(prev => [...prev, {
+        id: msgId, role: "assistant", content: "", created_at: streamCreatedAt,
+      }]);
+      setStreamingMsgId(msgId);
+      setStreamText("");
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts }),
       });
-      const result = await res.json();
 
-      if (result.error) {
-        const errorCode = result.code || 500;
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(), role: "assistant",
-          content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString(),
-        }]);
+      if (!res.ok) {
+        const result = await res.json();
+        const errorCode = result.code || res.status;
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: `Error ${errorCode}. Por favor intente nuevamente.` } : m));
         lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
+        setStreamingMsgId(null);
         textareaRef.current?.focus();
       } else {
-        lastErrorRef.current = null;
-        if (result.message) {
-          const { data: aiMsg } = await supabase
-            .from("messages")
-            .insert({ conversation_id: convId, role: "assistant", content: result.message })
-            .select()
-            .single();
-          if (aiMsg) setMessages(prev => [...prev, aiMsg]);
-          else setMessages(prev => [...prev, {
-            id: Date.now().toString(), role: "assistant",
-            content: result.message, created_at: new Date().toISOString(),
-          }]);
+        // Read streaming response
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let fullText = "";
 
-          if (conv.title === "Nueva conversación") {
-            const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
-            await supabase.from("conversations")
-              .update({ title, updated_at: new Date().toISOString() })
-              .eq("id", convId);
-            setActiveConv({ ...conv, title });
-            loadConversations();
+        if (!reader) {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+          lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
+          setStreamingMsgId(null);
+        } else {
+          try {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+
+              const chunk = decoder.decode(value, { stream: true });
+              const lines = chunk.split("\n");
+
+              for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                  const dataStr = line.slice(6);
+                  if (dataStr === "[DONE]" || dataStr === "") continue;
+                  try {
+                    const parsed = JSON.parse(dataStr);
+                    if (parsed.delta) {
+                      fullText += parsed.delta;
+                      setStreamText(fullText);
+                      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
+                    }
+                  } catch { /* ignore parse errors */ }
+                }
+              }
+            }
+          } catch {
+            if (fullText === "") {
+              setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+              lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
+            }
+          } finally {
+            reader.releaseLock();
           }
+        }
+
+        setStreamingMsgId(null);
+        lastErrorRef.current = null;
+
+        // Save complete message to DB
+        if (fullText) {
+          await supabase.from("messages").insert({
+            conversation_id: convId, role: "assistant", content: fullText,
+          });
+        }
+
+        // Update message with DB id
+        const finalMsg = messages.find(m => m.id === msgId);
+        if (finalMsg && !finalMsg.id.includes("-")) {
+          // it was a temp id, that's fine
+        }
+
+        // Generate title if new conversation
+        if (conv.title === "Nueva conversación" && fullText) {
+          const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
+          await supabase.from("conversations")
+            .update({ title, updated_at: new Date().toISOString() })
+            .eq("id", convId);
+          setActiveConv({ ...conv, title });
+          loadConversations();
         }
       }
     } catch {
