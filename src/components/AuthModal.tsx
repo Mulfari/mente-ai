@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => void; onClose?: () => void }) {
@@ -11,6 +11,8 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [wasDownInContent, setWasDownInContent] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const supabase = createClient();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -105,9 +107,14 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
   return (
     <div id="auth-overlay" className="fixed inset-0 flex items-center justify-center z-50 p-4"
       style={{ backgroundColor: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+      onClick={(e) => { if (e.target === e.currentTarget && !wasDownInContent) onClose?.(); }}
+      onMouseUp={() => setWasDownInContent(false)}>
       <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl relative"
-        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+        ref={contentRef}
+        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+        onClick={e => e.stopPropagation()}
+        onMouseDown={(e) => { if (contentRef.current?.contains(e.target as Node)) setWasDownInContent(true); }}
+        onBlur={() => setWasDownInContent(false)}>
         <button onClick={onClose}
           className="absolute top-4 right-4 p-2 rounded-xl transition-colors hover:bg-[var(--surface-hover)]"
           style={{ color: "var(--text-tertiary)" }}>
