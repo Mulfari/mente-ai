@@ -118,6 +118,32 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
     }
 
+    // Cargar historial de mensajes de la conversación para contexto
+    const historyMessages: { role: string; content: any[] }[] = [];
+    if (conversation_id) {
+      const { data: prevMessages } = await supabase
+        .from("messages")
+        .select("role, content, attachments")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", { ascending: true })
+        .limit(30);
+
+      if (prevMessages && prevMessages.length > 0) {
+        for (const m of prevMessages) {
+          const contentParts: any[] = [];
+          if (typeof m.content === "string" && m.content.trim()) {
+            contentParts.push({ type: "text", text: m.content });
+          }
+          if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
+            contentParts.push(...m.attachments.map((a: any) => (typeof a === "string" ? { type: "text", text: `[adjunto: ${a}]` } : a)));
+          }
+          if (contentParts.length > 0) {
+            historyMessages.push({ role: m.role, content: contentParts });
+          }
+        }
+      }
+    }
+
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
     const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
 
@@ -131,13 +157,19 @@ export async function POST(request: Request) {
       ? attachments
       : [{ type: "text", text: message }];
 
+    // Construir array de mensajes para el modelo (historial + mensaje actual)
+    const allMessages = [
+      ...historyMessages,
+      { role: "user", content: requestContent },
+    ];
+
     const response = await fetchWithRetry(`${baseUrl}/v1/messages`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         model: "claude-opus-4.6-1m",
-        max_tokens: 2048,
-        messages: [{ role: "user", content: requestContent }],
+        max_tokens: 4096,
+        messages: allMessages,
       }),
     });
 

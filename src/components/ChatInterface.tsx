@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReactMarkdown from "react-markdown";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import dynamic from "next/dynamic";
 const AuthModal = dynamic(() => import("./AuthModal"));
 const AccountMenu = dynamic(() => import("./AccountMenu"));
@@ -51,6 +53,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
+  const lastErrorRef = useRef<{ message: string; conversationId: string | null; attachments: any[] } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: d }) => {
@@ -363,7 +366,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
       if (result.error) {
         const errorCode = result.code || 500;
         setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString() }]);
+        lastErrorRef.current = { message: s, conversationId: conv!.id, attachments: contentParts };
       } else if (result.message) {
+        lastErrorRef.current = null;
         const { data: aiMsg } = await supabase.from("messages").insert({ conversation_id: conv!.id, role: "assistant", content: result.message }).select().single();
         if (aiMsg) setMessages(prev => [...prev, aiMsg]);
         else setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: result.message, created_at: new Date().toISOString() }]);
@@ -446,32 +451,36 @@ export default function ChatInterface({ userId }: { userId: string }) {
           id: Date.now().toString(), role: "assistant",
           content: `Error ${errorCode}. Por favor intente nuevamente.`, created_at: new Date().toISOString(),
         }]);
+        lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
         textareaRef.current?.focus();
-      } else if (result.message) {
-        const { data: aiMsg } = await supabase
-          .from("messages")
-          .insert({ conversation_id: convId, role: "assistant", content: result.message })
-          .select()
-          .single();
-        if (aiMsg) setMessages(prev => [...prev, aiMsg]);
-        else setMessages(prev => [...prev, {
-          id: Date.now().toString(), role: "assistant",
-          content: result.message, created_at: new Date().toISOString(),
-        }]);
+      } else {
+        lastErrorRef.current = null;
+        if (result.message) {
+          const { data: aiMsg } = await supabase
+            .from("messages")
+            .insert({ conversation_id: convId, role: "assistant", content: result.message })
+            .select()
+            .single();
+          if (aiMsg) setMessages(prev => [...prev, aiMsg]);
+          else setMessages(prev => [...prev, {
+            id: Date.now().toString(), role: "assistant",
+            content: result.message, created_at: new Date().toISOString(),
+          }]);
 
-        if (conv.title === "Nueva conversación") {
-          const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
-          await supabase.from("conversations")
-            .update({ title, updated_at: new Date().toISOString() })
-            .eq("id", convId);
-          setActiveConv({ ...conv, title });
-          loadConversations();
+          if (conv.title === "Nueva conversación") {
+            const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
+            await supabase.from("conversations")
+              .update({ title, updated_at: new Date().toISOString() })
+              .eq("id", convId);
+            setActiveConv({ ...conv, title });
+            loadConversations();
+          }
         }
       }
     } catch {
       setMessages(prev => [...prev, {
         id: Date.now().toString(), role: "assistant",
-        content: "Error de conexión. Intenta de nuevo.", created_at: new Date().toISOString(),
+        content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
       }]);
     }
 
@@ -723,16 +732,95 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         </>
                       ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
-                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          <ReactMarkdown
+                            components={{
+                              code({ className, children }) {
+                                const match = /language-(\w+)/.exec(className || "");
+                                const code = String(children).replace(/\n$/, "");
+                                if (!match) {
+                                  return <code className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "#a5d6ff" }}>{code}</code>;
+                                }
+                                return (
+                                  <div className="relative group rounded-xl overflow-hidden my-2" style={{ maxWidth: "100%" }}>
+                                    <div className="flex items-center justify-between px-4 py-2"
+                                      style={{ backgroundColor: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                                      <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                        {match[1]}
+                                      </span>
+                                      <button onClick={() => navigator.clipboard.writeText(code)}
+                                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
+                                        style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}>
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        </svg>
+                                        Copiar
+                                      </button>
+                                    </div>
+                                    <SyntaxHighlighter
+                                      style={vscDarkPlus as any}
+                                      language={match[1]}
+                                      PreTag="div"
+                                      customStyle={{ margin: 0, borderRadius: 0, fontSize: "13px", backgroundColor: "transparent" }}
+                                    >
+                                      {code}
+                                    </SyntaxHighlighter>
+                                  </div>
+                                );
+                              }
+                            }}
+                          >{msg.content}</ReactMarkdown>
                         </div>
                       )}
                     </div>
-                    {/* Timestamp + copy */}
+                    {/* Timestamp + copy + retry */}
                     <div className={`flex items-center gap-1.5 mt-1.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                       {msg.role === "assistant" && (
-                        <button onClick={() => copyMessage(msg.content, msg.id)}
-                          className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors opacity-0 group-hover:opacity-100"
-                          style={{ color: "var(--text-tertiary)" }}>
+                        <>
+                          {lastErrorRef.current && msg.content.includes("Error") && (
+                            <button onClick={async () => {
+                              if (!lastErrorRef.current) return;
+                              setLoading(true);
+                              setMessages(prev => prev.filter(m => m.id !== msg.id));
+                              const res = await fetch("/api/chat", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  message: lastErrorRef.current.message,
+                                  conversation_id: lastErrorRef.current.conversationId,
+                                  attachments: lastErrorRef.current.attachments,
+                                }),
+                              });
+                              const result = await res.json();
+                              setLoading(false);
+                              if (result.error) {
+                                setMessages(prev => [...prev, {
+                                  id: Date.now().toString(), role: "assistant",
+                                  content: `Error ${result.code || 500}. Por favor intente nuevamente.`, created_at: new Date().toISOString(),
+                                }]);
+                              } else if (result.message) {
+                                const { data: aiMsg } = await supabase.from("messages").insert({
+                                  conversation_id: lastErrorRef.current.conversationId,
+                                  role: "assistant", content: result.message,
+                                }).select().single();
+                                if (aiMsg) setMessages(prev => [...prev, aiMsg]);
+                                else setMessages(prev => [...prev, {
+                                  id: Date.now().toString(), role: "assistant",
+                                  content: result.message, created_at: new Date().toISOString(),
+                                }]);
+                                lastErrorRef.current = null;
+                              }
+                            }}
+                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition-all"
+                              style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "var(--warning)" }}>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Reintentar
+                            </button>
+                          )}
+                          <button onClick={() => copyMessage(msg.content, msg.id)}
+                            className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors opacity-0 group-hover:opacity-100"
+                            style={{ color: "var(--text-tertiary)" }}>
                           {copiedId === msg.id ? (
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -743,6 +831,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             </svg>
                           )}
                         </button>
+                      </>
                       )}
                       <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                         {formatTime(msg.created_at)}
