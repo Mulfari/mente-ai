@@ -542,9 +542,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
       if (!res.ok) {
         const result = await res.json();
         const errorCode = result.code || res.status;
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: `Error ${errorCode}. Por favor intente nuevamente.` } : m));
+        // Remove placeholder message and clean up
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+        if (result.error) {
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(), role: "assistant",
+            content: result.error, created_at: new Date().toISOString(),
+          }]);
+        }
         lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
         setStreamingMsgId(null);
+        setSending(false);
+        if (errorCode === 429) setCooldownRemaining(30);
         textareaRef.current?.focus();
       } else {
         // Read streaming response
