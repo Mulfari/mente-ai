@@ -45,7 +45,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
-  const [profile, setProfile] = useState<{subscription_weeks?: number; subscription_start?: string; weekly_limit?: number} | null>(null);
+  const [profile, setProfile] = useState<{subscription_weeks?: number; subscription_start?: string; weekly_limit?: number; messages_used?: number} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
@@ -63,9 +63,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsLoggedIn(!!session);
+      const loggedIn = !!session;
+      setIsLoggedIn(loggedIn);
       if (session?.user?.email) setUserEmail(session.user.email);
-      if (session) loadConversations();
+      if (loggedIn && session?.user?.id) loadConversations();
     });
 
     return () => subscription.unsubscribe();
@@ -75,7 +76,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (!isLoggedIn) return;
     supabase
       .from("profiles")
-      .select("subscription_weeks, subscription_start, weekly_limit")
+      .select("subscription_weeks, subscription_start, weekly_limit, messages_used")
       .eq("id", userId)
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
@@ -329,10 +330,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const result = await res.json();
 
       if (result.error) {
+        const isRateLimit = res.status === 429;
         setMessages(prev => [...prev, {
           id: Date.now().toString(), role: "assistant",
-          content: result.error, created_at: new Date().toISOString(),
+          content: result.error + (isRateLimit ? " ⏳" : ""),
+          created_at: new Date().toISOString(),
         }]);
+        if (isRateLimit) textareaRef.current?.focus();
       } else if (result.message) {
         const { data: aiMsg } = await supabase
           .from("messages")
@@ -500,10 +504,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       <p className="text-xs mb-3" style={{ color: "var(--text-tertiary)" }}>Límite semanal</p>
                       <div className="flex items-center gap-3">
                         <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: "var(--border)" }}>
-                          <div className="h-full rounded-full transition-all" style={{ background: "linear-gradient(90deg, var(--primary), #0d8b6a)", width: profile?.weekly_limit ? "60%" : "0%" }} />
+                          <div className="h-full rounded-full transition-all" style={{ background: "linear-gradient(90deg, var(--primary), #0d8b6a)", width: (profile?.weekly_limit && profile?.messages_used != null) ? Math.min(100, Math.round((profile.messages_used / profile.weekly_limit) * 100)) + "%" : "0%" }} />
                         </div>
                         <span className="text-sm font-semibold shrink-0" style={{ color: "var(--primary)" }}>
-                          {profile?.weekly_limit ? "60%" : "0%"}
+                          {profile?.weekly_limit && profile?.messages_used != null ? `${profile.messages_used}/${profile.weekly_limit}` : "0/100"}
                         </span>
                       </div>
                       {profile?.subscription_weeks != null && (
