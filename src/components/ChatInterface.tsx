@@ -41,7 +41,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [profile, setProfile] = useState<{subscription_weeks?: number; subscription_start?: string; weekly_limit?: number; messages_used?: number; used_coupon_label?: string; used_coupon_color?: string} | null>(null);
+  const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; weekly_limit?: number; messages_used?: number; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -51,6 +51,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamText, setStreamText] = useState("");
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [isSendDisabled, setIsSendDisabled] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -88,7 +90,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (!isLoggedIn) return;
     supabase
       .from("profiles")
-      .select("subscription_weeks, subscription_start, weekly_limit, messages_used, used_coupon_label, used_coupon_color")
+      .select("subscription_weeks, subscription_start, weekly_limit, messages_used, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at, status")
       .eq("id", userId)
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
@@ -207,6 +209,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
     }
   }, [sending]);
 
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setCooldownRemaining(prev => {
+        if (prev <= 1) return 0;
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [cooldownRemaining]);
+
   function autoResize() {
     const ta = textareaRef.current;
     if (ta) {
@@ -222,6 +236,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (isToday) return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
     return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" }) + " · " +
       d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function getBlockReason(): { canSend: boolean; reason: string; cooldownSecs: number } {
+    if (!isLoggedIn) return { canSend: false, reason: "Inicia sesion para enviar mensajes", cooldownSecs: 0 };
+    if (profile?.status === "inactive") return { canSend: false, reason: "Tu suscripcion esta inactiva", cooldownSecs: 0 };
+    const weeks = profile?.subscription_weeks ?? 0;
+    if (weeks <= 0 && weeks !== -1) return { canSend: false, reason: "Tu suscripcion ha expirado", cooldownSecs: 0 };
+    const messagesUsed = profile?.messages_used ?? 0;
+    const weeklyLimit = profile?.weekly_limit ?? 100;
+    if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) return { canSend: false, reason: "Has alcanzado el limite semanal de mensajes", cooldownSecs: 0 };
+    if (cooldownRemaining > 0) return { canSend: false, reason: `Espera ${cooldownRemaining}s para enviar otro mensaje`, cooldownSecs: cooldownRemaining };
+    return { canSend: true, reason: "", cooldownSecs: 0 };
   }
 
   
@@ -444,7 +470,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
   async function sendMessage() {
     if ((!input.trim() && attachments.length === 0) || sending) return;
-    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
+    const block = getBlockReason();
+    if (!block.canSend) return;
+    setCooldownRemaining(30);
+    setIsSendDisabled(true);
+    setTimeout(() => { setIsSendDisabled(false); }, 30000);
 
     let conv = activeConv;
     if (!conv) {
@@ -978,6 +1008,24 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* Input area */}
         <div className="px-4 pb-5 pt-2 shrink-0">
           <div className="max-w-2xl mx-auto">
+            {/* Block status banner */}
+            {(() => {
+              const block = getBlockReason();
+              if (block.canSend || !isLoggedIn) return null;
+              return (
+                <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3"
+                  style={{ backgroundColor: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                    style={{ color: "var(--warning)" }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: "var(--warning)" }}>Mensaje bloqueado</p>
+                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{block.reason}</p>
+                  </div>
+                </div>
+              );
+            })()}
             {/* Attachment previews */}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
@@ -1035,20 +1083,26 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     sendMessage();
                   }
                 }}
-                placeholder={isLoggedIn ? "Escribe un mensaje..." : "Inicia sesión para chatear..."}
-                disabled={isDisabled || sending}
+                placeholder={isLoggedIn ? (cooldownRemaining > 0 ? `Espera ${cooldownRemaining}s...` : "Escribe un mensaje...") : "Inicia sesion para chatear..."}
+                disabled={isDisabled || sending || cooldownRemaining > 0}
                 rows={1}
                 className="flex-1 text-sm outline-none resize-none bg-transparent leading-relaxed"
-                style={{ color: "var(--text-primary)", maxHeight: "200px" }}
+                style={{ color: cooldownRemaining > 0 ? "var(--text-tertiary)" : "var(--text-primary)", maxHeight: "200px" }}
               />
               <button
                 onClick={sendMessage}
-                disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled}
-                className="shrink-0 p-2 rounded-lg transition-all hover:opacity-90 active:scale-90 disabled:opacity-30"
-                style={{ backgroundColor: "var(--primary)", color: "white" }}>
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
+                disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled || cooldownRemaining > 0}
+                className="shrink-0 p-2 rounded-lg transition-all hover:opacity-90 active:scale-90 disabled:opacity-30 relative"
+                style={{ backgroundColor: cooldownRemaining > 0 ? "var(--warning)" : "var(--primary)", color: "white" }}>
+                {cooldownRemaining > 0 ? (
+                  <div className="w-3.5 h-3.5 flex items-center justify-center">
+                    <span className="text-[9px] font-bold">{cooldownRemaining}</span>
+                  </div>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
