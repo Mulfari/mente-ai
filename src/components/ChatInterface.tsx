@@ -399,28 +399,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         }]);
 
         if (conv.title === "Nueva conversación") {
-          // Generar título inteligente con la conversación
-          const chatHistory = messages.map(m => ({
-            role: m.role,
-            content: m.content
-          }));
-          const titlePrompt = `Genera un título corto de máximo 5 palabras en español que resuma esta conversación. Solo responde con el título, sin comillas ni puntuación.`;
-          const titleRes = await fetch("/api/chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: titlePrompt,
-              conversation_id: convId,
-              attachments: chatHistory.length > 2
-                ? [{ type: "text", text: `Resumen de la conversación:\nUser: ${messages[0]?.content}\nAssistant: ${messages[1]?.content?.slice(0, 100)}\nUser: ${messages[2]?.content?.slice(0, 100)}` }]
-                : [{ type: "text", text: messages.map(m => `${m.role}: ${m.content}`).join("\n") }]
-            }),
-          });
-          const titleResult = await titleRes.json();
-          let title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
-          if (titleResult.message) {
-            title = titleResult.message.trim().slice(0, 50);
-          }
+          const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
           await supabase.from("conversations")
             .update({ title, updated_at: new Date().toISOString() })
             .eq("id", convId);
