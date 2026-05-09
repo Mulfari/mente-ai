@@ -252,7 +252,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const msgs = c.messages as any[];
         return (msgs && msgs.length > 0 && (msgs[0].count ?? 0) > 0) || c.title !== "Nueva conversación";
       });
-      setConversations(filtered as Conversation[]);
+      setConversations((filtered as unknown) as Conversation[]);
     }
     // No crear registro en DB — solo resetear estado local
     setActiveConv(null);
