@@ -8,8 +8,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Mulfai",
-  description: "Tu asistente inteligente de chat",
+  title: "Mulfai — Tu asistente de IA personal",
+  description: "Chatea con Mulfai, tu asistente inteligente. Conversaciones naturales, respuestas instantaneas, codigo con syntax highlighting.",
+  keywords: ["chat AI", "asistente virtual", "IA conversacional", "Mulfai"],
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
