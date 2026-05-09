@@ -24,13 +24,6 @@ type Conversation = {
 };
 
 
-const SUGGESTIONS = [
-  "Explícame física cuántica como si tuviera 10 años",
-  "Ayúdame a planificar un viaje a Europa",
-  "Escribe un poema sobre la tecnología",
-  "Dame ideas para un negocio online",
-];
-
 export default function ChatInterface({ userId }: { userId: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
@@ -51,6 +44,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +69,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Load daily suggestions
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    setSuggestionsLoading(true);
+    fetch("/api/suggestions")
+      .then(r => r.json())
+      .then(d => { if (d.suggestions) setSuggestions(d.suggestions); setSuggestionsLoading(false); })
+      .catch(() => setSuggestionsLoading(false));
+  }, [isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -640,18 +645,44 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 {/* Suggestions */}
                 {isLoggedIn && !isDisabled && (
                   <div className="mt-6">
-                    <p className="text-xs font-semibold text-center mb-3" style={{ color: "var(--text-tertiary)" }}>
-                      Prueba preguntarme
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {SUGGESTIONS.map((s, i) => (
-                        <button key={i} onClick={() => setInput(s)}
-                          className="text-left px-4 py-3 rounded-xl text-sm transition-all hover:scale-[1.02] active:scale-[0.99]"
-                          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}>
-                          {s}
-                        </button>
-                      ))}
-                    </div>
+                    {suggestionsLoading ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {[0, 1, 2, 3].map(i => (
+                          <div key={i} className="h-20 rounded-xl animate-pulse" style={{ backgroundColor: "var(--surface)" }} />
+                        ))}
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-xs font-semibold text-center mb-3" style={{ color: "var(--text-tertiary)" }}>
+                          Prueba preguntarme
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {suggestions.map((s, i) => (
+                            <button key={i} onClick={() => {
+                              setInput(s);
+                              textareaRef.current?.focus();
+                              setTimeout(() => {
+                                const nativeTextAreaValueSetter = Object.getOwnPropertyDescriptor(
+                                  window.HTMLTextAreaElement.prototype, "value"
+                                )?.set;
+                                if (nativeTextAreaValueSetter) nativeTextAreaValueSetter.call(textareaRef.current, s);
+                                textareaRef.current?.dispatchEvent(new Event("input", { bubbles: true }));
+                              }, 50);
+                            }}
+                              className="text-left px-4 py-3 rounded-xl text-sm transition-all hover:scale-[1.02] active:scale-[0.99] flex items-center gap-3 group"
+                              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)", boxShadow: "0 2px 6px rgba(0,0,0,0.1)" }}>
+                              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors"
+                                style={{ backgroundColor: "rgba(16,163,127,0.1)", color: "var(--primary)" }}>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                </svg>
+                              </span>
+                              <span className="group-hover:text-[var(--primary)] transition-colors">{s}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
