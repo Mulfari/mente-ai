@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-export default function AuthModal({ onSuccess }: { onSuccess?: () => void }) {
+export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => void; onClose?: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -12,11 +12,6 @@ export default function AuthModal({ onSuccess }: { onSuccess?: () => void }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const supabase = createClient();
-
-  useEffect(() => {
-    const el = document.getElementById("auth-overlay");
-    if (el) el.style.display = "flex";
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -109,9 +104,17 @@ export default function AuthModal({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <div id="auth-overlay" className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)", display: "none" }}>
-      <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl"
+      style={{ backgroundColor: "rgba(0,0,0,0.65)", backdropFilter: "blur(8px)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }}>
+      <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl relative"
         style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+        <button onClick={onClose}
+          className="absolute top-4 right-4 p-2 rounded-xl transition-colors hover:bg-[var(--surface-hover)]"
+          style={{ color: "var(--text-tertiary)" }}>
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
         <div className="text-center mb-6">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
             style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>

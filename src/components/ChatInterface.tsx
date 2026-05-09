@@ -59,6 +59,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     supabase.auth.getSession().then(({ data: d }) => {
       setIsLoggedIn(!!d.session);
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
+      if (d.session) loadConversations();
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -782,7 +783,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
           </div>
         </div>
       </div>
-      {showAuthPrompt && <AuthModal onSuccess={() => { setShowAuthPrompt(false); setIsLoggedIn(true); }} />}
+      {showAuthPrompt && <AuthModal onSuccess={() => {
+          setShowAuthPrompt(false);
+          window.location.reload();
+        }} onClose={() => setShowAuthPrompt(false)} />}
       {lightboxUrl && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
           style={{ backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)" }}
