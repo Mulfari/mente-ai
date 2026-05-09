@@ -170,6 +170,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const msg = payload.new as Message;
         if (msg.role === "assistant") {
           setMessages(prev => {
+            // Ignore if already streaming or already in state (prevents duplicate on DB insert after streaming)
+            if (msg.id === streamingMsgId) return prev;
             if (prev.find(m => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
@@ -547,45 +549,48 @@ export default function ChatInterface({ userId }: { userId: string }) {
       } else {
         // Read streaming response
         const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullText = "";
 
         if (!reader) {
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
           lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
           setStreamingMsgId(null);
-        } else {
-          try {
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
+          setSending(false);
+          textareaRef.current?.focus();
+          return;
+        }
 
-              const chunk = decoder.decode(value, { stream: true });
-              const lines = chunk.split("\n");
+        const decoder = new TextDecoder();
+        let fullText = "";
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-              for (const line of lines) {
-                if (line.startsWith("data: ")) {
-                  const dataStr = line.slice(6);
-                  if (dataStr === "[DONE]" || dataStr === "") continue;
-                  try {
-                    const parsed = JSON.parse(dataStr);
-                    if (parsed.delta) {
-                      fullText += parsed.delta;
-                      setStreamText(fullText);
-                      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
-                    }
-                  } catch { /* ignore parse errors */ }
-                }
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const dataStr = line.slice(6);
+                if (dataStr === "[DONE]" || dataStr === "") continue;
+                try {
+                  const parsed = JSON.parse(dataStr);
+                  if (parsed.delta) {
+                    fullText += parsed.delta;
+                    setStreamText(fullText);
+                    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
+                  }
+                } catch { /* ignore parse errors */ }
               }
             }
-          } catch {
-            if (fullText === "") {
-              setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
-              lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
-            }
-          } finally {
-            reader.releaseLock();
           }
+        } catch {
+          if (fullText === "") {
+            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+            lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
+          }
+        } finally {
+          reader.releaseLock();
         }
 
         setStreamingMsgId(null);
