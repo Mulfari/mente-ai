@@ -238,16 +238,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
       d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
   }
 
-  function getBlockReason(): { canSend: boolean; reason: string; cooldownSecs: number } {
-    if (!isLoggedIn) return { canSend: false, reason: "Inicia sesion para enviar mensajes", cooldownSecs: 0 };
-    if (profile?.status === "inactive") return { canSend: false, reason: "Tu suscripcion esta inactiva", cooldownSecs: 0 };
+  function getBlockReason(): { canSend: boolean; canWrite: boolean; reason: string; cooldownSecs: number } {
+    if (!isLoggedIn) return { canSend: false, canWrite: false, reason: "Inicia sesion para chatear", cooldownSecs: 0 };
+    if (profile?.status === "inactive") return { canSend: false, canWrite: false, reason: "Tu suscripcion esta inactiva", cooldownSecs: 0 };
     const weeks = profile?.subscription_weeks ?? 0;
-    if (weeks <= 0 && weeks !== -1) return { canSend: false, reason: "Tu suscripcion ha expirado", cooldownSecs: 0 };
+    if (weeks <= 0 && weeks !== -1) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar.", cooldownSecs: 0 };
     const messagesUsed = profile?.messages_used ?? 0;
     const weeklyLimit = profile?.weekly_limit ?? 100;
-    if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) return { canSend: false, reason: "Has alcanzado el limite semanal de mensajes", cooldownSecs: 0 };
-    if (cooldownRemaining > 0) return { canSend: false, reason: `Espera ${cooldownRemaining}s para enviar otro mensaje`, cooldownSecs: cooldownRemaining };
-    return { canSend: true, reason: "", cooldownSecs: 0 };
+    if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) return { canSend: false, canWrite: false, reason: `Has alcanzado el limite semanal (${messagesUsed}/${weeklyLimit}). Añade semanas para continuar.`, cooldownSecs: 0 };
+    if (cooldownRemaining > 0) return { canSend: false, canWrite: true, reason: `Espera ${cooldownRemaining}s`, cooldownSecs: cooldownRemaining };
+    return { canSend: true, canWrite: true, reason: "", cooldownSecs: 0 };
   }
 
   
@@ -473,8 +473,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
     const block = getBlockReason();
     if (!block.canSend) return;
     setCooldownRemaining(30);
-    setIsSendDisabled(true);
-    setTimeout(() => { setIsSendDisabled(false); }, 30000);
 
     let conv = activeConv;
     if (!conv) {
@@ -776,18 +774,57 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   </p>
                 </div>
 
-                
-                {/* Suggestions */}
-                {isLoggedIn && !isDisabled && (
+                {!isLoggedIn && (
+                  <div className="text-center mt-2 mb-6">
+                    <button onClick={() => setShowAuthPrompt(true)}
+                      className="px-10 py-3.5 rounded-xl text-sm font-semibold shadow-lg transition-all hover:opacity-90 active:scale-95"
+                      style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                      Iniciar sesion
+                    </button>
+                  </div>
+                )}
+
+                {/* Suggestions or blocked state */}
+                {isLoggedIn && (
                   <div className="mt-4">
-                    {suggestionsLoading ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {[0, 1, 2, 3].map(i => (
-                          <div key={i} className="h-14 rounded-lg animate-pulse" style={{ backgroundColor: "var(--surface)" }} />
-                        ))}
-                      </div>
-                    ) : (
-                      <>
+                    {(() => {
+                      const block = getBlockReason();
+                      if (!block.canWrite) {
+                        return (
+                          <div className="text-center py-8">
+                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                              style={{ backgroundColor: "rgba(245,158,11,0.1)" }}>
+                              <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                                style={{ color: "var(--warning)" }}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                              </svg>
+                            </div>
+                            <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--warning)" }}>
+                              {block.cooldownSecs > 0
+                                ? `Espera ${block.cooldownSecs}s para enviar`
+                                : "Suscripcion bloqueada"}
+                            </p>
+                            <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+                              {block.reason}
+                            </p>
+                            <button onClick={() => setShowAccountMenu(true)}
+                              className="px-6 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                              Anadir tiempo
+                            </button>
+                          </div>
+                        );
+                      }
+                      if (suggestionsLoading) {
+                        return (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {[0, 1, 2, 3].map(i => (
+                              <div key={i} className="h-14 rounded-lg animate-pulse" style={{ backgroundColor: "var(--surface)" }} />
+                            ))}
+                          </div>
+                        );
+                      }
+                      return (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {suggestions.map((s, i) => (
                             <button key={i} onClick={() => submitSuggestion(s)}
@@ -803,21 +840,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             </button>
                           ))}
                         </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {!isLoggedIn && (
-                  <div className="mt-6 text-center">
-                    <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-                      Inicia sesión para comenzar a chatear
-                    </p>
-                    <button onClick={() => setShowAuthPrompt(true)}
-                      className="px-10 py-3.5 rounded-xl text-sm font-semibold shadow-lg transition-all hover:opacity-90 active:scale-95"
-                      style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
-                      Iniciar sesión
-                    </button>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -960,17 +984,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           <button onClick={() => copyMessage(msg.content, msg.id)}
                             className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors opacity-0 group-hover:opacity-100"
                             style={{ color: "var(--text-tertiary)" }}>
-                          {copiedId === msg.id ? (
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          ) : (
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          )}
-                        </button>
-                      </>
+                            {copiedId === msg.id ? (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            ) : (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            )}
+                          </button>
+                          </>
                       )}
                       <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                         {formatTime(msg.created_at)}
@@ -1001,31 +1025,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
               )}
 
               <div ref={messagesEndRef} />
-            </div>
-          )}
-        </main>
+          </div>
+        )}
+      </main>
 
         {/* Input area */}
         <div className="px-4 pb-5 pt-2 shrink-0">
           <div className="max-w-2xl mx-auto">
-            {/* Block status banner */}
-            {(() => {
-              const block = getBlockReason();
-              if (block.canSend || !isLoggedIn) return null;
-              return (
-                <div className="mb-3 px-4 py-3 rounded-xl flex items-center gap-3"
-                  style={{ backgroundColor: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)" }}>
-                  <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-                    style={{ color: "var(--warning)" }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <div>
-                    <p className="text-xs font-semibold" style={{ color: "var(--warning)" }}>Mensaje bloqueado</p>
-                    <p className="text-xs" style={{ color: "var(--text-secondary)" }}>{block.reason}</p>
-                  </div>
-                </div>
-              );
-            })()}
             {/* Attachment previews */}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
@@ -1083,11 +1089,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     sendMessage();
                   }
                 }}
-                placeholder={isLoggedIn ? (cooldownRemaining > 0 ? `Espera ${cooldownRemaining}s...` : "Escribe un mensaje...") : "Inicia sesion para chatear..."}
-                disabled={isDisabled || sending || cooldownRemaining > 0}
+                placeholder={(() => {
+                  const block = getBlockReason();
+                  if (cooldownRemaining > 0) return `Espera ${cooldownRemaining}s...`;
+                  if (!isLoggedIn) return "Inicia sesion para chatear...";
+                  if (!block.canWrite) return "Sin suscripcion activa...";
+                  return "Escribe un mensaje...";
+                })()}
+                disabled={sending || !getBlockReason().canWrite}
                 rows={1}
                 className="flex-1 text-sm outline-none resize-none bg-transparent leading-relaxed"
-                style={{ color: cooldownRemaining > 0 ? "var(--text-tertiary)" : "var(--text-primary)", maxHeight: "200px" }}
+                style={{ color: getBlockReason().canWrite ? "var(--text-primary)" : "var(--text-tertiary)", maxHeight: "200px" }}
               />
               <button
                 onClick={sendMessage}
