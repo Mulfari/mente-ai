@@ -23,7 +23,7 @@ Chat AI tipo ChatGPT con cuentas gestionadas por admin. Sin registro público �
   - Sin límites de mensajes
 
 ## RLS
-- RLS deshabilitado en todas las tablas (security issue a resolver)
+- RLS deshabilitado en todas las tablas — el control de acceso se maneja en las rutas API (server-side)
 
 ## Modelo de negocio
 - Admin activa cuentas manualmente
