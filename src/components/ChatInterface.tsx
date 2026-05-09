@@ -196,6 +196,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
+  // Keep textarea focused after sending
+  useEffect(() => {
+    if (!sending && textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, [sending]);
+
   // Close menu on outside click
   useEffect(() => {
     if (!showMenu) return;
