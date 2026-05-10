@@ -27,6 +27,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase.auth.admin.generateLink({
       type: "signup",
       email: email,
+      password: "dummy", // required by type but not used for resending
     });
 
     if (error || !data?.properties?.href) {
