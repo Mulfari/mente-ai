@@ -1,46 +1,30 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const MAX_RETRIES = 2;
-const TIMEOUT_MS = 60_000; // 60 segundos
-const HOURLY_LIMIT = 20; // máximo mensajes por hora antes de cooldown
-const COOLDOWN_MINUTES = 5; // minutos de cooldown si se supera el límite
+const MAX_RETRIES = 1;
+const RETRY_DELAY_MS = 2000;
+const TIMEOUT_MS = 90_000; // 90 segundos - esperar más pero sin retry infinito
 
-async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
+async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
+  // Simple: una vez con timeout, si falla por timeout (AbortError) reintentar 1 vez
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      const res = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-      });
-
+      const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeoutId);
-
-      // Reintentar en errores de red o 5xx (excepto 429 que es rate limit del proxy)
-      if (!res.ok && res.status >= 500 && res.status !== 429 && attempt < retries) {
-        const delay = (attempt + 1) * 1500; // 1.5s, 3s
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-
       return res;
     } catch (err: any) {
       clearTimeout(timeoutId);
-
-      // Reintentar en timeout o errores de red
-      if (attempt < retries && (err.name === "AbortError" || err.message?.includes("fetch") || !err.name)) {
-        const delay = (attempt + 1) * 1500;
-        await new Promise(r => setTimeout(r, delay));
+      const isAbort = err.name === "AbortError" || err.message?.includes("fetch") || !err.name;
+      if (isAbort && attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
         continue;
       }
-
       throw err;
     }
   }
-
   throw new Error("Max retries exceeded");
 }
 
