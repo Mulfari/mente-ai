@@ -377,9 +377,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     let conv = activeConv;
     if (!conv) {
       const { data } = await supabase.from("conversations").insert({ user_id: userId, title: "Nueva conversación" }).select().single();
-      if (data) { setConversations([data, ...conversations]); conv = data; setActiveConv(data); loadConversations(); } else { setSending(false); return; }
-    } else {
-      loadConversations();
+      if (data) { setConversations([data, ...conversations]); conv = data; setActiveConv(data); } else { setSending(false); return; }
     }
 
     const convId = conv!.id;
@@ -432,7 +430,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
         await supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
         setActiveConv({ ...conv!, title });
-        loadConversations();
       }
     } catch {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString() }]);
@@ -553,7 +550,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
           .update({ title, updated_at: new Date().toISOString() })
           .eq("id", convId);
         setActiveConv({ ...conv, title });
-        loadConversations();
       }
     } catch {
       setMessages(prev => [...prev, {
