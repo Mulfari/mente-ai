@@ -8,7 +8,6 @@ const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
 
 async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
-  // Simple: una vez con timeout, si falla por timeout (AbortError) reintentar 1 vez
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -16,6 +15,11 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
     try {
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeoutId);
+      // Reintentar en error 500 o 503 del proxy (saturation)
+      if (!res.ok && res.status >= 500 && attempt < MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        continue;
+      }
       return res;
     } catch (err: any) {
       clearTimeout(timeoutId);
