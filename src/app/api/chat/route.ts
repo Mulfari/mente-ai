@@ -46,6 +46,11 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_R
 
 export async function POST(request: Request) {
   try {
+    const body = await request.clone().json().catch(() => null);
+    console.log("[/api/chat] Request body keys:", body ? Object.keys(body) : "parse error");
+    console.log("[/api/chat] message length:", body?.message?.length ?? "no message");
+    console.log("[/api/chat] conversation_id:", body?.conversation_id ?? "no conv_id");
+    console.log("[/api/chat] attachments:", body?.attachments?.length ?? 0);
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -55,7 +60,7 @@ export async function POST(request: Request) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("status, subscription_weeks, subscription_start, weekly_limit, messages_used, weekly_reset_at, last_message_at, hourly_msg_count, hourly_reset_at")
+      .select("status, subscription_weeks, subscription_start, weekly_limit, messages_used, weekly_reset_at, last_message_at, hourly_msg_count, hourly_reset_at, status")
       .eq("id", user.id)
       .single();
 
