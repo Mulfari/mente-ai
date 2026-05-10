@@ -883,8 +883,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           {lastErrorRef.current && msg.content.includes("Error") && (
                             <button onClick={async () => {
                               if (!lastErrorRef.current) return;
-                              setLoading(true);
-                              setMessages(prev => prev.filter(m => m.id !== msg.id));
+                              // Show loading state in the message bubble itself
+                              setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "" } : m));
+                              setTimeout(() => setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "..." } : m)), 0);
                               const res = await fetch("/api/chat", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
@@ -895,22 +896,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 }),
                               });
                               const result = await res.json();
-                              setLoading(false);
                               if (result.error) {
-                                setMessages(prev => [...prev, {
-                                  id: Date.now().toString(), role: "assistant",
-                                  content: `Error ${result.code || 500}. Por favor intente nuevamente.`, created_at: new Date().toISOString(),
-                                }]);
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: `Error ${result.code || 500}. Intenta de nuevo.` } : m));
                               } else if (result.message) {
-                                const { data: aiMsg } = await supabase.from("messages").insert({
-                                  conversation_id: lastErrorRef.current.conversationId,
-                                  role: "assistant", content: result.message,
-                                }).select().single();
-                                if (aiMsg) setMessages(prev => [...prev, aiMsg]);
-                                else setMessages(prev => [...prev, {
-                                  id: Date.now().toString(), role: "assistant",
-                                  content: result.message, created_at: new Date().toISOString(),
-                                }]);
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.message } : m));
                                 lastErrorRef.current = null;
                               }
                             }}
