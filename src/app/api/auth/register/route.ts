@@ -54,7 +54,7 @@ export async function POST(request: Request) {
 
     // Generate confirmation link via admin API
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
-      type: "confirm_signup",
+      type: "signup",
       email,
     });
 
