@@ -1,9 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const RATE_LIMIT_MS = 30 * 1000; // 30 segundos entre mensajes
 const MAX_RETRIES = 2;
 const TIMEOUT_MS = 60_000; // 60 segundos
+const HOURLY_LIMIT = 20; // máximo mensajes por hora antes de cooldown
+const COOLDOWN_MINUTES = 5; // minutos de cooldown si se supera el límite
 
 async function fetchWithRetry(url: string, options: RequestInit, retries = MAX_RETRIES): Promise<Response> {
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("status, subscription_weeks, subscription_start, weekly_limit, messages_used, weekly_reset_at, last_message_at")
+      .select("status, subscription_weeks, subscription_start, weekly_limit, messages_used, weekly_reset_at, last_message_at, hourly_msg_count, hourly_reset_at")
       .eq("id", user.id)
       .single();
 
@@ -92,17 +93,22 @@ export async function POST(request: Request) {
       profile.messages_used = updatedProfile?.messages_used ?? 0;
     }
 
-    // Rate limit
-    if (profile.last_message_at) {
-      const lastAt = new Date(profile.last_message_at);
-      const diffMs = now.getTime() - lastAt.getTime();
-      if (diffMs < RATE_LIMIT_MS) {
-        const remaining = Math.ceil((RATE_LIMIT_MS - diffMs) / 1000);
-        return NextResponse.json(
-          { error: `Error 429. Por favor intente nuevamente en ${remaining}s.`, code: 429 },
-          { status: 429 }
-        );
-      }
+    // Cooldown condicional: si >20 msgs/hora, 5min de espera
+    const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
+    if (hourlyResetAt && now >= hourlyResetAt) {
+      await supabase.from("profiles").update({
+        hourly_msg_count: 0,
+        hourly_reset_at: new Date(now.getTime() + 60 * 60 * 1000).toISOString(),
+      }).eq("id", user.id);
+      profile.hourly_msg_count = 0;
+    }
+    if (profile.hourly_msg_count >= HOURLY_LIMIT) {
+      const remainingSecs = hourlyResetAt ? Math.ceil((hourlyResetAt.getTime() - now.getTime()) / 1000) : COOLDOWN_MINUTES * 60;
+      const remainingMins = Math.ceil(remainingSecs / 60);
+      return NextResponse.json(
+        { error: `Demasiados mensajes. Espera ${remainingMins}min para continuar.`, code: 429, remaining: remainingSecs },
+        { status: 429 }
+      );
     }
 
     // Límite semanal
@@ -191,12 +197,19 @@ export async function POST(request: Request) {
       assistantText = raw;
     }
 
-    // Update usage count immediately
+    // Update usage counts
+    const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
+    const needsHourlyReset = !hourlyResetAt || now >= hourlyResetAt;
+    const newHourlyReset = needsHourlyReset
+      ? new Date(now.getTime() + 60 * 60 * 1000).toISOString()
+      : hourlyResetAt.toISOString();
     await supabase
       .from("profiles")
       .update({
         messages_used: (profile.messages_used ?? 0) + 1,
         last_message_at: now.toISOString(),
+        hourly_msg_count: newHourlyCount,
+        hourly_reset_at: newHourlyReset,
       })
       .eq("id", user.id);
 

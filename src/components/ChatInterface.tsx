@@ -503,7 +503,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
         }]);
         lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
         setSending(false);
-        if (errorCode === 429) setCooldownRemaining(30);
+        if (result.remaining) {
+          // Cooldown from hourly limit - show cooldown timer
+          const secs = Math.ceil(result.remaining);
+          setCooldownRemaining(secs);
+          setTimeout(() => setCooldownRemaining(0), secs * 1000);
+        }
+        if (errorCode === 429 && !result.remaining) setCooldownRemaining(30);
         textareaRef.current?.focus();
       } else {
         const result = await res.json();
