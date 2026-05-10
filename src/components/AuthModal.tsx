@@ -47,42 +47,26 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
         setLoading(false);
         return;
       }
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: "https://mulfai.com.ve/confirm-email",
-        },
+      // Register via our custom API so we control the email template
+      setLoading(true);
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
+      const data = await res.json();
       setLoading(false);
-      if (signUpError) {
-        setError(signUpError.message);
+
+      if (data.error) {
+        setError(data.error);
         return;
       }
-      // Get user id and create profile
-      const { data: authUser } = await supabase.auth.getUser();
-      if (authUser.user?.id) {
-        await supabase.from("profiles").upsert({
-          id: authUser.user.id,
-          status: "active",
-          subscription_weeks: 0,
-          weekly_limit: 0,
-        });
-      }
-      // Auto-login after registration
-      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInError) {
-        setSuccess("¡Cuenta creada! Ahora puedes iniciar sesión.");
-        const timer = setTimeout(() => {
-          setMode("login");
-          setSuccess("");
-          setPassword("");
-          setConfirmPassword("");
-        }, 2500);
-        setRedirectTimer(timer);
-      } else {
-        onSuccess ? onSuccess() : window.location.reload();
-      }
+
+      // Show success, switch to login mode, and clear password fields
+      setSuccess("¡Cuenta creada! Revisa tu correo para confirmar tu cuenta.");
+      setMode("login");
+      setPassword("");
+      setConfirmPassword("");
     }
   }
 
