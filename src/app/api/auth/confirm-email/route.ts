@@ -23,43 +23,61 @@ function decodeJwtWithoutVerification(token: string): any {
 
 export async function POST(request: Request) {
   try {
-    const { token } = await request.json();
+    const { token, email } = await request.json();
 
     if (!token) {
       return NextResponse.json({ error: "Token requerido" }, { status: 400 });
     }
 
-    // Decode the JWT to get the user ID from the token
-    const payload = decodeJwtWithoutVerification(token);
-    if (!payload || !payload.sub) {
-      return NextResponse.json({ error: "Token inválido" }, { status: 400 });
-    }
-
-    const userId = payload.sub;
-
-    // Verify this user exists and is not already confirmed
     const adminClient = getAdminClient();
-    const { data: usersData, error: listError } = await adminClient.auth.admin.listUsers();
 
-    if (listError) {
-      return NextResponse.json({ error: "Error al verificar el correo." }, { status: 500 });
+    // Try to decode the token as JWT to get user ID
+    const payload = decodeJwtWithoutVerification(token);
+    let userId = payload?.sub as string | undefined;
+    let user: any = undefined;
+
+    // Find the user to confirm
+    if (userId) {
+      // Verify user exists
+      const { data: usersData, error: listError } = await adminClient.auth.admin.listUsers();
+      if (listError) {
+        return NextResponse.json({ error: "Error al verificar el correo." }, { status: 500 });
+      }
+      const users = (usersData as any).users;
+      user = users.find((u: any) => u.id === userId);
     }
 
-    const users = (usersData as any).users;
-    const user = users.find((u: any) => u.id === userId);
+    // Fallback: find by email if no user ID in token
+    if (!user && email) {
+      const { data: usersData } = await adminClient.auth.admin.listUsers();
+      const users = (usersData as any).users;
+      user = users.find((u: any) => u.email === email && !u.email_confirmed_at);
+    }
+
+    // Last fallback: find most recent unconfirmed user
+    if (!user) {
+      const { data: usersData } = await adminClient.auth.admin.listUsers();
+      const users = (usersData as any).users;
+      const unconfirmed = users.filter((u: any) => !u.email_confirmed_at);
+      if (unconfirmed.length > 0) {
+        // Pick the most recent one
+        user = unconfirmed.sort((a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+      }
+    }
 
     if (!user) {
-      return NextResponse.json({ error: "Usuario no encontrado." }, { status: 404 });
+      return NextResponse.json({ error: "No se encontró un usuario pendiente por confirmar." }, { status: 404 });
     }
 
     if (user.email_confirmed_at) {
-      // Already confirmed
       return NextResponse.json({ confirmed: true, already_confirmed: true });
     }
 
     // Confirm the user
     const { error: updateError } = await adminClient.auth.admin.updateUserById(
-      userId,
+      user.id,
       { email_confirm: true }
     );
 

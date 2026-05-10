@@ -6,7 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function ConfirmEmailClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get("token");
+  // Accept token from either param name (Supabase uses both)
+  const rawToken = searchParams.get("token") || searchParams.get("token_hash");
+  const emailParam = searchParams.get("email");
 
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
@@ -14,7 +16,7 @@ export default function ConfirmEmailClient() {
 
   useEffect(() => {
     async function verify() {
-      if (!token) {
+      if (!rawToken) {
         setError("Enlace inválido. No se encontró el token de confirmación.");
         return;
       }
@@ -23,7 +25,7 @@ export default function ConfirmEmailClient() {
         const res = await fetch("/api/auth/confirm-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token }),
+          body: JSON.stringify({ token: rawToken, email: emailParam }),
         });
         const data = await res.json();
 
@@ -51,9 +53,9 @@ export default function ConfirmEmailClient() {
     }
 
     verify().then(() => {
-      if (token) startCountdown();
+      if (rawToken) startCountdown();
     });
-  }, [token, router]);
+  }, [rawToken, emailParam, router]);
 
   if (confirmed) {
     return (
