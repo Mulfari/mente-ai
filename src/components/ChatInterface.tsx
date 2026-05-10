@@ -578,28 +578,38 @@ export default function ChatInterface({ userId }: { userId: string }) {
         let fullText = "";
         try {
           while (true) {
+            console.log("[DEBUG] About to read...");
             const { done, value } = await reader.read();
-            if (done) break;
+            console.log("[DEBUG] Read done:", done, "value:", value ? value.byteLength : null);
+            if (done) {
+              console.log("[DEBUG] Stream done, fullText len:", fullText.length);
+              break;
+            }
+            if (!value || value.byteLength === 0) { console.log("[DEBUG] empty value"); continue; }
 
             const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split("\n");
+            console.log("[DEBUG] chunk len:", chunk.length, "preview:", JSON.stringify(chunk.slice(0, 100)));
 
+            const lines = chunk.split("\n");
             for (const line of lines) {
               if (line.startsWith("data: ")) {
                 const dataStr = line.slice(6);
+                console.log("[DEBUG] dataStr:", dataStr.slice(0, 100));
                 if (dataStr === "[DONE]" || dataStr === "") continue;
                 try {
                   const parsed = JSON.parse(dataStr);
+                  console.log("[DEBUG] parsed:", JSON.stringify(parsed).slice(0, 100));
                   if (parsed.delta) {
+                    console.log("[DEBUG] Got delta!");
                     fullText += parsed.delta;
                     setStreamText(fullText);
                     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
                   }
-                } catch { /* ignore parse errors */ }
+                } catch (e) { console.log("[DEBUG] parse error:", e.message); }
               }
             }
           }
-        } catch {
+        } catch (e) {
           // Network or parse error - show error if no content received
           if (fullText === "") {
             setMessages(prev => prev.filter(m => m.id !== msgId));
