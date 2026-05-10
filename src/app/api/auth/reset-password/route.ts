@@ -23,7 +23,6 @@ export async function POST(request: Request) {
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
       type: "recovery",
       email,
-      password: "dummy", // required by type
     });
 
     if (linkError || !linkData?.properties?.action_link) {
