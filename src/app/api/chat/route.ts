@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-const MAX_RETRIES = 1;
-const RETRY_DELAY_MS = 2000;
-const TIMEOUT_MS = 60_000; // 60 segundos
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 3000;
+const TIMEOUT_MS = 60_000;
 const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
 
@@ -15,17 +15,18 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
     try {
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeoutId);
-      // Reintentar en error 500 o 503 del proxy (saturation)
+      // Reintentar en errores 500/502/503/504 del proxy
       if (!res.ok && res.status >= 500 && attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        const delay = RETRY_DELAY_MS * (attempt + 1);
+        await new Promise(r => setTimeout(r, delay));
         continue;
       }
       return res;
     } catch (err: any) {
       clearTimeout(timeoutId);
-      const isAbort = err.name === "AbortError" || err.message?.includes("fetch") || !err.name;
-      if (isAbort && attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      if (attempt < MAX_RETRIES) {
+        const delay = RETRY_DELAY_MS * (attempt + 1);
+        await new Promise(r => setTimeout(r, delay));
         continue;
       }
       throw err;
@@ -171,7 +172,7 @@ export async function POST(request: Request) {
 
     if (!response.ok) {
       const rawText = await response.text().catch(() => "");
-      let errorMsg = "El servicio esta temporalmente saturado. Intenta en unos segundos.";
+      let errorMsg = "Por favor intente de nuevo.";
       try {
         const errorData = JSON.parse(rawText);
         errorMsg = errorData?.error?.message || errorData?.message || errorMsg;
