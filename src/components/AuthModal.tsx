@@ -47,7 +47,13 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
         setLoading(false);
         return;
       }
-      const { error: signUpError } = await supabase.auth.signUp({ email, password });
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: "https://mulfai.com.ve/confirm-email",
+        },
+      });
       setLoading(false);
       if (signUpError) {
         setError(signUpError.message);
