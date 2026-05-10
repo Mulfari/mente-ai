@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2000;
-const TIMEOUT_MS = 180_000; // 3 minutos
+const TIMEOUT_MS = 60_000; // 60 segundos
 const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
 
@@ -32,11 +32,6 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
 
 export async function POST(request: Request) {
   try {
-    const body = await request.clone().json().catch(() => null);
-    console.log("[/api/chat] Request body keys:", body ? Object.keys(body) : "parse error");
-    console.log("[/api/chat] message length:", body?.message?.length ?? "no message");
-    console.log("[/api/chat] conversation_id:", body?.conversation_id ?? "no conv_id");
-    console.log("[/api/chat] attachments:", body?.attachments?.length ?? 0);
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -171,12 +166,12 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      const rawText = await response.text().catch(() => "no body");
-      let errorMsg = "Error 500. Por favor intente nuevamente.";
+      const rawText = await response.text().catch(() => "");
+      let errorMsg = "El servicio esta temporalmente saturado. Intenta en unos segundos.";
       try {
         const errorData = JSON.parse(rawText);
         errorMsg = errorData?.error?.message || errorData?.message || errorMsg;
-      } catch { /* rawText is not JSON, show generic */ }
+      } catch { /* keep generic */ }
       const errorCode = response.status;
       return NextResponse.json({ error: errorMsg, code: errorCode }, { status: response.status });
     }
@@ -184,7 +179,7 @@ export async function POST(request: Request) {
     // Buffer complete response
     const raw = await response.text();
     if (!raw.trim()) {
-      return NextResponse.json({ error: "Respuesta vacia del servidor. Intenta de nuevo.", code: 500 }, { status: 500 });
+      return NextResponse.json({ error: "El servidor devolvio una respuesta vacia. Intenta de nuevo.", code: 500 }, { status: 500 });
     }
     let assistantText = "";
     try {
@@ -214,9 +209,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: assistantText });
 
   } catch (err: any) {
-    console.error("[/api/chat] Error:", err?.message || err?.toString() || "Unknown error", "name:", err?.name);
     if (err.name === "AbortError" || err.message?.includes("fetch")) {
-      return NextResponse.json({ error: "Error 504. Timeout del servidor. Intenta de nuevo.", code: 504 }, { status: 504 });
+      return NextResponse.json({ error: "El servidor tardo demasiado en responder. Intenta de nuevo.", code: 504 }, { status: 504 });
     }
     return NextResponse.json({ error: "Error 500. Por favor intente nuevamente.", code: 500 }, { status: 500 });
   }
