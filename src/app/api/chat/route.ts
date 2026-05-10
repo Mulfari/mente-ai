@@ -180,14 +180,21 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMsg = errorData?.error?.message || errorData?.message || `Error 500. Por favor intente nuevamente.`;
+      const rawText = await response.text().catch(() => "no body");
+      let errorMsg = "Error 500. Por favor intente nuevamente.";
+      try {
+        const errorData = JSON.parse(rawText);
+        errorMsg = errorData?.error?.message || errorData?.message || errorMsg;
+      } catch { /* rawText is not JSON, show generic */ }
       const errorCode = response.status;
       return NextResponse.json({ error: errorMsg, code: errorCode }, { status: response.status });
     }
 
     // Buffer complete response
     const raw = await response.text();
+    if (!raw.trim()) {
+      return NextResponse.json({ error: "Respuesta vacia del servidor. Intenta de nuevo.", code: 500 }, { status: 500 });
+    }
     let assistantText = "";
     try {
       const parsed = JSON.parse(raw);
@@ -216,8 +223,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ message: assistantText });
 
   } catch (err: any) {
+    console.error("[/api/chat] Error:", err?.message || err?.toString() || "Unknown error", "name:", err?.name);
     if (err.name === "AbortError" || err.message?.includes("fetch")) {
-      return NextResponse.json({ error: "Error 504. Por favor intente nuevamente.", code: 504 }, { status: 504 });
+      return NextResponse.json({ error: "Error 504. Timeout del servidor. Intenta de nuevo.", code: 504 }, { status: 504 });
     }
     return NextResponse.json({ error: "Error 500. Por favor intente nuevamente.", code: 500 }, { status: 500 });
   }
