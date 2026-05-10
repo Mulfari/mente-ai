@@ -18,6 +18,7 @@ type Message = {
   conversation_id?: string;
   attachments?: string[];
   _previewUrls?: Record<string, string>;
+  _loading?: boolean;
 };
 
 type Conversation = {
@@ -834,6 +835,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           )}
                           <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
                         </>
+                      ) : msg._loading ? (
+                        <div className="flex items-center gap-1.5 py-1">
+                          <span className="inline-flex items-center gap-1.5">
+                            {[0, 150, 300].map((delay, i) => (
+                              <span key={i} className="w-2 h-2 rounded-full animate-pulse-dot"
+                                style={{ backgroundColor: "var(--text-secondary)", animationDelay: `${delay}ms` }} />
+                            ))}
+                          </span>
+                        </div>
                       ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
                           <ReactMarkdown
@@ -884,8 +894,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             <button onClick={async () => {
                               if (!lastErrorRef.current) return;
                               // Show loading state in the message bubble itself
-                              setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "" } : m));
-                              setTimeout(() => setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "..." } : m)), 0);
+                              setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _loading: true } : m));
                               const res = await fetch("/api/chat", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
@@ -897,9 +906,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               });
                               const result = await res.json();
                               if (result.error) {
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: `Error ${result.code || 500}. Intenta de nuevo.` } : m));
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: `Error ${result.code || 500}. Intenta de nuevo.`, _loading: false } : m));
                               } else if (result.message) {
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.message } : m));
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.message, _loading: false } : m));
                                 lastErrorRef.current = null;
                               }
                             }}
