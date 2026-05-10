@@ -41,7 +41,7 @@ export default function AdminPanel() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [weeksToAdd, setWeeksToAdd] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "inactive" | "cancelled">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "inactive" | "cancelled" | "pending">("all");
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>("users");
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -148,6 +148,26 @@ export default function AdminPanel() {
     showToast("success", "Usuario eliminado");
   }
 
+  async function sendConfirmationEmail(userId: string, email: string) {
+    setActionLoading(userId + "-confirm");
+    try {
+      const res = await fetch("/api/send-confirmation", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, user_id: userId }),
+      });
+      if (res.ok) {
+        showToast("success", "Correo de confirmacion enviado");
+      } else {
+        const data = await res.json();
+        showToast("error", data.error || "Error al enviar correo");
+      }
+    } catch {
+      showToast("error", "Error al enviar correo");
+    }
+    setActionLoading(null);
+  }
+
   async function generateCoupons(count: number, type: CouponType) {
     setGeneratingCoupons(true);
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -207,6 +227,7 @@ export default function AdminPanel() {
     active: users.filter(u => u.status === "active").length,
     inactive: users.filter(u => u.status === "inactive").length,
     cancelled: users.filter(u => u.status === "cancelled").length,
+    pending: users.filter(u => u.status === "pending").length,
   };
 
   const couponStats = {
@@ -315,6 +336,11 @@ export default function AdminPanel() {
               <span style={{ color: "var(--danger)" }}>Cancelados</span>
               <span className="font-bold" style={{ color: "var(--danger)" }}>{stats.cancelled}</span>
             </div>
+            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
+              style={{ backgroundColor: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}>
+              <span style={{ color: "#8b5cf6" }}>Pendientes</span>
+              <span className="font-bold" style={{ color: "#8b5cf6" }}>{stats.pending}</span>
+            </div>
           </div>
         </div>
 
@@ -416,14 +442,14 @@ export default function AdminPanel() {
                 />
               </div>
               <div className="flex items-center gap-1.5 p-1.5 rounded-xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-                {(["all", "active", "inactive", "cancelled"] as const).map(f => (
+                {(["all", "active", "inactive", "cancelled", "pending"] as const).map(f => (
                   <button key={f} onClick={() => setFilter(f)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                     style={{
                       backgroundColor: filter === f ? "var(--primary)" : "transparent",
                       color: filter === f ? "white" : "var(--text-secondary)",
                     }}>
-                    {f === "all" ? "Todos" : f === "active" ? "Activos" : f === "inactive" ? "Inactivos" : "Cancelados"}
+                    {f === "all" ? "Todos" : f === "active" ? "Activos" : f === "inactive" ? "Inactivos" : f === "cancelled" ? "Cancelados" : "Pendientes"}
                   </button>
                 ))}
               </div>
@@ -476,10 +502,10 @@ export default function AdminPanel() {
                               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                 <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
                                   style={{
-                                    backgroundColor: user.status === "active" ? "rgba(16,163,127,0.15)" : user.status === "inactive" ? "rgba(245,158,11,0.15)" : "rgba(239,68,68,0.15)",
-                                    color: user.status === "active" ? "var(--primary)" : user.status === "inactive" ? "var(--warning)" : "var(--danger)",
+                                    backgroundColor: user.status === "active" ? "rgba(16,163,127,0.15)" : user.status === "inactive" ? "rgba(245,158,11,0.15)" : user.status === "pending" ? "rgba(139,92,246,0.15)" : "rgba(239,68,68,0.15)",
+                                    color: user.status === "active" ? "var(--primary)" : user.status === "inactive" ? "var(--warning)" : user.status === "pending" ? "#8b5cf6" : "var(--danger)",
                                   }}>
-                                  {user.status === "active" ? "Activo" : user.status === "inactive" ? "Inactivo" : user.status === "cancelled" ? "Cancelado" : "Rechazado"}
+                                  {user.status === "active" ? "Activo" : user.status === "inactive" ? "Inactivo" : user.status === "cancelled" ? "Cancelado" : user.status === "pending" ? "Pendiente" : "Rechazado"}
                                 </span>
                                 {isAdmin && (
                                   <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
@@ -550,16 +576,28 @@ export default function AdminPanel() {
                       <div className="px-5 py-4 border-t flex items-center gap-2 flex-wrap"
                         style={{ borderColor: "var(--border)" }}>
                         {user.status !== "active" ? (
-                          <button
-                            onClick={() => activateUser(user.id, weeksToAdd[user.id] ?? 1)}
-                            disabled={actionLoading === user.id + "-activate"}
-                            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-                            style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 4px 12px rgba(16,163,127,0.3)" }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                            Activar ({weeksToAdd[user.id] ?? 1} sem.)
-                          </button>
+                          <>
+                            <button
+                              onClick={() => activateUser(user.id, weeksToAdd[user.id] ?? 1)}
+                              disabled={actionLoading === user.id + "-activate"}
+                              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
+                              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 4px 12px rgba(16,163,127,0.3)" }}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                              Activar ({weeksToAdd[user.id] ?? 1} sem.)
+                            </button>
+                            <button
+                              onClick={() => sendConfirmationEmail(user.id, user.email)}
+                              disabled={actionLoading === user.id + "-confirm"}
+                              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
+                              style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.2)" }}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                              </svg>
+                              Enviar correo
+                            </button>
+                          </>
                         ) : (
                           <button
                             onClick={() => deactivateUser(user.id)}
