@@ -487,22 +487,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
         }
       }
 
-      // Create streaming message placeholder
-      const msgId = Date.now().toString();
-      setMessages(prev => [...prev, {
-        id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(),
-      }]);
-      setStreamingMsgId(msgId);
-
+      // Send message to API - the sending indicator ({sending && ...}) shows loading state
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts }),
       });
-
-      // Remove placeholder immediately before DB insert
-      setMessages(prev => prev.filter(m => m.id !== msgId));
-      setStreamingMsgId(null);
 
       if (!res.ok) {
         const result = await res.json();
