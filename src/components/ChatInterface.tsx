@@ -561,11 +561,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
         if (errorCode === 429) setCooldownRemaining(30);
         textareaRef.current?.focus();
       } else {
-        console.log("[DEBUG] Streaming response:", res.status, res.body ? "has body" : "no body");
+        console.log("[DEBUG] Streaming response:", res.status);
+        console.log("[DEBUG] res.body type:", typeof res.body, res.body ? "exists" : "null/undefined");
+        console.log("[DEBUG] res.body constructor:", res.body?.constructor?.name);
         // Read streaming response
         const reader = res.body?.getReader();
+        console.log("[DEBUG] reader:", reader ? "created" : "null");
 
         if (!reader) {
+          console.log("[DEBUG] reader is NULL");
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
           lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
           setStreamingMsgId(null);
@@ -574,13 +578,25 @@ export default function ChatInterface({ userId }: { userId: string }) {
           return;
         }
 
+        console.log("[DEBUG] About to race reader.read()...");
         const decoder = new TextDecoder();
         let fullText = "";
         try {
           while (true) {
-            console.log("[DEBUG] About to read...");
-            const { done, value } = await reader.read();
-            console.log("[DEBUG] Read done:", done, "value:", value ? value.byteLength : null);
+            const readPromise = reader.read();
+            const timeoutPromise = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 5000));
+            const result = await Promise.race([readPromise, timeoutPromise]);
+            if (result === "timeout") {
+              console.log("[DEBUG] reader.read() timed out after 5s!");
+              reader.cancel().catch(() => {});
+              setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Timeout: respuesta del servidor demasiado lenta." } : m));
+              setStreamingMsgId(null);
+              lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
+              setSending(false);
+              return;
+            }
+            const { done, value } = result as unknown as { done: boolean; value?: Uint8Array };
+            console.log("[DEBUG] Read done:", done, "value bytes:", value?.byteLength);
             if (done) {
               console.log("[DEBUG] Stream done, fullText len:", fullText.length);
               break;
@@ -643,6 +659,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         id: Date.now().toString(), role: "assistant",
         content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
       }]);
+      setSending(false);
     }
 
     setSending(false);
