@@ -3,6 +3,20 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
+function translateError(msg: string): string {
+  const lower = msg.toLowerCase();
+  if (lower.includes("email not confirmed")) return "Correo no confirmado. Revisa tu bandeja de entrada y confirma tu cuenta.";
+  if (lower.includes("invalid login credentials") || lower.includes("invalid credentials"))
+    return "Correo o contraseña incorrectos.";
+  if (lower.includes("user already registered") || lower.includes("already been registered") || lower.includes("already exists"))
+    return "Este correo ya está registrado.";
+  if (lower.includes("invalid email")) return "El correo electrónico no es válido.";
+  if (lower.includes("password")) return "La contraseña es incorrecta.";
+  if (lower.includes("too many requests")) return "Demasiados intentos. Espera un momento antes de intentarlo de nuevo.";
+  if (lower.includes("network")) return "Error de conexión. Verifica tu internet.";
+  return msg;
+}
+
 export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => void; onClose?: () => void }) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -39,7 +53,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
       else localStorage.removeItem("mulfai_email");
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
-      if (error) setError(error.message);
+      if (error) setError(translateError(error.message));
       else { onSuccess ? onSuccess() : window.location.reload(); }
     } else {
       if (password !== confirmPassword) {
@@ -58,7 +72,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
       setLoading(false);
 
       if (data.error) {
-        setError(data.error);
+        setError(translateError(data.error));
         return;
       }
 

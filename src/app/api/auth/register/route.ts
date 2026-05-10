@@ -3,8 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!);
+}
 function getAdminClient() {
   return createSupabaseAdmin(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,14 +64,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: linkError?.message || "Error al generar enlace." }, { status: 500 });
     }
 
-    // Replace localhost in the link with our domain
-    const confirmUrl = linkData.properties.action_link.replace(
-      /https?:\/\/[^/]+\//,
-      "https://mulfai.com.ve/"
-    );
+    // Extract token from Supabase URL to build our own confirmation link
+    const supabaseUrl = linkData.properties.action_link;
+    const urlObj = new URL(supabaseUrl);
+    const token = urlObj.searchParams.get("token");
+    const confirmUrl = `https://mulfai.com.ve/confirm-email?token_hash=${token}&type=signup`;
 
     // Send branded email via Resend
-    const { error: sendError } = await resend.emails.send({
+    const { error: sendError } = await getResend().emails.send({
       from: "Mulfai <noreply@mulfai.com.ve>",
       to: email,
       subject: "Confirma tu correo — Mulfai",

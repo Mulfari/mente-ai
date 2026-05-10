@@ -1,7 +1,9 @@
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+function getResend() {
+  return new Resend(process.env.RESEND_API_KEY!);
+}
 
 export async function POST(request: Request) {
   try {
@@ -36,6 +38,7 @@ export async function POST(request: Request) {
 
     const confirmUrl = data.properties.action_link;
 
+    const resend = getResend();
     const { error: sendError } = await resend.emails.send({
       from: "Mulfai <noreply@mulfai.com.ve>",
       to: email,
