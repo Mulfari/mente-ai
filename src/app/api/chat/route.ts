@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const MAX_RETRIES = 1;
 const RETRY_DELAY_MS = 2000;
-const TIMEOUT_MS = 90_000; // 90 segundos - esperar más pero sin retry infinito
+const TIMEOUT_MS = 180_000; // 3 minutos
 
 async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
   // Simple: una vez con timeout, si falla por timeout (AbortError) reintentar 1 vez
