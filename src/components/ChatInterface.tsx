@@ -437,9 +437,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   try {
                     const parsed = JSON.parse(dataStr);
                     if (parsed.delta) {
-                      fullText += parsed.delta;
+                      console.log("[DEBUG] Got delta, total length:", fullText.length);
                       setStreamText(fullText);
                       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
+                    } else {
+                      console.log("[DEBUG] parsed delta is falsy:", JSON.stringify(parsed));
                     }
                   } catch { /* ignore */ }
                 }
@@ -529,6 +531,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       // Create streaming message placeholder
       const msgId = Date.now().toString();
       const streamCreatedAt = new Date().toISOString();
+      console.log("[DEBUG] Creating placeholder msgId:", msgId, "convId:", convId);
       setMessages(prev => [...prev, {
         id: msgId, role: "assistant", content: "", created_at: streamCreatedAt,
       }]);
@@ -558,6 +561,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         if (errorCode === 429) setCooldownRemaining(30);
         textareaRef.current?.focus();
       } else {
+        console.log("[DEBUG] Streaming response:", res.status, res.body ? "has body" : "no body");
         // Read streaming response
         const reader = res.body?.getReader();
 
