@@ -489,12 +489,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       // Create streaming message placeholder
       const msgId = Date.now().toString();
-      const streamCreatedAt = new Date().toISOString();
       setMessages(prev => [...prev, {
-        id: msgId, role: "assistant", content: "", created_at: streamCreatedAt,
+        id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(),
       }]);
       setStreamingMsgId(msgId);
-      setStreamText("");
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -502,42 +500,44 @@ export default function ChatInterface({ userId }: { userId: string }) {
         body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts }),
       });
 
+      // Remove placeholder immediately before DB insert
+      setMessages(prev => prev.filter(m => m.id !== msgId));
+      setStreamingMsgId(null);
+
       if (!res.ok) {
         const result = await res.json();
         const errorCode = result.code || res.status;
-        // Remove placeholder message and clean up
-        setMessages(prev => prev.filter(m => m.id !== msgId));
-        if (result.error) {
-          setMessages(prev => [...prev, {
-            id: Date.now().toString(), role: "assistant",
-            content: result.error, created_at: new Date().toISOString(),
-          }]);
-        }
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(), role: "assistant",
+          content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
+        }]);
         lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
-        setStreamingMsgId(null);
         setSending(false);
         if (errorCode === 429) setCooldownRemaining(30);
         textareaRef.current?.focus();
       } else {
         const result = await res.json();
-        setStreamingMsgId(null);
-        setSending(false);
-        textareaRef.current?.focus();
-
         if (result.message !== undefined) {
-          // Save AI response to DB and update placeholder with real message
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: result.message } : m));
-          await supabase
+          const { data: inserted } = await supabase
             .from("messages")
-            .insert({ conversation_id: convId, role: "assistant", content: result.message });
+            .insert({ conversation_id: convId, role: "assistant", content: result.message })
+            .select()
+            .single();
+          setMessages(prev => [...prev, {
+            id: inserted?.id ?? Date.now().toString(),
+            role: "assistant",
+            content: result.message,
+            created_at: new Date().toISOString(),
+          }]);
         } else {
-          setMessages(prev => prev.filter(m => m.id !== msgId));
           setMessages(prev => [...prev, {
             id: Date.now().toString(), role: "assistant",
             content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
           }]);
           lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
         }
+        setSending(false);
+        textareaRef.current?.focus();
       }
 
       lastErrorRef.current = null;
