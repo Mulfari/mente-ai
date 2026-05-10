@@ -418,9 +418,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
         let fullText = "";
 
         if (!reader) {
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString() }]);
           lastErrorRef.current = { message: s, conversationId: convId, attachments: contentParts };
           setStreamingMsgId(null);
+          setSending(false);
         } else {
           try {
             while (true) {
@@ -445,7 +447,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
             }
           } catch {
             if (fullText === "") {
-              setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+              setMessages(prev => prev.filter(m => m.id !== msgId));
+              setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString() }]);
               lastErrorRef.current = { message: s, conversationId: convId, attachments: contentParts };
             }
           } finally {
@@ -464,9 +467,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
       }
     } catch {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString() }]);
+      setSending(false);
     }
-
-    setSending(false);
     setTimeout(() => { autoResize(); textareaRef.current?.focus(); }, 0);
   }
 
@@ -594,17 +596,22 @@ export default function ChatInterface({ userId }: { userId: string }) {
             }
           }
         } catch {
+          // Network or parse error - show error if no content received
           if (fullText === "") {
-            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+            setMessages(prev => prev.filter(m => m.id !== msgId));
+            setMessages(prev => [...prev, {
+              id: Date.now().toString(), role: "assistant",
+              content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
+            }]);
             lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
           }
         } finally {
+          setStreamingMsgId(null);
+          setSending(false);
           reader.releaseLock();
         }
 
-        setStreamingMsgId(null);
         lastErrorRef.current = null;
-        setSending(false);
 
         // Generate title if new conversation
         if (conv.title === "Nueva conversación" && fullText) {
