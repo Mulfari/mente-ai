@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const supabaseUrl = linkData.properties.action_link;
     const urlObj = new URL(supabaseUrl);
     const token = urlObj.searchParams.get("token");
-    const confirmUrl = `https://mulfai.com.ve/confirm-email?token=${token}&type=signup&email=${encodeURIComponent(email)}`;
+    const confirmUrl = `https://mulfai.com.ve/confirm-email?token=${token}&type=signup`;
 
     // Send branded email via Resend
     const { error: sendError } = await getResend().emails.send({

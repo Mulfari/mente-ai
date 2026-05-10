@@ -8,7 +8,6 @@ export default function ConfirmEmailClient() {
   const searchParams = useSearchParams();
   // Accept token from either param name (Supabase uses both)
   const rawToken = searchParams.get("token") || searchParams.get("token_hash");
-  const emailParam = searchParams.get("email");
 
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +24,7 @@ export default function ConfirmEmailClient() {
         const res = await fetch("/api/auth/confirm-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: rawToken, email: emailParam }),
+          body: JSON.stringify({ token: rawToken }),
         });
         const data = await res.json();
 
@@ -55,7 +54,7 @@ export default function ConfirmEmailClient() {
     verify().then(() => {
       if (rawToken) startCountdown();
     });
-  }, [rawToken, emailParam, router]);
+  }, [rawToken, router]);
 
   if (confirmed) {
     return (
