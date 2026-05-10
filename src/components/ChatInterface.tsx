@@ -526,16 +526,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         if (result.message !== undefined) {
           // Save AI response to DB and update placeholder with real message
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: result.message } : m));
           await supabase
             .from("messages")
-            .insert({ conversation_id: convId, role: "assistant", content: result.message })
-            .then(({ data: inserted }) => {
-              if (inserted) {
-                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, id: inserted.id, content: result.message } : m));
-              } else {
-                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: result.message } : m));
-              }
-            });
+            .insert({ conversation_id: convId, role: "assistant", content: result.message });
         } else {
           setMessages(prev => prev.filter(m => m.id !== msgId));
           setMessages(prev => [...prev, {
