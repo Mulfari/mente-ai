@@ -1,5 +1,4 @@
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 function getAdminClient() {
@@ -7,12 +6,6 @@ function getAdminClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
-}
-
-function base64UrlDecode(str: string): string {
-  let s = str.replace(/-/g, "+").replace(/_/g, "/");
-  while (s.length % 4) s += "=";
-  return Buffer.from(s, "base64").toString("utf-8");
 }
 
 export async function POST(request: Request) {
@@ -25,56 +18,66 @@ export async function POST(request: Request) {
 
     const adminClient = getAdminClient();
 
-    // Try to decode token as JWT to get user ID
-    const parts = token.split(".");
-    let userId: string | undefined = undefined;
+    // Method 1: Try to use the magic link verification endpoint
+    // Supabase has an internal endpoint for confirming emails
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const response = await fetch(`${supabaseUrl}/auth/v1/verify`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY!}`,
+      },
+      body: JSON.stringify({
+        type: "signup",
+        token: token,
+      }),
+    });
 
-    if (parts.length === 3) {
-      try {
-        const payload = JSON.parse(base64UrlDecode(parts[1]));
-        userId = payload.sub;
-      } catch { /* not a JWT */ }
-    }
-
-    // If no userId from token, search by email
-    if (!userId && email) {
-      const { data: usersData } = await adminClient.auth.admin.listUsers();
-      const users = (usersData as any).users as any[];
-      const match = users.find((u: any) =>
-        u.email === email && !u.email_confirmed_at
-      );
-      if (match) userId = match.id;
-    }
-
-    // Last resort: most recent unconfirmed user
-    if (!userId) {
+    // If that works, we're done
+    if (response.ok) {
+      // Now activate the profile
       const { data: usersData } = await adminClient.auth.admin.listUsers();
       const users = (usersData as any).users as any[];
       const unconfirmed = users.filter((u: any) => !u.email_confirmed_at);
-      if (unconfirmed.length === 0) {
+
+      if (unconfirmed.length > 0) {
+        const latest = unconfirmed.sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+        await adminClient.auth.admin.updateUserById(latest.id, { email_confirm: true });
+      }
+      return NextResponse.json({ confirmed: true });
+    }
+
+    // Method 2: Find user by email and confirm manually
+    if (email) {
+      const { data: usersData } = await adminClient.auth.admin.listUsers();
+      const users = (usersData as any).users as any[];
+      const match = users.find((u: any) => u.email === email && !u.email_confirmed_at);
+      if (match) {
+        await adminClient.auth.admin.updateUserById(match.id, { email_confirm: true });
         return NextResponse.json({ confirmed: true });
       }
-      const latest = unconfirmed.sort((a: any, b: any) =>
+    }
+
+    // Method 3: Most recent unconfirmed user
+    const { data: allUsersData } = await adminClient.auth.admin.listUsers();
+    const allUsers = (allUsersData as any).users as any[];
+    const unconfirmed = allUsers.filter((u: any) => !u.email_confirmed_at);
+    if (unconfirmed.length > 0) {
+      const latest = unconfirmed.sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )[0];
-      userId = latest.id;
+      const { error } = await adminClient.auth.admin.updateUserById(latest.id, { email_confirm: true });
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      return NextResponse.json({ confirmed: true });
     }
-
-    const { error: updateError } = await adminClient.auth.admin.updateUserById(
-      userId!,
-      { email_confirm: true }
-    );
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-
-    // Also update the profile status to active
-    const supabase = await createClient();
-    await supabase.from("profiles").update({ status: "active" }).eq("id", userId!);
 
     return NextResponse.json({ confirmed: true });
   } catch (err: any) {
-    return NextResponse.json({ error: "Error al confirmar el correo." }, { status: 500 });
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
