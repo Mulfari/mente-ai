@@ -531,7 +531,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
       // Create streaming message placeholder
       const msgId = Date.now().toString();
       const streamCreatedAt = new Date().toISOString();
-      console.log("[DEBUG] Creating placeholder msgId:", msgId, "convId:", convId);
       setMessages(prev => [...prev, {
         id: msgId, role: "assistant", content: "", created_at: streamCreatedAt,
       }]);
@@ -561,98 +560,43 @@ export default function ChatInterface({ userId }: { userId: string }) {
         if (errorCode === 429) setCooldownRemaining(30);
         textareaRef.current?.focus();
       } else {
-        console.log("[DEBUG] Streaming response:", res.status);
-        console.log("[DEBUG] res.body type:", typeof res.body, res.body ? "exists" : "null/undefined");
-        console.log("[DEBUG] res.body constructor:", res.body?.constructor?.name);
-        // Read streaming response
-        const reader = res.body?.getReader();
-        console.log("[DEBUG] reader:", reader ? "created" : "null");
+        const result = await res.json();
+        setStreamingMsgId(null);
+        setSending(false);
+        textareaRef.current?.focus();
 
-        if (!reader) {
-          console.log("[DEBUG] reader is NULL");
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
-          lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
-          setStreamingMsgId(null);
-          setSending(false);
-          textareaRef.current?.focus();
-          return;
-        }
-
-        console.log("[DEBUG] About to race reader.read()...");
-        const decoder = new TextDecoder();
-        let fullText = "";
-        try {
-          while (true) {
-            const readPromise = reader.read();
-            const timeoutPromise = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 5000));
-            const result = await Promise.race([readPromise, timeoutPromise]);
-            if (result === "timeout") {
-              console.log("[DEBUG] reader.read() timed out after 5s!");
-              reader.cancel().catch(() => {});
-              setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Timeout: respuesta del servidor demasiado lenta." } : m));
-              setStreamingMsgId(null);
-              lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
-              setSending(false);
-              return;
-            }
-            const { done, value } = result as unknown as { done: boolean; value?: Uint8Array };
-            console.log("[DEBUG] Read done:", done, "value bytes:", value?.byteLength);
-            if (done) {
-              console.log("[DEBUG] Stream done, fullText len:", fullText.length);
-              break;
-            }
-            if (!value || value.byteLength === 0) { console.log("[DEBUG] empty value"); continue; }
-
-            const chunk = decoder.decode(value, { stream: true });
-            console.log("[DEBUG] chunk len:", chunk.length, "preview:", JSON.stringify(chunk.slice(0, 100)));
-
-            const lines = chunk.split("\n");
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const dataStr = line.slice(6);
-                console.log("[DEBUG] dataStr:", dataStr.slice(0, 100));
-                if (dataStr === "[DONE]" || dataStr === "") continue;
-                try {
-                  const parsed = JSON.parse(dataStr);
-                  console.log("[DEBUG] parsed:", JSON.stringify(parsed).slice(0, 100));
-                  if (parsed.delta) {
-                    console.log("[DEBUG] Got delta!");
-                    fullText += parsed.delta;
-                    setStreamText(fullText);
-                    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
-                  }
-                } catch (e: unknown) { console.log("[DEBUG] parse error:", (e as Error).message); }
+        if (result.message !== undefined) {
+          // Save AI response to DB and update placeholder with real message
+          await supabase
+            .from("messages")
+            .insert({ conversation_id: convId, role: "assistant", content: result.message })
+            .then(({ data: inserted }) => {
+              if (inserted) {
+                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, id: inserted.id, content: result.message } : m));
+              } else {
+                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: result.message } : m));
               }
-            }
-          }
-        } catch (e: unknown) {
-          console.log("[DEBUG] stream error:", (e as Error).message);
-          // Network or parse error - show error if no content received
-          if (fullText === "") {
-            setMessages(prev => prev.filter(m => m.id !== msgId));
-            setMessages(prev => [...prev, {
-              id: Date.now().toString(), role: "assistant",
-              content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
-            }]);
-            lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
-          }
-        } finally {
-          setStreamingMsgId(null);
-          setSending(false);
-          reader.releaseLock();
+            });
+        } else {
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(), role: "assistant",
+            content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
+          }]);
+          lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
         }
+      }
 
-        lastErrorRef.current = null;
+      lastErrorRef.current = null;
 
-        // Generate title if new conversation
-        if (conv.title === "Nueva conversación" && fullText) {
-          const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
-          await supabase.from("conversations")
-            .update({ title, updated_at: new Date().toISOString() })
-            .eq("id", convId);
-          setActiveConv({ ...conv, title });
-          loadConversations();
-        }
+      // Generate title if new conversation
+      if (conv.title === "Nueva conversación") {
+        const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
+        await supabase.from("conversations")
+          .update({ title, updated_at: new Date().toISOString() })
+          .eq("id", convId);
+        setActiveConv({ ...conv, title });
+        loadConversations();
       }
     } catch {
       setMessages(prev => [...prev, {
