@@ -2,13 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 export default function ConfirmEmailClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const type = searchParams.get("type");
 
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState("");
@@ -16,30 +14,26 @@ export default function ConfirmEmailClient() {
 
   useEffect(() => {
     async function verify() {
-      const supabase = createClient();
-
-      // Supabase magic links create a session when the link is opened in the same browser.
-      // Check if user is already logged in (session set by the magic link)
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setConfirmed(true);
-        startCountdown();
+      if (!token) {
+        setError("Enlace inválido. No se encontró el token de confirmación.");
         return;
       }
 
-      // If no session, try verifyOtp with the token
-      if (token) {
-        const { error: verifyError } = await supabase.auth.verifyOtp({
-          type: "email",
-          email: "",
-          token,
-        } as any);
-        if (verifyError) {
-          setError("El enlace de confirmación ha expirado o ya fue usado.");
-        } else {
+      try {
+        const res = await fetch("/api/auth/confirm-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        const data = await res.json();
+
+        if (data.confirmed) {
           setConfirmed(true);
-          startCountdown();
+        } else {
+          setError(data.error || "No se pudo confirmar el correo.");
         }
+      } catch {
+        setError("Error al conectar con el servidor.");
       }
     }
 
@@ -56,19 +50,10 @@ export default function ConfirmEmailClient() {
       }, 1000);
     }
 
-    verify();
+    verify().then(() => {
+      if (token) startCountdown();
+    });
   }, [token, router]);
-
-  const inputStyle = {
-    width: "100%",
-    padding: "14px 16px",
-    borderRadius: "12px",
-    fontSize: "14px",
-    outline: "none",
-    backgroundColor: "var(--background)",
-    border: "1px solid var(--border)",
-    color: "var(--text-primary)",
-  };
 
   if (confirmed) {
     return (
@@ -131,7 +116,7 @@ export default function ConfirmEmailClient() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>Enlace expirado</h2>
+          <h2 className="text-lg font-bold mb-2" style={{ color: "var(--text-primary)" }}>No se pudo verificar</h2>
           <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
             {error}
           </p>
