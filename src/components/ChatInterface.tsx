@@ -390,33 +390,40 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
     try {
       const contentParts: any[] = [{ type: "text", text: s }];
-      const msgId = Date.now().toString() + "-suggest";
-      setMessages(prev => [...prev, {
-        id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(),
-      }]);
-      setStreamingMsgId(msgId);
-
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: s, conversation_id: convId, attachments: contentParts }),
       });
 
-      setStreamingMsgId(null);
-
       if (!res.ok) {
         const result = await res.json();
         const errorCode = result.code || res.status;
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: `Error ${errorCode}. Por favor intente nuevamente.` } : m));
+        setMessages(prev => [...prev, {
+          id: Date.now().toString(), role: "assistant",
+          content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
+        }]);
         lastErrorRef.current = { message: s, conversationId: convId, attachments: contentParts };
         setSending(false);
       } else {
         const result = await res.json();
         if (result.message !== undefined) {
-          await supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: result.message });
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: result.message } : m));
+          const { data: inserted } = await supabase
+            .from("messages")
+            .insert({ conversation_id: convId, role: "assistant", content: result.message })
+            .select()
+            .single();
+          setMessages(prev => [...prev, {
+            id: inserted?.id ?? Date.now().toString(),
+            role: "assistant",
+            content: result.message,
+            created_at: new Date().toISOString(),
+          }]);
         } else {
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo." } : m));
+          setMessages(prev => [...prev, {
+            id: Date.now().toString(), role: "assistant",
+            content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
+          }]);
         }
         lastErrorRef.current = null;
         setSending(false);
