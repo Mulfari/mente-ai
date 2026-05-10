@@ -30,11 +30,11 @@ export async function POST(request: Request) {
       password: "dummy", // required by type but not used for resending
     });
 
-    if (error || !data?.properties?.href) {
+    if (error || !data?.properties?.action_link) {
       return Response.json({ error: error?.message || "Failed to generate link" }, { status: 500 });
     }
 
-    const confirmUrl = data.properties.href;
+    const confirmUrl = data.properties.action_link;
 
     const { error: sendError } = await resend.emails.send({
       from: "Mulfai <noreply@mulfai.com.ve>",

@@ -59,12 +59,12 @@ export async function POST(request: Request) {
       password,
     });
 
-    if (linkError || !linkData?.properties?.href) {
+    if (linkError || !linkData?.properties?.action_link) {
       return NextResponse.json({ error: linkError?.message || "Error al generar enlace." }, { status: 500 });
     }
 
     // Replace localhost in the link with our domain
-    const confirmUrl = linkData.properties.href.replace(
+    const confirmUrl = linkData.properties.action_link.replace(
       /https?:\/\/[^/]+\//,
       "https://mulfai.com.ve/"
     );
