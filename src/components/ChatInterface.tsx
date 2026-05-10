@@ -114,7 +114,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .select("*")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
-    if (data) setMessages(data);
+    if (data) {
+      setMessages(data);
+      // Clear streaming state so realtime doesn't add duplicates
+      setStreamingMsgId(null);
+      lastErrorRef.current = null;
+    }
     setLoading(false);
   }
 
@@ -170,8 +175,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const msg = payload.new as Message;
         if (msg.role === "assistant") {
           setMessages(prev => {
-            // Ignore if already streaming or already in state (prevents duplicate on DB insert after streaming)
-            if (msg.id === streamingMsgId) return prev;
+            // Ignore if it's the message we're currently streaming
+            if (prev.find(m => m.id === streamingMsgId)) return prev;
             if (prev.find(m => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
@@ -450,12 +455,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         setStreamingMsgId(null);
         lastErrorRef.current = null;
-
-        if (fullText) {
-          await supabase.from("messages").insert({
-            conversation_id: convId, role: "assistant", content: fullText,
-          });
-        }
+        setSending(false);
 
         const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
         await supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
@@ -604,19 +604,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         setStreamingMsgId(null);
         lastErrorRef.current = null;
-
-        // Save complete message to DB
-        if (fullText) {
-          await supabase.from("messages").insert({
-            conversation_id: convId, role: "assistant", content: fullText,
-          });
-        }
-
-        // Update message with DB id
-        const finalMsg = messages.find(m => m.id === msgId);
-        if (finalMsg && !finalMsg.id.includes("-")) {
-          // it was a temp id, that's fine
-        }
+        setSending(false);
 
         // Generate title if new conversation
         if (conv.title === "Nueva conversación" && fullText) {
