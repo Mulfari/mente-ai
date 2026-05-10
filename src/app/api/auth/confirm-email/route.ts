@@ -1,4 +1,5 @@
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 function getAdminClient() {
@@ -67,6 +68,10 @@ export async function POST(request: Request) {
     if (updateError) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
+
+    // Also update the profile status to active
+    const supabase = await createClient();
+    await supabase.from("profiles").update({ status: "active" }).eq("id", userId!);
 
     return NextResponse.json({ confirmed: true });
   } catch (err: any) {
