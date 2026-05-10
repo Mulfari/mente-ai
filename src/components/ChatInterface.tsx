@@ -605,11 +605,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     setStreamText(fullText);
                     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText } : m));
                   }
-                } catch (e) { console.log("[DEBUG] parse error:", e.message); }
+                } catch (e: unknown) { console.log("[DEBUG] parse error:", (e as Error).message); }
               }
             }
           }
-        } catch (e) {
+        } catch (e: unknown) {
+          console.log("[DEBUG] stream error:", (e as Error).message);
           // Network or parse error - show error if no content received
           if (fullText === "") {
             setMessages(prev => prev.filter(m => m.id !== msgId));
