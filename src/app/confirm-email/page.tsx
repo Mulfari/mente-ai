@@ -7,24 +7,29 @@ export default async function ConfirmEmailPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const params = await searchParams;
-  const token_hash = params.token_hash as string | undefined;
+  const token = params.token as string | undefined;
   const type = params.type as string | undefined;
-  const next = params.next as string | undefined;
   const supabase = await createClient();
 
   let confirmed = false;
   let error = "";
 
-  if (token_hash && (type === "signup" || type === "email_change")) {
-    const { error: confirmError } = await supabase.auth.verifyOtp({
+  // Supabase magic links set a session cookie when the link is visited.
+  // If the user arrives with a valid session, they're confirmed.
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    confirmed = true;
+  } else if (token && type === "signup") {
+    // Fallback: try OTP verification with the token
+    const { error: verifyError } = await supabase.auth.verifyOtp({
       type: "email",
-      email: "", // token_hash handles it without email
-      token: token_hash,
+      email: "",
+      token,
     } as any);
-    if (confirmError) {
-      error = confirmError.message;
-    } else {
+    if (!verifyError) {
       confirmed = true;
+    } else {
+      error = "El enlace de confirmación ha expirado o ya fue usado.";
     }
   }
 
