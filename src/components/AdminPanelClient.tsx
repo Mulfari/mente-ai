@@ -22,6 +22,7 @@ type Coupon = {
   created_at: string;
   used_by: string | null;
   used_by_email: string | null;
+  used_by_name: string | null;
   used_at: string | null;
   duration_days: number | null;
   label: string | null;
@@ -202,6 +203,16 @@ export default function AdminPanel() {
 
   async function copyToClipboard(text: string) {
     await navigator.clipboard.writeText(text);
+  }
+
+  async function deleteCoupon(couponId: string) {
+    if (!confirm("¿Eliminar este cupón? Esta acción no se puede deshacer.")) return;
+    const { error } = await supabase.from("coupons").delete().eq("id", couponId);
+    if (error) showToast("error", "Error al eliminar cupón");
+    else {
+      showToast("success", "Cupón eliminado");
+      loadCoupons();
+    }
   }
 
   function formatDate(dateStr: string | null) {
@@ -684,7 +695,9 @@ export default function AdminPanel() {
                           <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                           </svg>
-                          <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{c.used_by_email}</p>
+                          <p className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>
+                            {c.used_by_name || c.used_by_email}
+                          </p>
                           <span style={{ color: "var(--text-tertiary)" }}>·</span>
                           <p className="text-xs shrink-0" style={{ color: "var(--text-tertiary)" }}>
                             {formatDate(c.used_at)}
@@ -692,16 +705,26 @@ export default function AdminPanel() {
                         </div>
                       )}
                     </div>
-                    {!c.used_by && (
-                      <button onClick={() => copyToClipboard(c.code)}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {!c.used_by && (
+                        <button onClick={() => copyToClipboard(c.code)}
+                          className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
+                          style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          Copiar
+                        </button>
+                      )}
+                      <button onClick={() => deleteCoupon(c.id)}
                         className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
-                        style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>
+                        style={{ color: "var(--danger)" }}>
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
-                        Copiar
+                        Eliminar
                       </button>
-                    )}
+                    </div>
                   </div>
                 ))}
               </div>

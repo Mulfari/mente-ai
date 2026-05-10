@@ -74,6 +74,7 @@ export async function POST(request: Request) {
     await supabase.from("coupons").update({
       used_by: user.id,
       used_by_email: user.email,
+      used_by_name: user.user_metadata?.full_name || user.email,
       used_at: new Date().toISOString(),
     }).eq("id", coupon.id);
 
