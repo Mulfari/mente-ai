@@ -247,9 +247,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
   function getBlockReason(): { canSend: boolean; canWrite: boolean; reason: string; cooldownSecs: number } {
     if (!isLoggedIn) return { canSend: false, canWrite: false, reason: "Inicia sesion para chatear", cooldownSecs: 0 };
-    if (profile?.status === "inactive") return { canSend: false, canWrite: false, reason: "Tu suscripcion esta inactiva", cooldownSecs: 0 };
-    const weeks = profile?.subscription_weeks ?? 0;
-    if (weeks <= 0 && weeks !== -1) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar.", cooldownSecs: 0 };
+    if (profile && profile.status === "inactive") return { canSend: false, canWrite: false, reason: "Tu suscripcion esta inactiva", cooldownSecs: 0 };
+    const weeks = profile?.subscription_weeks ?? -1;
+    if (weeks === 0) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar.", cooldownSecs: 0 };
     const messagesUsed = profile?.messages_used ?? 0;
     const weeklyLimit = profile?.weekly_limit ?? 100;
     if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) return { canSend: false, canWrite: false, reason: `Has alcanzado el limite semanal (${messagesUsed}/${weeklyLimit}). Añade semanas para continuar.`, cooldownSecs: 0 };
