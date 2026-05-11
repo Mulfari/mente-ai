@@ -48,6 +48,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -213,6 +214,21 @@ export default function ChatInterface({ userId }: { userId: string }) {
       Notification.requestPermission();
     }
   }, [isLoggedIn]);
+
+  // Show onboarding on first login (check localStorage)
+  useEffect(() => {
+    if (isLoggedIn) {
+      const seen = localStorage.getItem("mulfai_onboarding_seen");
+      if (!seen) {
+        setTimeout(() => setShowOnboarding(true), 800);
+      }
+    }
+  }, [isLoggedIn]);
+
+  function dismissOnboarding() {
+    localStorage.setItem("mulfai_onboarding_seen", "1");
+    setShowOnboarding(false);
+  }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1010,6 +1026,30 @@ export default function ChatInterface({ userId }: { userId: string }) {
               <span style={{ color: "var(--primary)" }}>M</span>ulfai
             </span>
           </div>
+          {/* Subscription indicator */}
+          {isLoggedIn && profile && (
+            <button onClick={() => setShowAccountMenu(true)}
+              className="absolute right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-80"
+              style={{
+                backgroundColor: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
+                  ? "rgba(16,163,127,0.15)" : "rgba(239,68,68,0.15)",
+                color: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
+                  ? "var(--primary)" : "var(--danger)",
+              }}>
+              <div className="w-1.5 h-1.5 rounded-full"
+                style={{
+                  backgroundColor: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
+                    ? "var(--primary)" : "var(--danger)",
+                }} />
+              {(profile.subscription_weeks ?? 0) < 0 ? (
+                <span>Ilimitado</span>
+              ) : (profile.subscription_weeks ?? 0) > 0 ? (
+                <span>{profile.subscription_weeks} sem{(profile.subscription_weeks ?? 0) !== 1 ? "s" : ""}</span>
+              ) : (
+                <span>Expirado</span>
+              )}
+            </button>
+          )}
         </header>
 
         {/* Messages */}
@@ -1479,6 +1519,71 @@ export default function ChatInterface({ userId }: { userId: string }) {
             className="rounded-2xl shadow-2xl cursor-zoom-out"
             style={{ maxWidth: "90vw", maxHeight: "85vh", objectFit: "contain" }}
             onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
+      {/* Onboarding overlay */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
+          style={{ backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)" }}
+          onClick={(e) => { if (e.target === e.currentTarget) dismissOnboarding(); }}>
+          <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-fade-in"
+            style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 50px rgba(0,0,0,0.6)" }}>
+            {/* Header */}
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", boxShadow: "0 4px 20px rgba(16,163,127,0.4)" }}>
+                <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>¡Bienvenido a Mulfai!</h2>
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Así funciona tu asistente de IA</p>
+            </div>
+
+            {/* Feature steps */}
+            <div className="space-y-3 mb-6">
+              {[
+                { icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z", text: "Chatea de forma natural", sub: "Escribe lo que necesites, como hablar con una persona" },
+                { icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4", text: "Ayuda con código", sub: "Genera, explica y corrige código en segundos" },
+                { icon: "M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13", text: "Adjunta imágenes", sub: "Envía fotos y la IA las analiza" },
+                { icon: "M13 10V3L4 14h7v7l9-11h-7z", text: "Modo Pensar", sub: "Para respuestas más detalladas y analíticas" },
+              ].map(({ icon, text, sub }, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
+                  style={{ backgroundColor: "var(--background)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ backgroundColor: "rgba(16,163,127,0.12)" }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d={icon} />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold" style={{ color: "var(--text-primary)" }}>{text}</p>
+                    <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <button onClick={dismissOnboarding}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
+              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 4px 20px rgba(16,163,127,0.35)" }}>
+              ¡Entendido, empezar!
+            </button>
+
+            {/* Support link */}
+            <div className="mt-4 text-center">
+              <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                ¿Problemas?{" "}
+                <button onClick={dismissOnboarding}
+                  className="underline transition-colors hover:opacity-80"
+                  style={{ color: "var(--primary)" }}>
+                  Contacta al admin
+                </button>
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
