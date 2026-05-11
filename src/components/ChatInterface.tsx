@@ -889,11 +889,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* New chat button */}
         <div className="px-4 shrink-0 pb-3">
           <button onClick={newConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:border-[rgba(16,163,127,0.4)] hover:bg-[rgba(16,163,127,0.08)] active:scale-[0.98] cursor-pointer"
             style={{
-              backgroundColor: "rgba(16,163,127,0.12)",
+              backgroundColor: "rgba(16,163,127,0.1)",
               color: "#10A37F",
-              border: "1px solid rgba(16,163,127,0.2)",
+              border: "1px solid rgba(16,163,127,0.15)",
             }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
