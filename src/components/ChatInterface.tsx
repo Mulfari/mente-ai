@@ -1579,7 +1579,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 <button onClick={dismissOnboarding}
                   className="underline transition-colors hover:opacity-80"
                   style={{ color: "var(--primary)" }}>
-                  Contacta al admin
+                  Contactar a soporte
                 </button>
               </p>
             </div>
