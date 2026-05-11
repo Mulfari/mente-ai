@@ -64,7 +64,6 @@ function buildStreamReader(
           }
           try {
             const json = JSON.parse(data);
-            // Skip thinking blocks — only forward text_delta to client
             if (json.type === "content_block_delta") {
               if (json.delta?.type === "text_delta") {
                 const text = json.delta.text;
@@ -72,7 +71,6 @@ function buildStreamReader(
                 try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
                 onChunk(text);
               }
-              // Skip thinking_delta — don't forward internal reasoning
             }
           } catch {}
         }
@@ -155,6 +153,86 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
+async function runChat(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  allMessages: any[],
+  mode: string,
+  userId: string,
+  profile: any,
+  now: Date,
+  resumeMessageId?: string,
+) {
+  const apiKey = process.env.ANTHROPIC_API_KEY || "";
+  const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
+
+  const headers = new Headers();
+  headers.set("Authorization", `Bearer ${apiKey}`);
+  headers.set("Content-Type", "application/json");
+  headers.set("anthropic-version", "2023-06-01");
+  headers.set("x-api-key", apiKey);
+
+  let assistantText = "";
+  const onChunk = (text: string) => { assistantText += text; };
+  const onDone = () => {};
+
+  const response = await fetchWithRetry(`${baseUrl}/v1/messages`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "claude-opus-4.6-1m",
+      max_tokens: 4096,
+      stream: true,
+      messages: allMessages,
+      ...(mode === "deep" ? {
+        thinking: {
+          type: "enabled",
+          budget_tokens: 10000,
+        },
+      } : {}),
+    }),
+  });
+
+  if (!response.ok) {
+    const rawText = await response.text().catch(() => "");
+    let errorMsg = "Por favor intente de nuevo.";
+    try {
+      const errorData = JSON.parse(rawText);
+      errorMsg = errorData?.error?.message || errorData?.message || errorMsg;
+    } catch { /* keep generic */ }
+    return { error: errorMsg, code: response.status };
+  }
+
+  const reader = response.body!.getReader();
+  const stream = streamAIResponse(reader, onChunk, onDone);
+
+  // Update usage counts
+  const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
+  const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
+  const needsHourlyReset = !hourlyResetAt || now >= hourlyResetAt;
+  const newHourlyReset = needsHourlyReset
+    ? new Date(now.getTime() + 60 * 60 * 1000).toISOString()
+    : hourlyResetAt!.toISOString();
+
+  // If resuming, don't double-count usage
+  if (!resumeMessageId) {
+    await supabase
+      .from("profiles")
+      .update({
+        messages_used: (profile.messages_used ?? 0) + 1,
+        last_message_at: now.toISOString(),
+        hourly_msg_count: newHourlyCount,
+        hourly_reset_at: newHourlyReset,
+      })
+      .eq("id", userId);
+  }
+
+  return {
+    stream,
+    assistantText: () => assistantText,
+    messageId: resumeMessageId,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -175,18 +253,75 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error, code: validation.code, remaining: validation.remaining }, { status: validation.code });
     }
 
-    const { message, conversation_id, attachments, mode } = await request.json();
+    const { message, conversation_id, attachments, mode, resume_message_id } = await request.json();
 
     if (!message?.trim() && (!attachments || attachments.length === 0)) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
     }
 
-    // Load history
+    // If resuming, clear the in_progress flag and re-run the chat
+    if (resume_message_id) {
+      const { data: msgData } = await supabase
+        .from("messages")
+        .select("id, content")
+        .eq("id", resume_message_id)
+        .single();
+
+      if (!msgData) {
+        return NextResponse.json({ error: "Mensaje no encontrado", code: 404 }, { status: 404 });
+      }
+
+      // Clear in_progress
+      await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
+
+      // Load full history (excluding the message we're resuming)
+      const historyMessages: { role: string; content: any[] }[] = [];
+      const { data: prevMessages } = await supabase
+        .from("messages")
+        .select("id, role, content, attachments")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", { ascending: true })
+        .limit(30);
+
+      if (prevMessages && prevMessages.length > 0) {
+        for (const m of prevMessages) {
+          if (m.id === resume_message_id) continue;
+          const contentParts: any[] = [];
+          if (typeof m.content === "string" && m.content.trim()) {
+            contentParts.push({ type: "text", text: m.content });
+          }
+          if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
+            contentParts.push(...m.attachments.map((a: any) => (typeof a === "string" ? { type: "text", text: `[adjunto: ${a}]` } : a)));
+          }
+          if (contentParts.length > 0) {
+            historyMessages.push({ role: m.role, content: contentParts });
+          }
+        }
+      }
+
+      const result = await runChat(supabase, historyMessages, mode, user.id, profile, now, resume_message_id);
+
+      if (result.error) {
+        return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });
+      }
+
+      return new Response(result.stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+          "X-Accel-Buffering": "no",
+          "X-Resume-Id": resume_message_id,
+        },
+      });
+    }
+
+    // Normal flow — load history
     const historyMessages: { role: string; content: any[] }[] = [];
     if (conversation_id) {
       const { data: prevMessages } = await supabase
         .from("messages")
-        .select("role, content, attachments")
+        .select("id, role, content, attachments")
         .eq("conversation_id", conversation_id)
         .order("created_at", { ascending: true })
         .limit(30);
@@ -207,68 +342,13 @@ export async function POST(request: Request) {
       }
     }
 
-    const apiKey = process.env.ANTHROPIC_API_KEY || "";
-    const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
+    const result = await runChat(supabase, buildMessages(historyMessages, message, attachments), mode, user.id, profile, now);
 
-    const headers = new Headers();
-    headers.set("Authorization", `Bearer ${apiKey}`);
-    headers.set("Content-Type", "application/json");
-    headers.set("anthropic-version", "2023-06-01");
-    headers.set("x-api-key", apiKey);
-
-    const allMessages = buildMessages(historyMessages, message, attachments);
-
-    let assistantText = "";
-    let streamError: string | null = null;
-
-    const response = await fetchWithRetry(`${baseUrl}/v1/messages`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        model: "claude-opus-4.6-1m",
-        max_tokens: 4096,
-        stream: true,
-        messages: allMessages,
-        ...(mode === "deep" ? {
-          thinking: {
-            type: "enabled",
-            budget_tokens: 10000,
-          },
-        } : {}),
-      }),
-    });
-
-    if (!response.ok) {
-      const rawText = await response.text().catch(() => "");
-      let errorMsg = "Por favor intente de nuevo.";
-      try {
-        const errorData = JSON.parse(rawText);
-        errorMsg = errorData?.error?.message || errorData?.message || errorMsg;
-      } catch { /* keep generic */ }
-      return NextResponse.json({ error: errorMsg, code: response.status }, { status: response.status });
+    if (result.error) {
+      return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });
     }
 
-    const reader = response.body!.getReader();
-    const stream = streamAIResponse(reader, (text) => { assistantText += text; }, () => {});
-
-    // Update usage counts
-    const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
-    const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-    const needsHourlyReset = !hourlyResetAt || now >= hourlyResetAt;
-    const newHourlyReset = needsHourlyReset
-      ? new Date(now.getTime() + 60 * 60 * 1000).toISOString()
-      : hourlyResetAt!.toISOString();
-    await supabase
-      .from("profiles")
-      .update({
-        messages_used: (profile.messages_used ?? 0) + 1,
-        last_message_at: now.toISOString(),
-        hourly_msg_count: newHourlyCount,
-        hourly_reset_at: newHourlyReset,
-      })
-      .eq("id", user.id);
-
-    return new Response(stream, {
+    return new Response(result.stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",

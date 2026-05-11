@@ -399,11 +399,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (inserted) setMessages(prev => [...prev, inserted]);
 
     try {
-      const tempMsgId = Date.now().toString();
-      setMessages(prev => [...prev, {
-        id: tempMsgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true,
-      }]);
-      setStreamingMsgId(tempMsgId);
+      const { data: assistantMsg } = await supabase
+        .from("messages")
+        .insert({ conversation_id: convId, role: "assistant", content: "", in_progress: true })
+        .select().single();
+
+      const msgId = assistantMsg?.id || Date.now().toString();
+      if (assistantMsg) setMessages(prev => [...prev, assistantMsg]);
+      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true }]);
+      setStreamingMsgId(msgId);
+
+      currentStreamReqRef.current = { message: s, conversationId: convId, contentParts: [], mode: responseMode };
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -412,17 +418,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
       });
 
       if (!res.ok) {
-        setMessages(prev => prev.filter(m => m.id !== tempMsgId));
+        if (assistantMsg) supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
+        setMessages(prev => prev.filter(m => m.id !== msgId));
         const result = await res.json();
         const errorCode = result.code || res.status;
         setMessages(prev => [...prev, {
           id: Date.now().toString(), role: "assistant",
           content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
+          _retryReq: { message: s, conversationId: convId, contentParts: [], mode: responseMode },
         }]);
-        lastErrorRef.current = { message: s, conversationId: convId, attachments: [] };
         setSending(false);
         setStreamingMsgId(null);
-          return;
+        return;
       }
 
       const reader = res.body!.getReader();
@@ -431,35 +438,25 @@ export default function ChatInterface({ userId }: { userId: string }) {
       let fullText = "";
 
       const updateStreamText = (text: string) => {
-        setMessages(prev => prev.map(m =>
-          m.id === tempMsgId ? { ...m, content: text } : m
-        ));
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
+        supabase.from("messages").update({ content: text }).eq("id", msgId);
       };
 
       const processStream = () => {
         reader.read().then(({ done, value }) => {
           if (done) {
-            supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: fullText }).then(() => {});
-            setMessages(prev => prev.map(m =>
-              m.id === tempMsgId ? { ...m, content: fullText, _loading: false } : m
-            ));
+            supabase.from("messages").update({ content: fullText, in_progress: false }).eq("id", msgId);
+            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false } : m));
             currentStreamReqRef.current = null;
             setSending(false);
             setStreamingMsgId(null);
-                  const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
+            const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
             supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
             setActiveConv({ ...conv!, title });
-            // Flush queued message
             if (queuedMsgRef.current) {
               const q = queuedMsgRef.current as QueuedMsg;
               queuedMsgRef.current = null;
-              setTimeout(() => {
-                setInput(q.text);
-                setAttachments(q.files);
-                setPreviewUrls(q.previews);
-                autoResize();
-                sendMessage();
-              }, 100);
+              setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
             }
             return;
           }
@@ -473,21 +470,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
               if (data === "[DONE]") continue;
               try {
                 const json = JSON.parse(data);
-                if (json.type === "chunk" && json.text) {
-                  fullText += json.text;
-                  updateStreamText(fullText);
-                }
+                if (json.type === "chunk" && json.text) { fullText += json.text; updateStreamText(fullText); }
               } catch {}
             }
           }
           processStream();
         }).catch(() => {
           const req = currentStreamReqRef.current;
-          // Show "Reconnecting..." and auto-retry once
           if (req) {
-            setMessages(prev => prev.map(m =>
-              m.id === tempMsgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m
-            ));
+            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m));
             setTimeout(async () => {
               const res2 = await fetch("/api/chat", {
                 method: "POST",
@@ -496,21 +487,22 @@ export default function ChatInterface({ userId }: { userId: string }) {
               });
               if (!res2.ok) {
                 const result = await res2.json();
-                setMessages(prev => prev.map(m =>
-                  m.id === tempMsgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
-                ));
+                supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
+                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m));
               } else {
                 const reader2 = res2.body!.getReader();
                 const decoder2 = new TextDecoder();
                 let buffer2 = "";
                 let fullText2 = "";
+                const updateStreamText2 = (text: string) => {
+                  setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
+                  supabase.from("messages").update({ content: text }).eq("id", msgId);
+                };
                 const processStream2 = () => {
                   reader2.read().then(({ done, value }) => {
                     if (done) {
-                      supabase.from("messages").insert({ conversation_id: req.conversationId, role: "assistant", content: fullText2 }).then(() => {});
-                      setMessages(prev => prev.map(m =>
-                        m.id === tempMsgId ? { ...m, content: fullText2, _loading: false } : m
-                      ));
+                      supabase.from("messages").update({ content: fullText2, in_progress: false }).eq("id", msgId);
+                      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText2, _loading: false } : m));
                       currentStreamReqRef.current = null;
                       setSending(false);
                       setStreamingMsgId(null);
@@ -526,20 +518,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         if (data === "[DONE]") continue;
                         try {
                           const json = JSON.parse(data);
-                          if (json.type === "chunk" && json.text) {
-                            fullText2 += json.text;
-                            setMessages(prev => prev.map(m =>
-                              m.id === tempMsgId ? { ...m, content: fullText2 } : m
-                            ));
-                          }
+                          if (json.type === "chunk" && json.text) { fullText2 += json.text; updateStreamText2(fullText2); }
                         } catch {}
                       }
                     }
                     processStream2();
                   }).catch(() => {
-                    setMessages(prev => prev.map(m =>
-                      m.id === tempMsgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
-                    ));
+                    supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
+                    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m));
                     currentStreamReqRef.current = null;
                     setSending(false);
                     setStreamingMsgId(null);
@@ -550,10 +536,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
             }, 1000);
             return;
           }
-          // No req saved — fallback to error message
-          setMessages(prev => prev.map(m =>
-            m.id === tempMsgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m
-          ));
+          supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m));
           setSending(false);
           setStreamingMsgId(null);
             });
@@ -636,20 +620,26 @@ export default function ChatInterface({ userId }: { userId: string }) {
         }
       }
 
-      // Add a placeholder streaming message immediately
-      const tempMsgId = Date.now().toString();
-      const reqParams = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
-      setMessages(prev => [...prev, {
-        id: tempMsgId,
-        role: "assistant",
-        content: "",
-        created_at: new Date().toISOString(),
-        _loading: true,
-        _retryReq: reqParams,
-      }]);
-      setStreamingMsgId(tempMsgId);
+      // Create assistant message in DB (with in_progress flag so we can resume)
+      const { data: assistantMsg } = await supabase
+        .from("messages")
+        .insert({ conversation_id: convId, role: "assistant", content: "", in_progress: true })
+        .select()
+        .single();
 
+      const msgId = assistantMsg?.id || Date.now().toString();
+      if (assistantMsg) {
+        setMessages(prev => [...prev, assistantMsg]);
+      } else {
+        setMessages(prev => [...prev, {
+          id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true
+        }]);
+      }
+      setStreamingMsgId(msgId);
+
+      const reqParams = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
       currentStreamReqRef.current = reqParams;
+
       // Send streaming request
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -658,17 +648,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
       });
 
       if (!res.ok) {
-        setMessages(prev => prev.filter(m => m.id !== tempMsgId));
         const result = await res.json();
         const errorCode = result.code || res.status;
+        // Clear in_progress flag
+        if (assistantMsg) {
+          supabase.from("messages").update({ in_progress: false, content: result.error || `Error ${errorCode}. Intenta de nuevo.` }).eq("id", msgId);
+        }
+        setMessages(prev => prev.filter(m => m.id !== msgId));
         setMessages(prev => [...prev, {
           id: Date.now().toString(), role: "assistant",
           content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
-          _retryReq: currentStreamReqRef.current,
+          _retryReq: { message: userMsg, conversationId: convId, contentParts, mode: responseMode },
         }]);
         setSending(false);
         setStreamingMsgId(null);
-        setStreamError(currentStreamReqRef.current ? "retry" : null);
           textareaRef.current?.focus();
         // Flush queued message on error too
         if (queuedMsgRef.current) {
@@ -690,18 +683,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
         let fullText = "";
 
         const updateStreamText = (text: string) => {
+          // Update both local state and DB in_progress message
           setMessages(prev => prev.map(m =>
-            m.id === tempMsgId ? { ...m, content: text } : m
+            m.id === msgId ? { ...m, content: text } : m
           ));
+          supabase.from("messages").update({ content: text }).eq("id", msgId);
         };
 
         const processStream = () => {
           reader.read().then(({ done, value }) => {
             if (done) {
-              // Save message to Supabase
-              supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: fullText }).then(() => {});
+              // Save message to Supabase and clear in_progress
+              supabase.from("messages").update({ content: fullText, in_progress: false }).eq("id", msgId);
               setMessages(prev => prev.map(m =>
-                m.id === tempMsgId ? { ...m, content: fullText, _loading: false } : m
+                m.id === msgId ? { ...m, content: fullText, _loading: false } : m
               ));
               currentStreamReqRef.current = null;
               setSending(false);
@@ -744,7 +739,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             const req = currentStreamReqRef.current;
             if (req) {
               setMessages(prev => prev.map(m =>
-                m.id === tempMsgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m
+                m.id === msgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m
               ));
               setTimeout(async () => {
                 const res2 = await fetch("/api/chat", {
@@ -755,7 +750,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 if (!res2.ok) {
                   const result = await res2.json();
                   setMessages(prev => prev.map(m =>
-                    m.id === tempMsgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                    m.id === msgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
                   ));
                 } else {
                   const reader2 = res2.body!.getReader();
@@ -764,7 +759,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   let fullText2 = "";
                   const updateStreamText2 = (text: string) => {
                     setMessages(prev => prev.map(m =>
-                      m.id === tempMsgId ? { ...m, content: text } : m
+                      m.id === msgId ? { ...m, content: text } : m
                     ));
                   };
                   const processStream2 = () => {
@@ -772,7 +767,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       if (done) {
                         supabase.from("messages").insert({ conversation_id: req.conversationId, role: "assistant", content: fullText2 }).then(() => {});
                         setMessages(prev => prev.map(m =>
-                          m.id === tempMsgId ? { ...m, content: fullText2, _loading: false } : m
+                          m.id === msgId ? { ...m, content: fullText2, _loading: false } : m
                         ));
                         currentStreamReqRef.current = null;
                         setSending(false);
@@ -812,7 +807,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       processStream2();
                     }).catch(() => {
                       setMessages(prev => prev.map(m =>
-                        m.id === tempMsgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                        m.id === msgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
                       ));
                       currentStreamReqRef.current = null;
                       setSending(false);
@@ -825,7 +820,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               return;
             }
             setMessages(prev => prev.map(m =>
-              m.id === tempMsgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m
+              m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m
             ));
             setSending(false);
             setStreamingMsgId(null);
