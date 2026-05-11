@@ -149,7 +149,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
     if (error) console.error("loadMessages error:", error);
-    console.log("[Mulfai] loadMessages:", conversationId, "count:", data?.length, "data:", JSON.stringify(data?.map(m => ({ id: m.id, role: m.role, content: m.content?.slice(0, 30) }))));
+    console.log("[Mulfai] loadMessages result:", conversationId, "count:", data?.length, "roles:", data?.map(m => m.role), "error:", error);
     setMessages(data ?? []);
     setStreamingMsgId(null);
     lastErrorRef.current = null;
@@ -161,37 +161,54 @@ export default function ChatInterface({ userId }: { userId: string }) {
   }, [userId, isLoggedIn]);
 
   // Load initial conversation from URL (works for both /chat and /chat/[id])
+  // Runs whenever isLoggedIn or userId changes, plus checks URL on mount
   useEffect(() => {
-    if (!isLoggedIn) return;
-
     async function loadFromUrl() {
-      const pathParts = window.location.pathname.split("/");
-      const urlId = pathParts[pathParts.length - 1];
-      console.log("[Mulfai] loadFromUrl path:", window.location.pathname, "urlId:", urlId, "isLoggedIn:", isLoggedIn, "userId:", userId);
-      if (!urlId || urlId === "chat" || !urlId.match(/^[0-9a-f-]{36}$/i)) {
+      if (!isLoggedIn || !userId) return;
+
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      const urlId = parts[parts.length - 1];
+      console.log("[Mulfai] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
+
+      if (!urlId || urlId === "chat" || urlId === userId) {
         setActiveConv(null);
         setMessages([]);
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("conversations")
         .select("id, title, created_at, updated_at")
         .eq("id", urlId)
         .eq("user_id", userId)
         .single();
-      console.log("[Mulfai] conv found:", data?.id, data?.title);
-      if (!data) return;
+      console.log("[Mulfai] conv result:", data?.id, "error:", error);
+
+      if (!data || error) {
+        // Conversation not found — reset to home
+        setActiveConv(null);
+        setMessages([]);
+        return;
+      }
 
       setActiveConv(data);
-      setConversations(prev => {
-        if (prev.find(c => c.id === data.id)) return prev;
-        return [data, ...prev];
-      });
+      setConversations(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
+      console.log("[Mulfai] calling loadMessages:", data.id);
       await loadMessages(data.id);
+      console.log("[Mulfai] done, messages count:", messages.length);
     }
     loadFromUrl();
-  }, [isLoggedIn]);
+  }, [isLoggedIn, userId]);
+
+  // Sync activeConv with URL when user changes conversations
+  useEffect(() => {
+    if (!activeConv) return;
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    const urlId = parts[parts.length - 1];
+    if (urlId !== activeConv.id) {
+      window.history.replaceState(null, "", `/chat/${activeConv.id}`);
+    }
+  }, [activeConv]);
 
   // Realtime subscription for conversations
   useEffect(() => {
