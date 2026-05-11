@@ -47,6 +47,7 @@ export async function POST(request: Request) {
     if (signUpData.user?.id) {
       await supabase.from("profiles").upsert({
         id: signUpData.user.id,
+        email: signUpData.user.email,
         status: "pending",
         subscription_weeks: 0,
         weekly_limit: 0,

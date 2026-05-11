@@ -61,25 +61,20 @@ export default function AdminPanel() {
   async function loadUsers() {
     setLoading(true);
 
-    // Fetch via server-side API route to avoid RLS/cross-origin issues
-    const res = await fetch("/api/admin/list-users");
-    const { users: authUsersList } = await res.json();
-
     const { data: profiles } = await supabase
       .from("profiles")
       .select("*")
       .order("created_at", { ascending: false });
 
     const merged = (profiles || []).map(p => {
-      const authUser = authUsersList?.find((u: any) => u.id === p.id);
       return {
         id: p.id,
-        email: authUser?.email || "Sin email",
+        email: p.email || "Sin email",
         status: p.status,
         subscription_weeks: p.subscription_weeks ?? 0,
         subscription_start: p.subscription_start,
         role: p.role,
-        created_at: authUser?.created_at || p.created_at,
+        created_at: p.created_at,
         used_coupon_label: p.used_coupon_label ?? null,
         used_coupon_label_color: p.used_coupon_label_color ?? null,
       } as Profile;
