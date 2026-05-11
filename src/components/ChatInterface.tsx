@@ -52,9 +52,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamText, setStreamText] = useState("");
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
-  const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
+  type QueuedMsg = { text: string; files: File[]; previews: Record<string, string> };
+  const queuedMsgRef = useRef<QueuedMsg | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -218,18 +219,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
     }
   }, [sending]);
 
-  // Cooldown countdown timer
-  useEffect(() => {
-    if (cooldownRemaining <= 0) return;
-    const timer = setInterval(() => {
-      setCooldownRemaining(prev => {
-        if (prev <= 1) return 0;
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [cooldownRemaining]);
-
   function autoResize() {
     const ta = textareaRef.current;
     if (ta) {
@@ -247,16 +236,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
       d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
   }
 
-  function getBlockReason(): { canSend: boolean; canWrite: boolean; reason: string; cooldownSecs: number } {
-    if (!isLoggedIn) return { canSend: false, canWrite: false, reason: "Inicia sesion para chatear", cooldownSecs: 0 };
-    if (profile && profile.status === "inactive") return { canSend: false, canWrite: false, reason: "Tu suscripcion esta inactiva", cooldownSecs: 0 };
+  function getBlockReason(): { canSend: boolean; canWrite: boolean; reason: string } {
+    if (!isLoggedIn) return { canSend: false, canWrite: false, reason: "Inicia sesion para chatear" };
+    if (profile && profile.status === "inactive") return { canSend: false, canWrite: false, reason: "Tu suscripcion esta inactiva" };
     const weeks = profile?.subscription_weeks ?? -1;
-    if (weeks === 0) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar.", cooldownSecs: 0 };
+    if (weeks === 0) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar." };
     const messagesUsed = profile?.messages_used ?? 0;
     const weeklyLimit = profile?.weekly_limit ?? 100;
-    if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) return { canSend: false, canWrite: false, reason: `Has alcanzado el limite semanal (${messagesUsed}/${weeklyLimit}). Añade semanas para continuar.`, cooldownSecs: 0 };
-    if (cooldownRemaining > 0) return { canSend: false, canWrite: true, reason: `Espera ${cooldownRemaining}s`, cooldownSecs: cooldownRemaining };
-    return { canSend: true, canWrite: true, reason: "", cooldownSecs: 0 };
+    if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) return { canSend: false, canWrite: false, reason: `Has alcanzado el limite semanal (${messagesUsed}/${weeklyLimit}). Añade semanas para continuar.` };
+    return { canSend: true, canWrite: true, reason: "" };
   }
 
   
@@ -435,6 +423,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
             const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
             supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
             setActiveConv({ ...conv!, title });
+            // Flush queued message
+            if (queuedMsgRef.current) {
+              const q = queuedMsgRef.current as QueuedMsg;
+              queuedMsgRef.current = null;
+              setTimeout(() => {
+                setInput(q.text);
+                setAttachments(q.files);
+                setPreviewUrls(q.previews);
+                autoResize();
+                sendMessage();
+              }, 100);
+            }
             return;
           }
           buffer += decoder.decode(value, { stream: true });
@@ -476,10 +476,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
   }
 
   async function sendMessage() {
-    if ((!input.trim() && attachments.length === 0) || sending) return;
+    if (!input.trim() && attachments.length === 0) return;
     const block = getBlockReason();
     if (!block.canSend) return;
-    setCooldownRemaining(30);
+
+    // If AI is currently streaming, queue this message (max 1)
+    if (sending) {
+      if (queuedMsgRef.current) return; // Already queued, ignore
+      queuedMsgRef.current = { text: input.trim(), files: [...attachments], previews: { ...previewUrls } } as QueuedMsg;
+      setInput("");
+      setAttachments([]);
+      setPreviewUrls({});
+      autoResize();
+      return;
+    }
 
     let conv = activeConv;
     if (!conv) {
@@ -495,16 +505,21 @@ export default function ChatInterface({ userId }: { userId: string }) {
       } else return;
     }
 
-    const userMsg = input.trim();
-    const filesToSend = [...attachments];
+    const queuedMsg = queuedMsgRef.current;
+    queuedMsgRef.current = null;
+
+    const userMsg = queuedMsg ? queuedMsg.text : input.trim();
+    const filesToSend = queuedMsg ? queuedMsg.files : [...attachments];
+
+    if (!conv) return;
+
     setInput("");
     setAttachments([]);
     setPreviewUrls({});
     setSending(true);
     autoResize();
 
-    // Keep previews for display in chat bubble
-    const savedPreviews = { ...previewUrls };
+    const savedPreviews = queuedMsg ? queuedMsg.previews : { ...previewUrls };
 
     if (!conv) return;
 
@@ -560,13 +575,19 @@ export default function ChatInterface({ userId }: { userId: string }) {
         setSending(false);
         setStreamingMsgId(null);
         setStreamText("");
-        if (result.remaining) {
-          const secs = Math.ceil(result.remaining);
-          setCooldownRemaining(secs);
-          setTimeout(() => setCooldownRemaining(0), secs * 1000);
-        }
-        if (errorCode === 429 && !result.remaining) setCooldownRemaining(30);
         textareaRef.current?.focus();
+        // Flush queued message on error too
+        if (queuedMsgRef.current) {
+          const q = queuedMsgRef.current as QueuedMsg;
+          queuedMsgRef.current = null;
+          setTimeout(() => {
+            setInput(q.text);
+            setAttachments(q.files);
+            setPreviewUrls(q.previews);
+            autoResize();
+            sendMessage();
+          }, 500);
+        }
       } else {
         // Process streaming response
         const reader = res.body!.getReader();
@@ -577,7 +598,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const processStream = () => {
           reader.read().then(({ done, value }) => {
             if (done) {
-              // Save message to Supabase (fire and forget - message already shown)
+              // Save message to Supabase
               supabase.from("messages").insert({ conversation_id: convId, role: "assistant", content: fullText }).then(() => {});
               setMessages(prev => prev.map(m =>
                 m.id === tempMsgId ? { ...m, content: fullText, _loading: false } : m
@@ -585,7 +606,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
               setSending(false);
               setStreamingMsgId(null);
               setStreamText("");
-              textareaRef.current?.focus();
+              // Flush queued message if any
+              if (queuedMsgRef.current) {
+                const q = queuedMsgRef.current as QueuedMsg;
+                queuedMsgRef.current = null;
+                setTimeout(() => {
+                  setInput(q.text);
+                  setAttachments(q.files);
+                  setPreviewUrls(q.previews);
+                  autoResize();
+                  sendMessage();
+                }, 100);
+              } else {
+                textareaRef.current?.focus();
+              }
               return;
             }
             buffer += decoder.decode(value, { stream: true });
@@ -821,9 +855,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               </svg>
                             </div>
                             <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--warning)" }}>
-                              {block.cooldownSecs > 0
-                                ? `Espera ${block.cooldownSecs}s para enviar`
-                                : "Suscripcion bloqueada"}
+                              {"Suscripcion bloqueada"}
                             </p>
                             <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
                               {block.reason}
@@ -1106,7 +1138,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 }}
                 placeholder={(() => {
                   const block = getBlockReason();
-                  if (cooldownRemaining > 0) return `Espera ${cooldownRemaining}s...`;
                   if (!isLoggedIn) return "Inicia sesion para chatear...";
                   if (!block.canWrite) return "Sin suscripcion activa...";
                   return "Escribe un mensaje...";
@@ -1118,18 +1149,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
               />
               <button
                 onClick={sendMessage}
-                disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled || cooldownRemaining > 0}
+                disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled}
                 className="shrink-0 p-2 sm:p-2.5 rounded-lg transition-all hover:opacity-90 active:scale-90 disabled:opacity-30 relative touch-manipulation"
-                style={{ backgroundColor: cooldownRemaining > 0 ? "var(--warning)" : "var(--primary)", color: "white" }}>
-                {cooldownRemaining > 0 ? (
-                  <div className="w-3.5 h-3.5 flex items-center justify-center">
-                    <span className="text-[9px] font-bold">{cooldownRemaining}</span>
-                  </div>
-                ) : (
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
-                )}
+                style={{ backgroundColor: "var(--primary)", color: "white" }}>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           </div>

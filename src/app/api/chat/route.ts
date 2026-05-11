@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 const MAX_RETRIES = 2;
-const RETRY_DELAY_MS = 3000;
-const TIMEOUT_MS = 60_000;
+const RETRY_DELAY_MS = 5000;
+const TIMEOUT_MS = 300_000; // 5 min — needed for thinking mode
 const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
 

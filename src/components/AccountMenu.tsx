@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -22,29 +22,37 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [tick, setTick] = useState(0); // force re-render every second
   const supabase = createClient();
+
+  // Tick every second to update countdown
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const weeks = profile?.subscription_weeks ?? 0;
   const isUnlimited = weeks < 0;
-  const isActive = profile && weeks > 0 || isUnlimited;
+  const isActive = profile && (weeks > 0 || isUnlimited);
 
-  function getRemainingTime() {
-    if (isUnlimited) return "Ilimitado";
-    if (!profile || weeks <= 0) return "Inactiva";
+  function getCountdown() {
+    if (isUnlimited) return null;
+    if (!profile || weeks <= 0) return null;
     const endStr = profile.subscription_end;
-    if (!endStr) return `${weeks} semanas`;
+    if (!endStr) return null;
 
-    const end = new Date(endStr);
-    const now = new Date();
-    const diffMs = end.getTime() - now.getTime();
+    const end = new Date(endStr).getTime();
+    const now = Date.now();
+    const diffMs = end - now;
 
-    if (diffMs <= 0) return "Expirada";
+    if (diffMs <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
 
-    const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-    if (totalDays === 1) return "1 día restante";
-    if (totalDays <= 30) return `${totalDays} días restantes`;
-    const remainingWeeks = Math.ceil(totalDays / 7);
-    return `${remainingWeeks} semanas restantes`;
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const days = Math.floor(totalSeconds / (24 * 60 * 60));
+    const hours = Math.floor((totalSeconds % (24 * 60 * 60)) / (60 * 60));
+    const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+    const seconds = totalSeconds % 60;
+    return { days, hours, minutes, seconds, expired: false };
   }
 
   function getStatusColor() {
@@ -59,7 +67,10 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
     return { bg: "rgba(16,163,127,0.2)", color: "var(--primary)" };
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _ = tick; // consume tick to trigger re-render
   const statusColor = getStatusColor();
+  const countdown = getCountdown();
 
   async function applyCoupon(e: React.FormEvent) {
     e.preventDefault();
@@ -132,31 +143,57 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
         </div>
 
         {/* Status */}
-        <div className="flex items-center gap-3 mb-5 px-4 py-3 rounded-xl"
+        <div className="mb-5 px-4 py-3 rounded-xl"
           style={{ backgroundColor: "var(--background)" }}>
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0 ${
-            isUnlimited ? "" : isActive ? "" : ""
-          }`}
-            style={{
-              background: statusColor.bg,
-              color: statusColor.color
-            }}>
-            {isUnlimited ? "∞" : isActive ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            )}
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold shrink-0`}
+              style={{ background: statusColor.bg, color: statusColor.color }}>
+              {isUnlimited ? "∞" : isActive ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+            </div>
+            <div>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Estado</p>
+              <p className="text-sm font-semibold" style={{ color: statusColor.color }}>
+                {isUnlimited ? "Ilimitado" : isActive ? "Activa" : countdown?.expired ? "Expirada" : "Inactiva"}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Tiempo restante</p>
-            <p className="text-sm font-semibold" style={{ color: statusColor.color }}>
-              {getRemainingTime()}
-            </p>
-          </div>
+
+          {/* Live countdown */}
+          {isUnlimited ? (
+            <div className="text-center py-2">
+              <span className="text-2xl font-bold" style={{ color: "#8b5cf6" }}>∞</span>
+              <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Acceso ilimitado</p>
+            </div>
+          ) : !isActive || !countdown || countdown.expired ? (
+            <div className="text-center py-2">
+              <p className="text-sm font-semibold" style={{ color: "var(--danger)" }}>Suscripción expirada</p>
+              <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Añade tiempo para continuar</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-1 text-center">
+              {[
+                { value: countdown!.days, label: "días" },
+                { value: countdown!.hours, label: "hrs" },
+                { value: countdown!.minutes, label: "min" },
+                { value: countdown!.seconds, label: "seg" },
+              ].map(({ value, label }) => (
+                <div key={label} className="rounded-lg py-2 px-1" style={{ backgroundColor: "var(--surface)" }}>
+                  <span className="text-lg font-bold block" style={{ color: statusColor.color }}>
+                    {String(value).padStart(2, "0")}
+                  </span>
+                  <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{label}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Actions */}
