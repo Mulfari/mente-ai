@@ -151,7 +151,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
     async function loadFromUrl() {
       const pathParts = window.location.pathname.split("/");
       const urlId = pathParts[pathParts.length - 1];
-      if (!urlId || urlId === "chat" || !urlId.match(/^[0-9a-f-]{36}$/i)) return;
+      if (!urlId || urlId === "chat" || !urlId.match(/^[0-9a-f-]{36}$/i)) {
+        // On /chat with no conversation selected, reset to empty state
+        setActiveConv(null);
+        setMessages([]);
+        return;
+      }
 
       const { data } = await supabase
         .from("conversations")
@@ -345,6 +350,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setActiveConv(null);
     setMessages([]);
     setShowSidebar(false);
+    window.history.pushState(null, "", "/chat");
     // Recargar sugerencias al iniciar nuevo chat
     loadSuggestions();
   }
