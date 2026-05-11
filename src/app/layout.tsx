@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -6,6 +6,15 @@ const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1.0,
+  maximumScale: 1.0,
+  minimumScale: 1.0,
+  userScalable: false,
+  interactiveWidget: "overlays-content",
+};
 
 export const metadata: Metadata = {
   title: "Mulfai — Tu asistente de IA personal",
@@ -23,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={inter.variable}>
-      <body className="min-h-full flex flex-col antialiased">{children}</body>
+      <body className="h-full overflow-hidden overscroll-none antialiased">{children}</body>
     </html>
   );
 }
