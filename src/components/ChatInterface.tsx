@@ -119,6 +119,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
   async function loadMessages(conversationId: string) {
     setLoading(true);
+    // Clean up orphaned in_progress messages in this conversation first
+    await supabase
+      .from("messages")
+      .delete()
+      .eq("conversation_id", conversationId)
+      .eq("role", "assistant")
+      .eq("content", "")
+      .eq("in_progress", true);
     const { data } = await supabase
       .from("messages")
       .select("*")
@@ -126,7 +134,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .order("created_at", { ascending: true });
     if (data) {
       setMessages(data);
-      // Clear streaming state so realtime doesn't add duplicates
       setStreamingMsgId(null);
       lastErrorRef.current = null;
     }
@@ -265,7 +272,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
   }
 
   function formatTime(dateStr: string) {
+    if (!dateStr) return "";
     const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
     const now = new Date();
     const isToday = d.toDateString() === now.toDateString();
     if (isToday) return d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
