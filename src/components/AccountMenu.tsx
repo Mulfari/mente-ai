@@ -22,6 +22,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [weeksAdded, setWeeksAdded] = useState<number | null>(null);
   const [tick, setTick] = useState(0); // force re-render every second
   const supabase = createClient();
 
@@ -90,13 +91,14 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
     if (data.error) {
       setError(data.error);
     } else if (data.success) {
-      setSuccess("¡Cupón aplicado correctamente!");
+      const added = data.weeks_added;
+      setWeeksAdded(added);
+      setSuccess(added ? `¡+${added} días añadidos!` : "¡Cupón aplicado correctamente!");
       setCouponCode("");
-      // Notify parent to reload profile
       setTimeout(() => {
         onClose();
         window.location.reload();
-      }, 1500);
+      }, 2500);
     }
   }
 

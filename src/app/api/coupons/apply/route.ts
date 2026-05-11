@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     // Obtener perfil actual
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subscription_weeks, status")
+      .select("subscription_weeks, subscription_end, status")
       .eq("id", user.id)
       .single();
 
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     let label = coupon.label ?? "Suscripción";
     let color = coupon.color ?? "#10A37F";
     let subscriptionEnd: string | null = null;
+    const prevEnd = profile.subscription_end;
 
     if (coupon.is_unlimited) {
       newWeeks = -1; // -1 = ilimitado
@@ -57,7 +58,10 @@ export async function POST(request: Request) {
       const days = coupon.duration_days ?? 7;
       const weeksToAdd = Math.ceil(days / 7);
       newWeeks = newWeeks <= 0 ? weeksToAdd : newWeeks + weeksToAdd;
-      subscriptionEnd = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+
+      // Sumar sobre el tiempo restante, no desde ahora
+      const baseTime = prevEnd ? new Date(prevEnd).getTime() : Date.now();
+      subscriptionEnd = new Date(baseTime + days * 24 * 60 * 60 * 1000).toISOString();
     }
 
     // Si estaba inactivo, activar
@@ -85,6 +89,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       weeks: newWeeks,
+      weeks_added: coupon.is_unlimited ? null : (coupon.duration_days ?? 7),
       subscription_end: subscriptionEnd,
       label,
       color,
