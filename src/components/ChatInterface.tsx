@@ -701,7 +701,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="fixed inset-0 flex" style={{ height: "calc(var(--vh, 1vh) * 100)", backgroundColor: "var(--background)" }}>
+    <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
         className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[85vw] flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}

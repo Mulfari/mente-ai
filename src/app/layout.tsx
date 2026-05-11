@@ -32,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={inter.variable}>
-      <body className="h-full overflow-hidden overscroll-none antialiased">{children}</body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }
