@@ -136,13 +136,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
   async function loadMessages(conversationId: string) {
     setLoading(true);
-    // Clean up orphaned empty assistant messages first
-    await supabase
-      .from("messages")
-      .delete()
-      .eq("conversation_id", conversationId)
-      .eq("role", "assistant")
-      .eq("content", "");
     const { data, error } = await supabase
       .from("messages")
       .select("*")
@@ -553,7 +546,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const processStream = () => {
         reader.read().then(({ done, value }) => {
           if (done) {
-            supabase.from("messages").update({ content: fullText, in_progress: false }).eq("id", msgId);
+            supabase.from("messages").upsert({ id: msgId, content: fullText, in_progress: false }).then(() => {
+              console.log("[Mulfai] suggestion saved:", msgId);
+            });
             setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false } : m));
             currentStreamReqRef.current = null;
             setSending(false);
@@ -609,7 +604,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 const processStream2 = () => {
                   reader2.read().then(({ done, value }) => {
                     if (done) {
-                      supabase.from("messages").update({ content: fullText2, in_progress: false }).eq("id", msgId);
+                      supabase.from("messages").upsert({ id: msgId, content: fullText2, in_progress: false });
                       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText2, _loading: false } : m));
                       currentStreamReqRef.current = null;
                       setSending(false);
@@ -800,8 +795,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const processStream = () => {
           reader.read().then(({ done, value }) => {
             if (done) {
-              // Save message to Supabase and clear in_progress
-              supabase.from("messages").update({ content: fullText, in_progress: false }).eq("id", msgId);
+              // Save complete response to DB from client side (more reliable than waiting for API route)
+              supabase.from("messages").upsert({
+                id: msgId,
+                content: fullText,
+                in_progress: false,
+              }).then(() => {
+                console.log("[Mulfai] saved response to DB:", msgId, "chars:", fullText.length);
+              });
               setMessages(prev => prev.map(m =>
                 m.id === msgId ? { ...m, content: fullText, _loading: false } : m
               ));
@@ -870,7 +871,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   const processStream2 = () => {
                     reader2.read().then(({ done, value }) => {
                       if (done) {
-                        supabase.from("messages").insert({ conversation_id: req.conversationId, role: "assistant", content: fullText2 }).then(() => {});
+                        supabase.from("messages").upsert({ id: msgId, conversation_id: req.conversationId, role: "assistant", content: fullText2, in_progress: false });
                         setMessages(prev => prev.map(m =>
                           m.id === msgId ? { ...m, content: fullText2, _loading: false } : m
                         ));
