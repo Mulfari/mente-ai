@@ -1021,26 +1021,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 </div>
               ))}
 
-              {sending && (
-                <div className="flex justify-start mb-4 animate-fade-in">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2.5 mt-0.5 shrink-0"
-                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
-                    <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </div>
-                  <div className="px-4 py-2.5 rounded-2xl text-sm"
-                    style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", borderRadius: "16px 16px 16px 4px" }}>
-                    <span className="inline-flex items-center gap-1.5">
-                      {[0, 150, 300].map((delay, i) => (
-                        <span key={i} className="w-2.5 h-2.5 rounded-full animate-pulse-dot"
-                          style={{ backgroundColor: "var(--primary)", animationDelay: `${delay}ms` }} />
-                      ))}
-                    </span>
-                  </div>
-                </div>
-              )}
-
               <div ref={messagesEndRef} />
           </div>
         )}
