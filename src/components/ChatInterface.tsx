@@ -80,13 +80,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
   }, []);
 
   // Load daily suggestions
-  useEffect(() => {
+  function loadSuggestions() {
     if (!isLoggedIn) return;
     setSuggestionsLoading(true);
     fetch("/api/suggestions")
       .then(r => r.json())
       .then(d => { if (d.suggestions) setSuggestions(d.suggestions); setSuggestionsLoading(false); })
       .catch(() => setSuggestionsLoading(false));
+  }
+  useEffect(() => {
+    loadSuggestions();
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -276,6 +279,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setActiveConv(null);
     setMessages([]);
     setShowSidebar(false);
+    // Recargar sugerencias al iniciar nuevo chat
+    loadSuggestions();
   }
 
   async function selectConv(conv: Conversation) {
@@ -683,7 +688,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="flex min-h-screen max-h-screen relative" style={{ backgroundColor: "var(--background)" }}>
+    <div className="flex h-[100dvh] relative" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
         className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[85vw] flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
