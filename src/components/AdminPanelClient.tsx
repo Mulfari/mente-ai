@@ -30,7 +30,7 @@ type Coupon = {
   is_unlimited: boolean;
 };
 
-type CouponType = "trial" | "weekly" | "unlimited";
+type CouponType = "trial" | "weekly" | "20weeks" | "unlimited";
 type CouponFilter = "all" | "available" | "used";
 
 type Tab = "users" | "coupons";
@@ -179,8 +179,9 @@ export default function AdminPanel() {
     const adminUser = (await supabase.auth.getUser()).data.user;
 
     const couponConfig: Record<CouponType, { duration_days: number | null; label: string; color: string; is_unlimited: boolean }> = {
-      trial: { duration_days: 3, label: "Prueba gratuita", color: "#F59E0B", is_unlimited: false },
-      weekly: { duration_days: 7, label: "Suscripcion semanal", color: "#10A37F", is_unlimited: false },
+      trial: { duration_days: 3, label: "Prueba gratuita (3 días)", color: "#F59E0B", is_unlimited: false },
+      weekly: { duration_days: 7, label: "Prueba semanal (7 días)", color: "#3B82F6", is_unlimited: false },
+      "20weeks": { duration_days: 140, label: "Suscripción 20 semanas", color: "#10A37F", is_unlimited: false },
       unlimited: { duration_days: null, label: "Acceso ilimitado", color: "#8b5cf6", is_unlimited: true },
     };
     const config = couponConfig[type];
@@ -194,7 +195,7 @@ export default function AdminPanel() {
     setGeneratingCoupons(false);
     if (error) showToast("error", "Error al generar cupones");
     else {
-      showToast("success", `${count} cupon(es) ${type === "trial" ? "de prueba" : type === "weekly" ? "semanales" : "ilimitados"} generado(s)`);
+      showToast("success", `${count} cupón(es) ${type === "trial" ? "de 3 días" : type === "weekly" ? "de 7 días" : type === "20weeks" ? "de 20 semanas" : "ilimitados"} generado(s)`);
       loadCoupons();
     }
   }
@@ -370,11 +371,11 @@ export default function AdminPanel() {
           {activeTab === "coupons" && (
             <div className="flex items-center gap-2 self-end sm:self-auto">
               <div className="flex items-center gap-1 p-1 rounded-xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-                {([["trial", "Prueba"], ["weekly", "Semanal"], ["unlimited", "Ilimitado"]] as const).map(([t, label]) => (
+                {([["trial", "3 días"], ["weekly", "7 días"], ["20weeks", "20 sem."], ["unlimited", "∞"]] as const).map(([t, label]) => (
                   <button key={t} onClick={() => setSelectedCouponType(t as CouponType)}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                     style={{
-                      backgroundColor: selectedCouponType === t ? (t === "trial" ? "#F59E0B" : t === "weekly" ? "#10A37F" : "#8b5cf6") : "transparent",
+                      backgroundColor: selectedCouponType === t ? (t === "trial" ? "#F59E0B" : t === "weekly" ? "#3B82F6" : t === "20weeks" ? "#10A37F" : "#8b5cf6") : "transparent",
                       color: selectedCouponType === t ? "white" : "var(--text-secondary)",
                     }}>
                     {label}
