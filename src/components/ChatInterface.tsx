@@ -574,16 +574,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       // Add a placeholder streaming message immediately
       const tempMsgId = Date.now().toString();
+      const reqParams = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
       setMessages(prev => [...prev, {
         id: tempMsgId,
         role: "assistant",
         content: "",
         created_at: new Date().toISOString(),
         _loading: true,
+        _retryReq: reqParams,
       }]);
       setStreamingMsgId(tempMsgId);
 
-      currentStreamReqRef.current = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
+      currentStreamReqRef.current = reqParams;
       // Send streaming request
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -1044,7 +1046,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     <div className={`flex items-center gap-1.5 mt-1.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                       {msg.role === "assistant" && (
                         <>
-                          {msg._retryReq && (
+                          {msg.role === "assistant" && !msg._loading && (
                             <button onClick={async () => {
                               const req = msg._retryReq;
                               if (!req) return;
