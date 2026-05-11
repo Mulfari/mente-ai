@@ -50,7 +50,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
-  const [streamText, setStreamText] = useState("");
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
@@ -387,7 +386,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         id: tempMsgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true,
       }]);
       setStreamingMsgId(tempMsgId);
-      setStreamText("");
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -406,14 +404,19 @@ export default function ChatInterface({ userId }: { userId: string }) {
         lastErrorRef.current = { message: s, conversationId: convId, attachments: [] };
         setSending(false);
         setStreamingMsgId(null);
-        setStreamText("");
-        return;
+          return;
       }
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let fullText = "";
+
+      const updateStreamText = (text: string) => {
+        setMessages(prev => prev.map(m =>
+          m.id === tempMsgId ? { ...m, content: text } : m
+        ));
+      };
 
       const processStream = () => {
         reader.read().then(({ done, value }) => {
@@ -424,8 +427,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             ));
             setSending(false);
             setStreamingMsgId(null);
-            setStreamText("");
-            const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
+                  const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
             supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
             setActiveConv({ ...conv!, title });
             // Flush queued message
@@ -454,9 +456,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 const json = JSON.parse(data);
                 if (json.type === "chunk" && json.text) {
                   fullText += json.text;
-                  setMessages(prev => prev.map(m =>
-                    m.id === tempMsgId ? { ...m, content: fullText } : m
-                  ));
+                  updateStreamText(fullText);
                 }
               } catch {}
             }
@@ -468,8 +468,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           ));
           setSending(false);
           setStreamingMsgId(null);
-          setStreamText("");
-        });
+            });
       };
 
       processStream();
@@ -559,7 +558,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         _loading: true,
       }]);
       setStreamingMsgId(tempMsgId);
-      setStreamText("");
 
       // Send streaming request
       const res = await fetch("/api/chat", {
@@ -579,8 +577,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
         setSending(false);
         setStreamingMsgId(null);
-        setStreamText("");
-        textareaRef.current?.focus();
+          textareaRef.current?.focus();
         // Flush queued message on error too
         if (queuedMsgRef.current) {
           const q = queuedMsgRef.current as QueuedMsg;
@@ -600,6 +597,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
         let buffer = "";
         let fullText = "";
 
+        const updateStreamText = (text: string) => {
+          setMessages(prev => prev.map(m =>
+            m.id === tempMsgId ? { ...m, content: text } : m
+          ));
+        };
+
         const processStream = () => {
           reader.read().then(({ done, value }) => {
             if (done) {
@@ -610,8 +613,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               ));
               setSending(false);
               setStreamingMsgId(null);
-              setStreamText("");
-              // Flush queued message if any
+                      // Flush queued message if any
               if (queuedMsgRef.current) {
                 const q = queuedMsgRef.current as QueuedMsg;
                 queuedMsgRef.current = null;
@@ -639,10 +641,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   const json = JSON.parse(data);
                   if (json.type === "chunk" && json.text) {
                     fullText += json.text;
-                    setStreamText(fullText);
-                    setMessages(prev => prev.map(m =>
-                      m.id === tempMsgId ? { ...m, content: fullText } : m
-                    ));
+                    updateStreamText(fullText);
                   }
                 } catch {}
               }
@@ -656,8 +655,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             ));
             setSending(false);
             setStreamingMsgId(null);
-            setStreamText("");
-          });
+                });
         };
 
         processStream();
