@@ -8,6 +8,7 @@ type Props = {
   profile: {
     subscription_weeks?: number;
     subscription_start?: string;
+    subscription_end?: string;
     weekly_limit?: number;
     messages_used?: number;
   } | null;
@@ -27,14 +28,38 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
   const isUnlimited = weeks < 0;
   const isActive = profile && weeks > 0 || isUnlimited;
 
-  function formatDays(w: number) {
-    if (w < 0) return "∞";
-    if (w === 0) return "0";
-    const days = w * 7;
-    if (days === 7) return "1 semana";
-    if (days < 7) return `${days} días`;
-    return `${w} semanas`;
+  function getRemainingTime() {
+    if (isUnlimited) return "Ilimitado";
+    if (!profile || weeks <= 0) return "Inactiva";
+    const endStr = profile.subscription_end;
+    if (!endStr) return `${weeks} semanas`;
+
+    const end = new Date(endStr);
+    const now = new Date();
+    const diffMs = end.getTime() - now.getTime();
+
+    if (diffMs <= 0) return "Expirada";
+
+    const totalDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+    if (totalDays === 1) return "1 día restante";
+    if (totalDays <= 30) return `${totalDays} días restantes`;
+    const remainingWeeks = Math.ceil(totalDays / 7);
+    return `${remainingWeeks} semanas restantes`;
   }
+
+  function getStatusColor() {
+    if (isUnlimited) return { bg: "rgba(139,92,246,0.2)", color: "#8b5cf6" };
+    if (!profile || weeks <= 0) return { bg: "rgba(239,68,68,0.2)", color: "var(--danger)" };
+    const endStr = profile.subscription_end;
+    if (endStr) {
+      const diffMs = new Date(endStr).getTime() - Date.now();
+      if (diffMs <= 0) return { bg: "rgba(239,68,68,0.2)", color: "var(--danger)" };
+      if (diffMs < 3 * 24 * 60 * 60 * 1000) return { bg: "rgba(245,158,11,0.2)", color: "var(--warning)" };
+    }
+    return { bg: "rgba(16,163,127,0.2)", color: "var(--primary)" };
+  }
+
+  const statusColor = getStatusColor();
 
   async function applyCoupon(e: React.FormEvent) {
     e.preventDefault();
@@ -113,8 +138,8 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
             isUnlimited ? "" : isActive ? "" : ""
           }`}
             style={{
-              background: isUnlimited ? "rgba(139,92,246,0.2)" : isActive ? "rgba(16,163,127,0.2)" : "rgba(239,68,68,0.2)",
-              color: isUnlimited ? "#8b5cf6" : isActive ? "var(--primary)" : "var(--danger)"
+              background: statusColor.bg,
+              color: statusColor.color
             }}>
             {isUnlimited ? "∞" : isActive ? (
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -127,9 +152,9 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
             )}
           </div>
           <div>
-            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Suscripcion</p>
-            <p className="text-sm font-semibold" style={{ color: isUnlimited ? "#8b5cf6" : isActive ? "var(--primary)" : "var(--danger)" }}>
-              {isUnlimited ? "Ilimitado" : isActive ? formatDays(weeks) : "Inactiva"}
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Tiempo restante</p>
+            <p className="text-sm font-semibold" style={{ color: statusColor.color }}>
+              {getRemainingTime()}
             </p>
           </div>
         </div>

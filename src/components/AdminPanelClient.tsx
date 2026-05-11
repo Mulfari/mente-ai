@@ -124,6 +124,7 @@ export default function AdminPanel() {
       status: "inactive",
       subscription_weeks: 0,
       subscription_start: null,
+      subscription_end: null,
     }).eq("id", userId);
     await loadUsers();
     setActionLoading(null);

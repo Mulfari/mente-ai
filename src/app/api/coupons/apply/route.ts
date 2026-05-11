@@ -47,14 +47,17 @@ export async function POST(request: Request) {
     let newStatus = profile.status ?? "inactive";
     let label = coupon.label ?? "Suscripción";
     let color = coupon.color ?? "#10A37F";
+    let subscriptionEnd: string | null = null;
 
     if (coupon.is_unlimited) {
       newWeeks = -1; // -1 = ilimitado
       label = coupon.label ?? "Acceso ilimitado";
+      subscriptionEnd = null;
     } else {
       const days = coupon.duration_days ?? 7;
       const weeksToAdd = Math.ceil(days / 7);
       newWeeks = newWeeks <= 0 ? weeksToAdd : newWeeks + weeksToAdd;
+      subscriptionEnd = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
     }
 
     // Si estaba inactivo, activar
@@ -65,6 +68,7 @@ export async function POST(request: Request) {
     // Actualizar perfil
     await supabase.from("profiles").update({
       subscription_weeks: newWeeks,
+      subscription_end: subscriptionEnd,
       status: newStatus,
       used_coupon_label: label,
       used_coupon_color: color,
@@ -81,6 +85,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       weeks: newWeeks,
+      subscription_end: subscriptionEnd,
       label,
       color,
     });

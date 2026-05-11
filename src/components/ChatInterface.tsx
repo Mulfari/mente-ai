@@ -42,7 +42,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; weekly_limit?: number; messages_used?: number; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(null);
+  const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; weekly_limit?: number; messages_used?: number; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -91,7 +91,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (!isLoggedIn) return;
     supabase
       .from("profiles")
-      .select("subscription_weeks, subscription_start, weekly_limit, messages_used, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at, status")
+      .select("subscription_weeks, subscription_start, subscription_end, weekly_limit, messages_used, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at, status")
       .eq("id", userId)
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
