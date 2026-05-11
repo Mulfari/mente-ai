@@ -350,9 +350,17 @@ export default function ChatInterface({ userId, initialConversationId }: { userI
   async function selectConv(conv: Conversation) {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     setActiveConv(conv);
-    await loadMessages(conv.id);
-    setShowSidebar(false);
     window.history.pushState(null, "", `/chat/${conv.id}`);
+    setShowSidebar(false);
+    await loadMessages(conv.id);
+    // Refresh conversations list so sidebar is in sync with DB
+    const { data } = await supabase
+      .from("conversations")
+      .select("id, title, created_at, updated_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20);
+    if (data) setConversations(data);
   }
 
   async function deleteConv(convId: string, e: React.MouseEvent) {
@@ -972,8 +980,9 @@ export default function ChatInterface({ userId, initialConversationId }: { userI
             <div className="space-y-0.5 pb-4">
               {conversations.map(conv => {
                 const isActive = activeConv?.id === conv.id;
-                // Use created_at as fallback; only show dateLabel if we have a valid date
-                const d = new Date(conv.created_at || "");
+                // Use updated_at if it differs from created_at, otherwise created_at
+                const dateStr = (conv.updated_at && conv.updated_at !== conv.created_at) ? conv.updated_at : conv.created_at;
+                const d = new Date(dateStr || "");
                 const now = new Date();
                 const isValidDate = !isNaN(d.getTime());
                 const isToday = isValidDate && d.toDateString() === now.toDateString();
