@@ -57,6 +57,23 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [displayedText, setDisplayedText] = useState<Record<string, string>>({});
+  const chunkBufferRef = useRef<Record<string, string>>({});
+  const revealTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>> | null>({});
+
+  function smoothReveal(msgId: string, text: string) {
+    chunkBufferRef.current[msgId] = text;
+    const reveal = () => {
+      const current = chunkBufferRef.current[msgId];
+      if (current !== undefined) {
+        setDisplayedText(prev => ({ ...prev, [msgId]: current }));
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: current } : m));
+      }
+    };
+    if (revealTimerRef.current?.[msgId]) clearTimeout(revealTimerRef.current[msgId]);
+    const id = setTimeout(reveal, 20 + Math.random() * 40);
+    if (revealTimerRef.current) revealTimerRef.current[msgId] = id;
+  }
   type QueuedMsg = { text: string; files: File[]; previews: Record<string, string> };
   const queuedMsgRef = useRef<QueuedMsg | null>(null);
   const currentStreamReqRef = useRef<{ message: string; conversationId: string; contentParts: any[]; mode: string } | null>(null);
@@ -513,7 +530,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       let fullText = "";
 
       const updateStreamText = (text: string) => {
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
+        smoothReveal(msgId, text);
         supabase.from("messages").update({ content: text }).eq("id", msgId);
       };
 
@@ -570,7 +587,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 let buffer2 = "";
                 let fullText2 = "";
                 const updateStreamText2 = (text: string) => {
-                  setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
+                  smoothReveal(msgId, text);
                   supabase.from("messages").update({ content: text }).eq("id", msgId);
                 };
                 const processStream2 = () => {
@@ -760,9 +777,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         const updateStreamText = (text: string) => {
           // Update both local state and DB in_progress message
-          setMessages(prev => prev.map(m =>
-            m.id === msgId ? { ...m, content: text } : m
-          ));
+          smoothReveal(msgId, text);
           supabase.from("messages").update({ content: text }).eq("id", msgId);
         };
 
@@ -834,9 +849,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   let buffer2 = "";
                   let fullText2 = "";
                   const updateStreamText2 = (text: string) => {
-                    setMessages(prev => prev.map(m =>
-                      m.id === msgId ? { ...m, content: text } : m
-                    ));
+                    smoothReveal(msgId, text);
                   };
                   const processStream2 = () => {
                     reader2.read().then(({ done, value }) => {
@@ -1373,7 +1386,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 const decoder = new TextDecoder();
                                 let buffer = "";
                                 let fullText = "";
-                                const updateStreamText = (text: string) => {
+                                const updateStream = (text: string) => {
                                   setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: text } : m));
                                 };
                                 const processStream = () => {
@@ -1392,7 +1405,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                         if (data === "[DONE]") continue;
                                         try {
                                           const json = JSON.parse(data);
-                                          if (json.type === "chunk" && json.text) { fullText += json.text; updateStreamText(fullText); }
+                                          if (json.type === "chunk" && json.text) { fullText += json.text; updateStream(fullText); }
                                         } catch {}
                                       }
                                     }
