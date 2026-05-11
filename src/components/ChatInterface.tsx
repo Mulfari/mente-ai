@@ -19,6 +19,7 @@ type Message = {
   attachments?: string[];
   _previewUrls?: Record<string, string>;
   _loading?: boolean;
+  _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
 };
 
 type Conversation = {
@@ -53,8 +54,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
+  const [streamError, setStreamError] = useState<string | null>(null);
   type QueuedMsg = { text: string; files: File[]; previews: Record<string, string> };
   const queuedMsgRef = useRef<QueuedMsg | null>(null);
+  const currentStreamReqRef = useRef<{ message: string; conversationId: string; contentParts: any[]; mode: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -440,6 +443,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             setMessages(prev => prev.map(m =>
               m.id === tempMsgId ? { ...m, content: fullText, _loading: false } : m
             ));
+            currentStreamReqRef.current = null;
             setSending(false);
             setStreamingMsgId(null);
                   const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
@@ -478,11 +482,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
           }
           processStream();
         }).catch(() => {
+          const req = currentStreamReqRef.current;
+          const errorMsg = req
+            ? `Error de conexion. La respuesta fallo.`
+            : "Error de conexion. Intenta de nuevo.";
           setMessages(prev => prev.map(m =>
-            m.id === tempMsgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m
+            m.id === tempMsgId ? { ...m, content: errorMsg, _loading: false, _retryReq: req } : m
           ));
           setSending(false);
           setStreamingMsgId(null);
+          setStreamError(req ? "retry" : null);
             });
       };
 
@@ -574,6 +583,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       }]);
       setStreamingMsgId(tempMsgId);
 
+      currentStreamReqRef.current = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
       // Send streaming request
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -588,10 +598,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
         setMessages(prev => [...prev, {
           id: Date.now().toString(), role: "assistant",
           content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
+          _retryReq: currentStreamReqRef.current,
         }]);
-        lastErrorRef.current = { message: userMsg, conversationId: convId, attachments: contentParts };
         setSending(false);
         setStreamingMsgId(null);
+        setStreamError(currentStreamReqRef.current ? "retry" : null);
           textareaRef.current?.focus();
         // Flush queued message on error too
         if (queuedMsgRef.current) {
@@ -626,6 +637,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               setMessages(prev => prev.map(m =>
                 m.id === tempMsgId ? { ...m, content: fullText, _loading: false } : m
               ));
+              currentStreamReqRef.current = null;
               setSending(false);
               setStreamingMsgId(null);
                       // Flush queued message if any
@@ -663,13 +675,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
             }
             processStream();
           }).catch(() => {
+            const req = currentStreamReqRef.current;
+            const errorMsg = req
+              ? `Error de conexion. La respuesta fallo.`
+              : "Error de conexion. Intenta de nuevo.";
             setMessages(prev => prev.map(m =>
               m.id === tempMsgId
-                ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false }
+                ? { ...m, content: errorMsg, _loading: false, _retryReq: req }
                 : m
             ));
             setSending(false);
             setStreamingMsgId(null);
+            setStreamError(req ? "retry" : null);
                 });
         };
 
@@ -1027,26 +1044,26 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     <div className={`flex items-center gap-1.5 mt-1.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                       {msg.role === "assistant" && (
                         <>
-                          {lastErrorRef.current && msg.content.includes("Error") && (
+                          {msg._retryReq && (
                             <button onClick={async () => {
-                              if (!lastErrorRef.current) return;
-                              // Show loading state in the message bubble itself
+                              const req = msg._retryReq;
+                              if (!req) return;
                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _loading: true } : m));
                               const res = await fetch("/api/chat", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({
-                                  message: lastErrorRef.current.message,
-                                  conversation_id: lastErrorRef.current.conversationId,
-                                  attachments: lastErrorRef.current.attachments,
+                                  message: req.message,
+                                  conversation_id: req.conversationId,
+                                  attachments: req.contentParts,
+                                  mode: req.mode,
                                 }),
                               });
                               const result = await res.json();
                               if (result.error) {
                                 setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: `Error ${result.code || 500}. Intenta de nuevo.`, _loading: false } : m));
-                              } else if (result.message) {
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.message, _loading: false } : m));
-                                lastErrorRef.current = null;
+                              } else {
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.message || msg.content, _loading: false } : m));
                               }
                             }}
                               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium opacity-0 group-hover:opacity-100 transition-all"
