@@ -146,12 +146,24 @@ export default function ChatInterface({ userId, initialConversationId }: { userI
 
   // Load initial conversation from URL
   useEffect(() => {
-    if (!initialConversationId || !isLoggedIn || activeConv) return;
-    const conv = conversations.find(c => c.id === initialConversationId);
-    if (conv) {
-      selectConv(conv);
+    if (!initialConversationId || !isLoggedIn) return;
+
+    async function loadAndSelect() {
+      // Ensure conversations are loaded first
+      await loadConversations();
+      const { data } = await supabase
+        .from("conversations")
+        .select("id, title, created_at, updated_at")
+        .eq("id", initialConversationId)
+        .eq("user_id", userId)
+        .single();
+      if (data) {
+        await loadMessages(data.id);
+        setActiveConv(data);
+      }
     }
-  }, [initialConversationId, isLoggedIn, activeConv, conversations]);
+    loadAndSelect();
+  }, [initialConversationId, isLoggedIn]);
 
   // Realtime subscription for conversations
   useEffect(() => {
