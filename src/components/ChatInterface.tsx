@@ -569,7 +569,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     <div className="flex h-screen relative" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
-        className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[280px] flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+        className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[85vw] flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{ backgroundColor: "var(--surface)", borderRight: "1px solid var(--border)" }}>
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 py-5 shrink-0">
@@ -706,7 +706,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                   </div>
-                  <h1 className="text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Mulfai</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Mulfai</h1>
                   <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
                     Tu asistente de IA personal
                   </p>
@@ -715,7 +715,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 {!isLoggedIn && (
                   <div className="text-center mt-2 mb-6">
                     <button onClick={() => setShowAuthPrompt(true)}
-                      className="px-10 py-3.5 rounded-xl text-sm font-semibold shadow-lg transition-all hover:opacity-90 active:scale-95"
+                      className="px-6 sm:px-10 py-3 rounded-xl text-sm font-semibold shadow-lg transition-all hover:opacity-90 active:scale-95"
                       style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
                       Iniciar sesion
                     </button>
@@ -804,7 +804,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       </svg>
                     </div>
                   )}
-                  <div className="relative max-w-[78%]">
+                  <div className="relative max-w-[85%] sm:max-w-[78%]">
                     {/* Sender label */}
                     <p className={`text-xs font-semibold mb-1.5 ${msg.role === "user" ? "text-right" : ""}`}
                       style={{ color: msg.role === "user" ? "rgba(255,255,255,0.6)" : "var(--text-tertiary)" }}>
@@ -965,7 +965,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       </main>
 
         {/* Input area */}
-        <div className="px-4 pb-5 pt-2 shrink-0">
+        <div className="px-3 sm:px-4 pb-5 sm:pb-6 pt-2 shrink-0">
           <div className="max-w-2xl mx-auto">
             {/* Attachment previews */}
             {attachments.length > 0 && (
@@ -998,7 +998,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               </div>
             )}
 
-            <div className="flex items-end gap-1.5 px-3 py-2.5 rounded-xl transition-all"
+            <div className="flex items-end gap-1.5 px-2 sm:px-3 py-2 rounded-xl transition-all"
               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
               {/* Attachment button */}
               <button
@@ -1039,7 +1039,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               <button
                 onClick={sendMessage}
                 disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled || cooldownRemaining > 0}
-                className="shrink-0 p-2 rounded-lg transition-all hover:opacity-90 active:scale-90 disabled:opacity-30 relative"
+                className="shrink-0 p-2 sm:p-2.5 rounded-lg transition-all hover:opacity-90 active:scale-90 disabled:opacity-30 relative touch-manipulation"
                 style={{ backgroundColor: cooldownRemaining > 0 ? "var(--warning)" : "var(--primary)", color: "white" }}>
                 {cooldownRemaining > 0 ? (
                   <div className="w-3.5 h-3.5 flex items-center justify-center">

@@ -86,7 +86,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
 
   const inputStyle = (hasError: boolean) => ({
     width: "100%",
-    padding: "14px 16px",
+    padding: "12px 14px",
     borderRadius: "12px",
     fontSize: "14px",
     outline: "none",
@@ -97,10 +97,10 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
   });
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+    <div className="fixed inset-0 flex items-center justify-center z-50 px-4"
       style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}>
       {/* Main card */}
-      <div className="w-full max-w-[400px] rounded-2xl p-8 shadow-2xl relative animate-fade-in"
+      <div className="w-full max-w-[400px] max-sm:max-w-full max-sm:mx-2 rounded-2xl p-6 sm:p-8 shadow-2xl relative animate-fade-in"
         style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)" }}>
 
         {/* Close button */}

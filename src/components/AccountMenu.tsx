@@ -90,10 +90,10 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
   }
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4"
+    <div className="fixed inset-0 flex items-center justify-center z-50 px-4"
       style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl animate-fade-in"
+      <div className="w-full max-w-sm max-sm:max-w-full max-sm:mx-2 rounded-2xl p-5 sm:p-6 shadow-2xl animate-fade-in"
         style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
 
         {/* Close */}
