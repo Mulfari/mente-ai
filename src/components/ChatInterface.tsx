@@ -1128,11 +1128,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
                         </>
                       ) : msg._loading || msg.id === streamingMsgId ? (
-                        <div className="flex items-center gap-2 py-1">
+                        <div className="flex items-center gap-2 py-1 min-h-[24px]">
                           {msg.content ? (
-                            <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                            <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", wordBreak: "break-word" }}>
                               {msg.content}
-                              <span className="inline-block ml-1">▌</span>
+                              <span className="typing-cursor ml-0.5" />
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5">
