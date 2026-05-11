@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import ChatInterface from "@/components/ChatInterface";
-import { notFound } from "next/navigation";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -12,19 +11,23 @@ export default async function ChatConvPage({ params }: Props) {
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user ?? null;
 
-  if (!user) {
-    return <ChatInterface userId="" />;
+  // Verify conversation belongs to this user before rendering
+  if (user) {
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+    if (!conv) {
+      // Redirect to /chat if conversation doesn't exist or doesn't belong to user
+      return (
+        <ChatInterface userId={user.id ?? ""} />
+      );
+    }
   }
 
-  // Verify conversation belongs to this user
-  const { data: conv } = await supabase
-    .from("conversations")
-    .select("id")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single();
-
   return (
-    <ChatInterface userId={user.id ?? ""} initialConversationId={conv ? id : undefined} />
+    <ChatInterface userId={user?.id ?? ""} />
   );
 }

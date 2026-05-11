@@ -31,7 +31,7 @@ type Conversation = {
 };
 
 
-export default function ChatInterface({ userId, initialConversationId }: { userId: string; initialConversationId?: string }) {
+export default function ChatInterface({ userId }: { userId: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -144,26 +144,28 @@ export default function ChatInterface({ userId, initialConversationId }: { userI
     loadConversations();
   }, [userId, isLoggedIn]);
 
-  // Load initial conversation from URL
+  // Load initial conversation from URL (works for both /chat and /chat/[id])
   useEffect(() => {
-    if (!initialConversationId || !isLoggedIn) return;
+    if (!isLoggedIn) return;
 
-    async function loadAndSelect() {
-      // Ensure conversations are loaded first
-      await loadConversations();
+    async function loadFromUrl() {
+      const pathParts = window.location.pathname.split("/");
+      const urlId = pathParts[pathParts.length - 1];
+      if (!urlId || urlId === "chat" || !urlId.match(/^[0-9a-f-]{36}$/i)) return;
+
       const { data } = await supabase
         .from("conversations")
         .select("id, title, created_at, updated_at")
-        .eq("id", initialConversationId)
+        .eq("id", urlId)
         .eq("user_id", userId)
         .single();
       if (data) {
-        await loadMessages(data.id);
         setActiveConv(data);
+        await loadMessages(data.id);
       }
     }
-    loadAndSelect();
-  }, [initialConversationId, isLoggedIn]);
+    loadFromUrl();
+  }, [isLoggedIn]);
 
   // Realtime subscription for conversations
   useEffect(() => {
