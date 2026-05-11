@@ -950,12 +950,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
             <div className="space-y-0.5 pb-4">
               {conversations.map(conv => {
                 const isActive = activeConv?.id === conv.id;
-                const d = new Date(conv.updated_at || conv.created_at);
+                const d = new Date(conv.updated_at || conv.created_at || 0);
                 const now = new Date();
-                const isToday = d.toDateString() === now.toDateString();
+                const isValidDate = !isNaN(d.getTime());
+                const isToday = isValidDate && d.toDateString() === now.toDateString();
                 const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
-                const isYesterday = d.toDateString() === yesterday.toDateString();
-                const dateLabel = isToday ? "Hoy" : isYesterday ? "Ayer" : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+                const isYesterday = isValidDate && d.toDateString() === yesterday.toDateString();
+                const dateLabel = !isValidDate ? "" : isToday ? "Hoy" : isYesterday ? "Ayer" : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
 
                 return (
                   <div key={conv.id}
