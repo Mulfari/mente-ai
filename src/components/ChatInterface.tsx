@@ -125,18 +125,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .delete()
       .eq("conversation_id", conversationId)
       .eq("role", "assistant")
-      .eq("content", "")
-      .eq("in_progress", true);
-    const { data } = await supabase
+      .eq("content", "");
+    const { data, error } = await supabase
       .from("messages")
       .select("*")
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
-    if (data) {
+    if (error) console.error("loadMessages error:", error);
+    if (data && data.length > 0) {
       setMessages(data);
-      setStreamingMsgId(null);
-      lastErrorRef.current = null;
+    } else {
+      setMessages([]);
     }
+    setStreamingMsgId(null);
+    lastErrorRef.current = null;
     setLoading(false);
   }
 
@@ -152,7 +154,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const pathParts = window.location.pathname.split("/");
       const urlId = pathParts[pathParts.length - 1];
       if (!urlId || urlId === "chat" || !urlId.match(/^[0-9a-f-]{36}$/i)) {
-        // On /chat with no conversation selected, reset to empty state
         setActiveConv(null);
         setMessages([]);
         return;
@@ -164,10 +165,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
         .eq("id", urlId)
         .eq("user_id", userId)
         .single();
-      if (data) {
-        setActiveConv(data);
-        await loadMessages(data.id);
-      }
+      if (!data) return;
+
+      setActiveConv(data);
+      setConversations(prev => {
+        if (prev.find(c => c.id === data.id)) return prev;
+        return [data, ...prev];
+      });
+      await loadMessages(data.id);
     }
     loadFromUrl();
   }, [isLoggedIn]);
@@ -1232,6 +1237,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
                 <span className="text-sm">Cargando...</span>
               </div>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Esta conversacion esta vacia</p>
             </div>
           ) : (
             <div className="max-w-2xl mx-auto px-4 py-5">
