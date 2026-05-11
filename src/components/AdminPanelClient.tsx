@@ -50,6 +50,9 @@ export default function AdminPanel() {
   const [generatingCoupons, setGeneratingCoupons] = useState(false);
   const [selectedCouponType, setSelectedCouponType] = useState<CouponType>("weekly");
   const [couponFilter, setCouponFilter] = useState<CouponFilter>("all");
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [userCouponHistory, setUserCouponHistory] = useState<Map<string, Coupon[]>>(new Map());
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<string | null>(null);
   const supabase = createClient();
 
   function showToast(type: "success" | "error", message: string) {
@@ -117,11 +120,35 @@ export default function AdminPanel() {
 
   async function deactivateUser(userId: string) {
     setActionLoading(userId + "-deactivate");
-    const { error } = await supabase.from("profiles").update({ status: "inactive" }).eq("id", userId);
+    const { error } = await supabase.from("profiles").update({
+      status: "inactive",
+      subscription_weeks: 0,
+      subscription_start: null,
+    }).eq("id", userId);
     await loadUsers();
     setActionLoading(null);
     if (error) showToast("error", "Error al desactivar usuario");
     else showToast("success", "Usuario desactivado");
+  }
+
+  async function viewCouponHistory(userId: string) {
+    if (expandedUser === userId) {
+      setExpandedUser(null);
+      return;
+    }
+    setExpandedUser(userId);
+    const { data } = await supabase
+      .from("coupons")
+      .select("*")
+      .eq("used_by", userId)
+      .order("used_at", { ascending: false });
+    if (data) {
+      setUserCouponHistory(prev => {
+        const next = new Map(prev);
+        next.set(userId, data);
+        return next;
+      });
+    }
   }
 
   async function addWeeks(userId: string, weeks: number) {
@@ -135,16 +162,6 @@ export default function AdminPanel() {
     setActionLoading(null);
     if (error) showToast("error", "Error al agregar semanas");
     else showToast("success", `+${weeks} semana(s) agregada(s)`);
-  }
-
-  async function deleteUser(userId: string) {
-    if (!confirm("¿Eliminar esta cuenta? Esta accion no se puede deshacer.")) return;
-    setActionLoading(userId + "-delete");
-    await supabase.from("profiles").delete().eq("id", userId);
-    await supabase.auth.admin.deleteUser(userId).catch(() => {});
-    await loadUsers();
-    setActionLoading(null);
-    showToast("success", "Usuario eliminado");
   }
 
   async function sendConfirmationEmail(userId: string, email: string) {
@@ -585,6 +602,15 @@ export default function AdminPanel() {
                       {/* Actions row */}
                       <div className="px-5 py-4 border-t flex items-center gap-2 flex-wrap"
                         style={{ borderColor: "var(--border)" }}>
+                        <button
+                          onClick={() => viewCouponHistory(user.id)}
+                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium transition-all hover:opacity-90 active:scale-95"
+                          style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.2)" }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                          </svg>
+                          Cupones
+                        </button>
                         {user.status !== "active" ? (
                           <>
                             <button
@@ -613,28 +639,101 @@ export default function AdminPanel() {
                             onClick={() => deactivateUser(user.id)}
                             disabled={actionLoading === user.id + "-deactivate" || isAdmin}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-                            style={{ backgroundColor: "rgba(239,68,68,0.12)", color: "var(--danger)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                            style={{ backgroundColor: "rgba(245,158,11,0.12)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.2)" }}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                             </svg>
                             Desactivar
                           </button>
                         )}
-                        <button
-                          onClick={() => deleteUser(user.id)}
-                          disabled={actionLoading === user.id + "-delete" || isAdmin}
-                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-                          style={{ color: "var(--danger)" }}>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Eliminar
-                        </button>
-                        {actionLoading?.startsWith(user.id) && (
+                        {deleteConfirmUser === user.id ? (
+                          <div className="flex items-center gap-2 ml-auto">
+                            <span className="text-xs" style={{ color: "var(--danger)" }}>¿Eliminar?</span>
+                            <button
+                              onClick={async () => {
+                                setActionLoading(user.id + "-delete");
+                                await supabase.from("profiles").delete().eq("id", user.id);
+                                await supabase.auth.admin.deleteUser(user.id).catch(() => {});
+                                await loadUsers();
+                                setActionLoading(null);
+                                setDeleteConfirmUser(null);
+                                showToast("success", "Usuario eliminado");
+                              }}
+                              disabled={actionLoading === user.id + "-delete"}
+                              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                              style={{ backgroundColor: "var(--danger)", color: "white" }}>
+                              Sí, eliminar
+                            </button>
+                            <button onClick={() => setDeleteConfirmUser(null)}
+                              className="px-3 py-2 rounded-xl text-xs font-medium transition-all"
+                              style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDeleteConfirmUser(user.id)}
+                            disabled={actionLoading === user.id + "-delete" || isAdmin}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 ml-auto"
+                            style={{ color: "var(--danger)" }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Eliminar cuenta
+                          </button>
+                        )}
+                        {actionLoading?.startsWith(user.id) && !deleteConfirmUser && (
                           <div className="w-4 h-4 border-2 rounded-full animate-spin"
                             style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
                         )}
                       </div>
+
+                      {/* Coupon history expandable section */}
+                      {expandedUser === user.id && (
+                        <div className="px-5 pb-5 border-t"
+                          style={{ borderColor: "var(--border)", backgroundColor: "var(--background)" }}>
+                          <div className="pt-4">
+                            <p className="text-xs font-semibold mb-3" style={{ color: "var(--text-tertiary)" }}>
+                              HISTORIAL DE CUPONES CANJEADOS
+                            </p>
+                            {userCouponHistory.get(user.id)?.length ? (
+                              <div className="space-y-2">
+                                {userCouponHistory.get(user.id)!.map(c => (
+                                  <div key={c.id}
+                                    className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                                    style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                                    <code className="text-xs font-bold tracking-wider px-2 py-1 rounded-lg shrink-0"
+                                      style={{ backgroundColor: "var(--background)", color: "var(--primary)" }}>
+                                      {c.code}
+                                    </code>
+                                    <div className="flex items-center gap-2 flex-wrap flex-1">
+                                      {c.color && (
+                                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
+                                      )}
+                                      <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+                                        {c.label || "Cupón"}
+                                      </span>
+                                      {c.duration_days && (
+                                        <span className="text-xs px-2 py-0.5 rounded-full"
+                                          style={{ backgroundColor: "rgba(16,163,127,0.1)", color: "var(--primary)" }}>
+                                          {c.duration_days} días
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-xs shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                                      {formatDate(c.used_at)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-center py-4" style={{ color: "var(--text-tertiary)" }}>
+                                Este usuario no ha canjeado ningún cupón todavía.
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
