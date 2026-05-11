@@ -446,7 +446,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
     let conv = activeConv;
     if (!conv) {
       const { data } = await supabase.from("conversations").insert({ user_id: userId, title: "Nueva conversación" }).select().single();
-      if (data) { setConversations([data, ...conversations]); conv = data; setActiveConv(data); } else { setSending(false); return; }
+      if (data) {
+        setConversations([data, ...conversations]);
+        conv = data;
+        setActiveConv(data);
+        window.history.pushState(null, "", `/chat/${data.id}`);
+      } else { setSending(false); return; }
     }
 
     const convId = conv!.id;
@@ -637,6 +642,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
+        window.history.pushState(null, "", `/chat/${data.id}`);
       } else return;
     }
 
