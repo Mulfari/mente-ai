@@ -388,11 +388,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (inserted) setMessages(prev => [...prev, inserted]);
 
     try {
-      const contentParts: any[] = [{ type: "text", text: s }];
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: s, conversation_id: convId, attachments: contentParts }),
+        body: JSON.stringify({ message: s, conversation_id: convId }),
       });
 
       if (!res.ok) {
@@ -402,8 +401,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
           id: Date.now().toString(), role: "assistant",
           content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
         }]);
-        lastErrorRef.current = { message: s, conversationId: convId, attachments: contentParts };
+        lastErrorRef.current = { message: s, conversationId: convId, attachments: [] };
         setSending(false);
+        setSuggestions([]);
+        return;
       } else {
         const result = await res.json();
         if (result.message !== undefined) {
