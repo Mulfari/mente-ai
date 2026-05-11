@@ -136,7 +136,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
   async function loadMessages(conversationId: string) {
     setLoading(true);
-    // Clean up orphaned in_progress messages in this conversation first
+    // Clean up orphaned empty assistant messages first
     await supabase
       .from("messages")
       .delete()
@@ -149,11 +149,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
     if (error) console.error("loadMessages error:", error);
-    if (data && data.length > 0) {
-      setMessages(data);
-    } else {
-      setMessages([]);
-    }
+    console.log("[Mulfai] loadMessages:", conversationId, "count:", data?.length, "data:", JSON.stringify(data?.map(m => ({ id: m.id, role: m.role, content: m.content?.slice(0, 30) }))));
+    setMessages(data ?? []);
     setStreamingMsgId(null);
     lastErrorRef.current = null;
     setLoading(false);
@@ -170,6 +167,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     async function loadFromUrl() {
       const pathParts = window.location.pathname.split("/");
       const urlId = pathParts[pathParts.length - 1];
+      console.log("[Mulfai] loadFromUrl path:", window.location.pathname, "urlId:", urlId, "isLoggedIn:", isLoggedIn, "userId:", userId);
       if (!urlId || urlId === "chat" || !urlId.match(/^[0-9a-f-]{36}$/i)) {
         setActiveConv(null);
         setMessages([]);
@@ -182,6 +180,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         .eq("id", urlId)
         .eq("user_id", userId)
         .single();
+      console.log("[Mulfai] conv found:", data?.id, data?.title);
       if (!data) return;
 
       setActiveConv(data);
