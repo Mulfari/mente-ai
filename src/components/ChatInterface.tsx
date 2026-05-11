@@ -687,12 +687,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
       {/* Sidebar */}
       <div
         className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[85vw] flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
-        style={{ backgroundColor: "var(--surface)", borderRight: "1px solid var(--border)" }}>
+        style={{
+          background: "linear-gradient(180deg, rgba(38,38,38,0.97) 0%, rgba(26,26,26,0.99) 100%)",
+          backdropFilter: "blur(24px)",
+          borderRight: "1px solid rgba(255,255,255,0.06)",
+        }}>
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 py-5 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", boxShadow: "0 2px 10px rgba(16,163,127,0.35)" }}>
               <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
@@ -701,8 +705,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
               <span style={{ color: "var(--primary)" }}>M</span>ulfai
             </span>
           </div>
-          <button onClick={() => setShowSidebar(false)} className="md:hidden p-2 rounded-lg hover:bg-[var(--surface-hover)] transition-colors" style={{ color: "var(--text-secondary)" }}>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <button onClick={() => setShowSidebar(false)} className="md:hidden p-2 rounded-full transition-colors hover:bg-white/10" style={{ color: "var(--text-secondary)" }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -711,9 +715,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* New chat button */}
         <div className="px-4 shrink-0">
           <button onClick={newConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:opacity-90 active:scale-[0.98]"
-            style={{ background: "var(--primary)", color: "white" }}>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 3px 14px rgba(16,163,127,0.35)" }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Nuevo chat
@@ -721,12 +725,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
 
         {/* Conversations */}
-        <div className="flex-1 overflow-y-auto px-3 pt-3 pb-4">
+        <div className="flex-1 overflow-y-auto px-3 pt-4 pb-4">
           {conversations.length === 0 ? (
-            <div className="py-8 text-center">
-              <div className="w-10 h-10 rounded-lg flex items-center justify-center mx-auto mb-3 opacity-30"
-                style={{ backgroundColor: "var(--border)" }}>
-                <svg className="w-3.5 h-3.5" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <div className="py-10 text-center">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 opacity-20"
+                style={{ backgroundColor: "rgba(255,255,255,0.05)" }}>
+                <svg className="w-5 h-5" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
@@ -736,21 +740,19 @@ export default function ChatInterface({ userId }: { userId: string }) {
             <div className="space-y-0.5">
               {conversations.map(conv => (
                 <div key={conv.id} onClick={() => selectConv(conv)}
-                  className={`group w-full text-left px-3 py-2.5 rounded-lg text-sm flex items-center gap-2.5 cursor-pointer transition-all ${
-                    activeConv?.id === conv.id ? "" : "hover:bg-[var(--surface-hover)]"
-                  }`}
+                  className="group w-full text-left px-3 py-2.5 rounded-xl text-sm flex items-center gap-3 cursor-pointer transition-all"
                   style={{
                     color: activeConv?.id === conv.id ? "var(--text-primary)" : "var(--text-secondary)",
-                    backgroundColor: activeConv?.id === conv.id ? "var(--surface-hover)" : "transparent",
+                    backgroundColor: activeConv?.id === conv.id ? "rgba(255,255,255,0.06)" : "transparent",
                     fontWeight: activeConv?.id === conv.id ? 500 : 400,
                   }}>
-                  <svg className="w-3.5 h-3.5 shrink-0 opacity-40" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 shrink-0 opacity-50" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                   <span className="flex-1 truncate">{conv.title}</span>
                   <button onClick={(e) => deleteConv(conv.id, e)}
-                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded transition-all hover:bg-[var(--danger)]/10"
-                    style={{ color: "var(--danger)" }}>
+                    className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all hover:bg-white/10"
+                    style={{ color: "var(--text-tertiary)" }}>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
@@ -762,12 +764,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
 
         {/* Bottom */}
-        <div className="px-3 pb-4 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="px-3 pb-4 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
           <button onClick={() => setShowAccountMenu(true)}
-            className="w-full flex items-center gap-2.5 px-3 py-2 mt-3 rounded-lg text-sm transition-colors hover:bg-[var(--surface-hover)]"
-            style={{ color: "var(--text-secondary)" }}>
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+            className="w-full flex items-center gap-3 px-3 py-2.5 mt-3 rounded-xl text-sm transition-colors"
+            style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0"
+              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 2px 10px rgba(16,163,127,0.3)" }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
             </div>
             <div className="flex-1 text-left overflow-hidden">
@@ -791,21 +793,27 @@ export default function ChatInterface({ userId }: { userId: string }) {
       <div className="flex-1 flex flex-col min-w-0 relative z-10">
         {/* Top bar */}
         <header className="h-14 flex items-center justify-center px-4 shrink-0 md:hidden"
-          style={{ backgroundColor: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+          style={{
+            background: "linear-gradient(180deg, rgba(38,38,38,0.98) 0%, rgba(28,28,28,0.99) 100%)",
+            backdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          }}>
           <button onClick={() => setShowSidebar(true)}
-            className="absolute left-4 p-2 rounded-lg hover:bg-[var(--surface-hover)] transition-colors" style={{ color: "var(--text-secondary)" }}>
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            className="absolute left-4 p-2 rounded-full transition-colors hover:bg-white/10" style={{ color: "var(--text-secondary)" }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", boxShadow: "0 2px 10px rgba(16,163,127,0.35)" }}>
+              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
-            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+            <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+              <span style={{ color: "var(--primary)" }}>M</span>ulfai
+            </span>
           </div>
         </header>
 
