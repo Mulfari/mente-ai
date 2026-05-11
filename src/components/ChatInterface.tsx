@@ -400,17 +400,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (inserted) setMessages(prev => [...prev, inserted]);
 
     try {
+      const reqParams = { message: s, conversationId: convId, contentParts: [], mode: responseMode };
+      currentStreamReqRef.current = reqParams;
+
       const { data: assistantMsg } = await supabase
         .from("messages")
         .insert({ conversation_id: convId, role: "assistant", content: "", in_progress: true })
         .select().single();
 
       const msgId = assistantMsg?.id || Date.now().toString();
-      if (assistantMsg) setMessages(prev => [...prev, assistantMsg]);
-      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true }]);
+      if (assistantMsg) setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
+      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
       setStreamingMsgId(msgId);
-
-      currentStreamReqRef.current = { message: s, conversationId: convId, contentParts: [], mode: responseMode };
 
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -622,6 +623,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
       }
 
       // Create assistant message in DB (with in_progress flag so we can resume)
+      const reqParams = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
+      currentStreamReqRef.current = reqParams;
+
       const { data: assistantMsg } = await supabase
         .from("messages")
         .insert({ conversation_id: convId, role: "assistant", content: "", in_progress: true })
@@ -630,16 +634,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       const msgId = assistantMsg?.id || Date.now().toString();
       if (assistantMsg) {
-        setMessages(prev => [...prev, assistantMsg]);
+        setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
       } else {
         setMessages(prev => [...prev, {
-          id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true
+          id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
         }]);
       }
       setStreamingMsgId(msgId);
-
-      const reqParams = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
-      currentStreamReqRef.current = reqParams;
 
       // Send streaming request
       const res = await fetch("/api/chat", {
