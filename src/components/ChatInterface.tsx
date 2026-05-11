@@ -54,6 +54,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const [cooldownRemaining, setCooldownRemaining] = useState(0);
   const [isSendDisabled, setIsSendDisabled] = useState(false);
+  const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -398,7 +399,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: s, conversation_id: convId }),
+        body: JSON.stringify({ message: s, conversation_id: convId, mode: responseMode }),
       });
 
       if (!res.ok) {
@@ -544,7 +545,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts }),
+        body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts, mode: responseMode }),
       });
 
       if (!res.ok) {
@@ -1059,6 +1060,23 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 })}
               </div>
             )}
+
+            {/* Mode selector */}
+            <div className="flex items-center gap-1 mb-2">
+              <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>Respuesta:</span>
+              <div className="flex rounded-lg p-0.5" style={{ backgroundColor: "var(--background)" }}>
+                {(["normal", "deep"] as const).map(m => (
+                  <button key={m} onClick={() => setResponseMode(m)}
+                    className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-all"
+                    style={{
+                      backgroundColor: responseMode === m ? "var(--primary)" : "transparent",
+                      color: responseMode === m ? "white" : "var(--text-secondary)",
+                    }}>
+                    {m === "normal" ? "Normal" : "Pensar profundo"}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <div className="flex items-end gap-1.5 px-2 sm:px-3 py-2 rounded-xl transition-all"
               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>

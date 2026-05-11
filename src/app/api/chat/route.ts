@@ -64,11 +64,15 @@ function buildStreamReader(
           }
           try {
             const json = JSON.parse(data);
-            if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-              const text = json.delta.text;
-              const chunk = `data: ${JSON.stringify({ type: "chunk", text })}\n\n`;
-              try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
-              onChunk(text);
+            // Skip thinking blocks — only forward text_delta to client
+            if (json.type === "content_block_delta") {
+              if (json.delta?.type === "text_delta") {
+                const text = json.delta.text;
+                const chunk = `data: ${JSON.stringify({ type: "chunk", text })}\n\n`;
+                try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
+                onChunk(text);
+              }
+              // Skip thinking_delta — don't forward internal reasoning
             }
           } catch {}
         }
@@ -171,7 +175,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validation.error, code: validation.code, remaining: validation.remaining }, { status: validation.code });
     }
 
-    const { message, conversation_id, attachments } = await request.json();
+    const { message, conversation_id, attachments, mode } = await request.json();
 
     if (!message?.trim() && (!attachments || attachments.length === 0)) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
@@ -225,6 +229,12 @@ export async function POST(request: Request) {
         max_tokens: 4096,
         stream: true,
         messages: allMessages,
+        ...(mode === "deep" ? {
+          thinking: {
+            type: "enabled",
+            budget_tokens: 10000,
+          },
+        } : {}),
       }),
     });
 
