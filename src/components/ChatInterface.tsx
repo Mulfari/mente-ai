@@ -31,7 +31,7 @@ type Conversation = {
 };
 
 
-export default function ChatInterface({ userId }: { userId: string }) {
+export default function ChatInterface({ userId, initialConversationId }: { userId: string; initialConversationId?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -143,6 +143,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
   useEffect(() => {
     loadConversations();
   }, [userId, isLoggedIn]);
+
+  // Load initial conversation from URL
+  useEffect(() => {
+    if (!initialConversationId || !isLoggedIn || activeConv) return;
+    const conv = conversations.find(c => c.id === initialConversationId);
+    if (conv) {
+      selectConv(conv);
+    }
+  }, [initialConversationId, isLoggedIn, activeConv, conversations]);
 
   // Realtime subscription for conversations
   useEffect(() => {
@@ -331,6 +340,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setActiveConv(conv);
     await loadMessages(conv.id);
     setShowSidebar(false);
+    window.history.pushState(null, "", `/chat/${conv.id}`);
   }
 
   async function deleteConv(convId: string, e: React.MouseEvent) {
@@ -950,13 +960,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
             <div className="space-y-0.5 pb-4">
               {conversations.map(conv => {
                 const isActive = activeConv?.id === conv.id;
-                const d = new Date(conv.updated_at || conv.created_at || 0);
+                // Use created_at as fallback; only show dateLabel if we have a valid date
+                const d = new Date(conv.created_at || "");
                 const now = new Date();
                 const isValidDate = !isNaN(d.getTime());
                 const isToday = isValidDate && d.toDateString() === now.toDateString();
                 const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
                 const isYesterday = isValidDate && d.toDateString() === yesterday.toDateString();
-                const dateLabel = !isValidDate ? "" : isToday ? "Hoy" : isYesterday ? "Ayer" : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+                const dateLabel = isValidDate
+                  ? isToday ? "Hoy" : isYesterday ? "Ayer" : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" })
+                  : "";
 
                 return (
                   <div key={conv.id}
