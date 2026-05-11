@@ -19,6 +19,7 @@ type Message = {
   attachments?: string[];
   _previewUrls?: Record<string, string>;
   _loading?: boolean;
+  in_progress?: boolean;
   _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
 };
 
@@ -1126,14 +1127,28 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           )}
                           <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
                         </>
-                      ) : msg._loading ? (
-                        <div className="flex items-center gap-1.5 py-1">
-                          <span className="inline-flex items-center gap-1.5">
-                            {[0, 150, 300].map((delay, i) => (
-                              <span key={i} className="w-2 h-2 rounded-full animate-pulse-dot"
-                                style={{ backgroundColor: "var(--text-secondary)", animationDelay: `${delay}ms` }} />
-                            ))}
-                          </span>
+                      ) : msg._loading || msg.id === streamingMsgId ? (
+                        <div className="flex items-center gap-2 py-1">
+                          {msg.content ? (
+                            <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                              {msg.content}
+                              <span className="inline-block ml-1">▌</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5">
+                              {[0, 150, 300].map((delay, i) => (
+                                <span key={i} className="w-2 h-2 rounded-full animate-pulse-dot"
+                                  style={{ backgroundColor: "var(--text-secondary)", animationDelay: `${delay}ms` }} />
+                              ))}
+                            </span>
+                          )}
+                        </div>
+                      ) : msg.content && msg.content.includes("Error") && !msg._retryReq ? (
+                        <div className="flex items-center gap-2 py-1" style={{ color: "var(--danger)" }}>
+                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <span className="text-sm">{msg.content}</span>
                         </div>
                       ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
@@ -1181,7 +1196,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     <div className={`flex items-center gap-1.5 mt-1.5 ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                       {msg.role === "assistant" && (
                         <>
-                          {msg.role === "assistant" && !msg._loading && (
+                          {!msg._loading && msg.id !== streamingMsgId && (
                             <button onClick={async () => {
                               const req = msg._retryReq;
                               if (!req) return;
