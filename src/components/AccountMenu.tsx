@@ -14,6 +14,7 @@ type Props = {
   } | null;
   onSignOut: () => void;
   onClose: () => void;
+  onProfileUpdate?: (updates: Partial<Props["profile"]>) => void;
 };
 
 export default function AccountMenu({ email, profile, onSignOut, onClose }: Props) {
@@ -22,7 +23,8 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [weeksAdded, setWeeksAdded] = useState<number | null>(null);
+  const [optimisticEnd, setOptimisticEnd] = useState<string | null>(null);
+  const [showDaysAdded, setShowDaysAdded] = useState<number | null>(null);
   const [tick, setTick] = useState(0); // force re-render every second
   const supabase = createClient();
 
@@ -39,7 +41,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
   function getCountdown() {
     if (isUnlimited) return null;
     if (!profile || weeks <= 0) return null;
-    const endStr = profile.subscription_end;
+    const endStr = optimisticEnd ?? profile.subscription_end;
     if (!endStr) return null;
 
     const end = new Date(endStr).getTime();
@@ -92,9 +94,15 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
       setError(data.error);
     } else if (data.success) {
       const added = data.weeks_added;
-      setWeeksAdded(added);
+      setShowDaysAdded(added);
       setSuccess(added ? `¡+${added} días añadidos!` : "¡Cupón aplicado correctamente!");
       setCouponCode("");
+
+      // Update countdown optimistically without page reload
+      if (data.subscription_end) {
+        setOptimisticEnd(data.subscription_end);
+      }
+
       setTimeout(() => {
         onClose();
         window.location.reload();
@@ -180,21 +188,38 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
               <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Añade tiempo para continuar</p>
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-1 text-center">
-              {[
-                { value: countdown!.days, label: "días" },
-                { value: countdown!.hours, label: "hrs" },
-                { value: countdown!.minutes, label: "min" },
-                { value: countdown!.seconds, label: "seg" },
-              ].map(({ value, label }) => (
-                <div key={label} className="rounded-lg py-2 px-1" style={{ backgroundColor: "var(--surface)" }}>
-                  <span className="text-lg font-bold block" style={{ color: statusColor.color }}>
-                    {String(value).padStart(2, "0")}
-                  </span>
-                  <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{label}</span>
+            <>
+              <div className="grid grid-cols-4 gap-1 text-center">
+                {[
+                  { value: countdown!.days, label: "días" },
+                  { value: countdown!.hours, label: "hrs" },
+                  { value: countdown!.minutes, label: "min" },
+                  { value: countdown!.seconds, label: "seg" },
+                ].map(({ value, label }) => (
+                  <div key={label} className="rounded-lg py-2 px-1" style={{ backgroundColor: "var(--surface)" }}>
+                    <span className="text-lg font-bold block" style={{ color: statusColor.color }}>
+                      {String(value).padStart(2, "0")}
+                    </span>
+                    <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+              {/* Days added animation */}
+              {showDaysAdded && (
+                <div className="mt-3 text-center animate-fade-in">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl"
+                    style={{ backgroundColor: "rgba(16,163,127,0.15)", border: "1px solid rgba(16,163,127,0.25)" }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                      style={{ color: "var(--primary)" }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                    <span className="text-sm font-bold" style={{ color: "var(--primary)" }}>
+                      +{showDaysAdded} días añadidos
+                    </span>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </div>
 
