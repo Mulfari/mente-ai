@@ -889,7 +889,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* New chat button */}
         <div className="px-4 shrink-0 pb-3">
           <button onClick={newConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer"
             style={{
               backgroundColor: "rgba(16,163,127,0.1)",
               color: "#10A37F",
