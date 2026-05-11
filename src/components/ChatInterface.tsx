@@ -952,18 +952,26 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
 
         {/* Bottom */}
-        <div className="px-3 pb-6 pt-2 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+        <div className="px-3 pb-6 pt-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
           <button onClick={() => setShowAccountMenu(true)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors hover:bg-white/5">
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all cursor-pointer group"
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold shrink-0"
-              style={{ background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}>
+              style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
             </div>
             <div className="flex-1 text-left overflow-hidden">
-              <p className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.65)" }}>Mi cuenta</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-medium truncate" style={{ color: "rgba(255,255,255,0.7)" }}>Mi cuenta</p>
+                {profile && (
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: profile.subscription_weeks && (profile.subscription_weeks > 0 || profile.subscription_weeks < 0) ? "#10A37F" : "#EF4444" }} />
+                )}
+              </div>
               <p className="text-[11px] truncate" style={{ color: "rgba(255,255,255,0.3)" }}>{userEmail}</p>
             </div>
-            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+            <svg className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
               style={{ color: "rgba(255,255,255,0.2)" }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
