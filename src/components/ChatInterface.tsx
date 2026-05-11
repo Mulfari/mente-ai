@@ -1058,13 +1058,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
           </div>
         )}
       </main>
-
         {/* Input area */}
         <div className="px-3 sm:px-4 pb-5 sm:pb-6 pt-2 shrink-0">
           <div className="max-w-2xl mx-auto">
             {/* Attachment previews */}
             {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
+              <div className="flex flex-wrap gap-2 mb-3">
                 {attachments.map((file, i) => {
                   const key = file.name + file.size;
                   const isImage = file.type.startsWith("image/");
@@ -1072,20 +1071,22 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     <div key={i} className="relative group">
                       {isImage ? (
                         <img src={previewUrls[key]} alt={file.name}
-                          className="w-12 h-12 rounded-lg object-cover"
+                          className="w-10 h-10 rounded-xl object-cover"
                           style={{ backgroundColor: "var(--surface)" }} />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg flex items-center justify-center"
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center"
                           style={{ backgroundColor: "var(--surface)" }}>
-                          <svg className="w-3.5 h-3.5" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                          <svg className="w-4 h-4" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                           </svg>
                         </div>
                       )}
                       <button onClick={() => removeAttachment(file.name, file.size)}
-                        className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full flex items-center justify-center text-xs"
+                        className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: "var(--danger)", color: "white" }}>
-                        ×
+                        <svg className="w-2 h-2" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                       </button>
                     </div>
                   );
@@ -1093,85 +1094,99 @@ export default function ChatInterface({ userId }: { userId: string }) {
               </div>
             )}
 
-            <div className="flex items-center gap-0.5 p-1 rounded-xl shrink-0 mb-2"
-                style={{ backgroundColor: "var(--background)" }}>
-                <button onClick={() => setResponseMode("normal")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={{
-                    backgroundColor: responseMode === "normal" ? "var(--primary)" : "transparent",
-                    color: responseMode === "normal" ? "white" : "var(--text-secondary)",
-                    boxShadow: responseMode === "normal" ? "0 2px 8px rgba(16,163,127,0.35)" : "none",
-                  }}>
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Normal
-                </button>
-                <button onClick={() => setResponseMode("deep")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
-                  style={{
-                    backgroundColor: responseMode === "deep" ? "var(--primary)" : "transparent",
-                    color: responseMode === "deep" ? "white" : "var(--text-secondary)",
-                    boxShadow: responseMode === "deep" ? "0 2px 8px rgba(16,163,127,0.35)" : "none",
-                  }}>
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  Pensar
-                </button>
+            {/* Floating input card */}
+            <div className="relative">
+              <div className="rounded-2xl overflow-hidden"
+                style={{
+                  backgroundColor: "rgba(26,26,26,0.8)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)",
+                }}>
+
+                {/* Mode selector — pill tabs */}
+                <div className="flex items-center gap-1 px-4 pt-3">
+                  <button onClick={() => setResponseMode("normal")}
+                    className="relative px-3 py-1.5 text-xs font-medium rounded-full transition-all"
+                    style={{ color: responseMode === "normal" ? "white" : "var(--text-tertiary)" }}>
+                    {responseMode === "normal" && (
+                      <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", opacity: 0.15 }} />
+                    )}
+                    <span className="relative flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Normal
+                    </span>
+                  </button>
+                  <button onClick={() => setResponseMode("deep")}
+                    className="relative px-3 py-1.5 text-xs font-medium rounded-full transition-all"
+                    style={{ color: responseMode === "deep" ? "white" : "var(--text-tertiary)" }}>
+                    {responseMode === "deep" && (
+                      <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", opacity: 0.15 }} />
+                    )}
+                    <span className="relative flex items-center gap-1.5">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                      Pensar
+                    </span>
+                  </button>
+                  <div className="flex-1 h-px mx-2" style={{ backgroundColor: "rgba(255,255,255,0.06)" }} />
+                  {/* Attachment */}
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={attachments.length >= 3 || isDisabled || sending}
+                    className="shrink-0 p-1.5 rounded-full transition-all hover:bg-white/5 disabled:opacity-30"
+                    style={{ color: "var(--text-tertiary)" }}
+                    title="Adjuntar">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple
+                    onChange={handleFileSelect} className="hidden" />
+                </div>
+
+                {/* Text area */}
+                <div className="flex items-end gap-2 px-3 pb-3">
+                  <textarea
+                    ref={textareaRef}
+                    value={input}
+                    onChange={e => { setInput(e.target.value); autoResize(); }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder={(() => {
+                      const block = getBlockReason();
+                      if (!isLoggedIn) return "Inicia sesion para chatear...";
+                      if (!block.canWrite) return "Sin suscripcion activa...";
+                      return "Escribe un mensaje...";
+                    })()}
+                    disabled={sending || !getBlockReason().canWrite}
+                    rows={1}
+                    className="flex-1 text-sm outline-none resize-none bg-transparent leading-relaxed py-1"
+                    style={{ color: getBlockReason().canWrite ? "var(--text-primary)" : "var(--text-tertiary)", maxHeight: "200px" }}
+                  />
+                  <button
+                    onClick={sendMessage}
+                    disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled}
+                    className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
+                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 2px 12px rgba(16,163,127,0.4)" }}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-
-            <div className="flex items-end gap-1.5 rounded-xl transition-all px-2 sm:px-3 py-2"
-              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-                {/* Attachment button */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={attachments.length >= 3 || isDisabled || sending}
-                  className="shrink-0 p-2 rounded-lg transition-all hover:bg-[var(--surface-hover)] disabled:opacity-30"
-                  style={{ color: "var(--text-tertiary)" }}
-                  title="Adjuntar">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                </button>
-                <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple
-                  onChange={handleFileSelect} className="hidden" />
-
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={e => { setInput(e.target.value); autoResize(); }}
-                onKeyDown={e => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder={(() => {
-                  const block = getBlockReason();
-                  if (!isLoggedIn) return "Inicia sesion para chatear...";
-                  if (!block.canWrite) return "Sin suscripcion activa...";
-                  return "Escribe un mensaje...";
-                })()}
-                disabled={sending || !getBlockReason().canWrite}
-                rows={1}
-                className="flex-1 text-sm outline-none resize-none bg-transparent leading-relaxed"
-                style={{ color: getBlockReason().canWrite ? "var(--text-primary)" : "var(--text-tertiary)", maxHeight: "200px" }}
-              />
-              <button
-                onClick={sendMessage}
-                disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled}
-                className="shrink-0 p-2 sm:p-2.5 rounded-lg transition-all hover:opacity-90 active:scale-90 disabled:opacity-30 relative touch-manipulation"
-                style={{ backgroundColor: "var(--primary)", color: "white" }}>
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </button>
             </div>
           </div>
         </div>
-      </div>
-      {showAuthPrompt && <AuthModal onSuccess={() => {
+        </div>
+        {showAuthPrompt && <AuthModal onSuccess={() => {
           setShowAuthPrompt(false);
           window.location.reload();
         }} onClose={() => setShowAuthPrompt(false)} />}
