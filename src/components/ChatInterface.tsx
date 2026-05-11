@@ -1204,24 +1204,56 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         <>
                           {!msg._loading && msg.id !== streamingMsgId && (
                             <button onClick={async () => {
-                              const req = msg._retryReq;
-                              if (!req) return;
+                              // Find the user message right before this assistant message in local state
+                              const msgs = messages;
+                              const idx = msgs.findIndex(m => m.id === msg.id);
+                              if (idx <= 0) return;
+                              const prevMsg = msgs[idx - 1];
+                              if (prevMsg.role !== "user") return;
+
                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _loading: true } : m));
                               const res = await fetch("/api/chat", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  message: req.message,
-                                  conversation_id: req.conversationId,
-                                  attachments: req.contentParts,
-                                  mode: req.mode,
-                                }),
+                                body: JSON.stringify({ message: prevMsg.content, conversation_id: activeConv?.id }),
                               });
-                              const result = await res.json();
-                              if (result.error) {
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: `Error ${result.code || 500}. Intenta de nuevo.`, _loading: false } : m));
+                              if (!res.ok) {
+                                const result = await res.json();
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false } : m));
                               } else {
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.message || msg.content, _loading: false } : m));
+                                const reader = res.body!.getReader();
+                                const decoder = new TextDecoder();
+                                let buffer = "";
+                                let fullText = "";
+                                const updateStreamText = (text: string) => {
+                                  setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: text } : m));
+                                };
+                                const processStream = () => {
+                                  reader.read().then(({ done, value }) => {
+                                    if (done) {
+                                      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: fullText, _loading: false } : m));
+                                      return;
+                                    }
+                                    buffer += decoder.decode(value, { stream: true });
+                                    const lines = buffer.split("\n");
+                                    buffer = lines[lines.length - 1] ?? "";
+                                    for (let i = 0; i < lines.length - 1; i++) {
+                                      const line = lines[i];
+                                      if (line.startsWith("data: ")) {
+                                        const data = line.slice(6);
+                                        if (data === "[DONE]") continue;
+                                        try {
+                                          const json = JSON.parse(data);
+                                          if (json.type === "chunk" && json.text) { fullText += json.text; updateStreamText(fullText); }
+                                        } catch {}
+                                      }
+                                    }
+                                    processStream();
+                                  }).catch(() => {
+                                    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "Error. Intenta de nuevo.", _loading: false } : m));
+                                  });
+                                };
+                                processStream();
                               }
                             }}
                               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium transition-all hover:opacity-80"
