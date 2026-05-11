@@ -683,7 +683,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="flex h-screen relative" style={{ backgroundColor: "var(--background)" }}>
+    <div className="flex min-h-screen max-h-screen relative" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
         className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[85vw] flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
@@ -818,7 +818,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </header>
 
         {/* Messages */}
-        <main className="flex-1 overflow-y-auto relative">
+        <main className="flex-1 min-h-0 overflow-y-auto relative">
           {messages.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
@@ -1067,7 +1067,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         )}
       </main>
         {/* Input area */}
-        <div className="px-3 sm:px-4 pb-5 sm:pb-6 pt-2 shrink-0">
+        <div className="px-4 pb-5 sm:pb-6 pt-2 shrink-0">
           <div className="max-w-2xl mx-auto">
             {/* Attachment previews */}
             {attachments.length > 0 && (
