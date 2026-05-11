@@ -214,12 +214,27 @@ export default function ChatInterface({ userId }: { userId: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, sending]);
 
-  // Keep textarea focused after sending
+  // Keep textarea focused after sending + prevent zoom on mobile
   useEffect(() => {
     if (!sending && textareaRef.current) {
       textareaRef.current.focus();
     }
   }, [sending]);
+
+  // Lock viewport height to prevent mobile browser resize on focus
+  useEffect(() => {
+    const lockHeight = () => {
+      document.documentElement.style.setProperty("--vh", `${window.innerHeight * 0.01}px`);
+    };
+    lockHeight();
+    window.addEventListener("resize", lockHeight);
+    // Also lock on focus events which trigger keyboard on mobile
+    const inputs = document.querySelectorAll("input, textarea");
+    inputs.forEach(el => {
+      el.addEventListener("focus", lockHeight);
+    });
+    return () => window.removeEventListener("resize", lockHeight);
+  }, []);
 
   function autoResize() {
     const ta = textareaRef.current;
@@ -686,7 +701,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="flex overflow-hidden" style={{ height: "100dvh", backgroundColor: "var(--background)" }}>
+    <div className="fixed inset-0 flex" style={{ height: "calc(var(--vh, 1vh) * 100)", backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
         className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[85vw] flex flex-col transition-transform duration-200 md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
@@ -821,7 +836,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </header>
 
         {/* Messages */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto">
           {messages.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
