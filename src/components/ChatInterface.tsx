@@ -483,15 +483,79 @@ export default function ChatInterface({ userId }: { userId: string }) {
           processStream();
         }).catch(() => {
           const req = currentStreamReqRef.current;
-          const errorMsg = req
-            ? `Error de conexion. La respuesta fallo.`
-            : "Error de conexion. Intenta de nuevo.";
+          // Show "Reconnecting..." and auto-retry once
+          if (req) {
+            setMessages(prev => prev.map(m =>
+              m.id === tempMsgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m
+            ));
+            setTimeout(async () => {
+              const res2 = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: req.message, conversation_id: req.conversationId, attachments: req.contentParts, mode: req.mode }),
+              });
+              if (!res2.ok) {
+                const result = await res2.json();
+                setMessages(prev => prev.map(m =>
+                  m.id === tempMsgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                ));
+              } else {
+                const reader2 = res2.body!.getReader();
+                const decoder2 = new TextDecoder();
+                let buffer2 = "";
+                let fullText2 = "";
+                const processStream2 = () => {
+                  reader2.read().then(({ done, value }) => {
+                    if (done) {
+                      supabase.from("messages").insert({ conversation_id: req.conversationId, role: "assistant", content: fullText2 }).then(() => {});
+                      setMessages(prev => prev.map(m =>
+                        m.id === tempMsgId ? { ...m, content: fullText2, _loading: false } : m
+                      ));
+                      currentStreamReqRef.current = null;
+                      setSending(false);
+                      setStreamingMsgId(null);
+                      return;
+                    }
+                    buffer2 += decoder2.decode(value, { stream: true });
+                    const lines = buffer2.split("\n");
+                    buffer2 = lines[lines.length - 1] ?? "";
+                    for (let i = 0; i < lines.length - 1; i++) {
+                      const line = lines[i];
+                      if (line.startsWith("data: ")) {
+                        const data = line.slice(6);
+                        if (data === "[DONE]") continue;
+                        try {
+                          const json = JSON.parse(data);
+                          if (json.type === "chunk" && json.text) {
+                            fullText2 += json.text;
+                            setMessages(prev => prev.map(m =>
+                              m.id === tempMsgId ? { ...m, content: fullText2 } : m
+                            ));
+                          }
+                        } catch {}
+                      }
+                    }
+                    processStream2();
+                  }).catch(() => {
+                    setMessages(prev => prev.map(m =>
+                      m.id === tempMsgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                    ));
+                    currentStreamReqRef.current = null;
+                    setSending(false);
+                    setStreamingMsgId(null);
+                  });
+                };
+                processStream2();
+              }
+            }, 1000);
+            return;
+          }
+          // No req saved — fallback to error message
           setMessages(prev => prev.map(m =>
-            m.id === tempMsgId ? { ...m, content: errorMsg, _loading: false, _retryReq: req } : m
+            m.id === tempMsgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m
           ));
           setSending(false);
           setStreamingMsgId(null);
-          setStreamError(req ? "retry" : null);
             });
       };
 
@@ -678,17 +742,93 @@ export default function ChatInterface({ userId }: { userId: string }) {
             processStream();
           }).catch(() => {
             const req = currentStreamReqRef.current;
-            const errorMsg = req
-              ? `Error de conexion. La respuesta fallo.`
-              : "Error de conexion. Intenta de nuevo.";
+            if (req) {
+              setMessages(prev => prev.map(m =>
+                m.id === tempMsgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m
+              ));
+              setTimeout(async () => {
+                const res2 = await fetch("/api/chat", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ message: req.message, conversation_id: req.conversationId, attachments: req.contentParts, mode: req.mode }),
+                });
+                if (!res2.ok) {
+                  const result = await res2.json();
+                  setMessages(prev => prev.map(m =>
+                    m.id === tempMsgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                  ));
+                } else {
+                  const reader2 = res2.body!.getReader();
+                  const decoder2 = new TextDecoder();
+                  let buffer2 = "";
+                  let fullText2 = "";
+                  const updateStreamText2 = (text: string) => {
+                    setMessages(prev => prev.map(m =>
+                      m.id === tempMsgId ? { ...m, content: text } : m
+                    ));
+                  };
+                  const processStream2 = () => {
+                    reader2.read().then(({ done, value }) => {
+                      if (done) {
+                        supabase.from("messages").insert({ conversation_id: req.conversationId, role: "assistant", content: fullText2 }).then(() => {});
+                        setMessages(prev => prev.map(m =>
+                          m.id === tempMsgId ? { ...m, content: fullText2, _loading: false } : m
+                        ));
+                        currentStreamReqRef.current = null;
+                        setSending(false);
+                        setStreamingMsgId(null);
+                        if (queuedMsgRef.current) {
+                          const q = queuedMsgRef.current as QueuedMsg;
+                          queuedMsgRef.current = null;
+                          setTimeout(() => {
+                            setInput(q.text);
+                            setAttachments(q.files);
+                            setPreviewUrls(q.previews);
+                            autoResize();
+                            sendMessage();
+                          }, 100);
+                        } else {
+                          textareaRef.current?.focus();
+                        }
+                        return;
+                      }
+                      buffer2 += decoder2.decode(value, { stream: true });
+                      const lines = buffer2.split("\n");
+                      buffer2 = lines[lines.length - 1] ?? "";
+                      for (let i = 0; i < lines.length - 1; i++) {
+                        const line = lines[i];
+                        if (line.startsWith("data: ")) {
+                          const data = line.slice(6);
+                          if (data === "[DONE]") continue;
+                          try {
+                            const json = JSON.parse(data);
+                            if (json.type === "chunk" && json.text) {
+                              fullText2 += json.text;
+                              updateStreamText2(fullText2);
+                            }
+                          } catch {}
+                        }
+                      }
+                      processStream2();
+                    }).catch(() => {
+                      setMessages(prev => prev.map(m =>
+                        m.id === tempMsgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                      ));
+                      currentStreamReqRef.current = null;
+                      setSending(false);
+                      setStreamingMsgId(null);
+                    });
+                  };
+                  processStream2();
+                }
+              }, 1000);
+              return;
+            }
             setMessages(prev => prev.map(m =>
-              m.id === tempMsgId
-                ? { ...m, content: errorMsg, _loading: false, _retryReq: req }
-                : m
+              m.id === tempMsgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m
             ));
             setSending(false);
             setStreamingMsgId(null);
-            setStreamError(req ? "retry" : null);
                 });
         };
 
