@@ -127,11 +127,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (!isLoggedIn) return;
     const { data } = await supabase
       .from("conversations")
-      .select("id, title, created_at, updated_at")
+      .select("id, title, created_at, updated_at, messages(count)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(20);
-    if (data) setConversations(data);
+    if (!data) return;
+    // Filter out empty "Nueva conversación" placeholders (never had a message)
+    const filtered = data.filter((c: any) => {
+      const msgs = c.messages as any[];
+      return (msgs && msgs.length > 0 && (msgs[0]?.count ?? 0) > 0) || c.title !== "Nueva conversación";
+    });
+    setConversations(filtered);
   }
 
   async function loadMessages(conversationId: string) {
@@ -228,8 +234,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
         } else if (payload.eventType === "UPDATE") {
           setConversations(prev => {
             const updated = prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c);
-            // Ocultar conversaciones que quedaron vacías (sin mensajes y título original)
-            return updated.filter(c => c.title !== "Nueva conversación");
+            // Only hide empty "Nueva conversación" if it has no messages (checked via filter in the render)
+            return updated;
           });
         }
       })
@@ -372,11 +378,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
       for (const c of toDelete) {
         await supabase.from("conversations").delete().eq("id", c.id);
       }
-      // Mantener solo conversaciones con mensajes o título personalizado
-      const filtered = convs.filter((c: any) => {
-        const msgs = c.messages as any[];
-        return (msgs && msgs.length > 0 && (msgs[0].count ?? 0) > 0) || c.title !== "Nueva conversación";
-      });
+      // Filter: remove empty "Nueva conversación" placeholders that never got a first message
+      const filtered = convs.filter((c: any) => c.title !== "Nueva conversación");
       setConversations((filtered as unknown) as Conversation[]);
     }
     // No crear registro en DB — solo resetear estado local
