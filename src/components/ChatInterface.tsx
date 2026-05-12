@@ -742,7 +742,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts, mode: responseMode }),
+        body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts, mode: responseMode, message_id: msgId }),
       });
 
       if (!res.ok) {
@@ -1404,6 +1404,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 const processStream = () => {
                                   reader.read().then(({ done, value }) => {
                                     if (done) {
+                                      supabase.from("messages").upsert({
+                                        id: msg.id,
+                                        conversation_id: activeConv?.id,
+                                        content: fullText,
+                                        in_progress: false,
+                                      });
                                       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: fullText, _loading: false } : m));
                                       return;
                                     }
