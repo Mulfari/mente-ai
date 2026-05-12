@@ -462,7 +462,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
     let conv = activeConv;
     if (!conv) {
       const now = new Date().toISOString();
-      const { data } = await supabase.from("conversations").insert({ user_id: userId, title: "Nueva conversación", updated_at: now, created_at: now }).select().single();
+      const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
+      const { data } = await supabase.from("conversations").insert({ user_id: userId, title, updated_at: now, created_at: now }).select().single();
       if (data) {
         setConversations([data, ...conversations]);
         conv = data;
@@ -533,11 +534,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
             currentStreamReqRef.current = null;
             setSending(false);
             setStreamingMsgId(null);
-            const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
             const now = new Date().toISOString();
-            supabase.from("conversations").update({ title, updated_at: now }).eq("id", convId);
-            setConversations(prev => prev.map(c => c.id === convId ? { ...c, title, updated_at: now } : c));
-            setActiveConv({ ...conv!, title, updated_at: now });
+            supabase.from("conversations").update({ updated_at: now }).eq("id", convId);
+            setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
+            setActiveConv({ ...conv!, updated_at: now });
             if (queuedMsgRef.current) {
               const q = queuedMsgRef.current as QueuedMsg;
               queuedMsgRef.current = null;
@@ -653,11 +653,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
     }
 
     let conv = activeConv;
+    const queuedMsg = queuedMsgRef.current;
+    queuedMsgRef.current = null;
+    const userMsg = queuedMsg ? queuedMsg.text : input.trim();
+    const filesToSend = queuedMsg ? queuedMsg.files : [...attachments];
+
     if (!conv) {
       const now = new Date().toISOString();
+      const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
       const { data } = await supabase
         .from("conversations")
-        .insert({ user_id: userId, title: "Nueva conversación", updated_at: now, created_at: now })
+        .insert({ user_id: userId, title, updated_at: now, created_at: now })
         .select()
         .single();
       if (data) {
@@ -667,12 +673,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else return;
     }
-
-    const queuedMsg = queuedMsgRef.current;
-    queuedMsgRef.current = null;
-
-    const userMsg = queuedMsg ? queuedMsg.text : input.trim();
-    const filesToSend = queuedMsg ? queuedMsg.files : [...attachments];
 
     if (!conv) return;
 
@@ -921,17 +921,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
       }
 
       lastErrorRef.current = null;
-
-      // Generate title if new conversation
-      if (conv.title === "Nueva conversación") {
-        const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
-        const now = new Date().toISOString();
-        await supabase.from("conversations")
-          .update({ title, updated_at: now })
-          .eq("id", convId);
-        setConversations(prev => prev.map(c => c.id === convId ? { ...c, title, updated_at: now } : c));
-        setActiveConv({ ...conv, title, updated_at: now });
-      }
     } catch {
       setMessages(prev => [...prev, {
         id: Date.now().toString(), role: "assistant",
