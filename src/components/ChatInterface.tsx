@@ -540,7 +540,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const processStream = () => {
         reader.read().then(({ done, value }) => {
           if (done) {
-            supabase.from("messages").upsert({ id: msgId, content: fullText, in_progress: false }).then(() => {
+            supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false }).then(() => {
               console.log("[Mulfai] suggestion saved:", msgId);
             });
             setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false } : m));
@@ -792,6 +792,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               // Save complete response to DB from client side (more reliable than waiting for API route)
               supabase.from("messages").upsert({
                 id: msgId,
+                conversation_id: convId,
                 content: fullText,
                 in_progress: false,
               }).then(() => {
