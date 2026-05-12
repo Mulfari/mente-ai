@@ -390,7 +390,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
   async function selectConv(conv: Conversation) {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
-    setActiveConv(conv);
+    // Update updated_at in sidebar list so date label doesn't disappear
+    setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
+    setActiveConv({ ...conv, updated_at: new Date().toISOString() });
     window.history.pushState(null, "", `/chat/${conv.id}`);
     setShowSidebar(false);
     await loadMessages(conv.id);
