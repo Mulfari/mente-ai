@@ -550,8 +550,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
             setSending(false);
             setStreamingMsgId(null);
             const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
-            supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
-            setActiveConv({ ...conv!, title });
+            const now = new Date().toISOString();
+            supabase.from("conversations").update({ title, updated_at: now }).eq("id", convId);
+            setConversations(prev => prev.map(c => c.id === convId ? { ...c, title, updated_at: now } : c));
+            setActiveConv({ ...conv!, title, updated_at: now });
             if (queuedMsgRef.current) {
               const q = queuedMsgRef.current as QueuedMsg;
               queuedMsgRef.current = null;
@@ -938,10 +940,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
       // Generate title if new conversation
       if (conv.title === "Nueva conversación") {
         const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
+        const now = new Date().toISOString();
         await supabase.from("conversations")
-          .update({ title, updated_at: new Date().toISOString() })
+          .update({ title, updated_at: now })
           .eq("id", convId);
-        setActiveConv({ ...conv, title });
+        setConversations(prev => prev.map(c => c.id === convId ? { ...c, title, updated_at: now } : c));
+        setActiveConv({ ...conv, title, updated_at: now });
       }
     } catch {
       setMessages(prev => [...prev, {
