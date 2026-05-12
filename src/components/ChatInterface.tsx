@@ -553,7 +553,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         setMessages(prev => [...prev, {
           id: Date.now().toString(), role: "assistant",
           content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
-          _retryReq: { message: s, conversationId: convId, contentParts: [], mode: responseMode },
         }]);
         setSending(false);
         setStreamingMsgId(null);
@@ -794,11 +793,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
         setMessages(prev => [...prev, {
           id: Date.now().toString(), role: "assistant",
           content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
-          _retryReq: { message: userMsg, conversationId: convId, contentParts, mode: responseMode },
         }]);
         setSending(false);
         setStreamingMsgId(null);
-          textareaRef.current?.focus();
+        textareaRef.current?.focus();
         // Flush queued message on error too
         if (queuedMsgRef.current) {
           const q = queuedMsgRef.current as QueuedMsg;
@@ -891,7 +889,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 if (!res2.ok) {
                   const result = await res2.json();
                   setMessages(prev => prev.map(m =>
-                    m.id === msgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                    m.id === msgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false } : m
                   ));
                 } else {
                   const reader2 = res2.body!.getReader();
@@ -947,7 +945,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       processStream2();
                     }).catch(() => {
                       setMessages(prev => prev.map(m =>
-                        m.id === msgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m
+                        m.id === msgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false } : m
                       ));
                       currentStreamReqRef.current = null;
                       setSending(false);
@@ -1352,7 +1350,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             </span>
                           )}
                         </div>
-                      ) : msg.content && msg.content.includes("Error") && !msg._retryReq ? (
+                      ) : msg.content && /^(Error|Conexion)/.test(msg.content) && !msg._retryReq ? (
                         <div className="flex items-center gap-2 py-1" style={{ color: "var(--danger)" }}>
                           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
