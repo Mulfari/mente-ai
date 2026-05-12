@@ -129,7 +129,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .from("conversations")
       .select("id, title, created_at, updated_at, messages(count)")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+      .order("updated_at", { ascending: false })
       .limit(20);
     if (!data) return;
     // Filter out empty "Nueva conversación" placeholders (never had a message)
@@ -481,7 +481,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
     let conv = activeConv;
     if (!conv) {
-      const { data } = await supabase.from("conversations").insert({ user_id: userId, title: "Nueva conversación" }).select().single();
+      const now = new Date().toISOString();
+      const { data } = await supabase.from("conversations").insert({ user_id: userId, title: "Nueva conversación", updated_at: now, created_at: now }).select().single();
       if (data) {
         setConversations([data, ...conversations]);
         conv = data;
@@ -673,9 +674,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
     let conv = activeConv;
     if (!conv) {
+      const now = new Date().toISOString();
       const { data } = await supabase
         .from("conversations")
-        .insert({ user_id: userId, title: "Nueva conversación" })
+        .insert({ user_id: userId, title: "Nueva conversación", updated_at: now, created_at: now })
         .select()
         .single();
       if (data) {

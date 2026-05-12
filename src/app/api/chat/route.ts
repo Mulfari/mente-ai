@@ -304,6 +304,15 @@ export async function POST(request: Request) {
               if (error) console.error("[chat] upsert failed:", error);
             } catch (e) { console.error("[chat] save error:", e); }
           };
+          // Update conversation updated_at after AI responds (so sidebar sort is correct)
+          if (conversation_id) {
+            const upd: any = { updated_at: new Date().toISOString() };
+            if (message) {
+              const title = message.trim().slice(0, 40) + (message.trim().length > 40 ? "..." : "");
+              upd.title = title;
+            }
+            supabase.from("conversations").update(upd).eq("id", conversation_id);
+          }
           // Use waitUntil so the save runs even after stream closes (Vercel Functions)
           const ctx = request as any;
           if (ctx.waitUntil) {
