@@ -148,11 +148,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
     if (error) console.error("loadMessages error:", error);
-    // Filter out messages that are still in_progress (streaming placeholders with no content yet)
-    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress));
-    setMessages(valid);
-    console.log("[Mulfai] loadMessages result:", conversationId, "count:", valid.length, "roles:", valid.map(m => m.role));
+    // Filter out messages still actively streaming with no content.
+    // If message has content (from progressive save), show it even if in_progress=true
+    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress && !m.content));
+    // Clear streaming state — these were saved from a previous session
     setStreamingMsgId(null);
+    setMessages(valid);
     lastErrorRef.current = null;
     setLoading(false);
   }
