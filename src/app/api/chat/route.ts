@@ -280,53 +280,39 @@ export async function POST(request: Request) {
     // === ROBUST: stream to client AND accumulate, then save to DB on stream end ===
     const stream = new ReadableStream({
       async start(controller) {
-        // Capture reader reference and abort signal inside the stream context
         const aiReader = reader;
-        const abortSig = request.signal;
         const decoder = new TextDecoder();
         let buffer = "";
         let fullText = "";
-        let saved = false;
         const saveId = msgId || message_id;
-
-        const saveToDb = () => {
-          if (saved || !saveId || !conversation_id) return;
-          saved = true;
-          // Fire-and-forget with dynamic waitUntil if available
-          const doSave = async () => {
-            try {
-              const { error } = await supabase.from("messages").upsert({
-                id: saveId,
-                conversation_id,
-                content: fullText || "(respuesta no disponible)",
-                in_progress: false,
-              });
-              if (error) console.error("[chat] upsert failed:", error);
-            } catch (e) { console.error("[chat] save error:", e); }
-          };
-          // Update conversation updated_at after AI responds (so sidebar sort is correct)
-          if (conversation_id) {
-            const upd: any = { updated_at: new Date().toISOString() };
-            if (message) {
-              const title = message.trim().slice(0, 40) + (message.trim().length > 40 ? "..." : "");
-              upd.title = title;
-            }
-            supabase.from("conversations").update(upd).eq("id", conversation_id);
-          }
-          // Use waitUntil so the save runs even after stream closes (Vercel Functions)
-          const ctx = request as any;
-          if (ctx.waitUntil) {
-            ctx.waitUntil(doSave());
-          } else {
-            doSave();
-          }
-        };
 
         function pump() {
           aiReader.read().then(({ done, value }) => {
-            if (done || abortSig?.aborted) {
-              saveToDb();
-              try { controller.close(); } catch {}
+            if (done) {
+              // === SAVE TO DB BEFORE CLOSING STREAM ===
+              // Execute upsert synchronously — Supabase is fast, stream already received all data
+              if (saveId && conversation_id) {
+                const content = fullText.trim() || "(respuesta no disponible)";
+                supabase.from("messages").upsert({
+                  id: saveId,
+                  conversation_id,
+                  content,
+                  in_progress: false,
+                }).then(({ error }) => {
+                  if (error) console.error("[chat] upsert failed:", error);
+                  else console.log("[chat] saved:", saveId, "chars:", content.length);
+                });
+                // Update conversation title and timestamp
+                const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
+                supabase.from("conversations").update({
+                  title: message ? title : undefined,
+                  updated_at: new Date().toISOString(),
+                }).eq("id", conversation_id);
+              }
+              try {
+                controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+                controller.close();
+              } catch {}
               return;
             }
             buffer += decoder.decode(value, { stream: true });
@@ -349,7 +335,15 @@ export async function POST(request: Request) {
             }
             pump();
           }).catch((err) => {
-            saveToDb();
+            // Save on error too
+            if (saveId && conversation_id) {
+              supabase.from("messages").upsert({
+                id: saveId,
+                conversation_id,
+                content: fullText.trim() || "(error en respuesta)",
+                in_progress: false,
+              });
+            }
             try { controller.error(err); } catch {}
           });
         }
