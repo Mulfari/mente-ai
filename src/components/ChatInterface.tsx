@@ -57,22 +57,67 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
   const [streamError, setStreamError] = useState<string | null>(null);
+
   const [displayedText, setDisplayedText] = useState<Record<string, string>>({});
-  const chunkBufferRef = useRef<Record<string, string>>({});
-  const revealTimerRef = useRef<Record<string, ReturnType<typeof setTimeout>> | null>({});
+  // Typing reveal state per message
+  const revealTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
+  const revealCancelled = useRef<Record<string, boolean>>({});
 
   function smoothReveal(msgId: string, text: string) {
-    chunkBufferRef.current[msgId] = text;
-    const reveal = () => {
-      const current = chunkBufferRef.current[msgId];
-      if (current !== undefined) {
-        setDisplayedText(prev => ({ ...prev, [msgId]: current }));
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: current } : m));
-      }
+    // Cancel any pending reveal for this message
+    if (revealTimers.current[msgId]) {
+      clearTimeout(revealTimers.current[msgId]!);
+      revealTimers.current[msgId] = null;
+    }
+    revealCancelled.current[msgId] = false;
+
+    const current = displayedText[msgId] || "";
+    if (current === text) return;
+
+    // If text jumped significantly (>15 chars new), show all at once then start char reveal
+    if (text.length > current.length + 15) {
+      // Flash all new content immediately so it never looks stuck
+      setDisplayedText(prev => ({ ...prev, [msgId]: text }));
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
+      return;
+    }
+
+    // Reveal character by character from current position
+    let charIndex = current.length;
+    const tick = () => {
+      if (revealCancelled.current[msgId]) return;
+      charIndex++;
+      const revealed = text.slice(0, charIndex);
+      setDisplayedText(prev => ({ ...prev, [msgId]: revealed }));
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: revealed } : m));
+
+      if (charIndex >= text.length) return; // Done
+
+      // Natural typing rhythm
+      const prevCh = text[charIndex - 1] || "";
+      const nextCh = text[charIndex] || "";
+      let delay = 15 + Math.random() * 10;
+      if (".!?".includes(prevCh)) delay = 70 + Math.random() * 50; // Long pause after sentence end
+      else if (",;:".includes(prevCh)) delay = 45 + Math.random() * 30; // Medium pause
+      else if (nextCh === " " || nextCh === "\n") delay = 25 + Math.random() * 15; // Quick space
+      else if (nextCh === "`") delay = 5; // Fast for code
+      else if (prevCh === " ") delay = 20 + Math.random() * 10; // Word start
+
+      revealTimers.current[msgId] = setTimeout(tick, delay);
     };
-    if (revealTimerRef.current?.[msgId]) clearTimeout(revealTimerRef.current[msgId]);
-    const id = setTimeout(reveal, 20 + Math.random() * 40);
-    if (revealTimerRef.current) revealTimerRef.current[msgId] = id;
+
+    revealTimers.current[msgId] = setTimeout(tick, 40);
+  }
+
+  function flushReveal(msgId: string, text: string) {
+    // Called when streaming ends — cancel reveal and show full text
+    revealCancelled.current[msgId] = true;
+    if (revealTimers.current[msgId]) {
+      clearTimeout(revealTimers.current[msgId]!);
+      revealTimers.current[msgId] = null;
+    }
+    setDisplayedText(prev => ({ ...prev, [msgId]: text }));
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
   }
   type QueuedMsg = { text: string; files: File[]; previews: Record<string, string> };
   const queuedMsgRef = useRef<QueuedMsg | null>(null);
@@ -545,8 +590,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
             }
             result = await reader.read();
           }
-          // Stream done: await final save
+          // Stream done: await final save and flush reveal animation
           await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false });
+          flushReveal(msgId, fullText);
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false } : m));
           currentStreamReqRef.current = null;
           setSending(false);
@@ -606,6 +652,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       result2 = await reader2.read();
                     }
                     await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText2, in_progress: false });
+                    flushReveal(msgId, fullText2);
                     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText2, _loading: false } : m));
                     currentStreamReqRef.current = null;
                     setSending(false);
@@ -809,6 +856,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             });
             if (saveError) console.error("[Mulfai] save failed:", saveError);
             else console.log("[Mulfai] saved to DB:", msgId, "chars:", fullText.length);
+            flushReveal(msgId, fullText);
             setMessages(prev => prev.map(m =>
               m.id === msgId ? { ...m, content: fullText, _loading: false } : m
             ));
@@ -857,6 +905,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     reader2.read().then(({ done, value }) => {
                       if (done) {
                         supabase.from("messages").upsert({ id: msgId, conversation_id: req.conversationId, role: "assistant", content: fullText2, in_progress: false });
+                        flushReveal(msgId, fullText2);
                         setMessages(prev => prev.map(m =>
                           m.id === msgId ? { ...m, content: fullText2, _loading: false } : m
                         ));
@@ -1380,7 +1429,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 let buffer = "";
                                 let fullText = "";
                                 const updateStream = (text: string) => {
-                                  setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: text } : m));
+                                  smoothReveal(msg.id, text);
                                 };
                                 const processStream = () => {
                                   reader.read().then(({ done, value }) => {
@@ -1391,6 +1440,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                         content: fullText,
                                         in_progress: false,
                                       });
+                                      flushReveal(msg.id, fullText);
                                       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: fullText, _loading: false } : m));
                                       return;
                                     }
