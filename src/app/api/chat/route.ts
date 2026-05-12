@@ -277,44 +277,50 @@ export async function POST(request: Request) {
       }).eq("id", user.id);
     }
 
-    // === ROBUST APPROACH: stream to client AND accumulate text, then save to DB ===
+    // === ROBUST: stream to client AND accumulate, then save to DB on stream end ===
     const stream = new ReadableStream({
       async start(controller) {
+        // Capture reader reference and abort signal inside the stream context
+        const aiReader = reader;
+        const abortSig = request.signal;
         const decoder = new TextDecoder();
         let buffer = "";
         let fullText = "";
-
-        // Send message ID back to client if we have it
+        let saved = false;
         const saveId = msgId || message_id;
-        if (saveId) {
-          const headerLine = `data: ${JSON.stringify({ type: "msg_id", id: saveId })}\n\n`;
-          try { controller.enqueue(new TextEncoder().encode(headerLine)); } catch {}
-        }
+
+        const saveToDb = () => {
+          if (saved || !saveId || !conversation_id) return;
+          saved = true;
+          // Fire-and-forget with dynamic waitUntil if available
+          const doSave = async () => {
+            try {
+              const { error } = await supabase.from("messages").upsert({
+                id: saveId,
+                conversation_id,
+                content: fullText || "(respuesta no disponible)",
+                in_progress: false,
+              });
+              if (error) console.error("[chat] upsert failed:", error);
+            } catch (e) { console.error("[chat] save error:", e); }
+          };
+          if (typeof globalThis !== "undefined" && (globalThis as any).waitUntil) {
+            (globalThis as any).waitUntil(doSave());
+          } else {
+            doSave();
+          }
+        };
 
         function pump() {
-          reader.read().then(({ done, value }) => {
-            if (done) {
-              // === SAVE TO DB ONCE STREAM COMPLETES (server-side, robust) ===
-              if (saveId && conversation_id && fullText.trim()) {
-                supabase.from("messages").upsert({
-                  id: saveId,
-                  conversation_id,
-                  content: fullText,
-                  in_progress: false,
-                }).then(({ error }) => {
-                  if (error) console.error("[chat] upsert failed:", error);
-                });
-              }
-              const doneLine = "data: [DONE]\n\n";
-              try { controller.enqueue(new TextEncoder().encode(doneLine)); } catch {}
+          aiReader.read().then(({ done, value }) => {
+            if (done || abortSig?.aborted) {
+              saveToDb();
               try { controller.close(); } catch {}
               return;
             }
-
             buffer += decoder.decode(value, { stream: true });
             const lines = buffer.split("\n");
             buffer = lines[lines.length - 1] ?? "";
-
             for (let i = 0; i < lines.length - 1; i++) {
               const line = lines[i];
               if (line.startsWith("data: ")) {
@@ -332,8 +338,14 @@ export async function POST(request: Request) {
             }
             pump();
           }).catch((err) => {
+            saveToDb();
             try { controller.error(err); } catch {}
           });
+        }
+
+        // Send message ID back to client first
+        if (saveId) {
+          try { controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "msg_id", id: saveId })}\n\n`)); } catch {}
         }
         pump();
       },
