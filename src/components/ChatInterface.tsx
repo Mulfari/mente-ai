@@ -363,31 +363,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
   
   async function newConversation() {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
-    // Limpiar conversaciones vacías antes de crear nueva
-    const { data: convs } = await supabase
-      .from("conversations")
-      .select("id, title, messages(count)")
-      .eq("user_id", userId)
-      .order("updated_at", { ascending: false });
-    if (convs) {
-      // Eliminar conversaciones sin mensajes (vacías)
-      const toDelete = convs.filter((c: any) => {
-        const msgs = c.messages as any[];
-        return !msgs || msgs.length === 0 || (msgs.length > 0 && msgs[0].count === 0);
-      });
-      for (const c of toDelete) {
-        await supabase.from("conversations").delete().eq("id", c.id);
-      }
-      // Filter: remove empty "Nueva conversación" placeholders that never got a first message
-      const filtered = convs.filter((c: any) => c.title !== "Nueva conversación");
-      setConversations((filtered as unknown) as Conversation[]);
-    }
-    // No crear registro en DB — solo resetear estado local
     setActiveConv(null);
     setMessages([]);
     setShowSidebar(false);
+    loadConversations();
     window.history.pushState(null, "", "/chat");
-    // Recargar sugerencias al iniciar nuevo chat
     loadSuggestions();
   }
 
