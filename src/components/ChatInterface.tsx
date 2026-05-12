@@ -1414,7 +1414,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               const prevMsg = msgs[idx - 1];
                               if (prevMsg.role !== "user") return;
 
-                              setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _loading: true } : m));
+                              // Cancel any pending reveal animation for this message
+                              if (revealTimers.current[msg.id]) {
+                                clearTimeout(revealTimers.current[msg.id]!);
+                                revealTimers.current[msg.id] = null;
+                              }
+                              revealCancelled.current[msg.id] = true;
+                              setDisplayedText(prev => { const n = { ...prev }; delete n[msg.id]; return n; });
+                              setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "", _loading: true } : m));
+                              // Clear DB message and mark in_progress for new response
+                              await supabase.from("messages").update({ content: "", in_progress: true }).eq("id", msg.id);
                               const res = await fetch("/api/chat", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
