@@ -304,6 +304,15 @@ export async function POST(request: Request) {
                       fullText += json.delta.text;
                       const chunk = `data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`;
                       try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
+                      // Progressive save (fire-and-forget) so partial text survives connection drops
+                      if (saveId && conversation_id) {
+                        supabase.from("messages").upsert({
+                          id: saveId,
+                          conversation_id,
+                          content: fullText,
+                          in_progress: true,
+                        }, { onConflict: "id" });
+                      }
                     }
                   } catch {}
                 }

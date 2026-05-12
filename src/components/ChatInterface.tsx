@@ -519,48 +519,49 @@ export default function ChatInterface({ userId }: { userId: string }) {
       let buffer = "";
       let fullText = "";
 
-      const updateStreamText = (text: string) => {
+      const updateStreamText = async (text: string) => {
         smoothReveal(msgId, text);
-        supabase.from("messages").update({ content: text }).eq("id", msgId);
+        await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
       };
 
-      const processStream = () => {
-        reader.read().then(({ done, value }) => {
-          if (done) {
-            supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false }).then(() => {
-              console.log("[Mulfai] suggestion saved:", msgId);
-            });
-            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false } : m));
-            currentStreamReqRef.current = null;
-            setSending(false);
-            setStreamingMsgId(null);
-            const now = new Date().toISOString();
-            supabase.from("conversations").update({ updated_at: now }).eq("id", convId);
-            setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
-            setActiveConv({ ...conv!, updated_at: now });
-            if (queuedMsgRef.current) {
-              const q = queuedMsgRef.current as QueuedMsg;
-              queuedMsgRef.current = null;
-              setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
+      const processStream = async () => {
+        try {
+          let result = await reader.read();
+          while (!result.done) {
+            buffer += decoder.decode(result.value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines[lines.length - 1] ?? "";
+            for (let i = 0; i < lines.length - 1; i++) {
+              const line = lines[i];
+              if (line.startsWith("data: ")) {
+                const data = line.slice(6);
+                if (data === "[DONE]") continue;
+                try {
+                  const json = JSON.parse(data);
+                  if (json.type === "chunk" && json.text) { fullText += json.text; await updateStreamText(fullText); }
+                } catch {}
+              }
             }
-            return;
+            result = await reader.read();
           }
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines[lines.length - 1] ?? "";
-          for (let i = 0; i < lines.length - 1; i++) {
-            const line = lines[i];
-            if (line.startsWith("data: ")) {
-              const data = line.slice(6);
-              if (data === "[DONE]") continue;
-              try {
-                const json = JSON.parse(data);
-                if (json.type === "chunk" && json.text) { fullText += json.text; updateStreamText(fullText); }
-              } catch {}
-            }
+          // Stream done: await final save
+          await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false } : m));
+          currentStreamReqRef.current = null;
+          setSending(false);
+          setStreamingMsgId(null);
+          const now = new Date().toISOString();
+          supabase.from("conversations").update({ updated_at: now }).eq("id", convId);
+          setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
+          setActiveConv({ ...conv!, updated_at: now });
+          if (queuedMsgRef.current) {
+            const q = queuedMsgRef.current as QueuedMsg;
+            queuedMsgRef.current = null;
+            setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
+          } else {
+            textareaRef.current?.focus();
           }
-          processStream();
-        }).catch(() => {
+        } catch (_err) {
           const req = currentStreamReqRef.current;
           if (req) {
             setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m));
@@ -579,53 +580,53 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 const decoder2 = new TextDecoder();
                 let buffer2 = "";
                 let fullText2 = "";
-                const updateStreamText2 = (text: string) => {
+                const updateStreamText2 = async (text: string) => {
                   smoothReveal(msgId, text);
-                  supabase.from("messages").update({ content: text }).eq("id", msgId);
+                  await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
                 };
-                const processStream2 = () => {
-                  reader2.read().then(({ done, value }) => {
-                    if (done) {
-                      supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText2, in_progress: false });
-                      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText2, _loading: false } : m));
-                      currentStreamReqRef.current = null;
-                      setSending(false);
-                      setStreamingMsgId(null);
-                      return;
-                    }
-                    buffer2 += decoder2.decode(value, { stream: true });
-                    const lines = buffer2.split("\n");
-                    buffer2 = lines[lines.length - 1] ?? "";
-                    for (let i = 0; i < lines.length - 1; i++) {
-                      const line = lines[i];
-                      if (line.startsWith("data: ")) {
-                        const data = line.slice(6);
-                        if (data === "[DONE]") continue;
-                        try {
-                          const json = JSON.parse(data);
-                          if (json.type === "chunk" && json.text) { fullText2 += json.text; updateStreamText2(fullText2); }
-                        } catch {}
+                const processStream2 = async () => {
+                  try {
+                    let result2 = await reader2.read();
+                    while (!result2.done) {
+                      buffer2 += decoder2.decode(result2.value, { stream: true });
+                      const lines2 = buffer2.split("\n");
+                      buffer2 = lines2[lines2.length - 1] ?? "";
+                      for (let i = 0; i < lines2.length - 1; i++) {
+                        const line = lines2[i];
+                        if (line.startsWith("data: ")) {
+                          const data = line.slice(6);
+                          if (data === "[DONE]") continue;
+                          try {
+                            const json = JSON.parse(data);
+                            if (json.type === "chunk" && json.text) { fullText2 += json.text; await updateStreamText2(fullText2); }
+                          } catch {}
+                        }
                       }
+                      result2 = await reader2.read();
                     }
-                    processStream2();
-                  }).catch(() => {
+                    await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText2, in_progress: false });
+                    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText2, _loading: false } : m));
+                    currentStreamReqRef.current = null;
+                    setSending(false);
+                    setStreamingMsgId(null);
+                  } catch (_err) {
                     supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
                     setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m));
                     currentStreamReqRef.current = null;
                     setSending(false);
                     setStreamingMsgId(null);
-                  });
+                  }
                 };
                 processStream2();
               }
             }, 1000);
-            return;
+          } else {
+            supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
+            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m));
+            setSending(false);
+            setStreamingMsgId(null);
           }
-          supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m));
-          setSending(false);
-          setStreamingMsgId(null);
-            });
+        }
       };
 
       processStream();
@@ -769,65 +770,64 @@ export default function ChatInterface({ userId }: { userId: string }) {
         let buffer = "";
         let fullText = "";
 
-        const updateStreamText = (text: string) => {
-          // Update both local state and DB in_progress message
+        const updateStreamText = async (text: string) => {
+          // Update both local state and DB progressively
           smoothReveal(msgId, text);
-          supabase.from("messages").update({ content: text }).eq("id", msgId);
+          await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
         };
 
         const processStream = async () => {
-          reader.read().then(async ({ done, value }) => {
-            if (done) {
-              // Save complete response to DB (wait for save to finish)
-              const saveResult = await supabase.from("messages").upsert({
-                id: msgId,
-                conversation_id: convId,
-                content: fullText,
-                in_progress: false,
-              });
-              if (saveResult.error) console.error("[Mulfai] save failed:", saveResult.error);
-              else console.log("[Mulfai] saved response to DB:", msgId, "chars:", fullText.length);
-              setMessages(prev => prev.map(m =>
-                m.id === msgId ? { ...m, content: fullText, _loading: false } : m
-              ));
-              currentStreamReqRef.current = null;
-              setSending(false);
-              setStreamingMsgId(null);
-                      // Flush queued message if any
-              if (queuedMsgRef.current) {
-                const q = queuedMsgRef.current as QueuedMsg;
-                queuedMsgRef.current = null;
-                setTimeout(() => {
-                  setInput(q.text);
-                  setAttachments(q.files);
-                  setPreviewUrls(q.previews);
-                  autoResize();
-                  sendMessage();
-                }, 100);
-              } else {
-                textareaRef.current?.focus();
+          try {
+            let result = await reader.read();
+            while (!result.done) {
+              buffer += decoder.decode(result.value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines[lines.length - 1] ?? "";
+              for (let i = 0; i < lines.length - 1; i++) {
+                const line = lines[i];
+                if (line.startsWith("data: ")) {
+                  const data = line.slice(6);
+                  if (data === "[DONE]") continue;
+                  try {
+                    const json = JSON.parse(data);
+                    if (json.type === "chunk" && json.text) {
+                      fullText += json.text;
+                      await updateStreamText(fullText);
+                    }
+                  } catch {}
+                }
               }
-              return;
+              result = await reader.read();
             }
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines[lines.length - 1] ?? "";
-            for (let i = 0; i < lines.length - 1; i++) {
-              const line = lines[i];
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6);
-                if (data === "[DONE]") continue;
-                try {
-                  const json = JSON.parse(data);
-                  if (json.type === "chunk" && json.text) {
-                    fullText += json.text;
-                    updateStreamText(fullText);
-                  }
-                } catch {}
-              }
+            // Stream done: await final save
+            const { error: saveError } = await supabase.from("messages").upsert({
+              id: msgId,
+              conversation_id: convId,
+              content: fullText,
+              in_progress: false,
+            });
+            if (saveError) console.error("[Mulfai] save failed:", saveError);
+            else console.log("[Mulfai] saved to DB:", msgId, "chars:", fullText.length);
+            setMessages(prev => prev.map(m =>
+              m.id === msgId ? { ...m, content: fullText, _loading: false } : m
+            ));
+            currentStreamReqRef.current = null;
+            setSending(false);
+            setStreamingMsgId(null);
+            if (queuedMsgRef.current) {
+              const q = queuedMsgRef.current as QueuedMsg;
+              queuedMsgRef.current = null;
+              setTimeout(() => {
+                setInput(q.text);
+                setAttachments(q.files);
+                setPreviewUrls(q.previews);
+                autoResize();
+                sendMessage();
+              }, 100);
+            } else {
+              textareaRef.current?.focus();
             }
-            processStream();
-          }).catch(() => {
+          } catch (_err) {
             const req = currentStreamReqRef.current;
             if (req) {
               setMessages(prev => prev.map(m =>
@@ -914,14 +914,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
             ));
             setSending(false);
             setStreamingMsgId(null);
-                });
+          }
         };
 
         processStream();
       }
-
-      lastErrorRef.current = null;
-    } catch {
+    } catch (_err) {
       setMessages(prev => [...prev, {
         id: Date.now().toString(), role: "assistant",
         content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString(),
