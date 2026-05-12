@@ -1298,7 +1298,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Esta conversacion esta vacia</p>
             </div>
           ) : (
-            <div className="max-w-2xl mx-auto px-4 py-5">
+            <div className="max-w-3xl mx-auto px-4 py-5">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4 animate-fade-in group`}>
                   {msg.role === "assistant" && (
@@ -1503,7 +1503,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       </main>
         {/* Input area */}
         <div className="px-4 pb-4 pt-2 flex-none">
-          <div className="max-w-2xl mx-auto">
+          <div className="max-w-3xl mx-auto">
             {/* Attachment previews */}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
