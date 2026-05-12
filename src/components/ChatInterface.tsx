@@ -142,8 +142,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: true });
     if (error) console.error("loadMessages error:", error);
-    console.log("[Mulfai] loadMessages result:", conversationId, "count:", data?.length, "roles:", data?.map(m => m.role), "error:", error);
-    setMessages(data ?? []);
+    // Filter out messages that are still in_progress (streaming placeholders with no content yet)
+    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress));
+    setMessages(valid);
+    console.log("[Mulfai] loadMessages result:", conversationId, "count:", valid.length, "roles:", valid.map(m => m.role));
     setStreamingMsgId(null);
     lastErrorRef.current = null;
     setLoading(false);
@@ -392,14 +394,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
     window.history.pushState(null, "", `/chat/${conv.id}`);
     setShowSidebar(false);
     await loadMessages(conv.id);
-    // Refresh conversations list so sidebar is in sync with DB
-    const { data } = await supabase
-      .from("conversations")
-      .select("id, title, created_at, updated_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(20);
-    if (data) setConversations(data);
   }
 
   async function deleteConv(convId: string, e: React.MouseEvent) {
