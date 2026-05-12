@@ -286,66 +286,63 @@ export async function POST(request: Request) {
         let fullText = "";
         const saveId = msgId || message_id;
 
-        function pump() {
-          aiReader.read().then(({ done, value }) => {
-            if (done) {
-              // === SAVE TO DB BEFORE CLOSING STREAM ===
-              // Execute upsert synchronously — Supabase is fast, stream already received all data
-              if (saveId && conversation_id) {
-                const content = fullText.trim() || "(respuesta no disponible)";
-                supabase.from("messages").upsert({
-                  id: saveId,
-                  conversation_id,
-                  content,
-                  in_progress: false,
-                }).then(({ error }) => {
-                  if (error) console.error("[chat] upsert failed:", error);
-                  else console.log("[chat] saved:", saveId, "chars:", content.length);
-                });
-                // Update conversation title and timestamp
-                const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
-                supabase.from("conversations").update({
-                  title: message ? title : undefined,
-                  updated_at: new Date().toISOString(),
-                }).eq("id", conversation_id);
+        async function pump() {
+          try {
+            let result = await aiReader.read();
+            while (!result.done) {
+              buffer += decoder.decode(result.value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines[lines.length - 1] ?? "";
+              for (let i = 0; i < lines.length - 1; i++) {
+                const line = lines[i];
+                if (line.startsWith("data: ")) {
+                  const data = line.slice(6);
+                  if (data === "[DONE]") continue;
+                  try {
+                    const json = JSON.parse(data);
+                    if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
+                      fullText += json.delta.text;
+                      const chunk = `data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`;
+                      try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
+                    }
+                  } catch {}
+                }
               }
-              try {
-                controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
-                controller.close();
-              } catch {}
-              return;
+              result = await aiReader.read();
             }
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines[lines.length - 1] ?? "";
-            for (let i = 0; i < lines.length - 1; i++) {
-              const line = lines[i];
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6);
-                if (data === "[DONE]") continue;
-                try {
-                  const json = JSON.parse(data);
-                  if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                    fullText += json.delta.text;
-                    const chunk = `data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`;
-                    try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
-                  }
-                } catch {}
-              }
-            }
-            pump();
-          }).catch((err) => {
-            // Save on error too
+            // === Stream done: await DB save before [DONE] ===
             if (saveId && conversation_id) {
-              supabase.from("messages").upsert({
+              const content = fullText.trim() || "(respuesta no disponible)";
+              console.log("[chat] saving msg:", saveId, "chars:", content.length);
+              const { error } = await supabase.from("messages").upsert({
+                id: saveId,
+                conversation_id,
+                content,
+                in_progress: false,
+              }, { onConflict: "id" });
+              if (error) console.error("[chat] upsert failed:", error);
+              else console.log("[chat] upsert ok:", saveId);
+              const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
+              supabase.from("conversations").update({
+                title: message ? title : undefined,
+                updated_at: new Date().toISOString(),
+              }).eq("id", conversation_id);
+            }
+            try {
+              controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+              controller.close();
+            } catch {}
+          } catch (err) {
+            if (saveId && conversation_id) {
+              await supabase.from("messages").upsert({
                 id: saveId,
                 conversation_id,
                 content: fullText.trim() || "(error en respuesta)",
                 in_progress: false,
-              });
+              }, { onConflict: "id" });
             }
-            try { controller.error(err); } catch {}
-          });
+            try { controller.error(err as Error); } catch {}
+          }
         }
 
         // Send message ID back to client first
