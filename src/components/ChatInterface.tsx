@@ -786,18 +786,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
           supabase.from("messages").update({ content: text }).eq("id", msgId);
         };
 
-        const processStream = () => {
-          reader.read().then(({ done, value }) => {
+        const processStream = async () => {
+          reader.read().then(async ({ done, value }) => {
             if (done) {
-              // Save complete response to DB from client side (more reliable than waiting for API route)
-              supabase.from("messages").upsert({
+              // Save complete response to DB (wait for save to finish)
+              const saveResult = await supabase.from("messages").upsert({
                 id: msgId,
                 conversation_id: convId,
                 content: fullText,
                 in_progress: false,
-              }).then(() => {
-                console.log("[Mulfai] saved response to DB:", msgId, "chars:", fullText.length);
               });
+              if (saveResult.error) console.error("[Mulfai] save failed:", saveResult.error);
+              else console.log("[Mulfai] saved response to DB:", msgId, "chars:", fullText.length);
               setMessages(prev => prev.map(m =>
                 m.id === msgId ? { ...m, content: fullText, _loading: false } : m
               ));
@@ -1032,8 +1032,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 const isToday = isValidDate && d.toDateString() === now.toDateString();
                 const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
                 const isYesterday = isValidDate && d.toDateString() === yesterday.toDateString();
+                const diffMs = isValidDate ? now.getTime() - d.getTime() : 0;
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                 const dateLabel = isValidDate
-                  ? isToday ? "Hoy" : isYesterday ? "Ayer" : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" })
+                  ? isToday ? "Hoy" : isYesterday ? "Ayer" : diffDays > 1 ? `Hace ${diffDays} días` : ""
                   : "";
 
                 return (

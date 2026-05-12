@@ -304,8 +304,10 @@ export async function POST(request: Request) {
               if (error) console.error("[chat] upsert failed:", error);
             } catch (e) { console.error("[chat] save error:", e); }
           };
-          if (typeof globalThis !== "undefined" && (globalThis as any).waitUntil) {
-            (globalThis as any).waitUntil(doSave());
+          // Use waitUntil so the save runs even after stream closes (Vercel Functions)
+          const ctx = request as any;
+          if (ctx.waitUntil) {
+            ctx.waitUntil(doSave());
           } else {
             doSave();
           }
