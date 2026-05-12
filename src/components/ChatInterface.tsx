@@ -598,7 +598,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 const processStream2 = () => {
                   reader2.read().then(({ done, value }) => {
                     if (done) {
-                      supabase.from("messages").upsert({ id: msgId, content: fullText2, in_progress: false });
+                      supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText2, in_progress: false });
                       setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText2, _loading: false } : m));
                       currentStreamReqRef.current = null;
                       setSending(false);
