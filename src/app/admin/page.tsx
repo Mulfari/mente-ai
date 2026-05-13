@@ -16,25 +16,21 @@ export default async function AdminPage() {
 
   if (!profile || profile.role !== "admin") return null;
 
-  // Fetch admin data server-side (bypasses Vercel Auth)
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Fetch admin data server-side via API route (bypasses Vercel Auth for browser)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const headers = {
-    apikey: serviceKey!,
-    Authorization: `Bearer ${serviceKey}`,
-  };
 
   let profiles: any[] = [];
   let coupons: any[] = [];
 
-  if (serviceKey && supabaseUrl) {
+  if (supabaseUrl) {
     try {
+      const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `https://${process.env.VERCEL_URL}`;
       const [pRes, cRes] = await Promise.all([
-        fetch(`${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`, { headers }),
-        fetch(`${supabaseUrl}/rest/v1/coupons?select=*&order=created_at.desc`, { headers }),
+        fetch(`${baseUrl}/api/admin/data?type=profiles`, { cache: "no-store" }),
+        fetch(`${baseUrl}/api/admin/data?type=coupons`, { cache: "no-store" }),
       ]);
-      if (pRes.ok) profiles = await pRes.json();
-      if (cRes.ok) coupons = await cRes.json();
+      if (pRes.ok) { const d = await pRes.json(); profiles = d.data || []; }
+      if (cRes.ok) { const d = await cRes.json(); coupons = d.data || []; }
     } catch {}
   }
 
