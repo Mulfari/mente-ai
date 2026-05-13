@@ -1258,21 +1258,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
 
         {/* Bottom */}
-        <div className="px-3 pb-6 pt-3 shrink-0 flex items-center gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <button onClick={toggleTheme}
-            className="p-2 rounded-xl transition-all shrink-0"
-            style={{ color: "var(--text-secondary)" }}
-            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}>
-            {theme === "dark" ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-          </button>
+        <div className="px-3 pb-5 pt-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+          {/* Theme toggle row */}
+          <div className="flex items-center gap-2 mb-2">
+            <button onClick={toggleTheme}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
+              style={{ backgroundColor: "var(--surface-hover)", color: "var(--text-secondary)" }}>
+              <span className="text-base">{theme === "dark" ? "☀️" : "🌙"}</span>
+              <span>{theme === "dark" ? "Claro" : "Oscuro"}</span>
+            </button>
+          </div>
+          {/* Account row */}
           <button onClick={() => setShowAccountMenu(true)}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all cursor-pointer group"
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)"; }}
