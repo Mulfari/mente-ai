@@ -391,7 +391,7 @@ export async function POST(request: Request) {
         hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
       }).eq("id", user.id);
 
-      // Call Claude with focused identity prompt
+      // Call Claude with focused identity prompt — get full text first, then stream to client
       const identityPrompt = `Eres Mulfai, un asistente de inteligencia artificial personal.
 Tu nombre es Mulfai.
 NUNCA digas que eres Claude, ChatGPT, Gemini, o cualquier otro asistente.
@@ -400,44 +400,22 @@ El usuario pregunta: ${message}`;
 
       const identityResult = await runChat(apiKey, baseUrl, [{ role: "system", content: identityPrompt }], [], "normal");
 
-      // Fallback if API fails
-      const fallback = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas y encontrar lugares locales en Venezuela.";
-      const identityReader = "reader" in identityResult ? identityResult.reader : null;
+      let identityText = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas y encontrar lugares locales en Venezuela.";
+      if (!("error" in identityResult) && identityResult.reader) {
+        const fullText = await streamAndAccumulate(identityResult.reader);
+        if (fullText.trim()) identityText = fullText.trim();
+      }
 
-      // Stream Claude's response, using client's message_id so the UI tracks it correctly
+      // Update the message with the full response
+      if (clientMsgId && !clientMsgId.startsWith("retry_")) {
+        await supabase.from("messages").update({ content: identityText, in_progress: false }).eq("id", clientMsgId);
+      }
+
+      // Stream the full text to the client in one event
       const stream = new ReadableStream({
-        async start(controller) {
+        start(controller) {
           controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
-
-          if (identityReader) {
-            const decoder = new TextDecoder();
-            let buffer = "";
-            try {
-              let result = await identityReader.read();
-              while (!result.done) {
-                buffer += decoder.decode(result.value, { stream: true });
-                const lines = buffer.split("\n");
-                buffer = lines[lines.length - 1] ?? "";
-                for (let i = 0; i < lines.length - 1; i++) {
-                  const line = lines[i];
-                  if (line.startsWith("data: ")) {
-                    const data = line.slice(6);
-                    if (data === "[DONE]") continue;
-                    try {
-                      const json = JSON.parse(data);
-                      if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                        controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`));
-                      }
-                    } catch {}
-                  }
-                }
-                result = await identityReader.read();
-              }
-            } catch {}
-          } else {
-            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: fallback })}\n\n`));
-          }
-
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: identityText })}\n\n`));
           controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
           controller.close();
         }
