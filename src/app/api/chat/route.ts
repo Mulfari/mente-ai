@@ -64,6 +64,30 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
+async function knowledgeLookup(userMessage: string): Promise<string | null> {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!serviceKey || !supabaseUrl) return null;
+
+  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`,
+      { headers }
+    );
+    if (!res.ok) return null;
+    const rules: any[] = await res.json();
+
+    const msg = userMessage.toLowerCase().trim();
+    for (const rule of rules) {
+      if (rule.trigger_type === "keyword" && msg.includes(rule.trigger_value.toLowerCase())) {
+        return rule.response;
+      }
+    }
+  } catch {}
+  return null;
+}
+
 async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClient>>, baseUrl: string, userMessage: string): Promise<{ role: "system"; content: string }[]> {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -83,17 +107,10 @@ async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClien
   const needsPlaces = placeKeywords.some(k => msg.includes(k));
 
   let placesData: any[] = [];
-  let knowledgeRules: any[] = [];
 
   if (serviceKey && supabaseUrl) {
     const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
     try {
-      const [rulesRes] = await Promise.all([
-        fetch(`${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`, { headers }),
-      ]);
-      if (rulesRes.ok) knowledgeRules = await rulesRes.json();
-
-      // Only fetch places if the query is relevant
       if (needsPlaces) {
         const placesRes = await fetch(
           `${supabaseUrl}/rest/v1/places?select=*,cities(name,slug),categories(name,icon,color)&active=eq.true&order=rating.desc&limit=200`,
@@ -110,8 +127,6 @@ async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClien
     return `- ${p.name}${location}: ${p.address || "Dirección no disponible"}. ${p.specialty || p.description || ""} ${hoursStr} ${p.phone ? `📞 ${p.phone}` : ""} ${p.whatsapp ? `WhatsApp: ${p.whatsapp}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`;
   }).join("\n");
 
-  const rulesList = knowledgeRules.map((r: any) => `CUANDO el usuario pregunte o mencione "${r.trigger_value}", responde EXACTAMENTE con: ${r.response}`).join("\n");
-
   const basePrompt = `Eres Mulfai, un asistente de IA diseñado para ayudarte.
 
 IDENTIDAD:
@@ -125,11 +140,6 @@ REGLAS DE IDIOMA (SIEMPRE):
 - No uses términos técnicos en inglés cuando exista traducción natural al español.
 - Para código de programación puedes usar nombres en inglés.`;
 
-  let knowledgeSection = "";
-  if (rulesList) {
-    knowledgeSection = `\n\nREGLAS DE CONOCIMIENTO (OBLIGATORIO):\n${rulesList}\n\nIMPORTANTE: Cuando el usuario haga una pregunta que coincida con alguna de las reglas anteriores, responde EXACTAMENTE con lo que indica la regla. NO respondas con tu conocimiento propio para estas preguntas.`;
-  }
-
   let directorySection = "";
   if (placesList) {
     directorySection = `\n\nDIRECTORIO LOCAL:\n${placesList}\n\nCuando el usuario pregunte por lugares (restaurantes, farmacias, clínicas, gyms, lavanderías, estaciones), usa este directorio. Da siempre: nombre, dirección, horario y teléfono cuando estén disponibles. Si no tienes el dato, sé honesto: "No tengo ese lugar en mi directorio todavía." NO inventes información.`;
@@ -139,7 +149,7 @@ REGLAS DE IDIOMA (SIEMPRE):
     ? ""
     : "\n\nSi el usuario pregunta sobre algo que no está en el directorio (opiniones personales, programación, matemáticas, etc.), responde con tu conocimiento general de forma útil.";
 
-  return [{ role: "system", content: basePrompt + knowledgeSection + directorySection + instructions }];
+  return [{ role: "system", content: basePrompt + directorySection + instructions }];
 }
 
 function formatHours(hours: any): string {
@@ -332,6 +342,52 @@ export async function POST(request: Request) {
     let msgId = resume_message_id;
     if (resume_message_id) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
+    }
+
+    // Check knowledge rules first — if match, respond directly without calling AI
+    const knowledgeResponse = await knowledgeLookup(message);
+    if (knowledgeResponse) {
+      // Save user message
+      if (!resume_message_id) {
+        const { data: savedMsg } = await supabase.from("messages").insert({
+          conversation_id: conversation_id || undefined,
+          user_id: user.id,
+          role: "user",
+          content: message,
+          attachments: attachments?.length ? attachments : null,
+        }).select("id").single();
+        if (savedMsg) msgId = savedMsg.id;
+      }
+
+      const now2 = new Date();
+      const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
+      const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
+      const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
+      await supabase.from("profiles").update({
+        last_message_at: now2.toISOString(),
+        hourly_msg_count: newHourlyCount,
+        hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
+      }).eq("id", user.id);
+
+      // Stream the knowledge response
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: msgId })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content_index: 0, type: "content_block", block: { type: "text", text: knowledgeResponse } })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content_index: 0, type: "content_block_delta", delta: { type: "text_delta", text: knowledgeResponse } })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_delta", delta: { type: "message_delta", usage: { output_tokens: Math.ceil(knowledgeResponse.length / 4) } } })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
+          controller.close();
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
     }
 
     const allMessagesForAI = [
