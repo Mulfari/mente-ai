@@ -54,7 +54,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   const [newCouponCount, setNewCouponCount] = useState(1);
   const [generatingCoupons, setGeneratingCoupons] = useState(false);
   const [selectedCouponType, setSelectedCouponType] = useState<CouponType>("weekly");
-  const [couponFilter, setCouponFilter] = useState<CouponFilter>("all");
+  const [couponFilter, setCouponFilter] = useState<CouponFilter>("available");
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [userCouponHistory, setUserCouponHistory] = useState<Map<string, Coupon[]>>(new Map());
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<string | null>(null);
@@ -256,7 +256,15 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     unused: coupons.filter(c => c.used_by == null).length,
   };
 
-  const filteredCoupons = coupons.filter(c => {
+  // Sort: available first (by creation date desc), then used (by used_at desc)
+  const sortedCoupons = [...coupons].sort((a, b) => {
+    if (a.used_by && !b.used_by) return 1;
+    if (!a.used_by && b.used_by) return -1;
+    if (!a.used_by) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return new Date(b.used_at || 0).getTime() - new Date(a.used_at || 0).getTime();
+  });
+
+  const filteredCoupons = sortedCoupons.filter(c => {
     if (couponFilter === "available") return !c.used_by;
     if (couponFilter === "used") return !!c.used_by;
     return true;
@@ -317,13 +325,6 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
             </svg>
             Actualizar
           </button>
-          <a href="/" className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors hover:bg-[var(--surface-hover)]"
-            style={{ color: "var(--text-secondary)" }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-            </svg>
-            Volver
-          </a>
         </div>
       </header>
 
@@ -334,42 +335,38 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
           <div className="mb-6 p-4 rounded-2xl border" style={{ backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)" }}>
             <p className="text-sm font-semibold" style={{ color: "var(--danger)" }}>Error al cargar datos:</p>
             <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{fetchError}</p>
-            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Abre la consola del navegador (F12) y revisa la pestana &quot;Network&quot; o &quot;Console&quot; para mas detalles.</p>
           </div>
         )}
 
         {/* Title + Stats */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>Panel de administracion</h1>
-            <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Gestiona usuarios, activa suscripciones y genera cupones</p>
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-5">
+            <div>
+              <h1 className="text-2xl font-bold mb-0.5" style={{ color: "var(--text-primary)" }}>Panel de administracion</h1>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Gestiona usuarios, activa suscripciones y genera cupones</p>
+            </div>
+            <a href="/" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+              style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
+              </svg>
+              Volver al chat
+            </a>
           </div>
-          <div className="flex items-center gap-4 shrink-0">
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-              <span style={{ color: "var(--text-tertiary)" }}>Total</span>
-              <span className="font-bold" style={{ color: "var(--text-primary)" }}>{stats.total}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "rgba(16,163,127,0.12)", border: "1px solid rgba(16,163,127,0.2)" }}>
-              <span style={{ color: "var(--primary)" }}>Activos</span>
-              <span className="font-bold" style={{ color: "var(--primary)" }}>{stats.active}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.2)" }}>
-              <span style={{ color: "var(--warning)" }}>Inactivos</span>
-              <span className="font-bold" style={{ color: "var(--warning)" }}>{stats.inactive}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.2)" }}>
-              <span style={{ color: "var(--danger)" }}>Cancelados</span>
-              <span className="font-bold" style={{ color: "var(--danger)" }}>{stats.cancelled}</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-              style={{ backgroundColor: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}>
-              <span style={{ color: "#8b5cf6" }}>Pendientes</span>
-              <span className="font-bold" style={{ color: "#8b5cf6" }}>{stats.pending}</span>
-            </div>
+          {/* Stats bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: "Total usuarios", value: stats.total, color: "var(--text-primary)", bg: "var(--surface)", border: "var(--border)" },
+              { label: "Activos", value: stats.active, color: "var(--primary)", bg: "rgba(16,163,127,0.08)", border: "rgba(16,163,127,0.2)" },
+              { label: "Inactivos", value: stats.inactive, color: "var(--warning)", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" },
+              { label: "Cancelados", value: stats.cancelled, color: "var(--danger)", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)" },
+              { label: "Pendientes", value: stats.pending, color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", border: "rgba(139,92,246,0.2)" },
+            ].map(s => (
+              <div key={s.label} className="px-4 py-3 rounded-2xl" style={{ backgroundColor: s.bg, border: `1px solid ${s.border}` }}>
+                <p className="text-xs font-medium mb-1" style={{ color: s.color }}>{s.label}</p>
+                <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -420,25 +417,20 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
         {/* Coupon stats */}
         {activeTab === "coupons" && (
           <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-                style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-                <span style={{ color: "var(--text-tertiary)" }}>Total</span>
-                <span className="font-bold" style={{ color: "var(--text-primary)" }}>{couponStats.total}</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-                style={{ backgroundColor: "rgba(16,163,127,0.12)", border: "1px solid rgba(16,163,127,0.2)" }}>
-                <span style={{ color: "var(--primary)" }}>Usados</span>
-                <span className="font-bold" style={{ color: "var(--primary)" }}>{couponStats.used}</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold"
-                style={{ backgroundColor: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.2)" }}>
-                <span style={{ color: "var(--warning)" }}>Disponibles</span>
-                <span className="font-bold" style={{ color: "var(--warning)" }}>{couponStats.unused}</span>
-              </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Total", value: couponStats.total, color: "var(--text-primary)", bg: "var(--surface)", border: "var(--border)" },
+                { label: "Usados", value: couponStats.used, color: "var(--primary)", bg: "rgba(16,163,127,0.08)", border: "rgba(16,163,127,0.2)" },
+                { label: "Disponibles", value: couponStats.unused, color: "var(--warning)", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" },
+              ].map(s => (
+                <div key={s.label} className="px-4 py-3 rounded-xl text-center" style={{ backgroundColor: s.bg, border: `1px solid ${s.border}` }}>
+                  <p className="text-xs font-medium mb-0.5" style={{ color: s.color }}>{s.label}</p>
+                  <p className="text-xl font-bold" style={{ color: s.color }}>{s.value}</p>
+                </div>
+              ))}
             </div>
-            <div className="flex items-center gap-1 p-1 rounded-xl self-start sm:self-auto" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-              {([["all", "Todos"], ["available", "Disp."], ["used", "Usados"]] as const).map(([f, label]) => (
+            <div className="flex items-center gap-1 p-1 rounded-xl self-start" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              {([["available", "Disponibles"], ["used", "Usados"], ["all", "Todos"]] as const).map(([f, label]) => (
                 <button key={f} onClick={() => setCouponFilter(f as CouponFilter)}
                   className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
                   style={{
@@ -516,184 +508,185 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                   const endDateStr = endDate ? endDate.toLocaleDateString("es-ES", { day: "numeric", month: "short", year: "numeric" }) : null;
                   return (
                     <div key={user.id}
-                      className="rounded-2xl overflow-hidden transition-all"
-                      style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-                      {/* Main info row */}
+                      className="rounded-2xl overflow-hidden transition-all hover:shadow-lg"
+                      style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                      {/* Main info + actions */}
                       <div className="p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-md shrink-0"
+                        <div className="flex items-start justify-between gap-4 mb-4">
+                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                            <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-base font-bold shadow-md shrink-0"
                               style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
                               {user.email.charAt(0).toUpperCase()}
                             </div>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{user.email}</p>
                               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                                <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                                <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
                                   style={{
-                                    backgroundColor: user.status === "active" ? "rgba(16,163,127,0.15)" : user.status === "inactive" ? "rgba(245,158,11,0.15)" : user.status === "pending" ? "rgba(139,92,246,0.15)" : "rgba(239,68,68,0.15)",
+                                    backgroundColor: user.status === "active" ? "rgba(16,163,127,0.12)" : user.status === "inactive" ? "rgba(245,158,11,0.12)" : user.status === "pending" ? "rgba(139,92,246,0.12)" : "rgba(239,68,68,0.12)",
                                     color: user.status === "active" ? "var(--primary)" : user.status === "inactive" ? "var(--warning)" : user.status === "pending" ? "#8b5cf6" : "var(--danger)",
                                   }}>
                                   {user.status === "active" ? "Activo" : user.status === "inactive" ? "Inactivo" : user.status === "cancelled" ? "Cancelado" : user.status === "pending" ? "Pendiente" : "Rechazado"}
                                 </span>
                                 {isAdmin && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                                    style={{ backgroundColor: "rgba(139,92,246,0.15)", color: "#8b5cf6" }}>
+                                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                                    style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>
                                     Admin
                                   </span>
                                 )}
                                 {user.used_coupon_label && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                                    style={{ backgroundColor: user.used_coupon_label_color ? `${user.used_coupon_label_color}22` : "rgba(139,92,246,0.15)", color: user.used_coupon_label_color || "#8b5cf6" }}>
+                                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
+                                    style={{ backgroundColor: user.used_coupon_label_color ? `${user.used_coupon_label_color}22` : "rgba(139,92,246,0.12)", color: user.used_coupon_label_color || "#8b5cf6" }}>
                                     {user.used_coupon_label}
                                   </span>
                                 )}
                               </div>
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
+                          <div className="text-right shrink-0 hidden sm:block">
                             <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Registrado</p>
-                            <p className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>{formatDate(user.created_at)}</p>
+                            <p className="text-xs font-medium mt-0.5" style={{ color: "var(--text-secondary)" }}>{formatDate(user.created_at)}</p>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Subscription row */}
-                      {(user.status === "active" || user.status === "inactive") && (
-                        <div className="px-5 pb-4 -mt-1">
-                          <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl"
-                            style={{ backgroundColor: "var(--background)" }}>
+                        {/* Subscription info */}
+                        {(user.status === "active" || user.status === "inactive") && (
+                          <div className="flex items-center justify-between gap-3 p-4 rounded-xl mb-4"
+                            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                                style={{ background: "linear-gradient(135deg, rgba(16,163,127,0.2), rgba(16,163,127,0.05))" }}>
+                              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ background: "linear-gradient(135deg, rgba(16,163,127,0.15), rgba(16,163,127,0.05))" }}>
                                 <svg className="w-4 h-4" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                 </svg>
                               </div>
                               <div>
-                                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Suscripcion</p>
-                                <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                                  {user.subscription_weeks < 0 ? "∞" : `${user.subscription_weeks} semana${user.subscription_weeks !== 1 ? "s" : ""}`}
-                                  {endDateStr && <span className="text-xs font-normal ml-2" style={{ color: "var(--text-tertiary)" }}>hasta {endDateStr}</span>}
+                                <p className="text-xs mb-0.5" style={{ color: "var(--text-tertiary)" }}>Suscripcion</p>
+                                <p className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
+                                  {user.subscription_weeks < 0 ? "Ilimitado" : `${user.subscription_weeks} sem.`}
+                                  {endDateStr && <span className="text-xs font-normal ml-2" style={{ color: "var(--text-tertiary)" }}>expira {endDateStr}</span>}
                                 </p>
                               </div>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <input
-                                type="number"
-                                min="1"
-                                max="52"
-                                value={weeksToAdd[user.id] ?? 1}
-                                onChange={e => setWeeksToAdd({ ...weeksToAdd, [user.id]: parseInt(e.target.value) || 1 })}
-                                className="w-16 px-2 py-2 rounded-xl text-sm text-center outline-none"
-                                style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-                              />
-                              <span className="text-xs hidden sm:inline" style={{ color: "var(--text-tertiary)" }}>sem.</span>
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="52"
+                                  value={weeksToAdd[user.id] ?? 1}
+                                  onChange={e => setWeeksToAdd({ ...weeksToAdd, [user.id]: parseInt(e.target.value) || 1 })}
+                                  className="w-16 px-3 py-2 rounded-xl text-sm text-center outline-none font-medium"
+                                  style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+                                />
+                                <span className="text-xs hidden sm:inline" style={{ color: "var(--text-tertiary)" }}>sem.</span>
+                              </div>
                               <button
                                 onClick={() => addWeeks(user.id, weeksToAdd[user.id] ?? 1)}
                                 disabled={actionLoading === user.id + "-add"}
-                                className="px-3 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                                className="px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40"
                                 style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
                                 + Agregar
                               </button>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Actions row */}
-                      <div className="px-5 py-4 border-t flex items-center gap-2 flex-wrap"
-                        style={{ borderColor: "var(--border)" }}>
-                        <button
-                          onClick={() => viewCouponHistory(user.id)}
-                          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-medium transition-all hover:opacity-90 active:scale-95"
-                          style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.2)" }}>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                          </svg>
-                          Cupones
-                        </button>
-                        {user.status !== "active" ? (
-                          <>
-                            <button
-                              onClick={() => activateUser(user.id, weeksToAdd[user.id] ?? 1)}
-                              disabled={actionLoading === user.id + "-activate"}
-                              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-                              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 4px 12px rgba(16,163,127,0.3)" }}>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                              Activar ({weeksToAdd[user.id] ?? 1} sem.)
-                            </button>
-                            <button
-                              onClick={() => sendConfirmationEmail(user.id, user.email)}
-                              disabled={actionLoading === user.id + "-confirm"}
-                              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-                              style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.2)" }}>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                              </svg>
-                              Enviar correo
-                            </button>
-                          </>
-                        ) : (
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2.5 flex-wrap">
                           <button
-                            onClick={() => deactivateUser(user.id)}
-                            disabled={actionLoading === user.id + "-deactivate" || isAdmin}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-40"
-                            style={{ backgroundColor: "rgba(245,158,11,0.12)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                            onClick={() => viewCouponHistory(user.id)}
+                            className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-90"
+                            style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.15)" }}>
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
                             </svg>
-                            Desactivar
+                            Cupones
                           </button>
-                        )}
-                        {deleteConfirmUser === user.id ? (
-                          <div className="flex items-center gap-2 ml-auto">
-                            <span className="text-xs" style={{ color: "var(--danger)" }}>¿Eliminar?</span>
+                          {user.status !== "active" ? (
+                            <>
+                              <button
+                                onClick={() => activateUser(user.id, weeksToAdd[user.id] ?? 1)}
+                                disabled={actionLoading === user.id + "-activate"}
+                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                                style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                </svg>
+                                Activar
+                              </button>
+                              <button
+                                onClick={() => sendConfirmationEmail(user.id, user.email)}
+                                disabled={actionLoading === user.id + "-confirm"}
+                                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-90"
+                                style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.15)" }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                </svg>
+                                Enviar correo
+                              </button>
+                            </>
+                          ) : (
                             <button
-                              onClick={async () => {
-                                setActionLoading(user.id + "-delete");
-                                try {
-                                  await adminFetch(`/api/admin/data?type=profile&id=${user.id}&email=${encodeURIComponent(user.email)}`, {
-                                    method: "DELETE",
-                                    headers: { "Content-Type": "application/json" },
-                                  });
-                                  await loadUsers();
-                                  showToast("success", "Usuario eliminado");
-                                } catch {
-                                  showToast("error", "Error al eliminar usuario");
-                                }
-                                setActionLoading(null);
-                                setDeleteConfirmUser(null);
-                              }}
-                              disabled={actionLoading === user.id + "-delete"}
-                              className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
-                              style={{ backgroundColor: "var(--danger)", color: "white" }}>
-                              Sí, eliminar
+                              onClick={() => deactivateUser(user.id)}
+                              disabled={actionLoading === user.id + "-deactivate" || isAdmin}
+                              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-90 disabled:opacity-40"
+                              style={{ backgroundColor: "rgba(245,158,11,0.1)", color: "var(--warning)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                              </svg>
+                              Desactivar
                             </button>
-                            <button onClick={() => setDeleteConfirmUser(null)}
-                              className="px-3 py-2 rounded-xl text-xs font-medium transition-all"
-                              style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
-                              Cancelar
-                            </button>
+                          )}
+                          <div className="ml-auto flex items-center gap-2">
+                            {actionLoading?.startsWith(user.id) && (
+                              <div className="w-4 h-4 border-2 rounded-full animate-spin"
+                                style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
+                            )}
+                            {deleteConfirmUser === user.id ? (
+                              <>
+                                <span className="text-xs font-medium" style={{ color: "var(--danger)" }}>¿Eliminar?</span>
+                                <button
+                                  onClick={async () => {
+                                    setActionLoading(user.id + "-delete");
+                                    try {
+                                      await adminFetch(`/api/admin/data?type=profile&id=${user.id}&email=${encodeURIComponent(user.email)}`, {
+                                        method: "DELETE",
+                                        headers: { "Content-Type": "application/json" },
+                                      });
+                                      await loadUsers();
+                                      showToast("success", "Usuario eliminado");
+                                    } catch {
+                                      showToast("error", "Error al eliminar usuario");
+                                    }
+                                    setActionLoading(null);
+                                    setDeleteConfirmUser(null);
+                                  }}
+                                  disabled={actionLoading === user.id + "-delete"}
+                                  className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
+                                  style={{ backgroundColor: "var(--danger)", color: "white" }}>
+                                  Sí, eliminar
+                                </button>
+                                <button onClick={() => setDeleteConfirmUser(null)}
+                                  className="px-3 py-2 rounded-xl text-xs font-medium transition-all"
+                                  style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
+                                  Cancelar
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => setDeleteConfirmUser(user.id)}
+                                disabled={actionLoading === user.id + "-delete" || isAdmin}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-70"
+                                style={{ color: "var(--danger)" }}>
+                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Eliminar
+                              </button>
+                            )}
                           </div>
-                        ) : (
-                          <button
-                            onClick={() => setDeleteConfirmUser(user.id)}
-                            disabled={actionLoading === user.id + "-delete" || isAdmin}
-                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all hover:opacity-90 active:scale-95 disabled:opacity-40 ml-auto"
-                            style={{ color: "var(--danger)" }}>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            Eliminar cuenta
-                          </button>
-                        )}
-                        {actionLoading?.startsWith(user.id) && !deleteConfirmUser && (
-                          <div className="w-4 h-4 border-2 rounded-full animate-spin"
-                            style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
-                        )}
+                        </div>
                       </div>
 
                       {/* Coupon history expandable section */}
@@ -768,10 +761,11 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
               <div className="space-y-2">
                 {filteredCoupons.map(c => (
                   <div key={c.id}
-                    className="flex items-center gap-4 px-5 py-4 rounded-2xl"
-                    style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                    className="flex items-center gap-4 px-5 py-4 rounded-2xl transition-all hover:shadow-md"
+                    style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+                    <div className="w-3 h-12 rounded-full shrink-0" style={{ backgroundColor: c.used_by ? "var(--primary)" : "var(--warning)" }} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
                         <code className="text-sm font-bold tracking-wider px-3 py-1.5 rounded-xl"
                           style={{ backgroundColor: "var(--background)", color: "var(--primary)" }}>
                           {c.code}
@@ -780,21 +774,27 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                           <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
                         )}
                         {c.label && (
-                          <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                          <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
                             style={{
-                              backgroundColor: c.color ? `${c.color}22` : "rgba(245,158,11,0.12)",
+                              backgroundColor: c.color ? `${c.color}18` : "rgba(245,158,11,0.1)",
                               color: c.color || "var(--warning)",
                             }}>
                             {c.label}
                           </span>
                         )}
-                        <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                        <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
                           style={{
-                            backgroundColor: c.used_by ? "rgba(16,163,127,0.12)" : "rgba(245,158,11,0.12)",
+                            backgroundColor: c.used_by ? "rgba(16,163,127,0.1)" : "rgba(245,158,11,0.1)",
                             color: c.used_by ? "var(--primary)" : "var(--warning)",
                           }}>
                           {c.used_by ? "Usado" : "Disponible"}
                         </span>
+                        {c.duration_days && (
+                          <span className="text-xs px-2 py-0.5 rounded-full"
+                            style={{ backgroundColor: "var(--background)", color: "var(--text-tertiary)" }}>
+                            {c.duration_days} días
+                          </span>
+                        )}
                       </div>
                       {c.used_by && (
                         <div className="flex items-center gap-2 mt-2">
@@ -815,7 +815,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                       {!c.used_by && (
                         <button onClick={() => copyToClipboard(c.code)}
                           className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
-                          style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>
+                          style={{ backgroundColor: "rgba(16,163,127,0.1)", color: "var(--primary)" }}>
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                           </svg>
