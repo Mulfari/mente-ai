@@ -365,8 +365,8 @@ export async function POST(request: Request) {
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
     const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
 
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
     // Load conversation history
     const historyMessages: { role: string; content: any[] }[] = [];
