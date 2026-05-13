@@ -355,6 +355,7 @@ export async function POST(request: Request) {
 
     // Check knowledge rules first — if match, respond directly without calling AI
     const knowledgeResponse = await knowledgeLookup(message);
+    console.log("[chat] knowledgeLookup result:", knowledgeResponse ? `MATCH: "${knowledgeResponse.slice(0, 60)}..."` : "null");
     if (knowledgeResponse) {
       // Determine conversation ID
       let convId = conversation_id;
