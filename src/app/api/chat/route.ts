@@ -64,9 +64,23 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
-async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClient>>, baseUrl: string): Promise<{ role: "system"; content: string }[]> {
+async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClient>>, baseUrl: string, userMessage: string): Promise<{ role: "system"; content: string }[]> {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  // Keywords that trigger directory lookup
+  const placeKeywords = [
+    "restaurante", "comida", "almuerzo", "cena", "empanada", "pizza", "hamburguesa",
+    "farmacia", "medicina", "medicamento", "doctor", "clínica", "clínica", "hospital",
+    "gimnasio", "gym", "ejercicio", "lavandería", "lavado", "lavar",
+    "estación", "gasolina", "bomba", "estaciones de servicio",
+    "dónde puedo", "dónde hay", "recomiéndame", "necesito un", "busco un",
+    "en maracay", "en caracas", "en valencia", "en barquisimeto", "en venezuela",
+    "lugar", "sitio", "sitios", "lugares", "cerca", "cercano",
+  ];
+
+  const msg = userMessage.toLowerCase();
+  const needsPlaces = placeKeywords.some(k => msg.includes(k));
 
   let placesData: any[] = [];
   let knowledgeRules: any[] = [];
@@ -74,12 +88,19 @@ async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClien
   if (serviceKey && supabaseUrl) {
     const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
     try {
-      const [placesRes, rulesRes] = await Promise.all([
-        fetch(`${supabaseUrl}/rest/v1/places?select=*,cities(name,slug),categories(name,icon,color)&active=eq.true&order=rating.desc&limit=200`, { headers }),
+      const [rulesRes] = await Promise.all([
         fetch(`${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`, { headers }),
       ]);
-      if (placesRes.ok) placesData = await placesRes.json();
       if (rulesRes.ok) knowledgeRules = await rulesRes.json();
+
+      // Only fetch places if the query is relevant
+      if (needsPlaces) {
+        const placesRes = await fetch(
+          `${supabaseUrl}/rest/v1/places?select=*,cities(name,slug),categories(name,icon,color)&active=eq.true&order=rating.desc&limit=200`,
+          { headers }
+        );
+        if (placesRes.ok) placesData = await placesRes.json();
+      }
     } catch {}
   }
 
@@ -91,30 +112,34 @@ async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClien
 
   const rulesList = knowledgeRules.map((r: any) => `- ${r.trigger_value}: ${r.response}`).join("\n");
 
-  const prompt = `Eres Mulfai, un asistente de IA con acceso a un directorio local de lugares en Venezuela.
+  const basePrompt = `Eres Mulfai, un asistente de IA diseñado para ayudarte.
 
-REGLAS DE IDIOMA (OBLIGATORIAS):
-- Responde SIEMPRE en español. No mezcles idiomas.
-- Nunca uses palabras en inglés cuando exista una traducción natural al español.
-- Si el usuario escribe en inglés, puedes responder brevemente en inglés pero luego continua en español.
-- No uses términos técnicos en inglés (ej: "build", "feedback", "pipeline" → "construcción", "retroalimentación", "tubería").
-- Para código de programación, sí puedes usar nombres en inglés.
+IDENTIDAD:
+- Tu nombre es Mulfai.
+- Eres un asistente de IA personal creado para usuarios en Venezuela.
+- Responde siempre de forma amigable, directa y útil.
 
-REGLAS DE CONOCIMIENTO:
-${rulesList || "- No hay reglas de conocimiento activas."}
+REGLAS DE IDIOMA (SIEMPRE):
+- Responde SIEMPRE en español.
+- Nunca mezcles idiomas. Si el usuario escribe en inglés, puedes responder brevemente en inglés pero luego continua en español.
+- No uses términos técnicos en inglés cuando exista traducción natural al español.
+- Para código de programación puedes usar nombres en inglés.`;
 
-DIRECTORIO DE LUGARES:
-${placesList || "No hay lugares cargados en el directorio todavía."}
+  let knowledgeSection = "";
+  if (rulesList) {
+    knowledgeSection = `\n\nCONOCIMIENTO FIJO:\n${rulesList}`;
+  }
 
-INSTRUCCIONES:
-- Cuando el usuario pregunte por restaurantes, farmacias, gyms, clínicas u otros lugares, usa el directorio arriba para dar información precisa y verificable.
-- Menciona el nombre exacto del lugar, dirección, horario y teléfono cuando estén disponibles.
-- Si no tienes el dato exacto en el directorio, sé honesto y dile al usuario: "No tengo ese lugar en mi directorio todavía, pero puedo ayudarte a buscarlo."
-- NO inventes lugares, direcciones o teléfonos. Mejor di que no tienes el dato.
-- Para recomendaciones generales sobre Venezuela (cultura, comida típica, lugares turísticos), responde con conocimiento real y seguro.
-- Sé amigable, directo y útil.`;
+  let directorySection = "";
+  if (placesList) {
+    directorySection = `\n\nDIRECTORIO LOCAL:\n${placesList}\n\nCuando el usuario pregunte por lugares (restaurantes, farmacias, clínicas, gyms, lavanderías, estaciones), usa este directorio. Da siempre: nombre, dirección, horario y teléfono cuando estén disponibles. Si no tienes el dato, sé honesto: "No tengo ese lugar en mi directorio todavía." NO inventes información.`;
+  }
 
-  return [{ role: "system", content: prompt }];
+  const instructions = needsPlaces
+    ? ""
+    : "\n\nSi el usuario pregunta sobre algo que no está en el directorio (opiniones personales, programación, matemáticas, etc.), responde con tu conocimiento general de forma útil.";
+
+  return [{ role: "system", content: basePrompt + knowledgeSection + directorySection + instructions }];
 }
 
 function formatHours(hours: any): string {
@@ -314,8 +339,8 @@ export async function POST(request: Request) {
       { role: "user", content: attachments?.length ? attachments : [{ type: "text", text: message }] },
     ];
 
-    // Build dynamic system prompt with knowledge base
-    const systemPrompt = await buildSystemPrompt(supabase, baseUrl);
+    // Build dynamic system prompt — only fetches places if relevant
+    const systemPrompt = await buildSystemPrompt(supabase, baseUrl, message);
     const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode);
     if ("error" in result) {
       return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });

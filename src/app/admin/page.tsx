@@ -5,6 +5,16 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Admin - Mulfai" };
 
+type Props = {
+  initialProfiles?: any[];
+  initialCoupons?: any[];
+  initialPlaces?: any[];
+  initialCategories?: any[];
+  initialCities?: any[];
+  initialKnowledgeRules?: any[];
+  fetchError?: string;
+};
+
 export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getSession();
@@ -20,7 +30,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   if (!profile || profile.role !== "admin") return null;
 
-  // Handle server-side admin actions (delete coupon, generate coupons)
+  // Handle server-side admin actions
   const params = await searchParams;
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
@@ -59,6 +69,10 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   let profiles: any[] = [];
   let coupons: any[] = [];
+  let places: any[] = [];
+  let categories: any[] = [];
+  let cities: any[] = [];
+  let knowledgeRules: any[] = [];
   let fetchError = "";
 
   if (!serviceKey || !supabaseUrl) {
@@ -69,24 +83,20 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         apikey: serviceKey,
         Authorization: `Bearer ${serviceKey}`,
       };
-      const [pRes, cRes] = await Promise.all([
+      const [pRes, cRes, placesRes, catsRes, citiesRes, rulesRes] = await Promise.all([
         fetch(`${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`, { headers }),
         fetch(`${supabaseUrl}/rest/v1/coupons?select=*&order=created_at.desc`, { headers }),
+        fetch(`${supabaseUrl}/rest/v1/places?select=*,cities(name,slug),categories(name,slug,icon,color)&active=eq.true&order=rating.desc`, { headers }),
+        fetch(`${supabaseUrl}/rest/v1/categories?select=*&active=eq.true&order=sort_order.asc`, { headers }),
+        fetch(`${supabaseUrl}/rest/v1/cities?select=*&active=eq.true&order=name.asc`, { headers }),
+        fetch(`${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`, { headers }),
       ]);
-      if (!pRes.ok) {
-        const errText = await pRes.text();
-        console.error("[AdminPage] Profiles fetch failed:", pRes.status, errText);
-        fetchError += `profiles: ${pRes.status} `;
-      } else {
-        profiles = await pRes.json();
-      }
-      if (!cRes.ok) {
-        const errText = await cRes.text();
-        console.error("[AdminPage] Coupons fetch failed:", cRes.status, errText);
-        fetchError += `coupons: ${cRes.status} `;
-      } else {
-        coupons = await cRes.json();
-      }
+      if (!pRes.ok) { fetchError += `profiles: ${pRes.status} `; } else { profiles = await pRes.json(); }
+      if (!cRes.ok) { fetchError += `coupons: ${cRes.status} `; } else { coupons = await cRes.json(); }
+      if (!placesRes.ok) { console.error("[AdminPage] Places failed:", placesRes.status); } else { places = await placesRes.json(); }
+      if (!catsRes.ok) { console.error("[AdminPage] Categories failed:", catsRes.status); } else { categories = await catsRes.json(); }
+      if (!citiesRes.ok) { console.error("[AdminPage] Cities failed:", citiesRes.status); } else { cities = await citiesRes.json(); }
+      if (!rulesRes.ok) { console.error("[AdminPage] Rules failed:", rulesRes.status); } else { knowledgeRules = await rulesRes.json(); }
       // Inject emails from auth.users into profiles
       try {
         const emailRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { headers });
@@ -102,7 +112,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     } catch (e: any) { console.error("[AdminPage] Catch error:", e.message); fetchError = e.message; }
   }
 
-  console.log("[AdminPage] Sending to client:", { profiles: profiles.length, coupons: coupons.length, error: fetchError });
-
-  return <AdminPanelClient initialProfiles={profiles} initialCoupons={coupons} fetchError={fetchError} />;
+  return <AdminPanelClient
+    initialProfiles={profiles}
+    initialCoupons={coupons}
+    initialPlaces={places}
+    initialCategories={categories}
+    initialCities={cities}
+    initialKnowledgeRules={knowledgeRules}
+    fetchError={fetchError}
+  />;
 }

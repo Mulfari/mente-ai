@@ -5,6 +5,10 @@ import { useState, useEffect } from "react";
 type Props = {
   initialProfiles?: any[];
   initialCoupons?: any[];
+  initialPlaces?: any[];
+  initialCategories?: any[];
+  initialCities?: any[];
+  initialKnowledgeRules?: any[];
   fetchError?: string;
 };
 
@@ -42,7 +46,7 @@ type Tab = "users" | "coupons" | "places";
 type PlaceTab = "places" | "categories" | "knowledge";
 type Toast = { id: string; type: "success" | "error"; message: string };
 
-export default function AdminPanel({ initialProfiles = [], initialCoupons = [], fetchError }: Props) {
+export default function AdminPanel({ initialProfiles = [], initialCoupons = [], initialPlaces = [], initialCategories = [], initialCities = [], initialKnowledgeRules = [], fetchError }: Props) {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -145,23 +149,14 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load places data when tab is active
+  // Load places data from server props
   useEffect(() => {
-    if (activeTab !== "places") return;
-    setPlacesLoading(true);
-    Promise.all([
-      adminFetch("/api/admin/places?type=places"),
-      adminFetch("/api/admin/places?type=categories"),
-      adminFetch("/api/admin/places?type=cities"),
-      adminFetch("/api/admin/places?type=knowledge-rules"),
-    ]).then(([placesData, catData, cityData, ruleData]) => {
-      setPlaces(placesData.data || []);
-      setCategories(catData.data || []);
-      setCities(cityData.data || []);
-      setKnowledgeRules(ruleData.data || []);
-    }).catch(() => showToast("error", "Error al cargar lugares")).finally(() => setPlacesLoading(false));
+    setPlaces(initialPlaces);
+    setCategories(initialCategories);
+    setCities(initialCities);
+    setKnowledgeRules(initialKnowledgeRules);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, []);
 
   async function savePlace() {
     try {
