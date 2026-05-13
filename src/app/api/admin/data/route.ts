@@ -9,11 +9,11 @@ export async function GET(request: Request) {
     const type = searchParams.get("type");
     const userId = searchParams.get("userId");
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    if (!serviceKey) {
-      return NextResponse.json({ error: "Service role key not configured" }, { status: 500 });
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json({ error: "Missing env vars", supabase: !!supabaseUrl, service: !!serviceKey }, { status: 500 });
     }
 
     // Verify requester is admin
@@ -56,7 +56,8 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error("[/api/admin/data GET]", err.message, err.stack);
+    return NextResponse.json({ error: err.message || "Internal error" }, { status: 500 });
   }
 }
 
