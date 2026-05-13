@@ -347,16 +347,24 @@ export async function POST(request: Request) {
     // Check knowledge rules first — if match, respond directly without calling AI
     const knowledgeResponse = await knowledgeLookup(message);
     if (knowledgeResponse) {
+      // Determine conversation ID
+      let convId = conversation_id;
+      if (!convId) {
+        const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
+        if (newConv) convId = newConv.id;
+      }
+
       // Save user message
+      let saveId = msgId || message_id;
       if (!resume_message_id) {
         const { data: savedMsg } = await supabase.from("messages").insert({
-          conversation_id: conversation_id || undefined,
+          conversation_id: convId || undefined,
           user_id: user.id,
           role: "user",
           content: message,
           attachments: attachments?.length ? attachments : null,
         }).select("id").single();
-        if (savedMsg) msgId = savedMsg.id;
+        if (savedMsg) saveId = savedMsg.id;
       }
 
       const now2 = new Date();
@@ -369,17 +377,34 @@ export async function POST(request: Request) {
         hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
       }).eq("id", user.id);
 
-      // Stream the knowledge response
+      // Save assistant message to DB
+      const { data: savedAiMsg } = await supabase.from("messages").insert({
+        conversation_id: convId || undefined,
+        user_id: user.id,
+        role: "assistant",
+        content: knowledgeResponse,
+        in_progress: false,
+      }).select("id").single();
+      const aiMsgId = savedAiMsg?.id || saveId;
+
+      // Stream in the format the client expects: { type: "chunk", text: "..." }
       const stream = new ReadableStream({
         start(controller) {
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: msgId })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content_index: 0, type: "content_block", block: { type: "text", text: knowledgeResponse } })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ content_index: 0, type: "content_block_delta", delta: { type: "text_delta", text: knowledgeResponse } })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_delta", delta: { type: "message_delta", usage: { output_tokens: Math.ceil(knowledgeResponse.length / 4) } } })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: aiMsgId })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: knowledgeResponse })}\n\n`));
           controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
           controller.close();
         }
       });
+
+      // Update conversation title and timestamp
+      if (convId) {
+        const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
+        supabase.from("conversations").update({
+          title,
+          updated_at: new Date().toISOString(),
+        }).eq("id", convId);
+      }
 
       return new Response(stream, {
         headers: {
