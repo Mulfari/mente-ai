@@ -1,7 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import AdminPanelClient from "@/components/AdminPanelClient";
+import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
-export default async function AdminPage() {
+export const metadata: Metadata = { title: "Admin - Mulfai" };
+
+export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const supabase = await createClient();
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user;
@@ -16,9 +20,34 @@ export default async function AdminPage() {
 
   if (!profile || profile.role !== "admin") return null;
 
-  // Fetch admin data server-side using service role key (bypasses RLS)
+  // Handle server-side admin actions (delete coupon, generate coupons)
+  const params = await searchParams;
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+
+  if (serviceKey && supabaseUrl && params.action) {
+    const headers = {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+    };
+    if (params.action === "delete-coupon" && params.id) {
+      await fetch(`${supabaseUrl}/rest/v1/coupons?id=eq.${params.id}`, {
+        method: "DELETE",
+        headers,
+      });
+    }
+    if (params.action === "generate-coupons") {
+      const codes = JSON.parse(params.codes || "[]");
+      const config = JSON.parse(params.config || "{}");
+      const inserts = codes.map((c: string) => ({ code: c, created_by: user.id, ...config }));
+      await fetch(`${supabaseUrl}/rest/v1/coupons`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify(inserts),
+      });
+    }
+    redirect("/admin");
+  }
 
   let profiles: any[] = [];
   let coupons: any[] = [];

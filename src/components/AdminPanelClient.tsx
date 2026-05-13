@@ -266,18 +266,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     };
     const config = couponConfig[type];
 
-    try {
-      await adminFetch("/api/admin/data?type=generate-coupons", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ codes, config }),
-      });
-      showToast("success", `${count} cupón(es) ${type === "trial" ? "de 3 días" : type === "weekly" ? "de 7 días" : type === "20weeks" ? "de 20 semanas" : "ilimitados"} generado(s)`);
-      loadCoupons();
-    } catch {
-      showToast("error", "Error al generar cupones");
-    }
-    setGeneratingCoupons(false);
+    window.location.href = `/admin?action=generate-coupons&codes=${encodeURIComponent(JSON.stringify(codes))}&config=${encodeURIComponent(JSON.stringify(config))}`;
   }
 
   async function copyToClipboard(text: string) {
@@ -286,13 +275,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
 
   async function deleteCoupon(couponId: string) {
     if (!confirm("¿Eliminar este cupón? Esta acción no se puede deshacer.")) return;
-    try {
-      await adminFetch(`/api/admin/data?type=coupon&id=${couponId}`, { method: "DELETE" });
-      showToast("success", "Cupón eliminado");
-      loadCoupons();
-    } catch {
-      showToast("error", "Error al eliminar cupón");
-    }
+    window.location.href = `/admin?action=delete-coupon&id=${couponId}`;
   }
 
   function formatDate(dateStr: string | null) {
