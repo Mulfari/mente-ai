@@ -1257,44 +1257,48 @@ export default function ChatInterface({ userId }: { userId: string }) {
           )}
         </div>
 
-        {/* Bottom: compact icon row */}
-        <div className="px-3 pb-4 pt-2 shrink-0 flex items-center gap-1" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          {/* User avatar */}
+        {/* Bottom */}
+        <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          {/* User */}
           <button onClick={() => setShowAccountMenu(true)}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all mr-auto"
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
             style={{ color: "var(--text-secondary)" }}>
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
               style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
             </div>
+            <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{userEmail}</span>
             {profile && (
-              <div className="w-1.5 h-1.5 rounded-full"
+              <div className="w-1.5 h-1.5 rounded-full ml-1 shrink-0"
                 style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "#10A37F" : "#EF4444" }} />
             )}
           </button>
-          <button onClick={toggleTheme}
-            className="p-2 rounded-lg transition-all hover:opacity-70"
-            style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
-            title={theme === "dark" ? "Modo claro" : "Modo oscuro"}>
-            {theme === "dark" ? (
+          {/* Actions */}
+          <div className="flex items-center gap-1 ml-2">
+            <button onClick={toggleTheme}
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)" }}
+              title={theme === "dark" ? "Claro" : "Oscuro"}>
+              {theme === "dark" ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)" }}
+              title="Cerrar sesión">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-          </button>
-          <button
-            onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-            className="p-2 rounded-lg transition-all hover:opacity-70"
-            style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
-            title="Cerrar sesión">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-          </button>
+            </button>
+          </div>
         </div>
       </div>
 
