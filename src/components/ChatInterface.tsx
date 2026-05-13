@@ -134,13 +134,29 @@ export default function ChatInterface({ userId }: { userId: string }) {
       setIsLoggedIn(!!d.session);
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
       if (d.session) loadConversations(d.session.user.id);
+      // Show onboarding on first login
+      if (d.session) {
+        setTimeout(() => {
+          const seen = localStorage.getItem("mulfai_onboarding_seen");
+          const never = localStorage.getItem("mulfai_onboarding_never");
+          if (!seen && !never) setShowOnboarding(true);
+        }, 800);
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const loggedIn = !!session;
       setIsLoggedIn(loggedIn);
       if (session?.user?.email) setUserEmail(session.user.email);
-      if (loggedIn && session?.user?.id) loadConversations(session.user.id);
+      if (loggedIn && session?.user?.id) {
+        loadConversations(session.user.id);
+        // Show onboarding on first login
+        setTimeout(() => {
+          const seen = localStorage.getItem("mulfai_onboarding_seen");
+          const never = localStorage.getItem("mulfai_onboarding_never");
+          if (!seen && !never) setShowOnboarding(true);
+        }, 800);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -339,12 +355,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
   // Show onboarding on first login (check localStorage)
   useEffect(() => {
-    if (isLoggedIn) {
-      const seen = localStorage.getItem("mulfai_onboarding_seen");
-      const never = localStorage.getItem("mulfai_onboarding_never");
-      if (!seen && !never) {
-        setTimeout(() => setShowOnboarding(true), 800);
-      }
+    if (!isLoggedIn) return;
+    const seen = localStorage.getItem("mulfai_onboarding_seen");
+    const never = localStorage.getItem("mulfai_onboarding_never");
+    if (!seen && !never) {
+      setTimeout(() => setShowOnboarding(true), 800);
     }
   }, [isLoggedIn]);
 
