@@ -97,10 +97,27 @@ async function knowledgeLookup(userMessage: string): Promise<string | null> {
   return null;
 }
 
-async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClient>>, baseUrl: string, userMessage: string): Promise<{ role: "system"; content: string }[]> {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+async function logKnowledgeGap(supabaseUrl: string, serviceKey: string, keyword: string, city: string | null, category: string | null, originalMessage: string) {
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/rpc/upsert_knowledge_gap`,
+      {
+        method: "POST",
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ p_keyword: keyword, p_city: city, p_category: category, p_original_message: originalMessage }),
+      }
+    );
+    if (res.ok) console.log("[gap] logged:", keyword, city || "");
+  } catch (e) {
+    console.log("[gap] log failed:", e);
+  }
+}
 
+async function buildSystemPrompt(supabaseUrl: string, serviceKey: string, userMessage: string): Promise<{ role: "system"; content: string }[]> {
   // Keywords that trigger directory lookup
   const placeKeywords = [
     "restaurante", "comida", "almuerzo", "cena", "empanada", "pizza", "hamburguesa",
@@ -116,6 +133,31 @@ async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClien
   const needsPlaces = placeKeywords.some(k => msg.includes(k));
 
   let placesData: any[] = [];
+  let detectedCity: string | null = null;
+  let detectedCategory: string | null = null;
+
+  // Detect city from message
+  const cityMap: Record<string, string> = {
+    "maracay": "Maracay", "ccs": "Caracas", "caracas": "Caracas",
+    "valencia": "Valencia", "barquisimeto": "Barquisimeto",
+  };
+  for (const [k, v] of Object.entries(cityMap)) {
+    if (msg.includes(k)) { detectedCity = v; break; }
+  }
+
+  // Detect category
+  const catMap: Record<string, string> = {
+    "restaurante": "restaurante", "comida": "restaurante", "almuerzo": "restaurante", "cena": "restaurante",
+    "empanada": "restaurante", "pizza": "restaurante", "hamburguesa": "restaurante",
+    "farmacia": "farmacia", "medicina": "farmacia", "medicamento": "farmacia",
+    "doctor": "clínica", "clínica": "clínica", "hospital": "clínica",
+    "gimnasio": "gimnasio", "gym": "gimnasio", "ejercicio": "gimnasio",
+    "lavandería": "lavandería", "lavado": "lavandería",
+    "gasolina": "estación", "bomba": "estación", "estación": "estación",
+  };
+  for (const [k, v] of Object.entries(catMap)) {
+    if (msg.includes(k)) { detectedCategory = v; break; }
+  }
 
   if (serviceKey && supabaseUrl) {
     const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
@@ -126,6 +168,11 @@ async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClien
           { headers }
         );
         if (placesRes.ok) placesData = await placesRes.json();
+
+        // Log gap if places requested but DB empty
+        if (placesData.length === 0 && serviceKey && supabaseUrl) {
+          logKnowledgeGap(supabaseUrl, serviceKey, "place_search", detectedCity, detectedCategory, userMessage);
+        }
       }
     } catch {}
   }
@@ -318,6 +365,9 @@ export async function POST(request: Request) {
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
     const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
 
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
     // Load conversation history
     const historyMessages: { role: string; content: any[] }[] = [];
     if (conversation_id) {
@@ -359,7 +409,7 @@ export async function POST(request: Request) {
 
     // 2. Identity triggers: call Claude with focused prompt for dynamic response
     const msg = message.toLowerCase().trim();
-    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer", "mulfai es nuevo", "eres nuevo", "de donde eres", "de donde venis", "de donde sos", "eres de", "de que pais eres"];
+    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer", "mulfai es nuevo", "eres nuevo"];
     const isIdentity = identityTriggers.some(t => msg.includes(t));
     console.log("[chat] msg:", message, "-> isIdentity:", isIdentity);
 
@@ -455,7 +505,7 @@ El usuario pregunta: ${message}`;
     ];
 
     // Build dynamic system prompt — only fetches places if relevant
-    const systemPrompt = await buildSystemPrompt(supabase, baseUrl, message);
+    const systemPrompt = await buildSystemPrompt(supabaseUrl, serviceKey, message);
     const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode);
     if ("error" in result) {
       return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });
