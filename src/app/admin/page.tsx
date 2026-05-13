@@ -17,8 +17,8 @@ export default async function AdminPage() {
   if (!profile || profile.role !== "admin") return null;
 
   // Fetch admin data server-side using service role key (bypasses RLS)
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
 
   let profiles: any[] = [];
   let coupons: any[] = [];
