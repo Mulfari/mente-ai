@@ -683,7 +683,7 @@ export default function AdminPanel() {
                               onClick={async () => {
                                 setActionLoading(user.id + "-delete");
                                 try {
-                                  await adminFetch(`/api/admin/data?type=profile&id=${user.id}`, {
+                                  await adminFetch(`/api/admin/data?type=profile&id=${user.id}&email=${encodeURIComponent(user.email)}`, {
                                     method: "DELETE",
                                     headers: { "Content-Type": "application/json" },
                                   });

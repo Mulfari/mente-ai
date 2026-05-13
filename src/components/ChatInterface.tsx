@@ -134,15 +134,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
       setIsLoggedIn(!!d.session);
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
       if (d.session) loadConversations(d.session.user.id);
-      // Show onboarding on first login — check localStorage after session loads
       if (d.session) {
         setTimeout(() => {
-          if (typeof localStorage !== "undefined") {
-            const seen = localStorage.getItem("mulfai_onboarding_seen");
-            const never = localStorage.getItem("mulfai_onboarding_never");
-            console.log("[Onboarding] getSession check — seen:", seen, "never:", never);
-            if (!seen && !never) setShowOnboarding(true);
-          }
+          const seen = localStorage.getItem("mulfai_onboarding_seen");
+          const never = localStorage.getItem("mulfai_onboarding_never");
+          if (!seen && !never) setShowOnboarding(true);
         }, 1500);
       }
     });
@@ -155,12 +151,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
         loadConversations(session.user.id);
         // Show onboarding on login (only if not already dismissed)
         setTimeout(() => {
-          if (typeof localStorage !== "undefined") {
-            const seen = localStorage.getItem("mulfai_onboarding_seen");
-            const never = localStorage.getItem("mulfai_onboarding_never");
-            console.log("[Onboarding] onAuthStateChange — seen:", seen, "never:", never);
-            if (!seen && !never) setShowOnboarding(true);
-          }
+          const seen = localStorage.getItem("mulfai_onboarding_seen");
+          const never = localStorage.getItem("mulfai_onboarding_never");
+          if (!seen && !never) setShowOnboarding(true);
         }, 800);
       }
     });
