@@ -67,7 +67,10 @@ function validateProfile(profile: any, now: Date) {
 async function knowledgeLookup(userMessage: string): Promise<string | null> {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!serviceKey || !supabaseUrl) return null;
+  if (!serviceKey || !supabaseUrl) {
+    console.log("[knowledgeLookup] missing env vars, skipping");
+    return null;
+  }
 
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
   try {
@@ -75,16 +78,22 @@ async function knowledgeLookup(userMessage: string): Promise<string | null> {
       `${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`,
       { headers }
     );
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.log("[knowledgeLookup] DB error:", res.status);
+      return null;
+    }
     const rules: any[] = await res.json();
+    console.log("[knowledgeLookup] rules fetched:", rules.length, "msg:", userMessage);
 
     const msg = userMessage.toLowerCase().trim();
     for (const rule of rules) {
-      if (rule.trigger_type === "keyword" && msg.includes(rule.trigger_value.toLowerCase())) {
+      const trigger = rule.trigger_value.toLowerCase();
+      if (rule.trigger_type === "keyword" && msg.includes(trigger)) {
+        console.log("[knowledgeLookup] MATCH found:", trigger, "->", rule.response.slice(0, 50));
         return rule.response;
       }
     }
-  } catch {}
+  } catch (e) { console.log("[knowledgeLookup] catch error:", e); }
   return null;
 }
 
