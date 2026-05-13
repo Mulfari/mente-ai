@@ -50,6 +50,18 @@ export default async function AdminPage() {
       } else {
         coupons = await cRes.json();
       }
+      // Inject emails from auth.users into profiles
+      try {
+        const emailRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { headers });
+        if (emailRes.ok) {
+          const usersData: any = await emailRes.json();
+          const emailMap: Record<string, string> = {};
+          if (Array.isArray(usersData.users)) {
+            for (const u of usersData.users) emailMap[u.id] = u.email;
+          }
+          for (const p of profiles) (p as any).email = emailMap[p.id] || null;
+        }
+      } catch {}
     } catch (e: any) { console.error("[AdminPage] Catch error:", e.message); fetchError = e.message; }
   }
 

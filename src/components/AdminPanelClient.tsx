@@ -122,6 +122,10 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   }, []);
 
   async function loadCoupons() {
+    if (initialCoupons.length > 0) {
+      setCoupons(initialCoupons);
+      return;
+    }
     try {
       const data = await adminFetch("/api/admin/data?type=coupons");
       setCoupons(data.data || []);
