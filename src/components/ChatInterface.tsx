@@ -1307,7 +1307,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       </svg>
                     </div>
                   )}
-                  <div className="relative max-w-[85%] sm:max-w-[78%]">
+                  <div className="relative max-w-[90%] lg:max-w-[78%]">
                     {/* Sender label */}
                     <p className={`text-xs font-semibold mb-1.5 ${msg.role === "user" ? "text-right" : ""}`}
                       style={{ color: msg.role === "user" ? "rgba(255,255,255,0.6)" : "var(--text-tertiary)" }}>
