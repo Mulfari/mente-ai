@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 type Profile = {
   id: string;
@@ -53,7 +52,15 @@ export default function AdminPanel() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [userCouponHistory, setUserCouponHistory] = useState<Map<string, Coupon[]>>(new Map());
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<string | null>(null);
-  const supabase = createClient();
+
+  async function adminFetch(url: string, options?: RequestInit) {
+    const res = await fetch(url, options);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `Request failed: ${res.status}`);
+    }
+    return res.json();
+  }
 
   function showToast(type: "success" | "error", message: string) {
     const id = Date.now().toString();
@@ -64,10 +71,13 @@ export default function AdminPanel() {
   async function loadUsers() {
     setLoading(true);
 
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+    let profiles: any[] = [];
+    try {
+      const data = await adminFetch("/api/admin/data?type=profiles");
+      profiles = data.data || [];
+    } catch (err) {
+      showToast("error", "Error al cargar usuarios");
+    }
 
     const merged = (profiles || []).map(p => {
       return {
@@ -90,11 +100,12 @@ export default function AdminPanel() {
   useEffect(() => { loadUsers(); }, []);
 
   async function loadCoupons() {
-    const { data } = await supabase
-      .from("coupons")
-      .select("*")
-      .order("created_at", { ascending: false });
-    if (data) setCoupons(data);
+    try {
+      const data = await adminFetch("/api/admin/data?type=coupons");
+      setCoupons(data.data || []);
+    } catch (err) {
+      showToast("error", "Error al cargar cupones");
+    }
   }
 
   useEffect(() => {
@@ -111,25 +122,37 @@ export default function AdminPanel() {
       const current = users.find(u => u.id === userId);
       updates.subscription_weeks = (current?.subscription_weeks ?? 0) + weeks;
     }
-    const { error } = await supabase.from("profiles").update(updates).eq("id", userId);
-    await loadUsers();
+    try {
+      await adminFetch("/api/admin/data?type=profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, updates }),
+      });
+      await loadUsers();
+      showToast("success", "Usuario activado correctamente");
+    } catch {
+      showToast("error", "Error al activar usuario");
+    }
     setActionLoading(null);
-    if (error) showToast("error", "Error al activar usuario");
-    else showToast("success", "Usuario activado correctamente");
   }
 
   async function deactivateUser(userId: string) {
     setActionLoading(userId + "-deactivate");
-    const { error } = await supabase.from("profiles").update({
-      status: "inactive",
-      subscription_weeks: 0,
-      subscription_start: null,
-      subscription_end: null,
-    }).eq("id", userId);
-    await loadUsers();
+    try {
+      await adminFetch("/api/admin/data?type=profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          updates: { status: "inactive", subscription_weeks: 0, subscription_start: null, subscription_end: null },
+        }),
+      });
+      await loadUsers();
+      showToast("success", "Usuario desactivado");
+    } catch {
+      showToast("error", "Error al desactivar usuario");
+    }
     setActionLoading(null);
-    if (error) showToast("error", "Error al desactivar usuario");
-    else showToast("success", "Usuario desactivado");
   }
 
   async function viewCouponHistory(userId: string) {
@@ -138,17 +161,15 @@ export default function AdminPanel() {
       return;
     }
     setExpandedUser(userId);
-    const { data } = await supabase
-      .from("coupons")
-      .select("*")
-      .eq("used_by", userId)
-      .order("used_at", { ascending: false });
-    if (data) {
+    try {
+      const data = await adminFetch(`/api/admin/data?type=coupon-history&userId=${userId}`);
       setUserCouponHistory(prev => {
         const next = new Map(prev);
-        next.set(userId, data);
+        next.set(userId, data.data || []);
         return next;
       });
+    } catch {
+      showToast("error", "Error al cargar historial");
     }
   }
 
@@ -156,13 +177,21 @@ export default function AdminPanel() {
     if (weeks <= 0) return;
     setActionLoading(userId + "-add");
     const current = users.find(u => u.id === userId);
-    const { error } = await supabase.from("profiles")
-      .update({ subscription_weeks: (current?.subscription_weeks ?? 0) + weeks })
-      .eq("id", userId);
-    await loadUsers();
+    try {
+      await adminFetch("/api/admin/data?type=profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          updates: { subscription_weeks: (current?.subscription_weeks ?? 0) + weeks },
+        }),
+      });
+      await loadUsers();
+      showToast("success", `+${weeks} semana(s) agregada(s)`);
+    } catch {
+      showToast("error", "Error al agregar semanas");
+    }
     setActionLoading(null);
-    if (error) showToast("error", "Error al agregar semanas");
-    else showToast("success", `+${weeks} semana(s) agregada(s)`);
   }
 
   async function sendConfirmationEmail(userId: string, email: string) {
@@ -194,7 +223,6 @@ export default function AdminPanel() {
       for (let j = 0; j < 6; j++) code += chars[Math.floor(Math.random() * chars.length)];
       codes.push(code);
     }
-    const adminUser = (await supabase.auth.getUser()).data.user;
 
     const couponConfig: Record<CouponType, { duration_days: number | null; label: string; color: string; is_unlimited: boolean }> = {
       trial: { duration_days: 3, label: "Prueba gratuita (3 días)", color: "#F59E0B", is_unlimited: false },
@@ -204,18 +232,18 @@ export default function AdminPanel() {
     };
     const config = couponConfig[type];
 
-    const inserts = codes.map(c => ({
-      code: c,
-      created_by: adminUser?.id,
-      ...config,
-    }));
-    const { error } = await supabase.from("coupons").insert(inserts);
-    setGeneratingCoupons(false);
-    if (error) showToast("error", "Error al generar cupones");
-    else {
+    try {
+      await adminFetch("/api/admin/data?type=generate-coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codes, config }),
+      });
       showToast("success", `${count} cupón(es) ${type === "trial" ? "de 3 días" : type === "weekly" ? "de 7 días" : type === "20weeks" ? "de 20 semanas" : "ilimitados"} generado(s)`);
       loadCoupons();
+    } catch {
+      showToast("error", "Error al generar cupones");
     }
+    setGeneratingCoupons(false);
   }
 
   async function copyToClipboard(text: string) {
@@ -224,11 +252,12 @@ export default function AdminPanel() {
 
   async function deleteCoupon(couponId: string) {
     if (!confirm("¿Eliminar este cupón? Esta acción no se puede deshacer.")) return;
-    const { error } = await supabase.from("coupons").delete().eq("id", couponId);
-    if (error) showToast("error", "Error al eliminar cupón");
-    else {
+    try {
+      await adminFetch(`/api/admin/data?type=coupon&id=${couponId}`, { method: "DELETE" });
       showToast("success", "Cupón eliminado");
       loadCoupons();
+    } catch {
+      showToast("error", "Error al eliminar cupón");
     }
   }
 
@@ -653,12 +682,18 @@ export default function AdminPanel() {
                             <button
                               onClick={async () => {
                                 setActionLoading(user.id + "-delete");
-                                await supabase.from("profiles").delete().eq("id", user.id);
-                                await supabase.auth.admin.deleteUser(user.id).catch(() => {});
-                                await loadUsers();
+                                try {
+                                  await adminFetch(`/api/admin/data?type=profile&id=${user.id}`, {
+                                    method: "DELETE",
+                                    headers: { "Content-Type": "application/json" },
+                                  });
+                                  await loadUsers();
+                                  showToast("success", "Usuario eliminado");
+                                } catch {
+                                  showToast("error", "Error al eliminar usuario");
+                                }
                                 setActionLoading(null);
                                 setDeleteConfirmUser(null);
-                                showToast("success", "Usuario eliminado");
                               }}
                               disabled={actionLoading === user.id + "-delete"}
                               className="px-3 py-2 rounded-xl text-xs font-semibold transition-all"
