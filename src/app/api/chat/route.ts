@@ -110,7 +110,7 @@ async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClien
     return `- ${p.name}${location}: ${p.address || "Dirección no disponible"}. ${p.specialty || p.description || ""} ${hoursStr} ${p.phone ? `📞 ${p.phone}` : ""} ${p.whatsapp ? `WhatsApp: ${p.whatsapp}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`;
   }).join("\n");
 
-  const rulesList = knowledgeRules.map((r: any) => `- ${r.trigger_value}: ${r.response}`).join("\n");
+  const rulesList = knowledgeRules.map((r: any) => `CUANDO el usuario pregunte o mencione "${r.trigger_value}", responde EXACTAMENTE con: ${r.response}`).join("\n");
 
   const basePrompt = `Eres Mulfai, un asistente de IA diseñado para ayudarte.
 
@@ -127,7 +127,7 @@ REGLAS DE IDIOMA (SIEMPRE):
 
   let knowledgeSection = "";
   if (rulesList) {
-    knowledgeSection = `\n\nCONOCIMIENTO FIJO:\n${rulesList}`;
+    knowledgeSection = `\n\nREGLAS DE CONOCIMIENTO (OBLIGATORIO):\n${rulesList}\n\nIMPORTANTE: Cuando el usuario haga una pregunta que coincida con alguna de las reglas anteriores, responde EXACTAMENTE con lo que indica la regla. NO respondas con tu conocimiento propio para estas preguntas.`;
   }
 
   let directorySection = "";
@@ -168,7 +168,7 @@ async function runChat(
     headers,
     body: JSON.stringify({
       model: "claude-opus-4.6-1m",
-      max_tokens: 4096,
+      max_tokens: 8192,
       stream: true,
       system: systemPrompt,
       messages: allMessages,
