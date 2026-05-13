@@ -34,7 +34,7 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
 function validateUser(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
   return supabase
     .from("profiles")
-    .select("status, subscription_weeks, subscription_start, weekly_limit, messages_used, weekly_reset_at, last_message_at, hourly_msg_count, hourly_reset_at, status")
+    .select("status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at")
     .eq("id", userId)
     .single()
     .then(({ data: profile }) => profile);
@@ -60,11 +60,6 @@ function validateProfile(profile: any, now: Date) {
       code: 429,
       remaining: remainingSecs,
     };
-  }
-  const messagesUsed = profile.messages_used ?? 0;
-  const weeklyLimit = profile.weekly_limit ?? 0;
-  if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) {
-    return { error: "Error 429. Por favor intente nuevamente.", code: 429 };
   }
   return null;
 }
@@ -264,13 +259,12 @@ export async function POST(request: Request) {
 
     const reader = result.reader;
 
-    // Update usage counts (skip on resume to avoid double-counting)
+    // Update hourly usage count (skip on resume to avoid double-counting)
     if (!resume_message_id) {
       const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
       const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
       const needsReset = !hourlyResetAt || now >= hourlyResetAt;
       await supabase.from("profiles").update({
-        messages_used: (profile.messages_used ?? 0) + 1,
         last_message_at: now.toISOString(),
         hourly_msg_count: newHourlyCount,
         hourly_reset_at: needsReset ? new Date(now.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),

@@ -9,8 +9,6 @@ type Props = {
     subscription_weeks?: number;
     subscription_start?: string;
     subscription_end?: string;
-    weekly_limit?: number;
-    messages_used?: number;
   } | null;
   onSignOut: () => void;
   onClose: () => void;
