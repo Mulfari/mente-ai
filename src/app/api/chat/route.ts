@@ -62,7 +62,7 @@ function validateProfile(profile: any, now: Date) {
     };
   }
   const messagesUsed = profile.messages_used ?? 0;
-  const weeklyLimit = profile.weekly_limit ?? 100;
+  const weeklyLimit = profile.weekly_limit ?? 0;
   if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) {
     return { error: "Error 429. Por favor intente nuevamente.", code: 429 };
   }

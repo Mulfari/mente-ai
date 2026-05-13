@@ -518,7 +518,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     const weeks = profile?.subscription_weeks ?? -1;
     if (weeks === 0) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar." };
     const messagesUsed = profile?.messages_used ?? 0;
-    const weeklyLimit = profile?.weekly_limit ?? 100;
+    const weeklyLimit = profile?.weekly_limit ?? 0;
     if (weeklyLimit > 0 && messagesUsed >= weeklyLimit) return { canSend: false, canWrite: false, reason: `Has alcanzado el limite semanal (${messagesUsed}/${weeklyLimit}). Añade semanas para continuar.` };
     return { canSend: true, canWrite: true, reason: "" };
   }
