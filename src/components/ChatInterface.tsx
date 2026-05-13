@@ -1258,7 +1258,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
 
         {/* Bottom: compact icon row */}
-        <div className="px-3 pb-4 pt-2 shrink-0 flex items-center gap-2" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div className="px-3 pb-4 pt-2 shrink-0 flex items-center gap-1" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          {/* User avatar */}
+          <button onClick={() => setShowAccountMenu(true)}
+            className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all mr-auto"
+            style={{ color: "var(--text-secondary)" }}>
+            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
+              style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+              {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
+            </div>
+            {profile && (
+              <div className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "#10A37F" : "#EF4444" }} />
+            )}
+          </button>
           <button onClick={toggleTheme}
             className="p-2 rounded-lg transition-all hover:opacity-70"
             style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
@@ -1281,19 +1294,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-          </button>
-          {/* User avatar */}
-          <button onClick={() => setShowAccountMenu(true)}
-            className="ml-auto flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all"
-            style={{ color: "var(--text-secondary)" }}>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
-              style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
-              {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
-            </div>
-            {profile && (
-              <div className="w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "#10A37F" : "#EF4444" }} />
-            )}
           </button>
         </div>
       </div>
