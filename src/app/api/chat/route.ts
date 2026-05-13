@@ -353,15 +353,13 @@ export async function POST(request: Request) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
     }
 
-    // Check knowledge rules first — if match, respond directly without calling AI
+    // Identity triggers: call Claude with focused prompt for dynamic response
     const msg = message.toLowerCase().trim();
-    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer"];
+    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer", "mulfai es nuevo", "eres nuevo"];
     const isIdentity = identityTriggers.some(t => msg.includes(t));
     console.log("[chat] msg:", message, "-> isIdentity:", isIdentity);
 
     if (isIdentity) {
-      const identityResponse = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas, recomendaciones, y encontrar lugares locales en Venezuela como restaurantes, farmacias, clínicas y más.";
-
       // Determine conversation ID
       let convId = conversation_id;
       if (!convId) {
@@ -390,20 +388,59 @@ export async function POST(request: Request) {
         hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
       }).eq("id", user.id);
 
-      // Save assistant message to DB
-      const { data: savedAiMsg } = await supabase.from("messages").insert({
-        conversation_id: convId || undefined,
-        user_id: user.id,
-        role: "assistant",
-        content: identityResponse,
-        in_progress: false,
-      }).select("id").single();
+      // Call Claude with focused identity prompt — dynamic but always correct
+      const identityPrompt = `Eres Mulfai, un asistente de inteligencia artificial personal.
+Tu nombre es Mulfai.
+NUNCA digas que eres Claude, ChatGPT, Gemini, o cualquier otro asistente.
+Responde en español de forma amigable y breve (máximo 2 oraciones).
+El usuario pregunta: ${message}`;
 
-      // Stream
+      const identityResult = await runChat(apiKey, baseUrl, [{ role: "system", content: identityPrompt }], [], "normal");
+
+      if ("error" in identityResult) {
+        // Fallback if Claude fails
+        const fallback = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas y encontrar lugares locales en Venezuela.";
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: "assistant" })}\n\n`));
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: fallback })}\n\n`));
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
+            controller.close();
+          }
+        });
+        return new Response(stream, {
+          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
+        });
+      }
+
+      // Stream Claude's identity response
+      const reader = identityResult.reader;
       const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: savedAiMsg?.id || "assistant" })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: identityResponse })}\n\n`));
+        async start(controller) {
+          const decoder = new TextDecoder();
+          let buffer = "";
+          try {
+            let result = await reader.read();
+            while (!result.done) {
+              buffer += decoder.decode(result.value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines[lines.length - 1] ?? "";
+              for (let i = 0; i < lines.length - 1; i++) {
+                const line = lines[i];
+                if (line.startsWith("data: ")) {
+                  const data = line.slice(6);
+                  if (data === "[DONE]") continue;
+                  try {
+                    const json = JSON.parse(data);
+                    if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
+                      controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`));
+                    }
+                  } catch {}
+                }
+              }
+              result = await reader.read();
+            }
+          } catch {}
           controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
           controller.close();
         }
@@ -415,11 +452,7 @@ export async function POST(request: Request) {
       }
 
       return new Response(stream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-        },
+        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
       });
     }
 
