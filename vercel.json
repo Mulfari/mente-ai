@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "headers": {
+        "x-vercel-protection": "bypass"
+      }
+    }
+  ]
+}
