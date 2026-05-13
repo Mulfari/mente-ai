@@ -1069,7 +1069,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                     Añadir regla
                   </button>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
                   {knowledgeRules.map(r => (
                     <div key={r.id} className="rounded-2xl p-4" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
                       <div className="flex items-start gap-3">
