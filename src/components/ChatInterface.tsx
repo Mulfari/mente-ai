@@ -49,8 +49,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingDebug, setOnboardingDebug] = useState<""|"checking"|"shown">("");
-  const [onboardingStep, setOnboardingStep] = useState(0);
+    const [onboardingStep, setOnboardingStep] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -140,7 +139,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
           const seen = localStorage.getItem("mulfai_onboarding_seen");
           const never = localStorage.getItem("mulfai_onboarding_never");
           console.log("[Onboarding] getSession — seen:", seen, "never:", never, "→ shouldShow:", !seen && !never);
-          setOnboardingDebug("checking");
           if (!seen && !never) setShowOnboarding(true);
         }, 1500);
       }
@@ -157,7 +155,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
           const seen = localStorage.getItem("mulfai_onboarding_seen");
           const never = localStorage.getItem("mulfai_onboarding_never");
           console.log("[Onboarding] onAuthStateChange — seen:", seen, "never:", never, "→ shouldShow:", !seen && !never);
-          setOnboardingDebug("checking");
           if (!seen && !never) setShowOnboarding(true);
         }, 800);
       }
@@ -1122,12 +1119,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
           <div className="flex items-center gap-3">
-            {onboardingDebug === "checking" && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse"
-                style={{ backgroundColor: "rgba(245,158,11,0.2)", color: "#F59E0B" }}>
-                ONBOARDING CHECK
-              </span>
-            )}
             <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
               <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
