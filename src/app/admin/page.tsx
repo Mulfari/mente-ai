@@ -36,14 +36,22 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
         headers,
       });
     }
-    if (params.action === "generate-coupons") {
-      const codes = JSON.parse(params.codes || "[]");
-      const config = JSON.parse(params.config || "{}");
+    if (params.action === "generate-coupons" && params.codes && params.config) {
+      const codes = JSON.parse(params.codes);
+      const config = JSON.parse(params.config);
       const inserts = codes.map((c: string) => ({ code: c, created_by: user.id, ...config }));
       await fetch(`${supabaseUrl}/rest/v1/coupons`, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify(inserts),
+      });
+    }
+    if (params.action === "update-profile" && params.userId) {
+      const updates = JSON.parse(params.updates || "{}");
+      await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${params.userId}`, {
+        method: "PATCH",
+        headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify(updates),
       });
     }
     redirect("/admin");

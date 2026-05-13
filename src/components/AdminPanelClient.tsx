@@ -148,45 +148,21 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
 
   async function activateUser(userId: string, weeks: number = 1) {
     setActionLoading(userId + "-activate");
+    const current = users.find(u => u.id === userId);
     const updates: Record<string, unknown> = {
       status: "active",
       subscription_start: new Date().toISOString(),
     };
     if (weeks > 0) {
-      const current = users.find(u => u.id === userId);
       updates.subscription_weeks = (current?.subscription_weeks ?? 0) + weeks;
     }
-    try {
-      await adminFetch("/api/admin/data?type=profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, updates }),
-      });
-      await loadUsers();
-      showToast("success", "Usuario activado correctamente");
-    } catch {
-      showToast("error", "Error al activar usuario");
-    }
-    setActionLoading(null);
+    window.location.href = `/admin?action=update-profile&userId=${userId}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
   }
 
   async function deactivateUser(userId: string) {
     setActionLoading(userId + "-deactivate");
-    try {
-      await adminFetch("/api/admin/data?type=profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          updates: { status: "inactive", subscription_weeks: 0, subscription_start: null, subscription_end: null },
-        }),
-      });
-      await loadUsers();
-      showToast("success", "Usuario desactivado");
-    } catch {
-      showToast("error", "Error al desactivar usuario");
-    }
-    setActionLoading(null);
+    const updates = { status: "inactive", subscription_weeks: 0, subscription_start: null, subscription_end: null };
+    window.location.href = `/admin?action=update-profile&userId=${userId}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
   }
 
   async function viewCouponHistory(userId: string) {
@@ -211,21 +187,8 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     if (weeks <= 0) return;
     setActionLoading(userId + "-add");
     const current = users.find(u => u.id === userId);
-    try {
-      await adminFetch("/api/admin/data?type=profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          updates: { subscription_weeks: (current?.subscription_weeks ?? 0) + weeks },
-        }),
-      });
-      await loadUsers();
-      showToast("success", `+${weeks} semana(s) agregada(s)`);
-    } catch {
-      showToast("error", "Error al agregar semanas");
-    }
-    setActionLoading(null);
+    const updates = { subscription_weeks: (current?.subscription_weeks ?? 0) + weeks };
+    window.location.href = `/admin?action=update-profile&userId=${userId}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
   }
 
   async function sendConfirmationEmail(userId: string, email: string) {
