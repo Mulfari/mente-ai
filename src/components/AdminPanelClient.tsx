@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from "react";
 
+type Props = {
+  initialProfiles?: any[];
+  initialCoupons?: any[];
+};
+
 type Profile = {
   id: string;
   email: string;
@@ -35,7 +40,7 @@ type CouponFilter = "all" | "available" | "used";
 type Tab = "users" | "coupons";
 type Toast = { id: string; type: "success" | "error"; message: string };
 
-export default function AdminPanel() {
+export default function AdminPanel({ initialProfiles = [], initialCoupons = [] }: Props) {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -75,8 +80,8 @@ export default function AdminPanel() {
     try {
       const data = await adminFetch("/api/admin/data?type=profiles");
       profiles = data.data || [];
-    } catch (err) {
-      showToast("error", "Error al cargar usuarios");
+    } catch {
+      showToast("error", "Error al recargar usuarios");
     }
 
     const merged = (profiles || []).map(p => {
@@ -97,16 +102,40 @@ export default function AdminPanel() {
     setLoading(false);
   }
 
-  useEffect(() => { loadUsers(); }, []);
+  // Load initial data from server props (bypasses Vercel Auth)
+  useEffect(() => {
+    const merged = (initialProfiles || []).map(p => ({
+      id: p.id,
+      email: p.email || "Sin email",
+      status: p.status,
+      subscription_weeks: p.subscription_weeks ?? 0,
+      subscription_start: p.subscription_start,
+      role: p.role,
+      created_at: p.created_at,
+      used_coupon_label: p.used_coupon_label ?? null,
+      used_coupon_label_color: p.used_coupon_label_color ?? null,
+    } as Profile));
+    setUsers(merged);
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function loadCoupons() {
     try {
       const data = await adminFetch("/api/admin/data?type=coupons");
       setCoupons(data.data || []);
-    } catch (err) {
-      showToast("error", "Error al cargar cupones");
+    } catch {
+      showToast("error", "Error al recargar cupones");
     }
   }
+
+  // Load initial coupons from server props
+  useEffect(() => {
+    if (initialCoupons.length > 0) {
+      setCoupons(initialCoupons);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (activeTab === "coupons") loadCoupons();

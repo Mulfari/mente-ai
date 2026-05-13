@@ -16,5 +16,27 @@ export default async function AdminPage() {
 
   if (!profile || profile.role !== "admin") return null;
 
-  return <AdminPanelClient />;
+  // Fetch admin data server-side (bypasses Vercel Auth)
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const headers = {
+    apikey: serviceKey!,
+    Authorization: `Bearer ${serviceKey}`,
+  };
+
+  let profiles: any[] = [];
+  let coupons: any[] = [];
+
+  if (serviceKey && supabaseUrl) {
+    try {
+      const [pRes, cRes] = await Promise.all([
+        fetch(`${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`, { headers }),
+        fetch(`${supabaseUrl}/rest/v1/coupons?select=*&order=created_at.desc`, { headers }),
+      ]);
+      if (pRes.ok) profiles = await pRes.json();
+      if (cRes.ok) coupons = await cRes.json();
+    } catch {}
+  }
+
+  return <AdminPanelClient initialProfiles={profiles} initialCoupons={coupons} />;
 }
