@@ -121,19 +121,6 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function loadCoupons() {
-    if (initialCoupons.length > 0) {
-      setCoupons(initialCoupons);
-      return;
-    }
-    try {
-      const data = await adminFetch("/api/admin/data?type=coupons");
-      setCoupons(data.data || []);
-    } catch {
-      showToast("error", "Error al recargar cupones");
-    }
-  }
-
   // Load initial coupons from server props
   useEffect(() => {
     if (initialCoupons.length > 0) {
@@ -141,10 +128,6 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (activeTab === "coupons") loadCoupons();
-  }, [activeTab]);
 
   async function activateUser(userId: string, weeks: number = 1) {
     setActionLoading(userId + "-activate");
