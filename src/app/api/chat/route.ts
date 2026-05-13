@@ -354,6 +354,75 @@ export async function POST(request: Request) {
     }
 
     // Check knowledge rules first — if match, respond directly without calling AI
+    const msg = message.toLowerCase().trim();
+    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer"];
+    const isIdentity = identityTriggers.some(t => msg.includes(t));
+    console.log("[chat] msg:", message, "-> isIdentity:", isIdentity);
+
+    if (isIdentity) {
+      const identityResponse = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas, recomendaciones, y encontrar lugares locales en Venezuela como restaurantes, farmacias, clínicas y más.";
+
+      // Determine conversation ID
+      let convId = conversation_id;
+      if (!convId) {
+        const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
+        if (newConv) convId = newConv.id;
+      }
+
+      // Save user message
+      if (!resume_message_id) {
+        await supabase.from("messages").insert({
+          conversation_id: convId || undefined,
+          user_id: user.id,
+          role: "user",
+          content: message,
+          attachments: attachments?.length ? attachments : null,
+        });
+      }
+
+      const now2 = new Date();
+      const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
+      const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
+      const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
+      await supabase.from("profiles").update({
+        last_message_at: now2.toISOString(),
+        hourly_msg_count: newHourlyCount,
+        hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
+      }).eq("id", user.id);
+
+      // Save assistant message to DB
+      const { data: savedAiMsg } = await supabase.from("messages").insert({
+        conversation_id: convId || undefined,
+        user_id: user.id,
+        role: "assistant",
+        content: identityResponse,
+        in_progress: false,
+      }).select("id").single();
+
+      // Stream
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: savedAiMsg?.id || "assistant" })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: identityResponse })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
+          controller.close();
+        }
+      });
+
+      if (convId) {
+        const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
+        supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
+      }
+
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          "Connection": "keep-alive",
+        },
+      });
+    }
+
     const knowledgeResponse = await knowledgeLookup(message);
     console.log("[chat] knowledgeLookup result:", knowledgeResponse ? `MATCH: "${knowledgeResponse.slice(0, 60)}..."` : "null");
     if (knowledgeResponse) {
