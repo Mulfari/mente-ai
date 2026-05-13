@@ -133,14 +133,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
     supabase.auth.getSession().then(({ data: d }) => {
       setIsLoggedIn(!!d.session);
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
-      if (d.session) loadConversations();
+      if (d.session) loadConversations(d.session.user.id);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const loggedIn = !!session;
       setIsLoggedIn(loggedIn);
       if (session?.user?.email) setUserEmail(session.user.email);
-      if (loggedIn && session?.user?.id) loadConversations();
+      if (loggedIn && session?.user?.id) loadConversations(session.user.id);
     });
 
     return () => subscription.unsubscribe();
@@ -169,12 +169,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
       .then(({ data }) => { if (data) setProfile(data); });
   }, [userId, isLoggedIn]);
 
-  async function loadConversations() {
-    if (!isLoggedIn) return;
+  async function loadConversations(currentUserId?: string) {
+    const uid = currentUserId ?? userId;
+    if (!uid) return;
     const { data } = await supabase
       .from("conversations")
       .select("id, title, created_at, updated_at, messages(count)")
-      .eq("user_id", userId)
+      .eq("user_id", uid)
       .order("updated_at", { ascending: false })
       .limit(20);
     if (!data) return;
