@@ -359,7 +359,7 @@ export async function POST(request: Request) {
 
     // 2. Identity triggers: call Claude with focused prompt for dynamic response
     const msg = message.toLowerCase().trim();
-    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer", "mulfai es nuevo", "eres nuevo"];
+    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer", "mulfai es nuevo", "eres nuevo", "de donde eres", "de donde venis", "de donde sos", "eres de", "de que pais eres"];
     const isIdentity = identityTriggers.some(t => msg.includes(t));
     console.log("[chat] msg:", message, "-> isIdentity:", isIdentity);
 
