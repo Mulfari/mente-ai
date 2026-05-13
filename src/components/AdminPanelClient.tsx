@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 type Props = {
   initialProfiles?: any[];
   initialCoupons?: any[];
+  fetchError?: string;
 };
 
 type Profile = {
@@ -40,7 +41,7 @@ type CouponFilter = "all" | "available" | "used";
 type Tab = "users" | "coupons";
 type Toast = { id: string; type: "success" | "error"; message: string };
 
-export default function AdminPanel({ initialProfiles = [], initialCoupons = [] }: Props) {
+export default function AdminPanel({ initialProfiles = [], initialCoupons = [], fetchError }: Props) {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -395,6 +396,15 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [] }
 
       {/* Content */}
       <main className="max-w-5xl mx-auto px-4 py-8">
+        {/* Error display */}
+        {fetchError && (
+          <div className="mb-6 p-4 rounded-2xl border" style={{ backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)" }}>
+            <p className="text-sm font-semibold" style={{ color: "var(--danger)" }}>Error al cargar datos:</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>{fetchError}</p>
+            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Abre la consola del navegador (F12) y revisa la pestana &quot;Network&quot; o &quot;Console&quot; para mas detalles.</p>
+          </div>
+        )}
+
         {/* Title + Stats */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div>

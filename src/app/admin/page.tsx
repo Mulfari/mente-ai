@@ -1,13 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import AdminPanelClient from "@/components/AdminPanelClient";
-import { createClient as createSupabase } from "@supabase/supabase-js";
-
-function createServiceClient() {
-  return createSupabase(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -30,8 +22,11 @@ export default async function AdminPage() {
 
   let profiles: any[] = [];
   let coupons: any[] = [];
+  let fetchError = "";
 
-  if (serviceKey && supabaseUrl) {
+  if (!serviceKey || !supabaseUrl) {
+    console.error("[AdminPage] Missing env vars:", { hasServiceKey: !!serviceKey, hasUrl: !!supabaseUrl });
+  } else {
     try {
       const headers = {
         apikey: serviceKey,
@@ -41,10 +36,24 @@ export default async function AdminPage() {
         fetch(`${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`, { headers }),
         fetch(`${supabaseUrl}/rest/v1/coupons?select=*&order=created_at.desc`, { headers }),
       ]);
-      if (pRes.ok) { const d = await pRes.json(); profiles = d; }
-      if (cRes.ok) { const d = await cRes.json(); coupons = d; }
-    } catch (e) { console.error("Admin data fetch error:", e); }
+      if (!pRes.ok) {
+        const errText = await pRes.text();
+        console.error("[AdminPage] Profiles fetch failed:", pRes.status, errText);
+        fetchError += `profiles: ${pRes.status} `;
+      } else {
+        profiles = await pRes.json();
+      }
+      if (!cRes.ok) {
+        const errText = await cRes.text();
+        console.error("[AdminPage] Coupons fetch failed:", cRes.status, errText);
+        fetchError += `coupons: ${cRes.status} `;
+      } else {
+        coupons = await cRes.json();
+      }
+    } catch (e: any) { console.error("[AdminPage] Catch error:", e.message); fetchError = e.message; }
   }
 
-  return <AdminPanelClient initialProfiles={profiles} initialCoupons={coupons} />;
+  console.log("[AdminPage] Sending to client:", { profiles: profiles.length, coupons: coupons.length, error: fetchError });
+
+  return <AdminPanelClient initialProfiles={profiles} initialCoupons={coupons} fetchError={fetchError} />;
 }
