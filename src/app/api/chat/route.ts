@@ -64,9 +64,71 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
+async function buildSystemPrompt(supabase: Awaited<ReturnType<typeof createClient>>, baseUrl: string): Promise<{ role: "system"; content: string }[]> {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+
+  let placesData: any[] = [];
+  let knowledgeRules: any[] = [];
+
+  if (serviceKey && supabaseUrl) {
+    const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+    try {
+      const [placesRes, rulesRes] = await Promise.all([
+        fetch(`${supabaseUrl}/rest/v1/places?select=*,cities(name,slug),categories(name,icon,color)&active=eq.true&order=rating.desc&limit=200`, { headers }),
+        fetch(`${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`, { headers }),
+      ]);
+      if (placesRes.ok) placesData = await placesRes.json();
+      if (rulesRes.ok) knowledgeRules = await rulesRes.json();
+    } catch {}
+  }
+
+  const placesList = placesData.map((p: any) => {
+    const hoursStr = p.hours ? formatHours(p.hours) : "Horario no disponible";
+    const location = p.cities?.name ? `, ${p.cities.name}` : "";
+    return `- ${p.name}${location}: ${p.address || "Dirección no disponible"}. ${p.specialty || p.description || ""} ${hoursStr} ${p.phone ? `📞 ${p.phone}` : ""} ${p.whatsapp ? `WhatsApp: ${p.whatsapp}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`;
+  }).join("\n");
+
+  const rulesList = knowledgeRules.map((r: any) => `- ${r.trigger_value}: ${r.response}`).join("\n");
+
+  const prompt = `Eres Mulfai, un asistente de IA con acceso a un directorio local de lugares en Venezuela.
+
+REGLAS DE IDIOMA (OBLIGATORIAS):
+- Responde SIEMPRE en español. No mezcles idiomas.
+- Nunca uses palabras en inglés cuando exista una traducción natural al español.
+- Si el usuario escribe en inglés, puedes responder brevemente en inglés pero luego continua en español.
+- No uses términos técnicos en inglés (ej: "build", "feedback", "pipeline" → "construcción", "retroalimentación", "tubería").
+- Para código de programación, sí puedes usar nombres en inglés.
+
+REGLAS DE CONOCIMIENTO:
+${rulesList || "- No hay reglas de conocimiento activas."}
+
+DIRECTORIO DE LUGARES:
+${placesList || "No hay lugares cargados en el directorio todavía."}
+
+INSTRUCCIONES:
+- Cuando el usuario pregunte por restaurantes, farmacias, gyms, clínicas u otros lugares, usa el directorio arriba para dar información precisa y verificable.
+- Menciona el nombre exacto del lugar, dirección, horario y teléfono cuando estén disponibles.
+- Si no tienes el dato exacto en el directorio, sé honesto y dile al usuario: "No tengo ese lugar en mi directorio todavía, pero puedo ayudarte a buscarlo."
+- NO inventes lugares, direcciones o teléfonos. Mejor di que no tienes el dato.
+- Para recomendaciones generales sobre Venezuela (cultura, comida típica, lugares turísticos), responde con conocimiento real y seguro.
+- Sé amigable, directo y útil.`;
+
+  return [{ role: "system", content: prompt }];
+}
+
+function formatHours(hours: any): string {
+  if (!hours || typeof hours !== "object") return "";
+  const days = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
+  const entries = Object.entries(hours);
+  if (entries.length === 0) return "";
+  return entries.map(([day, time]: [string, any]) => `${days[parseInt(day)] || day}: ${time || "cerrado"}`).join(", ");
+}
+
 async function runChat(
   apiKey: string,
   baseUrl: string,
+  systemPrompt: { role: string; content: string }[],
   allMessages: any[],
   mode: string,
 ) {
@@ -83,6 +145,7 @@ async function runChat(
       model: "claude-opus-4.6-1m",
       max_tokens: 4096,
       stream: true,
+      system: systemPrompt,
       messages: allMessages,
       ...(mode === "deep" ? { thinking: { type: "enabled", budget_tokens: 10000 } } : {}),
     }),
@@ -251,8 +314,9 @@ export async function POST(request: Request) {
       { role: "user", content: attachments?.length ? attachments : [{ type: "text", text: message }] },
     ];
 
-    // Run the AI request
-    const result = await runChat(apiKey, baseUrl, allMessagesForAI, mode);
+    // Build dynamic system prompt with knowledge base
+    const systemPrompt = await buildSystemPrompt(supabase, baseUrl);
+    const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode);
     if ("error" in result) {
       return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });
     }

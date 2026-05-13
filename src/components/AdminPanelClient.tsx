@@ -38,7 +38,8 @@ type Coupon = {
 type CouponType = "trial" | "weekly" | "20weeks" | "unlimited";
 type CouponFilter = "all" | "available" | "used";
 
-type Tab = "users" | "coupons";
+type Tab = "users" | "coupons" | "places";
+type PlaceTab = "places" | "categories" | "knowledge";
 type Toast = { id: string; type: "success" | "error"; message: string };
 
 export default function AdminPanel({ initialProfiles = [], initialCoupons = [], fetchError }: Props) {
@@ -58,6 +59,21 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
   const [userCouponHistory, setUserCouponHistory] = useState<Map<string, Coupon[]>>(new Map());
   const [deleteConfirmUser, setDeleteConfirmUser] = useState<string | null>(null);
+  const [placesTab, setPlacesTab] = useState<PlaceTab>("places");
+  const [places, setPlaces] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [cities, setCities] = useState<any[]>([]);
+  const [knowledgeRules, setKnowledgeRules] = useState<any[]>([]);
+  const [placesLoading, setPlacesLoading] = useState(false);
+  const [showPlaceModal, setShowPlaceModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [showRuleModal, setShowRuleModal] = useState(false);
+  const [editingPlace, setEditingPlace] = useState<any>(null);
+  const [editingCategory, setEditingCategory] = useState<any>(null);
+  const [editingRule, setEditingRule] = useState<any>(null);
+  const [placeForm, setPlaceForm] = useState({ name: "", address: "", description: "", specialty: "", phone: "", whatsapp: "", google_maps_url: "", waze_url: "", city_id: "", category_id: "", price_range: 2, featured: false, verified: false });
+  const [categoryForm, setCategoryForm] = useState({ name: "", slug: "", icon: "", color: "#10A37F", sort_order: 0 });
+  const [ruleForm, setRuleForm] = useState({ trigger_type: "keyword", trigger_value: "", response: "", priority: 10 });
 
   async function adminFetch(url: string, options?: RequestInit) {
     const res = await fetch(url, options);
@@ -128,6 +144,92 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load places data when tab is active
+  useEffect(() => {
+    if (activeTab !== "places") return;
+    setPlacesLoading(true);
+    Promise.all([
+      adminFetch("/api/admin/places?type=places"),
+      adminFetch("/api/admin/places?type=categories"),
+      adminFetch("/api/admin/places?type=cities"),
+      adminFetch("/api/admin/places?type=knowledge-rules"),
+    ]).then(([placesData, catData, cityData, ruleData]) => {
+      setPlaces(placesData.data || []);
+      setCategories(catData.data || []);
+      setCities(cityData.data || []);
+      setKnowledgeRules(ruleData.data || []);
+    }).catch(() => showToast("error", "Error al cargar lugares")).finally(() => setPlacesLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  async function savePlace() {
+    try {
+      const payload = editingPlace?.id
+        ? { type: "place", data: { ...placeForm, id: editingPlace.id } }
+        : { type: "place", data: placeForm };
+      await adminFetch("/api/admin/places", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      showToast("success", editingPlace?.id ? "Lugar actualizado" : "Lugar creado");
+      setShowPlaceModal(false);
+      setEditingPlace(null);
+      setPlaceForm({ name: "", address: "", description: "", specialty: "", phone: "", whatsapp: "", google_maps_url: "", waze_url: "", city_id: "", category_id: "", price_range: 2, featured: false, verified: false });
+      const data = await adminFetch("/api/admin/places?type=places");
+      setPlaces(data.data || []);
+    } catch { showToast("error", "Error al guardar lugar"); }
+  }
+
+  async function saveCategory() {
+    try {
+      const payload = editingCategory?.id
+        ? { type: "category", data: { ...categoryForm, id: editingCategory.id } }
+        : { type: "category", data: categoryForm };
+      await adminFetch("/api/admin/places", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      showToast("success", editingCategory?.id ? "Categoría actualizada" : "Categoría creada");
+      setShowCategoryModal(false);
+      setEditingCategory(null);
+      setCategoryForm({ name: "", slug: "", icon: "", color: "#10A37F", sort_order: 0 });
+      const data = await adminFetch("/api/admin/places?type=categories");
+      setCategories(data.data || []);
+    } catch { showToast("error", "Error al guardar categoría"); }
+  }
+
+  async function saveRule() {
+    try {
+      const payload = editingRule?.id
+        ? { type: "knowledge-rule", data: { ...ruleForm, id: editingRule.id } }
+        : { type: "knowledge-rule", data: ruleForm };
+      await adminFetch("/api/admin/places", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      showToast("success", editingRule?.id ? "Regla actualizada" : "Regla creada");
+      setShowRuleModal(false);
+      setEditingRule(null);
+      setRuleForm({ trigger_type: "keyword", trigger_value: "", response: "", priority: 10 });
+      const data = await adminFetch("/api/admin/places?type=knowledge-rules");
+      setKnowledgeRules(data.data || []);
+    } catch { showToast("error", "Error al guardar regla"); }
+  }
+
+  async function deleteItem(type: string, id: string) {
+    if (!confirm("¿Eliminar este elemento?")) return;
+    try {
+      await adminFetch(`/api/admin/places?type=${type}&id=${id}`, { method: "DELETE" });
+      showToast("success", "Eliminado");
+      if (type === "place") setPlaces(p => p.filter(x => x.id !== id));
+      if (type === "category") setCategories(c => c.filter(x => x.id !== id));
+      if (type === "knowledge-rule") setKnowledgeRules(r => r.filter(x => x.id !== id));
+    } catch { showToast("error", "Error al eliminar"); }
+  }
 
   async function activateUser(userId: string, weeks: number = 1) {
     setActionLoading(userId + "-activate");
@@ -373,14 +475,14 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
         {/* Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div className="flex items-center gap-1.5 p-1.5 rounded-xl self-start sm:self-auto" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-            {(["users", "coupons"] as const).map(t => (
+            {(["users", "coupons", "places"] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}
                 className="px-4 py-2 rounded-lg text-xs font-semibold transition-all"
                 style={{
                   backgroundColor: activeTab === t ? "var(--primary)" : "transparent",
                   color: activeTab === t ? "white" : "var(--text-secondary)",
                 }}>
-                {t === "users" ? "Usuarios" : "Cupones"}
+                {t === "users" ? "Usuarios" : t === "coupons" ? "Cupones" : "Lugares"}
               </button>
             ))}
           </div>
@@ -836,6 +938,298 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
               </div>
             )}
           </>
+        )}
+
+        {/* Places section */}
+        {activeTab === "places" && (
+          <>
+            {/* Sub-tabs */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl mb-6 w-fit" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              {(["places", "categories", "knowledge"] as const).map(t => (
+                <button key={t} onClick={() => setPlacesTab(t)}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold transition-all"
+                  style={{
+                    backgroundColor: placesTab === t ? "var(--primary)" : "transparent",
+                    color: placesTab === t ? "white" : "var(--text-secondary)",
+                  }}>
+                  {t === "places" ? "Lugares" : t === "categories" ? "Categorías" : "Reglas IA"}
+                </button>
+              ))}
+            </div>
+
+            {/* === LUGARES TAB === */}
+            {placesTab === "places" && (
+              <>
+                <div className="flex justify-end mb-4">
+                  <button onClick={() => { setEditingPlace(null); setPlaceForm({ name: "", address: "", description: "", specialty: "", phone: "", whatsapp: "", google_maps_url: "", waze_url: "", city_id: cities[0]?.id || "", category_id: categories[0]?.id || "", price_range: 2, featured: false, verified: false }); setShowPlaceModal(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Añadir lugar
+                  </button>
+                </div>
+                {placesLoading ? (
+                  <div className="flex items-center justify-center py-12"><div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} /></div>
+                ) : places.length === 0 ? (
+                  <div className="text-center py-16">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: "var(--surface)" }}>
+                      <svg className="w-6 h-6" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Sin lugares todavía</p>
+                    <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Añade lugares al directorio para que la IA pueda recomendarlos</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {places.map(p => (
+                      <div key={p.id} className="rounded-2xl p-5" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                        <div className="flex items-start gap-3">
+                          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-xl shrink-0"
+                            style={{ backgroundColor: `${p.categories?.color || "var(--primary)"}18` }}>
+                            {p.categories?.icon || "📍"}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{p.name}</p>
+                              {p.featured && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "var(--warning)" }}>Destacado</span>}
+                              {p.verified && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>Verificado</span>}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{p.categories?.name || ""}</span>
+                              <span style={{ color: "var(--text-tertiary)" }}>·</span>
+                              <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{p.cities?.name || ""}</span>
+                            </div>
+                            {p.address && <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>{p.address}</p>}
+                            {p.phone && <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>📞 {p.phone}</p>}
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => { setEditingPlace(p); setPlaceForm({ name: p.name, address: p.address || "", description: p.description || "", specialty: p.specialty || "", phone: p.phone || "", whatsapp: p.whatsapp || "", google_maps_url: p.google_maps_url || "", waze_url: p.waze_url || "", city_id: p.city_id || "", category_id: p.category_id || "", price_range: p.price_range || 2, featured: p.featured || false, verified: p.verified || false }); setShowPlaceModal(true); }}
+                              className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => deleteItem("place", p.id)}
+                              className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--danger)" }}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* === CATEGORÍAS TAB === */}
+            {placesTab === "categories" && (
+              <>
+                <div className="flex justify-end mb-4">
+                  <button onClick={() => { setEditingCategory(null); setCategoryForm({ name: "", slug: "", icon: "", color: "#10A37F", sort_order: categories.length }); setShowCategoryModal(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    Añadir categoría
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {categories.map(c => (
+                    <div key={c.id} className="rounded-2xl p-4 flex items-center gap-3" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0" style={{ backgroundColor: `${c.color}18` }}>
+                        {c.icon || "📍"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>{c.name}</p>
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{c.slug}</p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => { setEditingCategory(c); setCategoryForm({ name: c.name, slug: c.slug, icon: c.icon, color: c.color, sort_order: c.sort_order }); setShowCategoryModal(true); }}
+                          className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        </button>
+                        <button onClick={() => deleteItem("category", c.id)} className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--danger)" }}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* === REGLAS IA TAB === */}
+            {placesTab === "knowledge" && (
+              <>
+                <div className="flex justify-end mb-4">
+                  <button onClick={() => { setEditingRule(null); setRuleForm({ trigger_type: "keyword", trigger_value: "", response: "", priority: 10 }); setShowRuleModal(true); }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+                    Añadir regla
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {knowledgeRules.map(r => (
+                    <div key={r.id} className="rounded-2xl p-4" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>
+                              {r.trigger_type}
+                            </span>
+                            <span className="text-xs font-mono px-2 py-0.5 rounded" style={{ backgroundColor: "var(--background)", color: "var(--text-secondary)" }}>
+                              "{r.trigger_value}"
+                            </span>
+                            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>prioridad {r.priority}</span>
+                          </div>
+                          <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{r.response}</p>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => { setEditingRule(r); setRuleForm({ trigger_type: r.trigger_type, trigger_value: r.trigger_value, response: r.response, priority: r.priority }); setShowRuleModal(true); }}
+                            className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                          </button>
+                          <button onClick={() => deleteItem("knowledge-rule", r.id)} className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--danger)" }}>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {knowledgeRules.length === 0 && (
+                    <div className="text-center py-16">
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Sin reglas todavía</p>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Las reglas de conocimiento se inyectan al prompt de la IA automáticamente</p>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {/* Modals */}
+        {showPlaceModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+            onClick={e => { if (e.target === e.currentTarget) setShowPlaceModal(false); }}>
+            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <h3 className="text-base font-bold mb-5" style={{ color: "var(--text-primary)" }}>{editingPlace ? "Editar lugar" : "Nuevo lugar"}</h3>
+              <div className="space-y-4">
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Nombre *</label>
+                  <input value={placeForm.name} onChange={e => setPlaceForm({ ...placeForm, name: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Ciudad *</label>
+                    <select value={placeForm.city_id} onChange={e => setPlaceForm({ ...placeForm, city_id: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                      <option value="">Seleccionar...</option>
+                      {cities.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select></div>
+                  <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Categoría *</label>
+                    <select value={placeForm.category_id} onChange={e => setPlaceForm({ ...placeForm, category_id: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                      <option value="">Seleccionar...</option>
+                      {categories.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+                    </select></div>
+                </div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Especialidad</label>
+                  <input value={placeForm.specialty} onChange={e => setPlaceForm({ ...placeForm, specialty: e.target.value })} placeholder="ej: empanadas, pizza, comida rápida..." className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Dirección</label>
+                  <input value={placeForm.address} onChange={e => setPlaceForm({ ...placeForm, address: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Teléfono</label>
+                    <input value={placeForm.phone} onChange={e => setPlaceForm({ ...placeForm, phone: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                  <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>WhatsApp</label>
+                    <input value={placeForm.whatsapp} onChange={e => setPlaceForm({ ...placeForm, whatsapp: e.target.value })} placeholder="0412..." className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                </div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Google Maps URL</label>
+                  <input value={placeForm.google_maps_url} onChange={e => setPlaceForm({ ...placeForm, google_maps_url: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Waze URL</label>
+                  <input value={placeForm.waze_url} onChange={e => setPlaceForm({ ...placeForm, waze_url: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Descripción</label>
+                  <textarea value={placeForm.description} onChange={e => setPlaceForm({ ...placeForm, description: e.target.value })} rows={2} className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={placeForm.featured} onChange={e => setPlaceForm({ ...placeForm, featured: e.target.checked })} className="w-4 h-4 rounded" />
+                    <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Destacado</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={placeForm.verified} onChange={e => setPlaceForm({ ...placeForm, verified: e.target.checked })} className="w-4 h-4 rounded" />
+                    <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Verificado</span>
+                  </label>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-6">
+                <button onClick={() => setShowPlaceModal(false)} className="flex-1 py-3 rounded-xl text-sm font-medium transition-all" style={{ backgroundColor: "var(--background)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>Cancelar</button>
+                <button onClick={savePlace} disabled={!placeForm.name || !placeForm.city_id || !placeForm.category_id}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                  {editingPlace ? "Actualizar" : "Crear"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCategoryModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+            onClick={e => { if (e.target === e.currentTarget) setShowCategoryModal(false); }}>
+            <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <h3 className="text-base font-bold mb-5" style={{ color: "var(--text-primary)" }}>{editingCategory ? "Editar categoría" : "Nueva categoría"}</h3>
+              <div className="space-y-4">
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Nombre</label>
+                  <input value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Ícono (emoji)</label>
+                    <input value={categoryForm.icon} onChange={e => setCategoryForm({ ...categoryForm, icon: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none text-center text-xl" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                  <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Color (hex)</label>
+                    <input value={categoryForm.color} onChange={e => setCategoryForm({ ...categoryForm, color: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-6">
+                <button onClick={() => setShowCategoryModal(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ backgroundColor: "var(--background)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>Cancelar</button>
+                <button onClick={saveCategory} disabled={!categoryForm.name}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                  {editingCategory ? "Actualizar" : "Crear"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRuleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+            onClick={e => { if (e.target === e.currentTarget) setShowRuleModal(false); }}>
+            <div className="w-full max-w-lg rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <h3 className="text-base font-bold mb-5" style={{ color: "var(--text-primary)" }}>{editingRule ? "Editar regla" : "Nueva regla de conocimiento"}</h3>
+              <div className="space-y-4">
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Tipo de trigger</label>
+                  <select value={ruleForm.trigger_type} onChange={e => setRuleForm({ ...ruleForm, trigger_type: e.target.value })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
+                    <option value="keyword">Palabra clave</option>
+                    <option value="category">Categoría</option>
+                    <option value="city">Ciudad</option>
+                  </select></div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Valor (qué hace match)</label>
+                  <input value={ruleForm.trigger_value} onChange={e => setRuleForm({ ...ruleForm, trigger_value: e.target.value })} placeholder="ej: quién es Mulfai, qué es esto..." className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Respuesta que debe dar la IA</label>
+                  <textarea value={ruleForm.response} onChange={e => setRuleForm({ ...ruleForm, response: e.target.value })} rows={4} placeholder="La respuesta que quieres que la IA dé cuando detecte este trigger..." className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+                <div><label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Prioridad (1-100, mayor = más importante)</label>
+                  <input type="number" min="1" max="100" value={ruleForm.priority} onChange={e => setRuleForm({ ...ruleForm, priority: parseInt(e.target.value) || 10 })} className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} /></div>
+              </div>
+              <div className="flex items-center gap-3 mt-6">
+                <button onClick={() => setShowRuleModal(false)} className="flex-1 py-3 rounded-xl text-sm font-medium" style={{ backgroundColor: "var(--background)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>Cancelar</button>
+                <button onClick={saveRule} disabled={!ruleForm.trigger_value || !ruleForm.response}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold hover:opacity-90 disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                  {editingRule ? "Actualizar" : "Crear"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
 
