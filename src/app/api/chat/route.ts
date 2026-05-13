@@ -353,45 +353,70 @@ export async function POST(request: Request) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
     }
 
-    // Identity triggers: call Claude with focused prompt for dynamic response
+    // 1. Knowledge lookup from DB first — for ALL messages
+    const knowledgeResponse = await knowledgeLookup(message);
+    console.log("[chat] knowledgeLookup:", knowledgeResponse ? `MATCH "${knowledgeResponse.slice(0, 50)}..."` : "null");
+
+    // 2. Identity triggers: call Claude with focused prompt for dynamic response
     const msg = message.toLowerCase().trim();
     const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer", "mulfai es nuevo", "eres nuevo"];
     const isIdentity = identityTriggers.some(t => msg.includes(t));
     console.log("[chat] msg:", message, "-> isIdentity:", isIdentity);
 
+    // Use the message_id the client created locally (so the client can track the streaming message)
+    const clientMsgId = msgId || message_id || Date.now().toString();
+
+    // Determine conversation ID
+    let convId = conversation_id;
+    if (!convId) {
+      const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
+      if (newConv) convId = newConv.id;
+    }
+
+    // Save user message (only if not resuming)
+    if (!resume_message_id) {
+      await supabase.from("messages").insert({
+        conversation_id: convId || undefined,
+        user_id: user.id,
+        role: "user",
+        content: message,
+        attachments: attachments?.length ? attachments : null,
+      });
+    }
+
+    const now2 = new Date();
+    const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
+    const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
+    const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
+    await supabase.from("profiles").update({
+      last_message_at: now2.toISOString(),
+      hourly_msg_count: newHourlyCount,
+      hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
+    }).eq("id", user.id);
+
+    // Update conversation title
+    if (convId) {
+      const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
+      supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
+    }
+
+    // If DB rule matched → stream the pre-defined response directly
+    if (knowledgeResponse) {
+      const stream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: knowledgeResponse })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
+          controller.close();
+        }
+      });
+      return new Response(stream, {
+        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
+      });
+    }
+
+    // Identity questions → Claude with focused prompt
     if (isIdentity) {
-      // Use the message_id the client created locally (so the client can track the streaming message)
-      const clientMsgId = msgId || message_id || Date.now().toString();
-
-      // Determine conversation ID
-      let convId = conversation_id;
-      if (!convId) {
-        const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
-        if (newConv) convId = newConv.id;
-      }
-
-      // Save user message (only if not resuming)
-      if (!resume_message_id) {
-        await supabase.from("messages").insert({
-          conversation_id: convId || undefined,
-          user_id: user.id,
-          role: "user",
-          content: message,
-          attachments: attachments?.length ? attachments : null,
-        });
-      }
-
-      const now2 = new Date();
-      const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
-      const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-      const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
-      await supabase.from("profiles").update({
-        last_message_at: now2.toISOString(),
-        hourly_msg_count: newHourlyCount,
-        hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
-      }).eq("id", user.id);
-
-      // Call Claude with focused identity prompt — get full text first, then stream to client
       const identityPrompt = `Eres Mulfai, un asistente de inteligencia artificial personal.
 Tu nombre es Mulfai.
 NUNCA digas que eres Claude, ChatGPT, Gemini, o cualquier otro asistente.
@@ -406,12 +431,11 @@ El usuario pregunta: ${message}`;
         if (fullText.trim()) identityText = fullText.trim();
       }
 
-      // Update the message with the full response
+      // Save to DB
       if (clientMsgId && !clientMsgId.startsWith("retry_")) {
         await supabase.from("messages").update({ content: identityText, in_progress: false }).eq("id", clientMsgId);
       }
 
-      // Stream the full text to the client in one event
       const stream = new ReadableStream({
         start(controller) {
           controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
@@ -420,65 +444,6 @@ El usuario pregunta: ${message}`;
           controller.close();
         }
       });
-
-      if (convId) {
-        const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
-        supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
-      }
-
-      return new Response(stream, {
-        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
-      });
-    }
-
-    const knowledgeResponse = await knowledgeLookup(message);
-    console.log("[chat] knowledgeLookup result:", knowledgeResponse ? `MATCH: "${knowledgeResponse.slice(0, 60)}..."` : "null");
-    if (knowledgeResponse) {
-      const clientMsgId = msgId || message_id || Date.now().toString();
-
-      // Determine conversation ID
-      let convId = conversation_id;
-      if (!convId) {
-        const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
-        if (newConv) convId = newConv.id;
-      }
-
-      // Save user message
-      if (!resume_message_id) {
-        await supabase.from("messages").insert({
-          conversation_id: convId || undefined,
-          user_id: user.id,
-          role: "user",
-          content: message,
-          attachments: attachments?.length ? attachments : null,
-        });
-      }
-
-      const now2 = new Date();
-      const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
-      const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-      const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
-      await supabase.from("profiles").update({
-        last_message_at: now2.toISOString(),
-        hourly_msg_count: newHourlyCount,
-        hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
-      }).eq("id", user.id);
-
-      // Stream using client's message_id so the UI tracks the correct message
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: knowledgeResponse })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
-          controller.close();
-        }
-      });
-
-      if (convId) {
-        const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
-        supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
-      }
-
       return new Response(stream, {
         headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
       });
