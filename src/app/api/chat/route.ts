@@ -360,6 +360,104 @@ export async function POST(request: Request) {
     console.log("[chat] msg:", message, "-> isIdentity:", isIdentity);
 
     if (isIdentity) {
+      // Use the message_id the client created locally (so the client can track the streaming message)
+      const clientMsgId = msgId || message_id || Date.now().toString();
+
+      // Determine conversation ID
+      let convId = conversation_id;
+      if (!convId) {
+        const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
+        if (newConv) convId = newConv.id;
+      }
+
+      // Save user message (only if not resuming)
+      if (!resume_message_id) {
+        await supabase.from("messages").insert({
+          conversation_id: convId || undefined,
+          user_id: user.id,
+          role: "user",
+          content: message,
+          attachments: attachments?.length ? attachments : null,
+        });
+      }
+
+      const now2 = new Date();
+      const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
+      const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
+      const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
+      await supabase.from("profiles").update({
+        last_message_at: now2.toISOString(),
+        hourly_msg_count: newHourlyCount,
+        hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
+      }).eq("id", user.id);
+
+      // Call Claude with focused identity prompt
+      const identityPrompt = `Eres Mulfai, un asistente de inteligencia artificial personal.
+Tu nombre es Mulfai.
+NUNCA digas que eres Claude, ChatGPT, Gemini, o cualquier otro asistente.
+Responde en español de forma amigable y breve (máximo 2 oraciones).
+El usuario pregunta: ${message}`;
+
+      const identityResult = await runChat(apiKey, baseUrl, [{ role: "system", content: identityPrompt }], [], "normal");
+
+      // Fallback if API fails
+      const fallback = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas y encontrar lugares locales en Venezuela.";
+      const identityReader = "reader" in identityResult ? identityResult.reader : null;
+
+      // Stream Claude's response, using client's message_id so the UI tracks it correctly
+      const stream = new ReadableStream({
+        async start(controller) {
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
+
+          if (identityReader) {
+            const decoder = new TextDecoder();
+            let buffer = "";
+            try {
+              let result = await identityReader.read();
+              while (!result.done) {
+                buffer += decoder.decode(result.value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines[lines.length - 1] ?? "";
+                for (let i = 0; i < lines.length - 1; i++) {
+                  const line = lines[i];
+                  if (line.startsWith("data: ")) {
+                    const data = line.slice(6);
+                    if (data === "[DONE]") continue;
+                    try {
+                      const json = JSON.parse(data);
+                      if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
+                        controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`));
+                      }
+                    } catch {}
+                  }
+                }
+                result = await identityReader.read();
+              }
+            } catch {}
+          } else {
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: fallback })}\n\n`));
+          }
+
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
+          controller.close();
+        }
+      });
+
+      if (convId) {
+        const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
+        supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
+      }
+
+      return new Response(stream, {
+        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
+      });
+    }
+
+    const knowledgeResponse = await knowledgeLookup(message);
+    console.log("[chat] knowledgeLookup result:", knowledgeResponse ? `MATCH: "${knowledgeResponse.slice(0, 60)}..."` : "null");
+    if (knowledgeResponse) {
+      const clientMsgId = msgId || message_id || Date.now().toString();
+
       // Determine conversation ID
       let convId = conversation_id;
       if (!convId) {
@@ -388,59 +486,11 @@ export async function POST(request: Request) {
         hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
       }).eq("id", user.id);
 
-      // Call Claude with focused identity prompt — dynamic but always correct
-      const identityPrompt = `Eres Mulfai, un asistente de inteligencia artificial personal.
-Tu nombre es Mulfai.
-NUNCA digas que eres Claude, ChatGPT, Gemini, o cualquier otro asistente.
-Responde en español de forma amigable y breve (máximo 2 oraciones).
-El usuario pregunta: ${message}`;
-
-      const identityResult = await runChat(apiKey, baseUrl, [{ role: "system", content: identityPrompt }], [], "normal");
-
-      if ("error" in identityResult) {
-        // Fallback if Claude fails
-        const fallback = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas y encontrar lugares locales en Venezuela.";
-        const stream = new ReadableStream({
-          start(controller) {
-            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: "assistant" })}\n\n`));
-            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: fallback })}\n\n`));
-            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
-            controller.close();
-          }
-        });
-        return new Response(stream, {
-          headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
-        });
-      }
-
-      // Stream Claude's identity response
-      const reader = identityResult.reader;
+      // Stream using client's message_id so the UI tracks the correct message
       const stream = new ReadableStream({
-        async start(controller) {
-          const decoder = new TextDecoder();
-          let buffer = "";
-          try {
-            let result = await reader.read();
-            while (!result.done) {
-              buffer += decoder.decode(result.value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines[lines.length - 1] ?? "";
-              for (let i = 0; i < lines.length - 1; i++) {
-                const line = lines[i];
-                if (line.startsWith("data: ")) {
-                  const data = line.slice(6);
-                  if (data === "[DONE]") continue;
-                  try {
-                    const json = JSON.parse(data);
-                    if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                      controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`));
-                    }
-                  } catch {}
-                }
-              }
-              result = await reader.read();
-            }
-          } catch {}
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
+          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: knowledgeResponse })}\n\n`));
           controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
           controller.close();
         }
@@ -453,77 +503,6 @@ El usuario pregunta: ${message}`;
 
       return new Response(stream, {
         headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
-      });
-    }
-
-    const knowledgeResponse = await knowledgeLookup(message);
-    console.log("[chat] knowledgeLookup result:", knowledgeResponse ? `MATCH: "${knowledgeResponse.slice(0, 60)}..."` : "null");
-    if (knowledgeResponse) {
-      // Determine conversation ID
-      let convId = conversation_id;
-      if (!convId) {
-        const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
-        if (newConv) convId = newConv.id;
-      }
-
-      // Save user message
-      let saveId = msgId || message_id;
-      if (!resume_message_id) {
-        const { data: savedMsg } = await supabase.from("messages").insert({
-          conversation_id: convId || undefined,
-          user_id: user.id,
-          role: "user",
-          content: message,
-          attachments: attachments?.length ? attachments : null,
-        }).select("id").single();
-        if (savedMsg) saveId = savedMsg.id;
-      }
-
-      const now2 = new Date();
-      const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
-      const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-      const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
-      await supabase.from("profiles").update({
-        last_message_at: now2.toISOString(),
-        hourly_msg_count: newHourlyCount,
-        hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
-      }).eq("id", user.id);
-
-      // Save assistant message to DB
-      const { data: savedAiMsg } = await supabase.from("messages").insert({
-        conversation_id: convId || undefined,
-        user_id: user.id,
-        role: "assistant",
-        content: knowledgeResponse,
-        in_progress: false,
-      }).select("id").single();
-      const aiMsgId = savedAiMsg?.id || saveId;
-
-      // Stream in the format the client expects: { type: "chunk", text: "..." }
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: aiMsgId })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: knowledgeResponse })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
-          controller.close();
-        }
-      });
-
-      // Update conversation title and timestamp
-      if (convId) {
-        const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
-        supabase.from("conversations").update({
-          title,
-          updated_at: new Date().toISOString(),
-        }).eq("id", convId);
-      }
-
-      return new Response(stream, {
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "Connection": "keep-alive",
-        },
       });
     }
 
