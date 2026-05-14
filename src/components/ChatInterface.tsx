@@ -40,6 +40,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
+  const [sidebarHovered, setSidebarHovered] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -1328,12 +1329,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* Collapsed: logo strip + hover area (shown when unlocked) */}
         {sidebarLock === "unlocked" && (
           <div
-            className="absolute inset-y-0 left-0 z-50 flex flex-col items-center cursor-pointer group"
-            onClick={() => setSidebarLock("unlocked")}
-            onMouseEnter={e => { if (sidebarLock === "unlocked") setSidebarLock("unlocked"); }}
-            title="Expandir sidebar (desbloqueado)"
+            className="absolute inset-y-0 left-0 z-50 flex flex-col items-center group"
+            onMouseEnter={() => setSidebarHovered(true)}
+            onMouseLeave={() => setSidebarHovered(false)}
             style={{ width: "48px" }}>
-            <div className="w-full h-full flex flex-col items-center justify-center pt-6 gap-3"
+            <div className="w-full h-full flex flex-col items-center justify-center pt-6 gap-3 cursor-pointer"
+              onClick={() => setSidebarLock("locked")}
               style={{ backgroundColor: "rgba(22,22,22,0.98)" }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110"
                 style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
@@ -1354,9 +1355,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
             backgroundColor: "rgba(22,22,22,0.96)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid rgba(255,255,255,0.05)",
-            transform: sidebarLock === "unlocked" ? "translateX(-100%)" : "translateX(0)",
+            transform: (sidebarLock === "locked") || (sidebarLock === "unlocked" && sidebarHovered) ? "translateX(0)" : "translateX(-100%)",
             transition: "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
           }}
+          onMouseEnter={() => setSidebarHovered(true)}
+          onMouseLeave={() => setSidebarHovered(false)}
         >
           <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
             {sidebarLock !== "locked" && (
