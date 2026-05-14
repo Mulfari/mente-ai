@@ -1870,6 +1870,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             }}
                               className="p-1.5 rounded-lg transition-all hover:scale-110"
                               style={{ color: "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
+                              onMouseEnter={e => {
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(245,158,11,0.15)";
+                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 12px rgba(245,158,11,0.25)";
+                              }}
+                              onMouseLeave={e => {
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
+                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                              }}
                               title="Reintentar">
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1877,8 +1885,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             </button>
                           )}
                           <button onClick={() => copyMessage(msg.content, msg.id)}
-                            className="p-1.5 rounded-lg hover:bg-[var(--surface-hover)] transition-colors"
-                            style={{ color: "var(--text-tertiary)" }}>
+                            className="p-1.5 rounded-lg transition-all hover:scale-110 group"
+                            style={{ color: copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = copiedId === msg.id ? "rgba(16,163,127,0.2)" : "rgba(255,255,255,0.1)";
+                              (e.currentTarget as HTMLButtonElement).style.boxShadow = copiedId === msg.id ? "0 0 12px rgba(16,163,127,0.3)" : "0 0 12px rgba(255,255,255,0.1)";
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
+                              (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                            }}
+                            title={copiedId === msg.id ? "Copiado" : "Copiar"}>
                             {copiedId === msg.id ? (
                               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
