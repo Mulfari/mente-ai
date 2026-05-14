@@ -1211,15 +1211,49 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   ? isToday ? "Hoy" : isYesterday ? "Ayer" : diffDays > 1 ? `Hace ${diffDays} días` : ""
                   : "";
 
+                // Mobile: swipeable
+                if (typeof window !== "undefined" && window.innerWidth < 768) {
+                  return (
+                    <div key={conv.id}>
+                      <SwipeableConversation
+                        conv={conv}
+                        isActive={isActive}
+                        dateLabel={dateLabel}
+                        onSelect={() => selectConv(conv)}
+                        onDelete={() => deleteConv(conv.id)}
+                      />
+                    </div>
+                  );
+                }
+                // Desktop: inline hover button
                 return (
-                  <SwipeableConversation
-                    key={conv.id}
-                    conv={conv}
-                    isActive={isActive}
-                    dateLabel={dateLabel}
-                    onSelect={() => selectConv(conv)}
-                    onDelete={() => deleteConv(conv.id)}
-                  />
+                  <div key={conv.id}
+                    className="group w-full text-left rounded-xl flex items-start gap-2.5 cursor-pointer transition-all duration-150 px-2 py-2.5 relative"
+                    onClick={() => selectConv(conv)}
+                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.04)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
+                    )}
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ backgroundColor: isActive ? "rgba(16,163,127,0.15)" : "rgba(255,255,255,0.04)" }}>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                        style={{ color: isActive ? "#10A37F" : "rgba(255,255,255,0.3)" }}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate leading-tight" style={{ color: isActive ? "var(--text-primary)" : "rgba(255,255,255,0.55)" }}>{conv.title}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.2)" }}>{dateLabel}</p>
+                    </div>
+                    <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
+                      className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all flex items-center justify-center"
+                      style={{ color: "rgba(255,255,255,0.3)", backgroundColor: "rgba(239,68,68,0.15)" }}>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 );
               })}
             </div>
