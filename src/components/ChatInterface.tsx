@@ -1821,9 +1821,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               revealCancelled.current[msg.id] = true;
                               setDisplayedText(prev => { const n = { ...prev }; delete n[msg.id]; return n; });
                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "", _loading: true } : m));
-                              // Spin animation
-                              setRetryingId(msg.id);
-                              const spinTimer = setTimeout(() => setRetryingId(null), 500);
+                              // Spin animation — clear first to force re-render and restart animation
+                              setRetryingId(null);
+                              setTimeout(() => setRetryingId(msg.id), 10);
+                              setTimeout(() => setRetryingId(null), 510);
                               // Clear DB message and mark in_progress for new response
                               await supabase.from("messages").update({ content: "", in_progress: true }).eq("id", msg.id);
                               const res = await fetch("/api/chat", {
