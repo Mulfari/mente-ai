@@ -1998,7 +1998,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   if (removed) {
-    return <div className="rounded-xl mb-0.5" style={{ height: 53, transition: "height 0.3s, opacity 0.25s", opacity: 0 }} />;
+    return <div className="rounded-xl mb-0.5" style={{ height: 53, transition: "height 0.22s ease-in, opacity 0.18s ease-in", opacity: 0 }} />;
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
@@ -2053,7 +2053,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         style={{
           backgroundColor: "#141414",
           transform: `translateX(-${offset}px)`,
-          transition: dragging ? "none" : offset > 0 ? "transform 0.45s cubic-bezier(0.32, 0.72, 0, 1.2)" : "none",
+          transition: dragging ? "none" : offset > 0 ? "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
           WebkitTapHighlightColor: "transparent",
           touchAction: "pan-y",
         }}
