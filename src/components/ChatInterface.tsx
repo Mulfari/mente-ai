@@ -1962,7 +1962,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const [startY, setStartY] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [removed, setRemoved] = React.useState(false);
-  const DELETE_THRESHOLD = 90;
+  const DELETE_THRESHOLD = 80;
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -1985,7 +1985,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     setDragging(false);
     if (offset >= DELETE_THRESHOLD) {
       setRemoved(true);
-      setTimeout(() => onDelete(), 300);
+      setTimeout(() => onDelete(), 250);
     } else {
       setOffset(0);
     }
@@ -1997,30 +1997,45 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   if (removed) {
-    return <div className="rounded-xl mb-0.5" style={{ height: 52, transition: "height 0.3s, opacity 0.3s", opacity: 0 }} />;
+    return <div className="rounded-xl mb-0.5" style={{ height: 53, transition: "height 0.3s, opacity 0.25s", opacity: 0 }} />;
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
-  const iconVisible = offset > 10;
 
   return (
     <div className="relative mb-0.5">
-      {/* Red delete background — full width reveal */}
+      {/* Delete panel */}
       <div
-        className="absolute inset-y-0 right-0 flex items-center px-4"
-        style={{
-          backgroundColor: "#DC2626",
-          opacity: 0.6 + progress * 0.4,
-          width: `${offset}px`,
-        }}
+        className="absolute inset-y-0 right-0 flex items-center"
+        style={{ width: `${offset}px` }}
       >
-        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-          style={{ opacity: iconVisible ? 1 : 0 }}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-        <span className="ml-3 text-sm font-semibold text-white" style={{ opacity: Math.max(0, (progress - 0.5) / 0.5) }}>
-          Eliminar
-        </span>
+        <div
+          className="w-full h-full flex items-center justify-end px-3 gap-2"
+          style={{
+            backgroundColor: "#DC2626",
+            opacity: 0.75 + progress * 0.25,
+          }}
+        >
+          {/* Trash icon */}
+          <div
+            className="flex items-center justify-center w-8 h-8 rounded-full shrink-0"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.2)",
+              transform: `scale(${0.7 + progress * 0.3})`,
+              transition: "transform 0.15s",
+            }}
+          >
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
+          <span
+            className="text-sm font-semibold text-white shrink-0"
+            style={{ opacity: progress > 0.4 ? 1 : 0, transition: "opacity 0.15s" }}
+          >
+            Eliminar
+          </span>
+        </div>
       </div>
 
       {/* Row */}
@@ -2029,14 +2044,14 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         style={{
           backgroundColor: "#141414",
           transform: `translateX(-${offset}px)`,
-          transition: dragging ? "none" : "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
+          transition: dragging ? "none" : "transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
           WebkitTapHighlightColor: "transparent",
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
-        onMouseEnter={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
+        onMouseEnter={e => { if (!dragging && offset === 0) (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
         onMouseLeave={e => {
           if (!dragging) {
             (e.currentTarget as HTMLDivElement).style.backgroundColor = "#141414";
