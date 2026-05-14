@@ -1961,16 +1961,15 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const [startX, setStartX] = React.useState(0);
   const [startY, setStartY] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
-  const [executed, setExecuted] = React.useState(false);
   const [removed, setRemoved] = React.useState(false);
   const DELETE_THRESHOLD = 100;
+  const PEEK_WIDTH = 20;
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     setStartX(t.clientX);
     setStartY(t.clientY);
     setDragging(true);
-    setExecuted(false);
   }
 
   function handleTouchMove(e: React.TouchEvent) {
@@ -2000,8 +1999,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
-  const scale = 0.6 + progress * 0.4;
-  const iconOpacity = 0.5 + progress * 0.5;
+  const iconScale = 0.65 + progress * 0.35;
+  const iconOpacity = 0.55 + progress * 0.45;
 
   if (removed) {
     return (
@@ -2017,38 +2016,39 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   return (
-    <div className="relative mb-0.5">
+    <div className="relative mb-0.5 overflow-visible">
       {/* Delete reveal — right side */}
       <div
-        className="absolute inset-y-0 right-0 flex items-center justify-end"
-        style={{ width: `${offset}px` }}
+        className="absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden"
+        style={{ width: `${PEEK_WIDTH + offset}px` }}
       >
         <div
-          className="h-full flex items-center gap-2 rounded-r-xl px-3"
+          className="h-full flex items-center gap-2 pl-2"
           style={{
             backgroundColor: "#DC2626",
-            opacity: 0.75 + progress * 0.25,
+            opacity: 0.7 + progress * 0.3,
             width: "100%",
-            transform: `scaleX(${0.5 + progress * 0.5})`,
+            transform: `scaleX(${0.4 + progress * 0.6})`,
             transformOrigin: "right center",
           }}
         >
           <span
-            className="text-xs font-semibold text-white whitespace-nowrap transition-all duration-200"
+            className="text-xs font-semibold text-white whitespace-nowrap"
             style={{
-              opacity: progress,
-              transform: `translateX(${(1 - progress) * -10}px)`,
-              fontSize: progress > 0.3 ? "11px" : "0px",
+              opacity: Math.max(0, (progress - 0.3) / 0.7),
+              transform: `translateX(${(1 - progress) * -8}px)`,
+              transition: "opacity 0.15s, transform 0.15s",
+              fontSize: "11px",
             }}
           >
             Eliminar
           </span>
           <div
-            className="flex items-center justify-center w-9 h-9 rounded-full"
+            className="flex items-center justify-center w-9 h-9 rounded-full shrink-0"
             style={{
-              backgroundColor: "rgba(255,255,255,0.2)",
-              transform: `scale(${scale})`,
-              transition: "transform 0.1s ease",
+              backgroundColor: "rgba(255,255,255,0.18)",
+              transform: `scale(${iconScale})`,
+              transition: dragging ? "none" : "transform 0.1s ease",
             }}
           >
             <svg
@@ -2067,12 +2067,13 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
 
       {/* Swipeable item */}
       <div
-        className="relative flex items-center gap-3 px-3 py-3 cursor-pointer select-none rounded-xl"
+        className="relative flex items-center gap-3 pl-4 pr-4 py-3 cursor-pointer select-none rounded-xl"
         style={{
           backgroundColor: "#141414",
-          transform: `translateX(-${offset}px)`,
-          transition: dragging ? "none" : offset > 0 ? "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)" : "transform 0.25s ease",
+          transform: `translateX(-${PEEK_WIDTH + offset}px)`,
+          transition: dragging ? "none" : offset > 0 || !dragging ? `transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)` : "none",
           WebkitTapHighlightColor: "transparent",
+          paddingRight: `${PEEK_WIDTH + 4}px`,
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
