@@ -1328,7 +1328,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Desktop sidebar - collapsible */}
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" ? 260 : sidebarHovered ? 260 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
+      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 260 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)", overflow: "hidden" }}>
         {/* Collapsed: logo strip (always visible when unlocked) */}
         {sidebarLock === "unlocked" && (
           <div
