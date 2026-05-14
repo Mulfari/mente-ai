@@ -1966,6 +1966,23 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const containerRef = React.useRef<HTMLDivElement>(null);
   const DELETE_THRESHOLD = 70;
 
+  // Audio click for iOS (vibration not available on iPhones)
+  const playClickSound = React.useCallback(() => {
+    try {
+      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 180;
+      osc.type = "sine";
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.06);
+    } catch {}
+  }, []);
+
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     setStartX(t.clientX);
@@ -1982,11 +1999,13 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     if (dy > 12 && dy > Math.abs(dx)) return;
     const newOffset = Math.max(0, Math.min(dx, 160));
     setOffset(newOffset);
-    // Haptic when reaching threshold mid-swipe
+    // Haptic / click feedback when reaching threshold
     if (newOffset >= DELETE_THRESHOLD && !hapticFired) {
       setHapticFired(true);
       if (typeof navigator !== "undefined" && navigator.vibrate) {
         navigator.vibrate(10);
+      } else {
+        playClickSound();
       }
     } else if (newOffset < DELETE_THRESHOLD) {
       setHapticFired(false);
@@ -2000,6 +2019,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
       setRemoved(true);
       if (typeof navigator !== "undefined" && navigator.vibrate) {
         navigator.vibrate(15);
+      } else {
+        playClickSound();
       }
       setTimeout(() => onDelete(), 250);
     } else {
