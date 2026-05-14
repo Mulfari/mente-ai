@@ -1868,11 +1868,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 processStream();
                               }
                             }}
-                              className="p-1.5 rounded-lg transition-all hover:scale-110"
+                              className="p-1.5 rounded-lg transition-all hover:scale-110 cursor-pointer"
                               style={{ color: "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
                               onMouseEnter={e => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(245,158,11,0.15)";
-                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 12px rgba(245,158,11,0.25)";
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.12)";
+                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 14px rgba(255,255,255,0.15)";
                               }}
                               onMouseLeave={e => {
                                 (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
