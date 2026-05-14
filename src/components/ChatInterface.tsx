@@ -1333,7 +1333,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             onMouseEnter={e => setSidebarCollapsed(false)}
             title="Expandir sidebar"
             style={{ width: "48px" }}>
-            <div className="w-full h-full flex flex-col items-center justify-center pt-6 gap-2"
+            <div className="w-full h-full flex flex-col items-center justify-center pt-6 gap-3"
               style={{ backgroundColor: "rgba(22,22,22,0.98)" }}>
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110"
                 style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
@@ -1341,6 +1341,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               </div>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                style={{ color: "var(--text-tertiary)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+              </svg>
             </div>
           </div>
         )}
@@ -1370,7 +1374,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               className="p-1.5 rounded-md transition-colors hover:bg-white/5 ml-auto" style={{ color: "var(--text-tertiary)" }}
               title="Colapsar sidebar">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
               </svg>
             </button>
           </div>
