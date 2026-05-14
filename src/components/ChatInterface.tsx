@@ -1872,13 +1872,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               style={{ color: "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
                               onMouseEnter={e => {
                                 (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.12)";
-                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 14px rgba(255,255,255,0.15)";
                                 const svg = e.currentTarget.querySelector("svg");
                                 if (svg) { (svg as SVGElement).style.color = "#ffffff"; (svg as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))"; }
                               }}
                               onMouseLeave={e => {
                                 (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
-                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
                                 const svg = e.currentTarget.querySelector("svg");
                                 if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
                               }}
@@ -1900,13 +1898,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             style={{ color: copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
                             onMouseEnter={e => {
                               (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.1)";
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 12px rgba(255,255,255,0.1)";
                               const svg = e.currentTarget.querySelector("svg");
                               if (svg) { (svg as SVGElement).style.color = "#ffffff"; (svg as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))"; }
                             }}
                             onMouseLeave={e => {
                               (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
                               const svg = e.currentTarget.querySelector("svg");
                               if (svg) {
                                 (svg as SVGElement).style.color = copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)";
