@@ -1138,6 +1138,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           backgroundColor: "rgba(22,22,22,0.96)",
           backdropFilter: "blur(40px)",
           borderRight: "1px solid rgba(255,255,255,0.05)",
+          transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
         }}>
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
@@ -1320,7 +1321,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       {/* Sidebar backdrop */}
       {showSidebar && (
-        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" onClick={() => setShowSidebar(false)} />
+        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.35s", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
       )}
 
       {/* Main area */}
