@@ -1384,7 +1384,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
               </div>
             <button onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
-              className="p-2 rounded-xl transition-all hover:scale-110 ml-auto group"
+              className="p-2 rounded-xl transition-all hover:scale-110 ml-auto group cursor-pointer"
               style={{ color: "var(--primary)", backgroundColor: "rgba(16,163,127,0.08)" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}>
               {sidebarLock === "locked" ? (
