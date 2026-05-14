@@ -1959,106 +1959,148 @@ type SwipeableConvProps = {
 function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }: SwipeableConvProps) {
   const [offset, setOffset] = React.useState(0);
   const [startX, setStartX] = React.useState(0);
+  const [startY, setStartY] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
-  const [confirmDelete, setConfirmDelete] = React.useState(false);
-  const DELETE_THRESHOLD = 90;
-  const CONFIRM_ZONE = 60;
+  const [executed, setExecuted] = React.useState(false);
+  const [removed, setRemoved] = React.useState(false);
+  const DELETE_THRESHOLD = 100;
 
   function handleTouchStart(e: React.TouchEvent) {
-    setStartX(e.touches[0].clientX);
+    const t = e.touches[0];
+    setStartX(t.clientX);
+    setStartY(t.clientY);
     setDragging(true);
-    setConfirmDelete(false);
+    setExecuted(false);
   }
 
   function handleTouchMove(e: React.TouchEvent) {
     if (!dragging) return;
-    const diff = startX - e.touches[0].clientX;
-    // Only allow left swipe (positive diff = swiping left)
-    if (diff < 0) {
-      setOffset(0);
-      setConfirmDelete(false);
-      return;
-    }
-    const newOffset = Math.min(diff, DELETE_THRESHOLD + 20);
+    const t = e.touches[0];
+    const dy = Math.abs(t.clientY - startY);
+    const dx = startX - t.clientX;
+    if (dy > 15 && dy > Math.abs(dx)) return;
+    const newOffset = Math.max(0, Math.min(dx, DELETE_THRESHOLD + 30));
     setOffset(newOffset);
-    setConfirmDelete(newOffset >= CONFIRM_ZONE);
   }
 
   function handleTouchEnd() {
     if (!dragging) return;
     setDragging(false);
     if (offset >= DELETE_THRESHOLD) {
-      setOffset(DELETE_THRESHOLD);
-      setTimeout(() => {
-        setOffset(0);
-        setConfirmDelete(false);
-        onDelete();
-      }, 200);
+      setRemoved(true);
+      setTimeout(() => onDelete(), 280);
     } else {
       setOffset(0);
-      setConfirmDelete(false);
     }
   }
 
   function handleClick() {
-    if (Math.abs(offset) > 5) { setOffset(0); return; }
+    if (offset > 5) { setOffset(0); return; }
     onSelect();
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
+  const scale = 0.6 + progress * 0.4;
+  const iconOpacity = 0.5 + progress * 0.5;
+
+  if (removed) {
+    return (
+      <div
+        className="rounded-xl mb-0.5 overflow-hidden"
+        style={{
+          height: "52px",
+          transition: "height 0.28s ease-in, opacity 0.28s ease-in",
+          opacity: 0,
+        }}
+      />
+    );
+  }
 
   return (
-    <div className="relative overflow-hidden rounded-xl mb-0.5">
-      {/* Delete action background — right side */}
+    <div className="relative mb-0.5">
+      {/* Delete reveal — right side */}
       <div
-        className="absolute inset-y-0 right-0 flex items-center pl-4 gap-2 transition-all duration-150"
-        style={{
-          backgroundColor: confirmDelete ? "#DC2626" : "#EF4444",
-          opacity: 0.7 + progress * 0.3,
-          width: `${offset}px`,
-        }}
+        className="absolute inset-y-0 right-0 flex items-center justify-end"
+        style={{ width: `${offset}px` }}
       >
         <div
-          className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200"
+          className="h-full flex items-center gap-2 rounded-r-xl px-3"
           style={{
-            backgroundColor: progress > 0.3 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)",
-            transform: `scale(${0.8 + progress * 0.2})`,
+            backgroundColor: "#DC2626",
+            opacity: 0.75 + progress * 0.25,
+            width: "100%",
+            transform: `scaleX(${0.5 + progress * 0.5})`,
+            transformOrigin: "right center",
           }}
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-            style={{ color: "white", opacity: 0.4 + progress * 0.6 }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
+          <span
+            className="text-xs font-semibold text-white whitespace-nowrap transition-all duration-200"
+            style={{
+              opacity: progress,
+              transform: `translateX(${(1 - progress) * -10}px)`,
+              fontSize: progress > 0.3 ? "11px" : "0px",
+            }}
+          >
+            Eliminar
+          </span>
+          <div
+            className="flex items-center justify-center w-9 h-9 rounded-full"
+            style={{
+              backgroundColor: "rgba(255,255,255,0.2)",
+              transform: `scale(${scale})`,
+              transition: "transform 0.1s ease",
+            }}
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+              style={{ color: "white", opacity: iconOpacity }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
         </div>
-        <span className="text-xs font-semibold text-white whitespace-nowrap transition-all duration-150"
-          style={{ opacity: progress > 0.5 ? 1 : 0 }}>
-          Eliminar
-        </span>
       </div>
 
       {/* Swipeable item */}
       <div
-        className="relative flex items-center gap-3 px-3 py-3 cursor-pointer select-none"
+        className="relative flex items-center gap-3 px-3 py-3 cursor-pointer select-none rounded-xl"
         style={{
-          backgroundColor: "rgba(20,20,20,0.95)",
+          backgroundColor: "#141414",
           transform: `translateX(-${offset}px)`,
-          transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          zIndex: 1,
+          transition: dragging ? "none" : offset > 0 ? "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)" : "transform 0.25s ease",
+          WebkitTapHighlightColor: "transparent",
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
-        onMouseEnter={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
-        onMouseLeave={e => { if (!dragging) { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(20,20,20,0.95)"; setOffset(0); setConfirmDelete(false); } }}
+        onMouseEnter={e => { if (!dragging && offset === 0) (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
+        onMouseLeave={e => {
+          if (!dragging) {
+            (e.currentTarget as HTMLDivElement).style.backgroundColor = "#141414";
+            if (offset > 0) { setOffset(0); }
+          }
+        }}
       >
         {isActive && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
         )}
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: isActive ? "rgba(16,163,127,0.15)" : "rgba(255,255,255,0.04)" }}>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-            style={{ color: isActive ? "#10A37F" : "rgba(255,255,255,0.3)" }}>
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: isActive ? "rgba(16,163,127,0.15)" : "rgba(255,255,255,0.04)" }}
+        >
+          <svg
+            className="w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            viewBox="0 0 24 24"
+            style={{ color: isActive ? "#10A37F" : "rgba(255,255,255,0.3)" }}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         </div>
