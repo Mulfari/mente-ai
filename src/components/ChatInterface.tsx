@@ -1367,10 +1367,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
               </div>
             )}
             <button onClick={() => setSidebarCollapsed(true)}
-              className="p-1.5 rounded-md transition-colors hover:bg-white/5 ml-auto" style={{ color: "var(--text-tertiary)" }}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-                style={{ transform: sidebarCollapsed ? "rotate(180deg)" : "none", transition: "transform 0.3s" }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              className="p-1.5 rounded-md transition-colors hover:bg-white/5 ml-auto" style={{ color: "var(--text-tertiary)" }}
+              title="Colapsar sidebar">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </button>
           </div>
