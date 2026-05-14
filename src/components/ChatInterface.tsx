@@ -1960,60 +1960,106 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const [offset, setOffset] = React.useState(0);
   const [startX, setStartX] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
-  const DELETE_THRESHOLD = 80;
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const DELETE_THRESHOLD = 90;
+  const CONFIRM_ZONE = 60;
 
   function handleTouchStart(e: React.TouchEvent) {
     setStartX(e.touches[0].clientX);
     setDragging(true);
+    setConfirmDelete(false);
   }
+
   function handleTouchMove(e: React.TouchEvent) {
     if (!dragging) return;
     const diff = e.touches[0].clientX - startX;
-    if (diff < 0) setOffset(Math.max(diff, -DELETE_THRESHOLD - 20));
-    else setOffset(Math.min(diff, DELETE_THRESHOLD));
+    // Only allow right swipe (positive diff)
+    if (diff < 0) {
+      setOffset(0);
+      setConfirmDelete(false);
+      return;
+    }
+    const newOffset = Math.min(diff, DELETE_THRESHOLD + 20);
+    setOffset(newOffset);
+    setConfirmDelete(newOffset >= CONFIRM_ZONE);
   }
+
   function handleTouchEnd() {
+    if (!dragging) return;
     setDragging(false);
     if (offset >= DELETE_THRESHOLD) {
-      setOffset(0);
-      onDelete();
+      setOffset(DELETE_THRESHOLD);
+      setTimeout(() => {
+        setOffset(0);
+        setConfirmDelete(false);
+        onDelete();
+      }, 200);
     } else {
       setOffset(0);
+      setConfirmDelete(false);
     }
   }
+
   function handleClick() {
     if (Math.abs(offset) > 5) { setOffset(0); return; }
     onSelect();
   }
 
+  // Progress for visual feedback (0 to 1)
+  const progress = Math.min(offset / DELETE_THRESHOLD, 1);
+
   return (
-    <div className="relative overflow-hidden rounded-xl mb-0.5 md:overflow-visible">
-      {/* Delete background — only on mobile */}
-      <div className="absolute inset-0 flex items-center justify-end pr-3 md:hidden"
-        style={{ backgroundColor: "var(--danger)" }}>
-        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
+    <div className="relative overflow-hidden rounded-xl mb-0.5">
+      {/* Delete action background */}
+      <div
+        className="absolute inset-0 flex items-center pl-4 gap-2 transition-all duration-150"
+        style={{
+          backgroundColor: confirmDelete ? "#DC2626" : "#EF4444",
+          opacity: 0.6 + progress * 0.4,
+          transform: `scaleX(${0.3 + progress * 0.7})`,
+          transformOrigin: "left center",
+        }}
+      >
+        {/* Trash icon that fills as you swipe */}
+        <div
+          className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200"
+          style={{
+            backgroundColor: progress > 0.3 ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)",
+            transform: `scale(${0.8 + progress * 0.2})`,
+          }}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+            style={{ color: "white", opacity: 0.4 + progress * 0.6 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+        <span className="text-xs font-semibold text-white transition-all duration-150"
+          style={{ opacity: progress > 0.5 ? 1 : 0, transform: `translateX(${(1 - progress) * 20}px)` }}>
+          Eliminar
+        </span>
       </div>
+
       {/* Swipeable item */}
       <div
-        className="relative flex items-start gap-2.5 px-2 py-2.5 cursor-pointer select-none"
+        className="relative flex items-center gap-3 px-3 py-3 cursor-pointer select-none"
         style={{
-          backgroundColor: "var(--sidebar)",
+          backgroundColor: "rgba(20,20,20,0.95)",
           transform: `translateX(${offset}px)`,
-          transition: dragging ? "none" : "transform 0.2s ease",
+          transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          boxShadow: dragging ? `inset ${offset >= DELETE_THRESHOLD ? 0 : -2}px 0 0 rgba(239,68,68,${progress * 0.8})` : "none",
+          zIndex: 1,
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
-        onMouseEnter={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.04)"; }}
-        onMouseLeave={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}
+        onMouseEnter={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
+        onMouseLeave={e => { if (!dragging) { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(20,20,20,0.95)"; setOffset(0); setConfirmDelete(false); } }}
       >
         {isActive && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
         )}
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: isActive ? "rgba(16,163,127,0.15)" : "rgba(255,255,255,0.04)" }}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
             style={{ color: isActive ? "#10A37F" : "rgba(255,255,255,0.3)" }}>
@@ -2026,14 +2072,6 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           </p>
           <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.2)" }}>{dateLabel}</p>
         </div>
-        {/* Desktop hover delete */}
-        <button onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="shrink-0 opacity-0 group-hover:opacity-100 p-1 rounded-lg transition-all"
-          style={{ color: "rgba(255,255,255,0.2)" }}>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
       </div>
     </div>
   );
