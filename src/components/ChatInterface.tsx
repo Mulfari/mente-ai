@@ -39,6 +39,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -1320,10 +1321,93 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
       </div>
 
-      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
+      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
+
+      {/* Desktop sidebar - collapsible */}
+      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarCollapsed ? "48px" : "260px", transition: "width 0.3s cubic-bezier(0.32, 0.72, 0, 1)" }}>
+        <div
+          className={`absolute inset-y-0 left-0 z-50 w-[260px] flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+          style={{
+            backgroundColor: "rgba(22,22,22,0.96)",
+            backdropFilter: "blur(40px)",
+            borderRight: "1px solid rgba(255,255,255,0.05)",
+            left: sidebarCollapsed ? "-212px" : "0",
+            transition: "left 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+        >
+          <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </div>
+              <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+            </div>
+            <button onClick={() => setSidebarCollapsed(true)}
+              className="p-1.5 rounded-md transition-colors hover:bg-white/5" style={{ color: "var(--text-tertiary)" }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop sidebar - collapsible */}
+      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarCollapsed ? "48px" : "260px", transition: "width 0.3s cubic-bezier(0.32, 0.72, 0, 1)" }}>
+        <div
+          className={`absolute inset-y-0 left-0 z-50 w-[260px] flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+          style={{
+            backgroundColor: "rgba(22,22,22,0.96)",
+            backdropFilter: "blur(40px)",
+            borderRight: "1px solid rgba(255,255,255,0.05)",
+            left: sidebarCollapsed ? "-212px" : "0",
+            transition: "left 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+        >
+          <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+                <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </div>
+              <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+            </div>
+            <button onClick={() => setSidebarCollapsed(true)}
+              className="p-1.5 rounded-md transition-colors hover:bg-white/5" style={{ color: "var(--text-tertiary)" }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Desktop expand sidebar button */}
+        <button onClick={() => setSidebarCollapsed(false)}
+          className="hidden md:flex absolute items-center gap-2 px-3 py-2 rounded-xl group"
+          style={{
+            top: "16px",
+            left: sidebarCollapsed ? "16px" : "276px",
+            opacity: sidebarCollapsed ? 1 : 0,
+            pointerEvents: sidebarCollapsed ? "auto" : "none",
+            transition: "left 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s",
+            zIndex: 30,
+          }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </div>
+          <span className="text-sm font-semibold group-hover:text-[var(--primary)] transition-colors" style={{ color: "var(--text-secondary)" }}>Mulfai</span>
+        </button>
         {/* Top bar */}
         <header className="h-14 flex items-center justify-center px-4 shrink-0 md:hidden"
           style={{
