@@ -1387,27 +1387,27 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
       </div>
 
+      {/* Desktop expand sidebar button */}
+      <button onClick={() => setSidebarCollapsed(false)}
+        className="hidden md:block absolute z-40 items-center gap-2 px-3 py-2 rounded-xl group"
+        style={{
+          top: "16px",
+          left: sidebarCollapsed ? "16px" : "276px",
+          opacity: sidebarCollapsed ? 1 : 0,
+          pointerEvents: sidebarCollapsed ? "auto" : "none",
+          transition: "left 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s",
+        }}>
+        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+          </svg>
+        </div>
+        <span className="text-sm font-semibold group-hover:text-[var(--primary)] transition-colors" style={{ color: "var(--text-secondary)" }}>Mulfai</span>
+      </button>
+
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Desktop expand sidebar button */}
-        <button onClick={() => setSidebarCollapsed(false)}
-          className="hidden md:flex absolute items-center gap-2 px-3 py-2 rounded-xl group"
-          style={{
-            top: "16px",
-            left: sidebarCollapsed ? "16px" : "276px",
-            opacity: sidebarCollapsed ? 1 : 0,
-            pointerEvents: sidebarCollapsed ? "auto" : "none",
-            transition: "left 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s",
-            zIndex: 30,
-          }}>
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
-            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </div>
-          <span className="text-sm font-semibold group-hover:text-[var(--primary)] transition-colors" style={{ color: "var(--text-secondary)" }}>Mulfai</span>
-        </button>
         {/* Top bar */}
         <header className="h-14 flex items-center justify-center px-4 shrink-0 md:hidden"
           style={{
