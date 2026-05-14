@@ -1144,7 +1144,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[90vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+        className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
           backgroundColor: "rgba(22,22,22,0.96)",
           backdropFilter: "blur(40px)",
@@ -1343,7 +1343,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Desktop sidebar - collapsible */}
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 280 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
+      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
         {/* Collapsed bar - only visible when unlocked AND collapsed */}
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
           <div
@@ -1691,7 +1691,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
               <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Esta conversacion esta vacia</p>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto px-4 py-5">
+            <div className="max-w-4xl mx-auto px-4 py-5">
               {messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4 animate-fade-in group`}>
                   {msg.role === "assistant" && (
@@ -1906,7 +1906,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       {/* Input area */}
         <div className="px-4 pb-4 pt-2 flex-none">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-4xl mx-auto">
             {/* Attachment previews */}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
