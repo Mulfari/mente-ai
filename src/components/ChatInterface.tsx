@@ -1324,15 +1324,24 @@ export default function ChatInterface({ userId }: { userId: string }) {
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Desktop sidebar - collapsible */}
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarCollapsed ? "48px" : "260px", transition: "width 0.3s cubic-bezier(0.32, 0.72, 0, 1)" }}>
+      <div className="relative shrink-0 hidden md:block">
+        {/* Collapsed strip indicator */}
+        {sidebarCollapsed && (
+          <div className="absolute inset-y-0 left-0 w-3 z-50 cursor-pointer"
+            onClick={() => setSidebarCollapsed(false)}
+            title="Expandir sidebar"
+            style={{ backgroundColor: "rgba(22,22,22,0.96)" }}>
+            <div className="absolute top-1/2 left-1 -translate-y-1/2 w-0.5 h-8 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
+          </div>
+        )}
         <div
           className={`absolute inset-y-0 left-0 z-50 w-[260px] flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
             backgroundColor: "rgba(22,22,22,0.96)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid rgba(255,255,255,0.05)",
-            left: sidebarCollapsed ? "-212px" : "0",
-            transition: "left 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+            transform: sidebarCollapsed ? "translateX(-100%)" : "translateX(0)",
+            transition: "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
           }}
         >
           <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
@@ -1477,10 +1486,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
         className="hidden md:block absolute z-40 items-center gap-2 px-3 py-2 rounded-xl group"
         style={{
           top: "16px",
-          left: sidebarCollapsed ? "16px" : "276px",
+          left: sidebarCollapsed ? "16px" : "16px",
           opacity: sidebarCollapsed ? 1 : 0,
           pointerEvents: sidebarCollapsed ? "auto" : "none",
-          transition: "left 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.2s",
+          transition: "opacity 0.3s",
         }}>
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
           style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
