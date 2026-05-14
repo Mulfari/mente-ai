@@ -2034,7 +2034,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         </div>
       </div>
 
-      {/* Swipeable item with embedded peek icon */}
+      {/* Swipeable item with embedded peek */}
       <div
         className="relative flex items-center gap-2 px-3 py-3 cursor-pointer select-none rounded-xl"
         style={{
@@ -2042,7 +2042,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           transform: `translateX(-${offset}px)`,
           transition: dragging ? "none" : offset > 0 ? "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)" : "none",
           WebkitTapHighlightColor: "transparent",
-          paddingRight: `${44 + offset}px`,
+          paddingRight: `${48 + offset}px`,
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -2056,14 +2056,15 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           }
         }}
       >
-        {/* Peek icon — always visible on far right, inside the item */}
+        {/* Peek — trash icon + swipe hint */}
         <div
-          className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full shrink-0"
+          className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center rounded-full"
           style={{
-            width: "36px",
-            height: "36px",
-            backgroundColor: progress > 0.05 ? "#DC2626" : "rgba(255,255,255,0.05)",
-            transition: dragging ? "none" : "background-color 0.2s",
+            width: "42px",
+            height: "42px",
+            backgroundColor: progress > 0.05 ? "#DC2626" : "rgba(239,68,68,0.12)",
+            border: `1px solid ${progress > 0.05 ? "#DC2626" : "rgba(239,68,68,0.25)"}`,
+            transition: "background-color 0.2s, border-color 0.2s",
           }}
         >
           <svg
@@ -2072,13 +2073,20 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
             stroke="currentColor"
             strokeWidth={1.5}
             viewBox="0 0 24 24"
-            style={{
-              color: "white",
-              opacity: progress > 0.05 ? 0.9 : 0.2,
-              transition: "opacity 0.15s",
-            }}
+            style={{ color: "white", opacity: progress > 0.05 ? 0.95 : 0.4 }}
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+          {/* Chevron hint below icon */}
+          <svg
+            className="w-3 h-3 mt-[-2px]"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            viewBox="0 0 24 24"
+            style={{ color: progress > 0.05 ? "white" : "rgba(239,68,68,0.35)", opacity: progress > 0.05 ? 0.7 : 0.5 }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </div>
 
