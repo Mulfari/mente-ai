@@ -1133,11 +1133,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
     <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
-        className={`${showSidebar ? "translate-x-0" : "-translate-x-full"} fixed inset-y-0 left-0 z-50 w-[260px] max-sm:w-[88vw] flex flex-col md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] max-sm:w-[88vw] flex flex-col md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
           backgroundColor: "rgba(22,22,22,0.96)",
           backdropFilter: "blur(40px)",
           borderRight: "1px solid rgba(255,255,255,0.05)",
+          transform: `translateX(${showSidebar ? "0" : "-100%"})`,
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
         }}>
         {/* Sidebar header */}
@@ -1319,10 +1320,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
       </div>
 
-      {/* Sidebar backdrop */}
-      {showSidebar && (
-        <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.35s", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
-      )}
+      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.35s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
