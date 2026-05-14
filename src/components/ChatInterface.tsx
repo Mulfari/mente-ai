@@ -1894,7 +1894,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             </button>
                           )}
                           <button onClick={() => copyMessage(msg.content, msg.id)}
-                            className="p-1.5 rounded-lg transition-all hover:scale-110 group"
+                            className="p-1.5 rounded-lg transition-all hover:scale-110 group cursor-pointer"
                             style={{ color: copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
                             onMouseEnter={e => {
                               (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.1)";
