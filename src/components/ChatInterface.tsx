@@ -39,7 +39,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -1325,13 +1325,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       {/* Desktop sidebar - collapsible */}
       <div className="relative shrink-0 hidden md:block">
-        {/* Collapsed: logo strip + hover area */}
-        {sidebarCollapsed && (
+        {/* Collapsed: logo strip + hover area (shown when unlocked) */}
+        {sidebarLock === "unlocked" && (
           <div
             className="absolute inset-y-0 left-0 z-50 flex flex-col items-center cursor-pointer group"
-            onClick={() => setSidebarCollapsed(false)}
-            onMouseEnter={e => setSidebarCollapsed(false)}
-            title="Expandir sidebar"
+            onClick={() => setSidebarLock("unlocked")}
+            onMouseEnter={e => { if (sidebarLock === "unlocked") setSidebarLock("unlocked"); }}
+            title="Expandir sidebar (desbloqueado)"
             style={{ width: "48px" }}>
             <div className="w-full h-full flex flex-col items-center justify-center pt-6 gap-3"
               style={{ backgroundColor: "rgba(22,22,22,0.98)" }}>
@@ -1354,12 +1354,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
             backgroundColor: "rgba(22,22,22,0.96)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid rgba(255,255,255,0.05)",
-            transform: sidebarCollapsed ? "translateX(-100%)" : "translateX(0)",
+            transform: sidebarLock === "unlocked" ? "translateX(-100%)" : "translateX(0)",
             transition: "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
           }}
         >
           <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
-            {!sidebarCollapsed && (
+            {sidebarLock !== "locked" && (
               <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                   style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
@@ -1370,17 +1370,23 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
               </div>
             )}
-            <button onClick={() => setSidebarCollapsed(true)}
+            <button onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
               className="p-1.5 rounded-md transition-colors hover:bg-white/5 ml-auto" style={{ color: "var(--text-tertiary)" }}
-              title="Colapsar sidebar">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-              </svg>
+              title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}>
+              {sidebarLock === "locked" ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
+              )}
             </button>
           </div>
 
           {/* New chat button */}
-          {!sidebarCollapsed && (
+          {sidebarLock !== "locked" && (
             <div className="px-4 shrink-0 pb-3">
               <button onClick={newConversation}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer"
@@ -1394,7 +1400,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           )}
 
           {/* Conversations */}
-          {!sidebarCollapsed && (
+          {sidebarLock !== "locked" && (
             <div className="flex-1 overflow-y-auto px-2">
               <div className="pb-2">
                 <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>Historial</p>
@@ -1456,7 +1462,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           )}
 
           {/* Bottom */}
-          {!sidebarCollapsed && (
+          {sidebarLock !== "locked" && (
             <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
               <button onClick={() => setShowAccountMenu(true)}
                 className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
