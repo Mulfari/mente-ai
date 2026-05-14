@@ -2019,13 +2019,13 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
             opacity: offset > 0 ? 1 : 0,
             transition: dragging ? "none" : "opacity 0.2s, background-color 0.2s",
             boxShadow: atThreshold ? "0 0 0 2px #EF4444, 0 0 16px rgba(239,68,68,0.5)" : "none",
-            animation: atThreshold ? "pulseDelete 0.7s ease-in-out infinite" : "none",
+            animation: atThreshold ? "pulseDelete 0.8s ease-in-out infinite" : "none",
           }}
         >
           <span
             className="text-xs font-semibold text-white"
             style={{
-              opacity: progress,
+              opacity: atThreshold ? 1 : progress,
               transition: "opacity 0.15s",
             }}
           >
@@ -2034,11 +2034,10 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           <div
             className="flex items-center justify-center rounded-full shrink-0"
             style={{
-              width: "34px",
-              height: "34px",
-              backgroundColor: "rgba(255,255,255,0.25)",
-              transform: `scale(${0.75 + progress * 0.25})`,
-              transition: "transform 0.15s",
+              width: atThreshold ? "36px" : "32px",
+              height: atThreshold ? "36px" : "32px",
+              backgroundColor: atThreshold ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.2)",
+              transition: "width 0.15s, height 0.15s, background-color 0.15s",
             }}
           >
             <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
