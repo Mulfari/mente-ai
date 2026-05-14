@@ -50,7 +50,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
       localStorage.setItem("mulfai-sidebar-lock", sidebarLock);
     }
   }, [sidebarLock]);
+  const [retryingId, setRetryingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedAnimId, setCopiedAnimId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
@@ -599,7 +601,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
   async function copyMessage(content: string, msgId: string) {
     await navigator.clipboard.writeText(content);
     setCopiedId(msgId);
-    setTimeout(() => setCopiedId(null), 2000);
+    setCopiedAnimId(msgId);
+    setTimeout(() => {
+      setCopiedAnimId(null);
+      setCopiedId(null);
+    }, 2000);
   }
 
   function compressImage(file: File, maxWidth = 1280, quality = 0.7): Promise<string> {
@@ -1815,6 +1821,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               revealCancelled.current[msg.id] = true;
                               setDisplayedText(prev => { const n = { ...prev }; delete n[msg.id]; return n; });
                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "", _loading: true } : m));
+                              // Spin animation
+                              setRetryingId(msg.id);
+                              const spinTimer = setTimeout(() => setRetryingId(null), 500);
                               // Clear DB message and mark in_progress for new response
                               await supabase.from("messages").update({ content: "", in_progress: true }).eq("id", msg.id);
                               const res = await fetch("/api/chat", {
@@ -1882,7 +1891,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               }}
                               title="Reintentar">
                               <svg
-                                className="w-3.5 h-3.5"
+                                className={`w-3.5 h-3.5 ${retryingId === msg.id ? "spin-once" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth={1.5}
@@ -1911,7 +1920,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             }}
                             title={copiedId === msg.id ? "Copiado" : "Copiar"}>
                             {copiedId === msg.id ? (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--primary)", cursor: "pointer" }}>
+                              <svg className={`w-3.5 h-3.5 ${copiedAnimId === msg.id ? "pop-check" : ""}`} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--primary)", cursor: "pointer" }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
                             ) : (
