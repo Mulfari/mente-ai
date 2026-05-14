@@ -1972,8 +1972,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
 
   function handleTouchMove(e: React.TouchEvent) {
     if (!dragging) return;
-    const diff = e.touches[0].clientX - startX;
-    // Only allow right swipe (positive diff)
+    const diff = startX - e.touches[0].clientX;
+    // Only allow left swipe (positive diff = swiping left)
     if (diff < 0) {
       setOffset(0);
       setConfirmDelete(false);
@@ -2005,22 +2005,19 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     onSelect();
   }
 
-  // Progress for visual feedback (0 to 1)
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
 
   return (
     <div className="relative overflow-hidden rounded-xl mb-0.5">
-      {/* Delete action background */}
+      {/* Delete action background — right side */}
       <div
-        className="absolute inset-0 flex items-center pl-4 gap-2 transition-all duration-150"
+        className="absolute inset-y-0 right-0 flex items-center pl-4 gap-2 transition-all duration-150"
         style={{
           backgroundColor: confirmDelete ? "#DC2626" : "#EF4444",
-          opacity: 0.6 + progress * 0.4,
-          transform: `scaleX(${0.3 + progress * 0.7})`,
-          transformOrigin: "left center",
+          opacity: 0.7 + progress * 0.3,
+          width: `${offset}px`,
         }}
       >
-        {/* Trash icon that fills as you swipe */}
         <div
           className="flex items-center justify-center w-8 h-8 rounded-full transition-all duration-200"
           style={{
@@ -2033,8 +2030,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         </div>
-        <span className="text-xs font-semibold text-white transition-all duration-150"
-          style={{ opacity: progress > 0.5 ? 1 : 0, transform: `translateX(${(1 - progress) * 20}px)` }}>
+        <span className="text-xs font-semibold text-white whitespace-nowrap transition-all duration-150"
+          style={{ opacity: progress > 0.5 ? 1 : 0 }}>
           Eliminar
         </span>
       </div>
@@ -2044,9 +2041,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         className="relative flex items-center gap-3 px-3 py-3 cursor-pointer select-none"
         style={{
           backgroundColor: "rgba(20,20,20,0.95)",
-          transform: `translateX(${offset}px)`,
+          transform: `translateX(-${offset}px)`,
           transition: dragging ? "none" : "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-          boxShadow: dragging ? `inset ${offset >= DELETE_THRESHOLD ? 0 : -2}px 0 0 rgba(239,68,68,${progress * 0.8})` : "none",
           zIndex: 1,
         }}
         onTouchStart={handleTouchStart}
