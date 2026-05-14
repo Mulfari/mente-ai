@@ -1962,33 +1962,14 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const [startY, setStartY] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [removed, setRemoved] = React.useState(false);
-  const [hapticFired, setHapticFired] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const DELETE_THRESHOLD = 70;
-
-  // Audio click for iOS (vibration not available on iPhones)
-  const playClickSound = React.useCallback(() => {
-    try {
-      const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = 180;
-      osc.type = "sine";
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.06);
-    } catch {}
-  }, []);
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
     setStartX(t.clientX);
     setStartY(t.clientY);
     setDragging(true);
-    setHapticFired(false);
   }
 
   function handleTouchMove(e: React.TouchEvent) {
@@ -1997,19 +1978,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     const dy = Math.abs(t.clientY - startY);
     const dx = startX - t.clientX;
     if (dy > 12 && dy > Math.abs(dx)) return;
-    const newOffset = Math.max(0, Math.min(dx, 160));
-    setOffset(newOffset);
-    // Haptic / click feedback when reaching threshold
-    if (newOffset >= DELETE_THRESHOLD && !hapticFired) {
-      setHapticFired(true);
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate(10);
-      } else {
-        playClickSound();
-      }
-    } else if (newOffset < DELETE_THRESHOLD) {
-      setHapticFired(false);
-    }
+    setOffset(Math.max(0, Math.min(dx, 160)));
   }
 
   function handleTouchEnd() {
@@ -2017,15 +1986,9 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     setDragging(false);
     if (offset >= DELETE_THRESHOLD) {
       setRemoved(true);
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate(15);
-      } else {
-        playClickSound();
-      }
       setTimeout(() => onDelete(), 250);
     } else {
       setOffset(0);
-      setHapticFired(false);
     }
   }
 
@@ -2039,7 +2002,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
-  const actionWidth = offset + 12;
+  const atThreshold = offset >= DELETE_THRESHOLD;
+  const actionWidth = offset + 16;
 
   return (
     <div className="relative mb-0.5" ref={containerRef}>
@@ -2049,11 +2013,13 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         style={{ width: `${actionWidth}px`, pointerEvents: "none" }}
       >
         <div
-          className="w-full h-full flex items-center justify-end pl-4 pr-2 gap-2 rounded-r-xl"
+          className="w-full h-full flex items-center justify-end pl-4 pr-3 gap-2 rounded-r-xl"
           style={{
-            backgroundColor: "#DC2626",
+            backgroundColor: atThreshold ? "#B91C1C" : "#DC2626",
             opacity: offset > 0 ? 1 : 0,
-            transition: dragging ? "none" : "opacity 0.2s",
+            transition: dragging ? "none" : "opacity 0.2s, background-color 0.2s",
+            boxShadow: atThreshold ? "0 0 0 2px #EF4444, 0 0 16px rgba(239,68,68,0.5)" : "none",
+            animation: atThreshold ? "pulseDelete 0.7s ease-in-out infinite" : "none",
           }}
         >
           <span
@@ -2068,10 +2034,10 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           <div
             className="flex items-center justify-center rounded-full shrink-0"
             style={{
-              width: "32px",
-              height: "32px",
-              backgroundColor: "rgba(255,255,255,0.2)",
-              transform: `scale(${0.7 + progress * 0.3})`,
+              width: "34px",
+              height: "34px",
+              backgroundColor: "rgba(255,255,255,0.25)",
+              transform: `scale(${0.75 + progress * 0.25})`,
               transition: "transform 0.15s",
             }}
           >
