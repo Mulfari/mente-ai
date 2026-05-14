@@ -39,8 +39,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
-  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
+  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
+    typeof window !== "undefined" ? ((localStorage.getItem("mulfai-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
+  );
   const [sidebarHovered, setSidebarHovered] = useState(false);
+
+  // Persist sidebar lock state
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("mulfai-sidebar-lock", sidebarLock);
+    }
+  }, [sidebarLock]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
