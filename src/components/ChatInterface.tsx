@@ -1870,6 +1870,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             }}
                               className="p-1.5 rounded-lg transition-all hover:scale-110 cursor-pointer"
                               style={{ color: "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
+                              onMouseEnter={e => {
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.12)";
+                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 14px rgba(255,255,255,0.15)";
+                                const svg = e.currentTarget.querySelector("svg");
+                                if (svg) { (svg as SVGElement).style.color = "#ffffff"; (svg as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))"; }
+                              }}
+                              onMouseLeave={e => {
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
+                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                                const svg = e.currentTarget.querySelector("svg");
+                                if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
+                              }}
                               title="Reintentar">
                               <svg
                                 className="w-3.5 h-3.5"
@@ -1877,14 +1889,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 stroke="currentColor"
                                 strokeWidth={1.5}
                                 viewBox="0 0 24 24"
-                                onMouseEnter={e => {
-                                  (e.currentTarget as SVGElement).style.color = "#ffffff";
-                                  (e.currentTarget as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))";
-                                }}
-                                onMouseLeave={e => {
-                                  (e.currentTarget as SVGElement).style.color = "var(--text-tertiary)";
-                                  (e.currentTarget as SVGElement).style.filter = "none";
-                                }}
                                 style={{ color: "var(--text-tertiary)", cursor: "pointer" }}
                               >
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -1894,43 +1898,28 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           <button onClick={() => copyMessage(msg.content, msg.id)}
                             className="p-1.5 rounded-lg transition-all hover:scale-110 group"
                             style={{ color: copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
+                            onMouseEnter={e => {
+                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.1)";
+                              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 12px rgba(255,255,255,0.1)";
+                              const svg = e.currentTarget.querySelector("svg");
+                              if (svg) { (svg as SVGElement).style.color = "#ffffff"; (svg as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))"; }
+                            }}
+                            onMouseLeave={e => {
+                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
+                              (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                              const svg = e.currentTarget.querySelector("svg");
+                              if (svg) {
+                                (svg as SVGElement).style.color = copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)";
+                                (svg as SVGElement).style.filter = "none";
+                              }
+                            }}
                             title={copiedId === msg.id ? "Copiado" : "Copiar"}>
                             {copiedId === msg.id ? (
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                viewBox="0 0 24 24"
-                                onMouseEnter={e => {
-                                  (e.currentTarget as SVGElement).style.color = "#ffffff";
-                                  (e.currentTarget as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))";
-                                }}
-                                onMouseLeave={e => {
-                                  (e.currentTarget as SVGElement).style.color = "var(--primary)";
-                                  (e.currentTarget as SVGElement).style.filter = "none";
-                                }}
-                                style={{ color: "var(--primary)", cursor: "pointer" }}
-                              >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--primary)", cursor: "pointer" }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
                             ) : (
-                              <svg
-                                className="w-3.5 h-3.5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth={2}
-                                viewBox="0 0 24 24"
-                                onMouseEnter={e => {
-                                  (e.currentTarget as SVGElement).style.color = "#ffffff";
-                                  (e.currentTarget as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))";
-                                }}
-                                onMouseLeave={e => {
-                                  (e.currentTarget as SVGElement).style.color = "var(--text-tertiary)";
-                                  (e.currentTarget as SVGElement).style.filter = "none";
-                                }}
-                                style={{ color: "var(--text-tertiary)", cursor: "pointer" }}
-                              >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--text-tertiary)", cursor: "pointer" }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                               </svg>
                             )}
