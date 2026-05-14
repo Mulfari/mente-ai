@@ -1358,9 +1358,14 @@ export default function ChatInterface({ userId }: { userId: string }) {
             backgroundColor: "rgba(22,22,22,0.96)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid rgba(255,255,255,0.05)",
+            paddingLeft: 48,
           }}
-          onMouseEnter={() => setSidebarHovered(true)}
-          onMouseLeave={() => setSidebarHovered(false)}
+          onMouseEnter={() => {
+            if (sidebarLock === "unlocked") setSidebarHovered(true);
+          }}
+          onMouseLeave={() => {
+            if (sidebarLock === "unlocked") setTimeout(() => setSidebarHovered(false), 150);
+          }}
         >
           <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
             <div className="flex items-center gap-3">
