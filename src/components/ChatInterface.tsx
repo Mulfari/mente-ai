@@ -1228,9 +1228,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 // Desktop: inline hover button
                 return (
                   <div key={conv.id}
-                    className="group w-full text-left rounded-xl flex items-start gap-2.5 cursor-pointer transition-all duration-150 px-2 py-2.5 relative"
+                    className="group w-full text-left rounded-xl flex items-center gap-3 cursor-pointer transition-all duration-200 px-3 py-3 relative"
                     onClick={() => selectConv(conv)}
-                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.04)"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
                     {isActive && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
@@ -1247,10 +1247,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.2)" }}>{dateLabel}</p>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
-                      className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all flex items-center justify-center"
-                      style={{ color: "rgba(255,255,255,0.3)", backgroundColor: "rgba(239,68,68,0.15)" }}>
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      className="shrink-0 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 p-2 rounded-xl transition-all duration-200 flex items-center justify-center"
+                      style={{ color: "#EF4444", backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid transparent" }}
+                      onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(239,68,68,0.2)";
+                        (e.currentTarget as HTMLButtonElement).style.color = "#FCA5A5";
+                        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.05)";
+                      }}
+                      onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(239,68,68,0.08)";
+                        (e.currentTarget as HTMLButtonElement).style.color = "#EF4444";
+                        (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                      }}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                       </svg>
                     </button>
                   </div>
