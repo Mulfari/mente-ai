@@ -1978,16 +1978,19 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     const dy = Math.abs(t.clientY - startY);
     const dx = startX - t.clientX;
     if (dy > 12 && dy > Math.abs(dx)) return;
-    setOffset(Math.max(0, Math.min(dx, 160)));
+    const newOffset = Math.max(0, Math.min(dx, 160));
+    setOffset(newOffset);
+    if (newOffset >= DELETE_THRESHOLD) {
+      setDragging(false);
+      setRemoved(true);
+      setTimeout(() => onDelete(), 250);
+    }
   }
 
   function handleTouchEnd() {
     if (!dragging) return;
     setDragging(false);
-    if (offset >= DELETE_THRESHOLD) {
-      setRemoved(true);
-      setTimeout(() => onDelete(), 250);
-    } else {
+    if (offset < DELETE_THRESHOLD) {
       setOffset(0);
     }
   }
