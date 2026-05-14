@@ -1834,7 +1834,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               });
                               if (!res.ok) {
                                 const result = await res.json();
-                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false } : m));
+                                const errorMsg = result.error || "Error. Intenta de nuevo.";
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: errorMsg, _loading: false } : m));
+                                supabase.from("messages").update({ content: errorMsg, in_progress: false }).eq("id", msg.id);
                               } else {
                                 const reader = res.body!.getReader();
                                 const decoder = new TextDecoder();
