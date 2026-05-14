@@ -1134,7 +1134,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] max-sm:w-[88vw] flex flex-col md:translate-x-0 md:relative ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+        className={`fixed inset-y-0 left-0 z-50 w-[260px] max-sm:w-[88vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
           backgroundColor: "rgba(22,22,22,0.96)",
           backdropFilter: "blur(40px)",
