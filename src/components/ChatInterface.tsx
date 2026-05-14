@@ -2009,7 +2009,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   return (
-    <div className="relative mb-0.5">
+    <div className="relative mb-0.5" style={{ paddingRight: "8px", clipPath: "inset(0 0 0 -8px)" }}>
       {/* Delete reveal — grows from the right behind item */}
       <div
         className="absolute inset-y-0 right-0 flex items-center justify-end"
@@ -2042,7 +2042,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           transform: `translateX(-${offset}px)`,
           transition: dragging ? "none" : offset > 0 ? "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)" : "none",
           WebkitTapHighlightColor: "transparent",
-          paddingRight: `${48 + offset}px`,
+          paddingRight: "56px",
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -2056,38 +2056,34 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           }
         }}
       >
-        {/* Peek — trash icon + swipe hint */}
+        {/* Peek — half circle trash icon peeking from right edge */}
         <div
-          className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col items-center justify-center rounded-full"
-          style={{
-            width: "42px",
-            height: "42px",
-            backgroundColor: progress > 0.05 ? "#DC2626" : "rgba(239,68,68,0.12)",
-            border: `1px solid ${progress > 0.05 ? "#DC2626" : "rgba(239,68,68,0.25)"}`,
-            transition: "background-color 0.2s, border-color 0.2s",
-          }}
+          className="absolute right-0 top-1/2 -translate-y-1/2 overflow-hidden"
+          style={{ width: `${48 + offset}px`, height: "48px" }}
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            viewBox="0 0 24 24"
-            style={{ color: "white", opacity: progress > 0.05 ? 0.95 : 0.4 }}
+          <div
+            className="absolute right-0 top-0 flex items-center justify-center rounded-full"
+            style={{
+              width: "48px",
+              height: "48px",
+              backgroundColor: progress > 0.05 ? "#DC2626" : "#1c1c1c",
+              border: `2px solid ${progress > 0.05 ? "#DC2626" : "rgba(239,68,68,0.3)"}`,
+              transform: `translateX(${offset}px)`,
+              transition: dragging ? "none" : "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.2s, border-color 0.2s",
+              boxShadow: "0 0 0 1px rgba(239,68,68,0.08)",
+            }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          {/* Chevron hint below icon */}
-          <svg
-            className="w-3 h-3 mt-[-2px]"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            viewBox="0 0 24 24"
-            style={{ color: progress > 0.05 ? "white" : "rgba(239,68,68,0.35)", opacity: progress > 0.05 ? 0.7 : 0.5 }}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              viewBox="0 0 24 24"
+              style={{ color: "white", opacity: progress > 0.05 ? 1 : 0.35 }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </div>
         </div>
 
         {isActive && (
