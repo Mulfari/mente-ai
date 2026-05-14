@@ -1870,16 +1870,23 @@ export default function ChatInterface({ userId }: { userId: string }) {
                             }}
                               className="p-1.5 rounded-lg transition-all hover:scale-110 cursor-pointer"
                               style={{ color: "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
-                              onMouseEnter={e => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.12)";
-                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 14px rgba(255,255,255,0.15)";
-                              }}
-                              onMouseLeave={e => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
-                                (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-                              }}
                               title="Reintentar">
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={1.5}
+                                viewBox="0 0 24 24"
+                                onMouseEnter={e => {
+                                  (e.currentTarget as SVGElement).style.color = "#ffffff";
+                                  (e.currentTarget as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))";
+                                }}
+                                onMouseLeave={e => {
+                                  (e.currentTarget as SVGElement).style.color = "var(--text-tertiary)";
+                                  (e.currentTarget as SVGElement).style.filter = "none";
+                                }}
+                                style={{ color: "var(--text-tertiary)", cursor: "pointer" }}
+                              >
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                               </svg>
                             </button>
