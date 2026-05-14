@@ -1135,7 +1135,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)" }}>
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[260px] max-sm:w-[88vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+        className={`fixed inset-y-0 left-0 z-50 w-[280px] max-sm:w-[90vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
           backgroundColor: "rgba(22,22,22,0.96)",
           backdropFilter: "blur(40px)",
@@ -1169,21 +1169,27 @@ export default function ChatInterface({ userId }: { userId: string }) {
         {/* New chat button */}
         <div className="px-4 shrink-0 pb-3">
           <button onClick={newConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer group"
             style={{
               backgroundColor: "rgba(16,163,127,0.1)",
               color: "#10A37F",
               border: "1px solid rgba(16,163,127,0.15)",
+              boxShadow: "0 0 0 0 rgba(16,163,127,0)",
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(16,163,127,0.18)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(16,163,127,0.35)";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(16,163,127,0.2)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(16,163,127,0.4)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px rgba(16,163,127,0.25)";
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.02)";
             }}
             onMouseLeave={e => {
               (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(16,163,127,0.1)";
               (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(16,163,127,0.15)";
-            }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 0 rgba(16,163,127,0)";
+              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+            }}
+          >
+            <svg className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Nuevo chat
@@ -1328,7 +1334,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Desktop sidebar - collapsible */}
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 260 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
+      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 280 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
         {/* Collapsed bar - only visible when unlocked AND collapsed */}
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
           <div
@@ -1378,7 +1384,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
               </div>
             <button onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
-              className="p-1.5 rounded-md transition-colors hover:bg-white/5 ml-auto" style={{ color: "var(--text-tertiary)" }}
+              className="p-2 rounded-xl transition-all hover:scale-110 ml-auto group"
+              style={{ color: "var(--primary)", backgroundColor: "rgba(16,163,127,0.08)" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}>
               {sidebarLock === "locked" ? (
                 <div className="relative">
@@ -1460,6 +1467,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
                         className="shrink-0 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 p-2 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer"
                         style={{ color: "#EF4444", backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.1)" }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(239,68,68,0.2)";
+                          (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 16px rgba(239,68,68,0.3)";
+                          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.1)";
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(239,68,68,0.08)";
+                          (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
+                          (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+                        }}
                         title="Eliminar conversación">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
