@@ -1143,6 +1143,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
           transform: `translateX(${showSidebar ? "0" : "-100%"})`,
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
           touchAction: "pan-y",
+          overflowY: "auto",
+          scrollbarWidth: "none",
         }}>
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
@@ -1356,7 +1358,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             backgroundColor: "rgba(22,22,22,0.96)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid rgba(255,255,255,0.05)",
-            transform: (sidebarLock === "locked") || (sidebarLock === "unlocked" && sidebarHovered) ? "translateX(0)" : "translateX(-100%)",
+            transform: sidebarLock === "locked" ? "translateX(0)" : sidebarHovered ? "translateX(0)" : "translateX(-100%)",
             transition: "transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
           }}
           onMouseEnter={() => setSidebarHovered(true)}
@@ -2180,7 +2182,9 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   if (removed) {
-    return <div className="rounded-xl mb-0.5" style={{ height: 53, transition: "height 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease-out", opacity: 0 }} />;
+    return <div className="rounded-xl mb-0.5 overflow-hidden" style={{ height: 53, transition: "height 0.3s ease-in, opacity 0.2s ease-in", opacity: 0 }}>
+      <div className="h-full rounded-xl" style={{ backgroundColor: "#141414", transform: "translateX(-100%)" }} />
+    </div>;
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
