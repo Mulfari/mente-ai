@@ -1962,6 +1962,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const [startY, setStartY] = React.useState(0);
   const [dragging, setDragging] = React.useState(false);
   const [removed, setRemoved] = React.useState(false);
+  const [hapticFired, setHapticFired] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const DELETE_THRESHOLD = 70;
 
@@ -1970,6 +1971,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     setStartX(t.clientX);
     setStartY(t.clientY);
     setDragging(true);
+    setHapticFired(false);
   }
 
   function handleTouchMove(e: React.TouchEvent) {
@@ -1980,18 +1982,29 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     if (dy > 12 && dy > Math.abs(dx)) return;
     const newOffset = Math.max(0, Math.min(dx, 160));
     setOffset(newOffset);
-    if (newOffset >= DELETE_THRESHOLD) {
-      setDragging(false);
-      setRemoved(true);
-      setTimeout(() => onDelete(), 250);
+    // Haptic when reaching threshold mid-swipe
+    if (newOffset >= DELETE_THRESHOLD && !hapticFired) {
+      setHapticFired(true);
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+    } else if (newOffset < DELETE_THRESHOLD) {
+      setHapticFired(false);
     }
   }
 
   function handleTouchEnd() {
     if (!dragging) return;
     setDragging(false);
-    if (offset < DELETE_THRESHOLD) {
+    if (offset >= DELETE_THRESHOLD) {
+      setRemoved(true);
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(15);
+      }
+      setTimeout(() => onDelete(), 250);
+    } else {
       setOffset(0);
+      setHapticFired(false);
     }
   }
 
