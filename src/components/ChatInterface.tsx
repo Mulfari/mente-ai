@@ -1998,7 +1998,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   }
 
   if (removed) {
-    return <div className="rounded-xl mb-0.5" style={{ height: 53, transition: "height 0.22s ease-in, opacity 0.18s ease-in", opacity: 0 }} />;
+    return <div className="rounded-xl mb-0.5" style={{ height: 53, transition: "height 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease-out", opacity: 0 }} />;
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
@@ -2017,7 +2017,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           style={{
             backgroundColor: atThreshold ? "#B91C1C" : "#DC2626",
             opacity: offset > 0 ? 1 : 0,
-            transition: dragging ? "none" : "opacity 0.2s, background-color 0.2s",
+            transition: dragging ? "none" : "background-color 0.15s, opacity 0.15s",
             boxShadow: atThreshold ? "0 0 0 2px #EF4444, 0 0 16px rgba(239,68,68,0.5)" : "none",
             animation: atThreshold ? "pulseDelete 0.8s ease-in-out infinite" : "none",
           }}
@@ -2053,7 +2053,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         style={{
           backgroundColor: "#141414",
           transform: `translateX(-${offset}px)`,
-          transition: dragging ? "none" : offset > 0 ? "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)" : "none",
+          willChange: "transform",
+          transition: dragging ? "none" : offset > 0 ? "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
           WebkitTapHighlightColor: "transparent",
           touchAction: "pan-y",
         }}
