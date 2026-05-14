@@ -2051,7 +2051,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         style={{
           backgroundColor: "#141414",
           transform: `translateX(-${offset}px)`,
-          transition: dragging ? "none" : "transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94)",
+          transition: dragging ? "none" : offset > 0 ? "transform 0.45s cubic-bezier(0.32, 0.72, 0, 1.2)" : "none",
           WebkitTapHighlightColor: "transparent",
           touchAction: "pan-y",
         }}
