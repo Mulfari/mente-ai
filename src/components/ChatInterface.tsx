@@ -1963,7 +1963,6 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const [dragging, setDragging] = React.useState(false);
   const [removed, setRemoved] = React.useState(false);
   const DELETE_THRESHOLD = 100;
-  const PEEK_SIZE = 36;
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -2011,39 +2010,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
 
   return (
     <div className="relative mb-0.5">
-      {/* Peek indicator — always visible at right edge */}
-      <div
-        className="absolute top-1/2 -translate-y-1/2 right-0 flex items-center justify-center"
-        style={{ width: `${PEEK_SIZE}px`, height: `${PEEK_SIZE}px` }}
-      >
-        <div
-          className="w-full h-full rounded-full flex items-center justify-center"
-          style={{
-            backgroundColor: progress > 0.1 ? "#DC2626" : "rgba(255,255,255,0.06)",
-            transform: `translateX(-${offset}px)`,
-            transition: dragging ? "none" : "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1), background-color 0.2s",
-            transformOrigin: "right center",
-          }}
-        >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            viewBox="0 0 24 24"
-            style={{
-              color: "white",
-              opacity: progress > 0.05 ? 0.9 : 0.25,
-              transform: `scale(${0.8 + progress * 0.2})`,
-              transition: "opacity 0.15s, transform 0.15s",
-            }}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </div>
-      </div>
-
-      {/* Delete reveal — grows behind the item */}
+      {/* Delete reveal — grows from the right behind item */}
       <div
         className="absolute inset-y-0 right-0 flex items-center justify-end"
         style={{ width: `${offset}px` }}
@@ -2052,32 +2019,30 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           className="h-full flex items-center gap-2"
           style={{
             backgroundColor: "#DC2626",
-            opacity: 0.5 + progress * 0.5,
+            opacity: 0.45 + progress * 0.55,
             width: "100%",
-            transform: `scaleX(${0.3 + progress * 0.7})`,
+            transform: `scaleX(${0.2 + progress * 0.8})`,
             transformOrigin: "right center",
           }}
         >
           <span
             className="text-xs font-semibold text-white whitespace-nowrap pr-3"
-            style={{
-              opacity: Math.max(0, (progress - 0.4) / 0.6),
-              fontSize: "11px",
-            }}
+            style={{ opacity: Math.max(0, (progress - 0.35) / 0.65), fontSize: "11px" }}
           >
             Eliminar
           </span>
         </div>
       </div>
 
-      {/* Swipeable item */}
+      {/* Swipeable item with embedded peek icon */}
       <div
-        className="relative flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl"
+        className="relative flex items-center gap-2 px-3 py-3 cursor-pointer select-none rounded-xl"
         style={{
           backgroundColor: "#141414",
           transform: `translateX(-${offset}px)`,
           transition: dragging ? "none" : offset > 0 ? "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)" : "none",
           WebkitTapHighlightColor: "transparent",
+          paddingRight: `${44 + offset}px`,
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -2091,6 +2056,32 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           }
         }}
       >
+        {/* Peek icon — always visible on far right, inside the item */}
+        <div
+          className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full shrink-0"
+          style={{
+            width: "36px",
+            height: "36px",
+            backgroundColor: progress > 0.05 ? "#DC2626" : "rgba(255,255,255,0.05)",
+            transition: dragging ? "none" : "background-color 0.2s",
+          }}
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            viewBox="0 0 24 24"
+            style={{
+              color: "white",
+              opacity: progress > 0.05 ? 0.9 : 0.2,
+              transition: "opacity 0.15s",
+            }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </div>
+
         {isActive && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
         )}
