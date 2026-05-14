@@ -1325,13 +1325,23 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       {/* Desktop sidebar - collapsible */}
       <div className="relative shrink-0 hidden md:block">
-        {/* Collapsed strip indicator */}
+        {/* Collapsed: logo strip + hover area */}
         {sidebarCollapsed && (
-          <div className="absolute inset-y-0 left-0 w-3 z-50 cursor-pointer"
+          <div
+            className="absolute inset-y-0 left-0 z-50 flex flex-col items-center cursor-pointer group"
             onClick={() => setSidebarCollapsed(false)}
+            onMouseEnter={e => setSidebarCollapsed(false)}
             title="Expandir sidebar"
-            style={{ backgroundColor: "rgba(22,22,22,0.96)" }}>
-            <div className="absolute top-1/2 left-1 -translate-y-1/2 w-0.5 h-8 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
+            style={{ width: "48px" }}>
+            <div className="w-full h-full flex flex-col items-center justify-center pt-6 gap-2"
+              style={{ backgroundColor: "rgba(22,22,22,0.98)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-all group-hover:scale-110"
+                style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+              </div>
+            </div>
           </div>
         )}
         <div
@@ -1480,25 +1490,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
           )}
         </div>
       </div>
-
-      {/* Desktop expand sidebar button */}
-      <button onClick={() => setSidebarCollapsed(false)}
-        className="hidden md:block absolute z-40 items-center gap-2 px-3 py-2 rounded-xl group"
-        style={{
-          top: "16px",
-          left: sidebarCollapsed ? "16px" : "16px",
-          opacity: sidebarCollapsed ? 1 : 0,
-          pointerEvents: sidebarCollapsed ? "auto" : "none",
-          transition: "opacity 0.3s",
-        }}>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
-          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-        </div>
-        <span className="text-sm font-semibold group-hover:text-[var(--primary)] transition-colors" style={{ color: "var(--text-secondary)" }}>Mulfai</span>
-      </button>
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden">
