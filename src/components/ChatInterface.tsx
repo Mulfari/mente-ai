@@ -1329,24 +1329,29 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       {/* Desktop sidebar - collapsible */}
       <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 260 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)", overflow: "hidden" }}>
-        {/* Collapsed: logo strip (always visible when unlocked) */}
-        {sidebarLock === "unlocked" && (
-          <div
-            className="absolute inset-y-0 left-0 z-50 flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
-            onClick={() => setSidebarLock("locked")}
-            style={{ width: 48, backgroundColor: "rgba(22,22,22,0.98)" }}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-              style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </div>
-            <svg className="w-3.5 h-3.5 transition-transform" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+        {/* Collapsed bar - always visible, shows lock state */}
+        <div
+          className="absolute inset-y-0 left-0 z-50 flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
+          onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
+          style={{ width: 48, backgroundColor: "rgba(22,22,22,0.98)" }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+            style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
+            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          </div>
+          {sidebarLock === "locked" ? (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+              style={{ color: "var(--text-tertiary)" }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          ) : (
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
               style={{ color: "var(--text-tertiary)" }}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
             </svg>
-          </div>
-        )}
+          )}
+        </div>
         <div
           className={`h-full flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
