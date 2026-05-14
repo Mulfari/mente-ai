@@ -1142,6 +1142,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           borderRight: "1px solid rgba(255,255,255,0.05)",
           transform: `translateX(${showSidebar ? "0" : "-100%"})`,
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
+          touchAction: "pan-y",
         }}>
         {/* Sidebar header */}
         <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
@@ -1188,7 +1189,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         </div>
 
         {/* Conversations */}
-        <div className="flex-1 overflow-y-auto px-2">
+        <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
           <div className="pb-2">
             <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
               Historial
@@ -1404,7 +1405,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
           {/* Conversations */}
           {sidebarLock !== "locked" && (
-            <div className="flex-1 overflow-y-auto px-2">
+            <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
               <div className="pb-2">
                 <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>Historial</p>
               </div>
