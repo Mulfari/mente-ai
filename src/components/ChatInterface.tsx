@@ -1894,21 +1894,43 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           <button onClick={() => copyMessage(msg.content, msg.id)}
                             className="p-1.5 rounded-lg transition-all hover:scale-110 group"
                             style={{ color: copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
-                            onMouseEnter={e => {
-                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = copiedId === msg.id ? "rgba(16,163,127,0.2)" : "rgba(255,255,255,0.1)";
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow = copiedId === msg.id ? "0 0 12px rgba(16,163,127,0.3)" : "0 0 12px rgba(255,255,255,0.1)";
-                            }}
-                            onMouseLeave={e => {
-                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
-                              (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-                            }}
                             title={copiedId === msg.id ? "Copiado" : "Copiar"}>
                             {copiedId === msg.id ? (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                viewBox="0 0 24 24"
+                                onMouseEnter={e => {
+                                  (e.currentTarget as SVGElement).style.color = "#ffffff";
+                                  (e.currentTarget as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))";
+                                }}
+                                onMouseLeave={e => {
+                                  (e.currentTarget as SVGElement).style.color = "var(--primary)";
+                                  (e.currentTarget as SVGElement).style.filter = "none";
+                                }}
+                                style={{ color: "var(--primary)", cursor: "pointer" }}
+                              >
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                               </svg>
                             ) : (
-                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <svg
+                                className="w-3.5 h-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth={2}
+                                viewBox="0 0 24 24"
+                                onMouseEnter={e => {
+                                  (e.currentTarget as SVGElement).style.color = "#ffffff";
+                                  (e.currentTarget as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))";
+                                }}
+                                onMouseLeave={e => {
+                                  (e.currentTarget as SVGElement).style.color = "var(--text-tertiary)";
+                                  (e.currentTarget as SVGElement).style.filter = "none";
+                                }}
+                                style={{ color: "var(--text-tertiary)", cursor: "pointer" }}
+                              >
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                               </svg>
                             )}
