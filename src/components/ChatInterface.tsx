@@ -68,6 +68,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
+  const [retryMode, setRetryMode] = useState<string | null>(null);
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
   const [streamError, setStreamError] = useState<string | null>(null);
@@ -247,7 +248,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (error) console.error("loadMessages error:", error);
     // Filter out messages still actively streaming with no content.
     // If message has content (from progressive save), show it even if in_progress=true
-    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress && !m.content?.trim()));
+    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress && !m.content?.trim()) && !(m.role === "assistant" && !m.in_progress && !m.content?.trim()));
     // Clear streaming state — these were saved from a previous session
     setStreamingMsgId(null);
     setMessages(valid);
@@ -1818,7 +1819,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                           )}
                           <p className="whitespace-pre-wrap font-medium">{msg.content}</p>
                         </>
-                      ) : msg._loading || msg.id === streamingMsgId ? (
+                      ) : (msg._loading || msg.id === streamingMsgId || retryMode === msg.id) ? (
                         <div className="flex items-center gap-2 py-1 min-h-[24px]">
                           {msg.content ? (
                             <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", wordBreak: "break-word" }}>
@@ -1904,6 +1905,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               revealCancelled.current[msg.id] = true;
                               setDisplayedText(prev => { const n = { ...prev }; delete n[msg.id]; return n; });
                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "", _loading: true } : m));
+                              setRetryMode(msg.id);
                               // Spin animation — clear first to force re-render and restart animation
                               setRetryingId(null);
                               setTimeout(() => setRetryingId(msg.id), 10);
@@ -1919,6 +1921,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 const result = await res.json();
                                 const errorMsg = result.error || "Error. Intenta de nuevo.";
                                 setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: errorMsg, _loading: false } : m));
+                                setRetryMode(null);
                                 supabase.from("messages").update({ content: errorMsg, in_progress: false }).eq("id", msg.id);
                               } else {
                                 const reader = res.body!.getReader();
@@ -1939,6 +1942,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                       });
                                       flushReveal(msg.id, fullText);
                                       setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: fullText, _loading: false } : m));
+                                      setRetryMode(null);
                                       return;
                                     }
                                     buffer += decoder.decode(value, { stream: true });
@@ -1958,6 +1962,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                     processStream();
                                   }).catch(() => {
                                     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "Error. Intenta de nuevo.", _loading: false } : m));
+                                    setRetryMode(null);
                                   });
                                 };
                                 processStream();
