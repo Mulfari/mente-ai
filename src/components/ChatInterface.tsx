@@ -1951,17 +1951,20 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                         }
                                       }
                                     }
-                                    await supabase.from("messages").upsert({
+                                    console.log("[retry] saving msg.id:", msg.id, "conv:", activeConv?.id, "content length:", fullText.length);
+                                    const { data: updResult, error: updError } = await supabase.from("messages").upsert({
                                       id: msg.id,
                                       conversation_id: activeConv?.id,
                                       content: fullText,
                                       in_progress: false,
                                     });
+                                    console.log("[retry] upsert result:", JSON.stringify(updResult), "error:", updError);
                                     flushReveal(msg.id, fullText);
                                     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: fullText, _loading: false } : m));
                                     setRetryMode(null);
                                   } catch (err) {
                                     console.error("[retry] stream error:", err);
+                                    console.log("[retry] on error, msg.id:", msg.id, "content:", fullText.slice(0, 100));
                                     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "Error. Intenta de nuevo.", _loading: false } : m));
                                     setRetryMode(null);
                                   }
