@@ -869,6 +869,89 @@ export default function ChatInterface({ userId }: { userId: string }) {
     const queuedMsg = queuedMsgRef.current;
     queuedMsgRef.current = null;
     const userMsg = queuedMsg ? queuedMsg.text : input.trim();
+
+    // Detect research command
+    const researchMatch = userMsg.match(/^(?:investiga|busca|research)\s+(.+?)\s+(?:en|sobre|about)\s+(.+)$/i);
+    if (researchMatch) {
+      const query = researchMatch[1].trim();
+      const location = researchMatch[2].trim();
+      const category = researchMatch[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20);
+
+      setInput("");
+      setSending(true);
+      autoResize();
+
+      // Add user message
+      const { data: insertedUser } = await supabase
+        .from("messages")
+        .insert({ conversation_id: conv?.id, role: "user", content: userMsg })
+        .select()
+        .single();
+
+      // Create research assistant message
+      const researchMsgId = Date.now().toString();
+      setMessages(prev => [...prev, {
+        id: researchMsgId, role: "assistant", content: `Buscando "${query} en ${location}"...`, created_at: new Date().toISOString(), _loading: true
+      }]);
+
+      try {
+        const res = await fetch("/api/research", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: `${query} en ${location}`, category }),
+        });
+        const data = await res.json();
+
+        if (data.items && data.items.length > 0) {
+          const resultsText = data.items.map((item: any, i: number) =>
+            `${i + 1}. **${item.title}**\n   ${item.site} — ${item.snippet}`
+          ).join("\n\n");
+
+          const response = `Encontré ${data.items.length} resultados para "${query} en ${location}":\n\n${resultsText}\n\n¿Quieres que guarde estos resultados? Responde "sí" para guardarlos.`;
+
+          setMessages(prev => prev.map(m => m.id === researchMsgId ? { ...m, content: response, _loading: false } : m));
+          // Store the category for saving
+          localStorage.setItem(`mulfai-research-pending-${researchMsgId}`, category);
+        } else {
+          setMessages(prev => prev.map(m => m.id === researchMsgId ? { ...m, content: "No encontré resultados. Prueba con otra búsqueda.", _loading: false } : m));
+        }
+      } catch {
+        setMessages(prev => prev.map(m => m.id === researchMsgId ? { ...m, content: "Error al buscar. Intenta de nuevo.", _loading: false } : m));
+      }
+
+      setSending(false);
+      return;
+    }
+
+    // Check if user wants to save pending research
+    if (/^(?:si|sí|guarda|guardar|yes|confirmar)$/i.test(userMsg)) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg.content?.includes("Quieres que guarde")) {
+        const pendingCat = localStorage.getItem(`mulfai-research-pending-${lastMsg.id}`);
+        if (pendingCat) {
+          setInput("");
+          setSending(true);
+          const saveMsgId = Date.now().toString();
+          setMessages(prev => [...prev, {
+            id: saveMsgId, role: "assistant", content: "Guardando...", created_at: new Date().toISOString()
+          }]);
+          try {
+            const res = await fetch("/api/research", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "save", category: pendingCat }),
+            });
+            const data = await res.json();
+            setMessages(prev => prev.map(m => m.id === saveMsgId ? { ...m, content: data.success ? `Guardado. ${data.result?.split('\n')[0] || ''}` : "Error al guardar.", _loading: false } : m));
+          } catch {
+            setMessages(prev => prev.map(m => m.id === saveMsgId ? { ...m, content: "Error al guardar.", _loading: false } : m));
+          }
+          localStorage.removeItem(`mulfai-research-pending-${lastMsg.id}`);
+          setSending(false);
+          return;
+        }
+      }
+    }
     const filesToSend = queuedMsg ? queuedMsg.files : [...attachments];
 
     if (!conv) {
