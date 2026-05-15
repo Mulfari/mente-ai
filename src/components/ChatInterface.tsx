@@ -1931,39 +1931,40 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                 const updateStream = (text: string) => {
                                   smoothReveal(msg.id, text);
                                 };
-                                const processStream = () => {
-                                  reader.read().then(({ done, value }) => {
-                                    if (done) {
-                                      supabase.from("messages").upsert({
-                                        id: msg.id,
-                                        conversation_id: activeConv?.id,
-                                        content: fullText,
-                                        in_progress: false,
-                                      });
-                                      flushReveal(msg.id, fullText);
-                                      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: fullText, _loading: false } : m));
-                                      setRetryMode(null);
-                                      return;
-                                    }
-                                    buffer += decoder.decode(value, { stream: true });
-                                    const lines = buffer.split("\n");
-                                    buffer = lines[lines.length - 1] ?? "";
-                                    for (let i = 0; i < lines.length - 1; i++) {
-                                      const line = lines[i];
-                                      if (line.startsWith("data: ")) {
-                                        const data = line.slice(6);
-                                        if (data === "[DONE]") continue;
-                                        try {
-                                          const json = JSON.parse(data);
-                                          if (json.type === "chunk" && json.text) { fullText += json.text; updateStream(fullText); }
-                                        } catch {}
+                                const processStream = async () => {
+                                  try {
+                                    while (true) {
+                                      const { done, value } = await reader.read();
+                                      if (done) break;
+                                      buffer += decoder.decode(value, { stream: true });
+                                      const lines = buffer.split("\n");
+                                      buffer = lines[lines.length - 1] ?? "";
+                                      for (let i = 0; i < lines.length - 1; i++) {
+                                        const line = lines[i];
+                                        if (line.startsWith("data: ")) {
+                                          const data = line.slice(6);
+                                          if (data === "[DONE]") continue;
+                                          try {
+                                            const json = JSON.parse(data);
+                                            if (json.type === "chunk" && json.text) { fullText += json.text; updateStream(fullText); }
+                                          } catch {}
+                                        }
                                       }
                                     }
-                                    processStream();
-                                  }).catch(() => {
+                                    await supabase.from("messages").upsert({
+                                      id: msg.id,
+                                      conversation_id: activeConv?.id,
+                                      content: fullText,
+                                      in_progress: false,
+                                    });
+                                    flushReveal(msg.id, fullText);
+                                    setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: fullText, _loading: false } : m));
+                                    setRetryMode(null);
+                                  } catch (err) {
+                                    console.error("[retry] stream error:", err);
                                     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "Error. Intenta de nuevo.", _loading: false } : m));
                                     setRetryMode(null);
-                                  });
+                                  }
                                 };
                                 processStream();
                               }
