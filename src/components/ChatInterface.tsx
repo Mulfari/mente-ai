@@ -247,7 +247,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (error) console.error("loadMessages error:", error);
     // Filter out messages still actively streaming with no content.
     // If message has content (from progressive save), show it even if in_progress=true
-    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress && !m.content));
+    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress && !m.content?.trim()));
     // Clear streaming state — these were saved from a previous session
     setStreamingMsgId(null);
     setMessages(valid);
@@ -1913,7 +1913,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                               const res = await fetch("/api/chat", {
                                 method: "POST",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ message: prevMsg.content, conversation_id: activeConv?.id }),
+                                body: JSON.stringify({ message: prevMsg.content, conversation_id: activeConv?.id, resume_message_id: msg.id, message_id: msg.id }),
                               });
                               if (!res.ok) {
                                 const result = await res.json();
