@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
-const TIMEOUT_MS = 300_000; // 5 min — needed for thinking mode
+const TIMEOUT_MS = 300_000;
 const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
 
@@ -64,204 +64,191 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
+// ─── Knowledge lookup (knowledge_rules table) ────────────────────────────────
 async function knowledgeLookup(userMessage: string): Promise<string | null> {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!serviceKey || !supabaseUrl) {
-    console.log("[knowledgeLookup] missing env vars, skipping");
-    return null;
-  }
-
+  if (!serviceKey || !supabaseUrl) return null;
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
   try {
     const res = await fetch(
       `${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`,
       { headers }
     );
-    if (!res.ok) {
-      console.log("[knowledgeLookup] DB error:", res.status);
-      return null;
-    }
+    if (!res.ok) return null;
     const rules: any[] = await res.json();
-    console.log("[knowledgeLookup] rules fetched:", rules.length, "msg:", userMessage);
-
     const msg = userMessage.toLowerCase().trim();
     for (const rule of rules) {
-      const trigger = rule.trigger_value.toLowerCase();
-      if (rule.trigger_type === "keyword" && msg.includes(trigger)) {
-        console.log("[knowledgeLookup] MATCH found:", trigger, "->", rule.response.slice(0, 50));
+      if (rule.trigger_type === "keyword" && msg.includes(rule.trigger_value.toLowerCase())) {
         return rule.response;
       }
     }
-  } catch (e) { console.log("[knowledgeLookup] catch error:", e); }
+  } catch {}
   return null;
 }
 
-async function logKnowledgeGap(supabaseUrl: string, serviceKey: string, keyword: string, city: string | null, category: string | null, originalMessage: string) {
-  try {
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/rpc/upsert_knowledge_gap`,
-      {
-        method: "POST",
-        headers: {
-          apikey: serviceKey,
-          Authorization: `Bearer ${serviceKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ p_keyword: keyword, p_city: city, p_category: category, p_original_message: originalMessage }),
-      }
-    );
-    if (res.ok) console.log("[gap] logged:", keyword, city || "");
-  } catch (e) {
-    console.log("[gap] log failed:", e);
-  }
+// ─── Analyze user message → what data is needed ───────────────────────────────
+async function analyzeUserMessage(message: string, apiKey: string, baseUrl: string) {
+  const prompt = `Eres un analizador de consultas. Dado un mensaje de usuario en español, determina qué información necesita del directorio.
+
+Devuelve un JSON con esta estructura exacta, sin texto adicional:
+{
+  "needs": {
+    "cities": ["ciudad"],
+    "categories": ["categoria"],
+    "keywords": ["palabra"],
+    "general": true/false
+  },
+  "search_query": "consulta simplificada"
 }
 
-async function buildSystemPrompt(supabaseUrl: string, serviceKey: string, userMessage: string): Promise<{ role: "system"; content: string }[]> {
-  // Keywords that trigger directory lookup
-  const placeKeywords = [
-    "restaurante", "comida", "almuerzo", "cena", "empanada", "pizza", "hamburguesa",
-    "farmacia", "medicina", "medicamento", "doctor", "clínica", "clínica", "hospital",
-    "gimnasio", "gym", "ejercicio", "lavandería", "lavado", "lavar",
-    "estación", "gasolina", "bomba", "estaciones de servicio",
-    "dónde puedo", "dónde hay", "recomiéndame", "necesito un", "busco un",
-    "en maracay", "en caracas", "en valencia", "en barquisimeto", "en venezuela",
-    "lugar", "sitio", "sitios", "lugares", "cerca", "cercano",
-  ];
+Reglas:
+- cities: ciudades mencionadas (maracay, caracas, valencia, barquisimeto, etc.)
+- categories: categorias del directorio (restaurante, farmacia, clinica, gym, lavanderia, estacion)
+- keywords: palabras clave relevantes adicionales
+- general: true si es pregunta general que no es sobre lugares
+- search_query: una consulta corta para buscar en la DB
 
-  const msg = userMessage.toLowerCase();
-  const needsPlaces = placeKeywords.some(k => msg.includes(k));
+Ejemplos:
+- "restaurantes en Maracay" → needs: {cities: ["Maracay"], categories: ["restaurante"], general: false}
+- "dame una clinica cerca" → needs: {cities: [], categories: ["clinica"], general: false}
+- "como funciona esto?" → needs: {general: true}`;
 
-  let placesData: any[] = [];
-  let detectedCity: string | null = null;
-  let detectedCategory: string | null = null;
+  const res = await fetch(`${baseUrl}/v1/messages`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "anthropic-version": "2023-06-01",
+      "x-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      model: "[private model]",
+      max_tokens: 512,
+      stream: false,
+      system: prompt,
+      messages: [{ role: "user", content: message }],
+    }),
+  });
 
-  // Detect city from message
-  const cityMap: Record<string, string> = {
-    "maracay": "Maracay", "ccs": "Caracas", "caracas": "Caracas",
-    "valencia": "Valencia", "barquisimeto": "Barquisimeto",
-  };
-  for (const [k, v] of Object.entries(cityMap)) {
-    if (msg.includes(k)) { detectedCity = v; break; }
-  }
+  if (!res.ok) return { needs: { general: true }, knowledge: [] };
 
-  // Detect category
-  const catMap: Record<string, string> = {
-    "restaurante": "restaurante", "comida": "restaurante", "almuerzo": "restaurante", "cena": "restaurante",
-    "empanada": "restaurante", "pizza": "restaurante", "hamburguesa": "restaurante",
-    "farmacia": "farmacia", "medicina": "farmacia", "medicamento": "farmacia",
-    "doctor": "clínica", "clínica": "clínica", "hospital": "clínica",
-    "gimnasio": "gimnasio", "gym": "gimnasio", "ejercicio": "gimnasio",
-    "lavandería": "lavandería", "lavado": "lavandería",
-    "gasolina": "estación", "bomba": "estación", "estación": "estación",
-  };
-  for (const [k, v] of Object.entries(catMap)) {
-    if (msg.includes(k)) { detectedCategory = v; break; }
-  }
+  const data = await res.json();
+  const text = data.content?.[0]?.text || "";
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) return { needs: { general: true }, knowledge: [] };
 
-  if (serviceKey && supabaseUrl) {
-    const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+  let analysis = JSON.parse(match[0]);
+  if (!analysis.needs) analysis = { needs: { general: true } };
+  if (!analysis.needs.general) analysis.needs.general = false;
+  if (!analysis.needs.cities) analysis.needs.cities = [];
+  if (!analysis.needs.categories) analysis.needs.categories = [];
+  if (!analysis.needs.keywords) analysis.needs.keywords = [];
+
+  return analysis;
+}
+
+// ─── Fetch relevant knowledge from DB ────────────────────────────────────────
+async function fetchKnowledge(supabaseUrl: string, serviceKey: string, needs: any) {
+  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
+  const knowledge: any[] = [];
+
+  // Fetch from knowledge table
+  if (!needs.general) {
+    const conditions: string[] = ["status='approved'"];
+    const params: string[] = [];
+    let idx = 1;
+
+    if (needs.cities?.length) {
+      conditions.push(`(${needs.cities.map(() => `city.ilike._${idx++}`).join(" OR ")})`);
+      needs.cities.forEach(() => params.push(`%${needs.cities[idx - 2]}%`));
+    }
+    if (needs.categories?.length) {
+      conditions.push(`(${needs.categories.map(() => `category.ilike._${idx++}`).join(" OR ")})`);
+      needs.categories.forEach(() => params.push(`%${needs.categories[idx - 2 - (needs.cities?.length || 0)]}%`));
+    }
+
+    const where = conditions.join(" AND ");
+    const url = `${supabaseUrl}/rest/v1/knowledge?select=*&${where}&order=created_at.desc&limit=30`;
+
     try {
-      if (needsPlaces) {
-        const placesRes = await fetch(
-          `${supabaseUrl}/rest/v1/places?select=*,cities(name,slug),categories(name,icon,color)&active=eq.true&order=rating.desc&limit=200`,
-          { headers }
-        );
-        if (placesRes.ok) placesData = await placesRes.json();
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        knowledge.push(...data);
+      }
+    } catch {}
 
-        // Log gap if places requested but DB empty
-        if (placesData.length === 0 && serviceKey && supabaseUrl) {
-          logKnowledgeGap(supabaseUrl, serviceKey, "place_search", detectedCity, detectedCategory, userMessage);
+    // Also fetch from places table
+    const placeConds: string[] = ["active=true"];
+    let pidx = 1;
+    if (needs.cities?.length) {
+      placeConds.push(`(cities.name.ilike._${pidx++})`);
+    }
+    if (needs.categories?.length) {
+      placeConds.push(`(categories.name.ilike._${pidx++})`);
+    }
+    const pWhere = placeConds.join(" AND ");
+    const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${pWhere}&order=rating.desc&limit=30`;
+
+    try {
+      const res = await fetch(pUrl, { headers });
+      if (res.ok) {
+        const places = await res.json();
+        for (const p of places) {
+          knowledge.push({
+            source: "place",
+            content: `${p.name}${p.cities?.name ? `, ${p.cities.name}` : ""}: ${p.address || "Direccion no disponible"}. ${p.specialty || p.description || ""} ${p.phone ? `📞 ${p.phone}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`,
+          });
         }
       }
     } catch {}
   }
 
-  const placesList = placesData.map((p: any) => {
-    const hoursStr = p.hours ? formatHours(p.hours) : "Horario no disponible";
-    const location = p.cities?.name ? `, ${p.cities.name}` : "";
-    return `- ${p.name}${location}: ${p.address || "Dirección no disponible"}. ${p.specialty || p.description || ""} ${hoursStr} ${p.phone ? `📞 ${p.phone}` : ""} ${p.whatsapp ? `WhatsApp: ${p.whatsapp}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`;
-  }).join("\n");
+  return knowledge;
+}
 
-  const basePrompt = `Eres Mulfai — ese es tu único nombre. Así te llamas y así debes Presentarte si alguien te pregunta.
+// ─── Build system prompt with only relevant data ─────────────────────────────
+function buildSystemPrompt(knowledge: any[]): { role: "system"; content: string }[] {
+  const dataSection = knowledge.length
+    ? `\n\nDIRECTORIO LOCAL:\n${knowledge.map(k => `- ${k.content}`).join("\n")}\n\nUsa este directorio para responder. Si no está aquí, dilo honestamente.`
+    : "";
+
+  return [{
+    role: "system",
+    content: `Eres Mulfai — ese es tu único nombre.
 
 SOBRE MULFAI:
-- Mulfai es un asistente de inteligencia artificial.
-- Fue creado para ayudar a personas en Venezuela con cualquier pregunta o necesidad.
-- No eres Claude, no eres ChatGPT, no eres Gemini, no eres MiniMax, no eres DeepSeek. Eres Mulfai, punto.
-- Si alguien te pregunta qué modelo eres o quién te hizo, responde: "Soy Mulfai, un asistente de IA creado para ayudarte. No doy detalles técnicos sobre cómo fui construido."
-- No menciones provectores, APIs ni nombres de modelos. Nunca.
+- Asistente de IA creado para ayudar a personas en Venezuela.
+- No eres Claude, ChatGPT, Gemini, ni ningún otro asistente. Eres Mulfai.
+- Si te preguntan qué modelo eres, responde: "Soy Mulfai, un asistente de IA creado para ayudarte. No doy detalles técnicos sobre cómo fui construido."
 
-IDENTIDAD Y TONO:
-- Hablas como un amigo que sabe mucho: cercano, directo, sin rodeos, sin ser грубо.
-- Estás enfocado en usuarios en Venezuela, pero puedes ayudar con cualquier tema.
-- Tono: amigable, util, sin formalidades innecesarias.
-- Usa emojis (📍📞✅❌⚠️🔍💡🔥) para hacer la información fácil de leer en el celular.
-- NUNCA uses emojis de forma excesiva o innecesaria — máximo 2-3 por respuesta.
+TONO:
+- Cercano, directo, sin rodeos.
+- Emojis con moderación (📍📞✅❌⚠️💡🔥) — máximo 2-3 por respuesta.
+- Máximo 3-4 párrafos cortos, salvo que la pregunta exija más.
+- Usa bullets (-) para listas.
+- Cierre natural, no mecánico.
 
 IDIOMA:
 - SIEMPRE en español, salvo que el usuario escriba completamente en otro idioma.
-- Sin anglicismos innecesarios. Si existe la palabra en español, úsala.
-- Excepciones: código de programación, nombres técnicos de herramientas (Python, JavaScript, React, etc.).
-- Nunca traduzcas nombres propios de apps o servicios (WhatsApp, Instagram, TikTok se quedan igual).
+- Sin anglicismos innecesarios. Código y nombres de apps (WhatsApp, TikTok) se quedan como están.
 
-COMO RESPONDER:
-- Sé directo. Ve al grano, no redactes parrafotes innecesarios.
-- Máximo 3-4 párrafos cortos, salvo que la pregunta requiera más detalle.
-- Usa listas con bullets (-) en vez de párrafos largos cuando haya múltiples items.
-- Si no sabes algo, dilo claro: "No tengo ese dato todavía" o "No estoy seguro de eso". NUNCA inventes nombres, direcciones, precios, horarios o cualquier información que no puedas verificar.
-- Cuando des información de contacto o dirección, confirma que esté completa antes de dar el mensaje.
-- No cierres siempre igual. No uses "Espero haberte ayudado" ni "Si tienes otra pregunta" de forma mecánica. El cierre debe ser natural según el contexto.
+NUNCA:
+- Inventar información (nombres, precios, horarios, direcciones).
+- Decir que eres otro asistente.
+- Responder con parrafotes excesivos o cierres repetitivos.
 
-CUANDO PREGUNTAN POR LUGARES (restaurantes, farmacias, clínicas, gyms, lavanderías, estaciones de gasolina, etc.):
-- USA SIEMPRE el directorio local provisto abajo.
-- Para cada lugar da siempre que esté disponible: 📍 dirección completa, 📞 teléfono/WhatsApp, horario.
-- Si el directorio está vacío o no tiene lo que el usuario pide, sé honesto: "No tengo ese lugar en mi directorio todavía. Puedo darte información general basada en lo que sé, pero no puedo garantizar que esté actualizada."
-- NUNCA recomiendes, inventes o sugiere lugares que no estén en el directorio.
-
-CUANDO PREGUNTAN SOBRE LA APLICACIÓN MULFAI:
-- Mulfai es una app de asistente de IA.
-- Es gestionada por un equipo pequeño.
-- Los usuarios tienen una suscripción semanal activa.
-- Para cualquier tema de cuenta, suscripción o pago, el usuario debe contactar al admin.
-
-LO QUE NUNCA DEBES HACER:
-- Inventar información (nombres, precios, horarios, direcciones, teléfonos).
-- Decir que eres otro asistente (Claude, GPT, etc.).
-- Dar información técnica sobre cómo fuiste construido.
-- Responder con parrafotes excesivamente largos.
-- Mezclar idiomas sin que el usuario lo pida.
-- Recomendar lugares fuera del directorio sin avisar que no son verificados.
-
-LO QUE SIEMPRE DEBES HACER:
+SIEMPRE:
 - Ser directo y útil.
-- Decir cuando no tienes información.
+- Decir cuando no tienes info: "No tengo ese dato todavía."
 - Usar el directorio local para lugares.
-- Responder en español.
-- Mantener un tono amigable y natural.`;
-
-  let directorySection = "";
-  if (placesList) {
-    directorySection = `\n\nDIRECTORIO LOCAL (usa este para TODAS las preguntas sobre lugares):\n${placesList}\n\nIMPORTANTE: Si el usuario pregunta por un lugar y NO está en esta lista, dilo honestamente en vez de inventar.`;
-  }
-
-  const instructions = needsPlaces
-    ? ""
-    : "\n\nSi la pregunta no es sobre lugares del directorio, responde con tu conocimiento general de forma útil y concisa.";
-
-  return [{ role: "system", content: basePrompt + directorySection + instructions }];
-
-  return [{ role: "system", content: basePrompt + directorySection + instructions }];
+- Responder en español.${dataSection}
+`
+  }];
 }
 
-function formatHours(hours: any): string {
-  if (!hours || typeof hours !== "object") return "";
-  const days = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
-  const entries = Object.entries(hours);
-  if (entries.length === 0) return "";
-  return entries.map(([day, time]: [string, any]) => `${days[parseInt(day)] || day}: ${time || "cerrado"}`).join(", ");
-}
-
+// ─── Run chat ─────────────────────────────────────────────────────────────────
 async function runChat(
   apiKey: string,
   baseUrl: string,
@@ -279,7 +266,7 @@ async function runChat(
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "claude-opus-4.6-1m",
+      model: "[private model]",
       max_tokens: 8192,
       stream: true,
       system: systemPrompt,
@@ -289,181 +276,75 @@ async function runChat(
   });
 
   if (!response.ok) {
-    const rawText = await response.text().catch(() => "");
+    const text = await response.text().catch(() => "");
     let errorMsg = "Por favor intente de nuevo.";
-    try {
-      const errorData = JSON.parse(rawText);
-      errorMsg = errorData?.error?.message || errorData?.message || errorMsg;
-    } catch {}
+    try { errorMsg = JSON.parse(text)?.error?.message || errorMsg; } catch {}
     return { error: errorMsg, code: response.status };
   }
 
   return { reader: response.body!.getReader(), ok: true };
 }
 
-async function streamAndAccumulate(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-): Promise<string> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let fullText = "";
-
-  return new Promise((resolve) => {
-    function pump() {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          resolve(fullText);
-          return;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines[lines.length - 1] ?? "";
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i];
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const json = JSON.parse(data);
-              if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                fullText += json.delta.text;
-              }
-            } catch {}
-          }
-        }
-        pump();
-      }).catch(() => resolve(fullText));
-    }
-    pump();
-  });
-}
-
-async function streamToClient(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  controller: ReadableStreamDefaultController,
-): Promise<void> {
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  return new Promise((resolve) => {
-    function pump() {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          try { controller.close(); } catch {}
-          resolve();
-          return;
-        }
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines[lines.length - 1] ?? "";
-        for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i];
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              const json = JSON.parse(data);
-              if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                const chunk = `data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`;
-                try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
-              }
-            } catch {}
-          }
-        }
-        pump();
-      }).catch((err) => {
-        try { controller.error(err); } catch {}
-        resolve();
-      });
-    }
-    pump();
-  });
-}
-
+// ─── Main POST handler ───────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: "Error 401.", code: 401 }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: "Error 401.", code: 401 }, { status: 401 });
 
     const profile = await validateUser(supabase, user.id);
-    if (!profile) {
-      return NextResponse.json({ error: "Error 404.", code: 404 }, { status: 404 });
-    }
+    if (!profile) return NextResponse.json({ error: "Error 404.", code: 404 }, { status: 404 });
 
     const now = new Date();
     const validation = validateProfile(profile, now);
-    if (validation) {
-      return NextResponse.json(
-        { error: validation.error, code: validation.code, remaining: validation.remaining },
-        { status: validation.code }
-      );
-    }
+    if (validation) return NextResponse.json({ error: validation.error, code: validation.code, remaining: validation.remaining }, { status: validation.code });
 
     const { message, conversation_id, attachments, mode, resume_message_id, message_id } = await request.json();
-
     if (!message?.trim() && (!attachments || attachments.length === 0)) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
     }
 
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
     const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
-
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
-    // Load conversation history
+    // History
     const historyMessages: { role: string; content: any[] }[] = [];
     if (conversation_id) {
       const { data: prevMessages } = await supabase
-        .from("messages")
-        .select("id, role, content, attachments")
-        .eq("conversation_id", conversation_id)
-        .order("created_at", { ascending: true })
-        .limit(30);
+        .from("messages").select("id, role, content, attachments")
+        .eq("conversation_id", conversation_id).order("created_at", { ascending: true }).limit(30);
 
-      if (prevMessages && prevMessages.length > 0) {
+      if (prevMessages) {
         for (const m of prevMessages) {
           if (resume_message_id && m.id === resume_message_id) continue;
-          const contentParts: any[] = [];
-          if (typeof m.content === "string" && m.content.trim()) {
-            contentParts.push({ type: "text", text: m.content });
-          }
-          if (m.attachments && Array.isArray(m.attachments) && m.attachments.length > 0) {
-            contentParts.push(...m.attachments.map((a: any) =>
-              typeof a === "string" ? { type: "text", text: `[adjunto: ${a}]` } : a
-            ));
-          }
-          if (contentParts.length > 0) {
-            historyMessages.push({ role: m.role, content: contentParts });
-          }
+          const parts: any[] = [];
+          if (m.content?.trim()) parts.push({ type: "text", text: m.content });
+          if (m.attachments?.length) parts.push(...m.attachments.map((a: any) => typeof a === "string" ? { type: "text", text: `[adjunto: ${a}]` } : a));
+          if (parts.length) historyMessages.push({ role: m.role, content: parts });
         }
       }
     }
 
-    // For resume flow: clear the old in-progress message
     let msgId = resume_message_id;
     if (resume_message_id) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
     }
 
-    // 1. Knowledge lookup from DB first — for ALL messages
+    // Knowledge rules check (pre-defined responses)
     const knowledgeResponse = await knowledgeLookup(message);
-    console.log("[chat] knowledgeLookup:", knowledgeResponse ? `MATCH "${knowledgeResponse.slice(0, 50)}..."` : "null");
 
-    // Use the message_id the client created locally (so the client can track the streaming message)
     const clientMsgId = msgId || message_id || Date.now().toString();
 
-    // Determine conversation ID
+    // Conversation ID
     let convId = conversation_id;
     if (!convId) {
       const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
       if (newConv) convId = newConv.id;
     }
 
-    // Save user message (only if not resuming)
+    // Save user message
     if (!resume_message_id) {
       await supabase.from("messages").insert({
         conversation_id: convId || undefined,
@@ -474,23 +355,22 @@ export async function POST(request: Request) {
       });
     }
 
-    const now2 = new Date();
+    // Update hourly count
     const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
     const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-    const needsReset = !hourlyResetAt || now2 >= hourlyResetAt;
+    const needsReset = !hourlyResetAt || now >= hourlyResetAt;
     await supabase.from("profiles").update({
-      last_message_at: now2.toISOString(),
+      last_message_at: now.toISOString(),
       hourly_msg_count: newHourlyCount,
-      hourly_reset_at: needsReset ? new Date(now2.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
+      hourly_reset_at: needsReset ? new Date(now.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
     }).eq("id", user.id);
 
-    // Update conversation title
     if (convId) {
       const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
       supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
     }
 
-    // If DB rule matched → stream the pre-defined response directly
+    // Knowledge rule matched → stream directly
     if (knowledgeResponse) {
       const stream = new ReadableStream({
         start(controller) {
@@ -500,134 +380,94 @@ export async function POST(request: Request) {
           controller.close();
         }
       });
-      return new Response(stream, {
-        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
-      });
+      return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" } });
     }
 
-    // Identity questions are handled by the main system prompt — no special branch needed.
-    // The full buildSystemPrompt already covers "quien eres", "que eres", etc.
+    // Analyze + fetch relevant knowledge (RAG)
+    const analysis = await analyzeUserMessage(message, apiKey, baseUrl);
+    const knowledge = await fetchKnowledge(supabaseUrl, serviceKey, analysis.needs);
+
+    const systemPrompt = buildSystemPrompt(knowledge);
 
     const allMessagesForAI = [
       ...historyMessages,
       { role: "user", content: attachments?.length ? attachments : [{ type: "text", text: message }] },
     ];
 
-    // Build dynamic system prompt — only fetches places if relevant
-    const systemPrompt = await buildSystemPrompt(supabaseUrl, serviceKey, message);
     const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode);
-    if ("error" in result) {
-      return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });
-    }
+    if ("error" in result) return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });
 
     const reader = result.reader;
 
-    // Update hourly usage count (skip on resume to avoid double-counting)
-    if (!resume_message_id) {
-      const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
-      const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-      const needsReset = !hourlyResetAt || now >= hourlyResetAt;
-      await supabase.from("profiles").update({
-        last_message_at: now.toISOString(),
-        hourly_msg_count: newHourlyCount,
-        hourly_reset_at: needsReset ? new Date(now.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
-      }).eq("id", user.id);
-    }
-
-    // === ROBUST: stream to client AND accumulate, then save to DB on stream end ===
+    // Stream to client + save to DB
     const stream = new ReadableStream({
       async start(controller) {
-        const aiReader = reader;
         const decoder = new TextDecoder();
         let buffer = "";
         let fullText = "";
         const saveId = msgId || message_id;
 
-        async function pump() {
-          try {
-            let result = await aiReader.read();
-            while (!result.done) {
-              buffer += decoder.decode(result.value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines[lines.length - 1] ?? "";
-              for (let i = 0; i < lines.length - 1; i++) {
-                const line = lines[i];
-                if (line.startsWith("data: ")) {
-                  const data = line.slice(6);
-                  if (data === "[DONE]") continue;
-                  try {
-                    const json = JSON.parse(data);
-                    if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                      fullText += json.delta.text;
-                      const chunk = `data: ${JSON.stringify({ type: "chunk", text: json.delta.text })}\n\n`;
-                      try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
-                      // Progressive save (fire-and-forget) so partial text survives connection drops
-                      if (saveId && conversation_id) {
-                        supabase.from("messages").upsert({
-                          id: saveId,
-                          conversation_id,
-                          content: fullText,
-                          in_progress: true,
-                        }, { onConflict: "id" });
-                      }
-                    }
-                  } catch {}
-                }
-              }
-              result = await aiReader.read();
-            }
-            // === Stream done: await DB save before [DONE] ===
-            if (saveId && conversation_id) {
-              const content = fullText.trim() || "(respuesta no disponible)";
-              console.log("[chat] saving msg:", saveId, "chars:", content.length);
-              const { error } = await supabase.from("messages").upsert({
-                id: saveId,
-                conversation_id,
-                content,
-                in_progress: false,
-              }, { onConflict: "id" });
-              if (error) console.error("[chat] upsert failed:", error);
-              else console.log("[chat] upsert ok:", saveId);
-              const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
-              supabase.from("conversations").update({
-                title: message ? title : undefined,
-                updated_at: new Date().toISOString(),
-              }).eq("id", conversation_id);
-            }
-            try {
-              controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
-              controller.close();
-            } catch {}
-          } catch (err) {
-            if (saveId && conversation_id) {
-              await supabase.from("messages").upsert({
-                id: saveId,
-                conversation_id,
-                content: fullText.trim() || "(error en respuesta)",
-                in_progress: false,
-              }, { onConflict: "id" });
-            }
-            try { controller.error(err as Error); } catch {}
-          }
-        }
+        const sendChunk = (text: string) => {
+          const chunk = `data: ${JSON.stringify({ type: "chunk", text })}\n\n`;
+          try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
+        };
 
-        // Send message ID back to client first
-        if (saveId) {
-          try { controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "msg_id", id: saveId })}\n\n`)); } catch {}
+        const saveToDb = async (content: string, inProgress: boolean) => {
+          if (!saveId || !convId) return;
+          await supabase.from("messages").upsert({
+            id: saveId,
+            conversation_id: convId,
+            role: "assistant",
+            content,
+            in_progress: inProgress,
+          }, { onConflict: "id" });
+        };
+
+        try {
+          let chunk_count = 0;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n");
+            buffer = lines[lines.length - 1] ?? "";
+
+            for (let i = 0; i < lines.length - 1; i++) {
+              const line = lines[i];
+              if (!line.startsWith("data: ")) continue;
+              const data = line.slice(6);
+              if (data === "[DONE]") continue;
+
+              try {
+                const json = JSON.parse(data);
+                if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
+                  fullText += json.delta.text;
+                  sendChunk(json.delta.text);
+                  chunk_count++;
+                  // Progressive save every 500 chars
+                  if (chunk_count % 50 === 0) {
+                    saveToDb(fullText, true);
+                  }
+                }
+              } catch {}
+            }
+          }
+
+          // Final save
+          const finalContent = fullText.trim() || "(respuesta no disponible)";
+          await saveToDb(finalContent, false);
+          try { controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n")); controller.close(); } catch {}
+        } catch (err) {
+          await saveToDb(fullText.trim() || "(error en respuesta)", false);
+          try { controller.error(err as Error); } catch {}
         }
-        pump();
       },
     });
 
-    const headers: Record<string, string> = {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-      "X-Accel-Buffering": "no",
-    };
-    if (msgId) headers["X-Message-Id"] = msgId;
-
-    return new Response(stream, { headers });
+    return new Response(stream, {
+      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
+    });
 
   } catch (err: any) {
     if (err.name === "AbortError" || err.message?.includes("fetch")) {
