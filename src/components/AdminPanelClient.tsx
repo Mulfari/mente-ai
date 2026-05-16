@@ -47,7 +47,7 @@ type Tab = "users" | "coupons" | "places";
 type PlaceTab = "places" | "categories" | "knowledge" | "submissions";
 type Toast = { id: string; type: "success" | "error"; message: string };
 
-export default function AdminPanel({ initialProfiles = [], initialCoupons = [], initialPlaces = [], initialCategories = [], initialCities = [], initialKnowledgeRules = [], fetchError }: Props) {
+export default function AdminPanel({ initialProfiles = [], initialCoupons = [], initialPlaces = [], initialCategories = [], initialCities = [], initialKnowledgeRules = [], initialKnowledge = [], fetchError }: Props) {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
