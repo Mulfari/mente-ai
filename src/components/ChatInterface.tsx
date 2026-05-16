@@ -1955,6 +1955,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                                     const { data: updResult, error: updError } = await supabase.from("messages").upsert({
                                       id: msg.id,
                                       conversation_id: activeConv?.id,
+                                      role: "assistant",
                                       content: fullText,
                                       in_progress: false,
                                     });
