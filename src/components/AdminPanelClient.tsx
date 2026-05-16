@@ -9,6 +9,7 @@ type Props = {
   initialCategories?: any[];
   initialCities?: any[];
   initialKnowledgeRules?: any[];
+  initialKnowledge?: any[];
   fetchError?: string;
 };
 
@@ -43,7 +44,7 @@ type CouponType = "trial" | "weekly" | "20weeks" | "unlimited";
 type CouponFilter = "all" | "available" | "used";
 
 type Tab = "users" | "coupons" | "places";
-type PlaceTab = "places" | "categories" | "knowledge";
+type PlaceTab = "places" | "categories" | "knowledge" | "submissions";
 type Toast = { id: string; type: "success" | "error"; message: string };
 
 export default function AdminPanel({ initialProfiles = [], initialCoupons = [], initialPlaces = [], initialCategories = [], initialCities = [], initialKnowledgeRules = [], fetchError }: Props) {
@@ -68,6 +69,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   const [categories, setCategories] = useState<any[]>([]);
   const [cities, setCities] = useState<any[]>([]);
   const [knowledgeRules, setKnowledgeRules] = useState<any[]>([]);
+  const [knowledge, setKnowledge] = useState<any[]>([]);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [showPlaceModal, setShowPlaceModal] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -155,6 +157,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     setCategories(initialCategories);
     setCities(initialCities);
     setKnowledgeRules(initialKnowledgeRules);
+    setKnowledge(initialKnowledge || []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -940,14 +943,14 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
           <>
             {/* Sub-tabs */}
             <div className="flex items-center gap-1.5 p-1 rounded-xl mb-6 w-fit" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-              {(["places", "categories", "knowledge"] as const).map(t => (
+              {(["places", "categories", "knowledge", "submissions"] as const).map(t => (
                 <button key={t} onClick={() => setPlacesTab(t)}
                   className="px-4 py-2 rounded-lg text-xs font-semibold transition-all"
                   style={{
                     backgroundColor: placesTab === t ? "var(--primary)" : "transparent",
                     color: placesTab === t ? "white" : "var(--text-secondary)",
                   }}>
-                  {t === "places" ? "Lugares" : t === "categories" ? "Categorías" : "Reglas IA"}
+                  {t === "places" ? "Lugares" : t === "categories" ? "Categorías" : t === "knowledge" ? "Conocimiento" : "Pendientes"}
                 </button>
               ))}
             </div>
@@ -1102,6 +1105,120 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                       <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Sin reglas todavía</p>
                       <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Las reglas de conocimiento se inyectan al prompt de la IA automáticamente</p>
                     </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* === SUBMISSIONS TAB (knowledge pending) === */}
+            {placesTab === "submissions" && (
+              <>
+                <div className="mb-4 p-4 rounded-xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                  <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                    Los pendientes son entradas en la base de datos de conocimiento que aún no están activas. Apruébalas para que aparezcan en las respuestas de la IA o recházalas para eliminarlas.
+                  </p>
+                </div>
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                  {knowledge.filter(k => k.status !== "approved").length === 0 && knowledge.filter(k => k.status === "approved").length === 0 && (
+                    <div className="text-center py-16">
+                      <p className="text-sm font-medium mb-1" style={{ color: "var(--text-primary)" }}>Sin entradas de conocimiento</p>
+                      <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>La base de conocimiento está vacía. Usa el VPS para investigar y guardar.</p>
+                    </div>
+                  )}
+
+                  {/* Pending */}
+                  {knowledge.filter(k => k.status === "pending").length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold mb-2" style={{ color: "var(--warning)" }}>Pendientes ({knowledge.filter(k => k.status === "pending").length})</p>
+                      {knowledge.filter(k => k.status === "pending").map(k => (
+                        <div key={k.id} className="rounded-2xl p-4" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-start gap-3">
+                            <div className="flex-[private model]in-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                {k.city && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>{k.city}</span>}
+                                {k.category && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>{k.category}</span>}
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(245,158,11,0.12)", color: "var(--warning)" }}>pending</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(100,100,100,0.12)", color: "var(--text-tertiary)" }}>{k.source || "manual"}</span>
+                              </div>
+                              <p className="text-xs font-medium mb-1" style={{ color: "var(--text-primary)" }}>{k.query}</p>
+                              <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{k.content?.slice(0, 200)}{k.content?.length > 200 ? "..." : ""}</p>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => { setActionLoading(k.id + "-approve"); adminFetch("/api/admin/knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: k.id, status: "approved" }) }).then(() => { setKnowledge(prev => prev.map(x => x.id === k.id ? { ...x, status: "approved" } : x)); setActionLoading(null); showToast("success", "Aprobado"); }).catch(() => { setActionLoading(null); showToast("error", "Error al aprobar"); }); }}
+                                disabled={actionLoading === k.id + "-approve"} className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: "var(--primary)", color: "white" }}>
+                                Aprobar
+                              </button>
+                              <button onClick={() => { setActionLoading(k.id + "-reject"); adminFetch("/api/admin/knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: k.id, status: "rejected" }) }).then(() => { setKnowledge(prev => prev.map(x => x.id === k.id ? { ...x, status: "rejected" } : x)); setActionLoading(null); showToast("success", "Rechazado"); }).catch(() => { setActionLoading(null); showToast("error", "Error al rechazar"); }); }}
+                                disabled={actionLoading === k.id + "-reject"} className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: "var(--danger)", color: "white" }}>
+                                Rechazar
+                              </button>
+                              <button onClick={() => { if (confirm("¿Eliminar permanentemente?")) { adminFetch(`/api/admin/knowledge?id=${k.id}`, { method: "DELETE" }).then(() => { setKnowledge(prev => prev.filter(x => x.id !== k.id)); showToast("success", "Eliminado"); }).catch(() => showToast("error", "Error al eliminar")); } }}
+                                className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--danger)" }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Rejected */}
+                  {knowledge.filter(k => k.status === "rejected").length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold mb-2 mt-4" style={{ color: "var(--danger)" }}>Rechazados ({knowledge.filter(k => k.status === "rejected").length})</p>
+                      {knowledge.filter(k => k.status === "rejected").map(k => (
+                        <div key={k.id} className="rounded-2xl p-4 opacity-50" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                {k.city && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>{k.city}</span>}
+                                {k.category && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>{k.category}</span>}
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(239,68,68,0.12)", color: "var(--danger)" }}>rejected</span>
+                              </div>
+                              <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{k.query}</p>
+                            </div>
+                            <button onClick={() => { setActionLoading(k.id + "-restore"); adminFetch("/api/admin/knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: k.id, status: "pending" }) }).then(() => { setKnowledge(prev => prev.map(x => x.id === k.id ? { ...x, status: "pending" } : x)); setActionLoading(null); showToast("success", "Restaurado a pendiente"); }).catch(() => { setActionLoading(null); showToast("error", "Error"); }); }}
+                              disabled={actionLoading === k.id + "-restore"} className="px-3 py-1.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40" style={{ backgroundColor: "var(--warning)", color: "white" }}>
+                              Restaurar
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Approved */}
+                  {knowledge.filter(k => k.status === "approved").length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold mb-2 mt-4" style={{ color: "var(--primary)" }}>Aprobados ({knowledge.filter(k => k.status === "approved").length})</p>
+                      {knowledge.filter(k => k.status === "approved").map(k => (
+                        <div key={k.id} className="rounded-2xl p-4" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+                          <div className="flex items-start gap-3">
+                            <div className="flex-[private model]in-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                {k.city && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>{k.city}</span>}
+                                {k.category && <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(139,92,246,0.12)", color: "#8b5cf6" }}>{k.category}</span>}
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>approved</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ backgroundColor: "rgba(100,100,100,0.12)", color: "var(--text-tertiary)" }}>{k.source || "manual"}</span>
+                              </div>
+                              <p className="text-xs font-medium mb-1" style={{ color: "var(--text-primary)" }}>{k.query}</p>
+                              <p className="text-xs leading-relaxed" style={{ color: "var(--text-secondary)" }}>{k.content?.slice(0, 150)}{k.content?.length > 150 ? "..." : ""}</p>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button onClick={() => { if (confirm("¿Desactivar esta entrada?")) { adminFetch("/api/admin/knowledge", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: k.id, status: "pending" }) }).then(() => { setKnowledge(prev => prev.map(x => x.id === k.id ? { ...x, status: "pending" } : x)); showToast("success", "Desactivado"); }).catch(() => showToast("error", "Error")); } }}
+                                className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--warning)" }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                              </button>
+                              <button onClick={() => { if (confirm("¿Eliminar permanentemente?")) { adminFetch(`/api/admin/knowledge?id=${k.id}`, { method: "DELETE" }).then(() => { setKnowledge(prev => prev.filter(x => x.id !== k.id)); showToast("success", "Eliminado"); }).catch(() => showToast("error", "Error al eliminar")); } }}
+                                className="p-2 rounded-xl transition-all hover:opacity-80" style={{ color: "var(--danger)" }}>
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </>
                   )}
                 </div>
               </>
