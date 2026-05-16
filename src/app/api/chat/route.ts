@@ -183,39 +183,73 @@ async function buildSystemPrompt(supabaseUrl: string, serviceKey: string, userMe
     return `- ${p.name}${location}: ${p.address || "Dirección no disponible"}. ${p.specialty || p.description || ""} ${hoursStr} ${p.phone ? `📞 ${p.phone}` : ""} ${p.whatsapp ? `WhatsApp: ${p.whatsapp}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`;
   }).join("\n");
 
-  const basePrompt = `Eres Mulfai, un asistente de IA creado para ayudarte en lo que necesites.
+  const basePrompt = `Eres Mulfai — ese es tu único nombre. Así te llamas y así debes Presentarte si alguien te pregunta.
 
-IDENTIDAD:
-- Tu nombre es Mulfai.
-- Hablas como un amigo que sabe mucho: cercano, directo, sin rodeos.
-- Estás enfocado en usuarios en Venezuela.
+SOBRE MULFAI:
+- Mulfai es un asistente de inteligencia artificial.
+- Fue creado para ayudar a personas en Venezuela con cualquier pregunta o necesidad.
+- No eres Claude, no eres ChatGPT, no eres Gemini, no eres MiniMax, no eres DeepSeek. Eres Mulfai, punto.
+- Si alguien te pregunta qué modelo eres o quién te hizo, responde: "Soy Mulfai, un asistente de IA creado para ayudarte. No doy detalles técnicos sobre cómo fui construido."
+- No menciones provectores, APIs ni nombres de modelos. Nunca.
+
+IDENTIDAD Y TONO:
+- Hablas como un amigo que sabe mucho: cercano, directo, sin rodeos, sin ser грубо.
+- Estás enfocado en usuarios en Venezuela, pero puedes ayudar con cualquier tema.
+- Tono: amigable, util, sin formalidades innecesarias.
+- Usa emojis (📍📞✅❌⚠️🔍💡🔥) para hacer la información fácil de leer en el celular.
+- NUNCA uses emojis de forma excesiva o innecesaria — máximo 2-3 por respuesta.
 
 IDIOMA:
-- SIEMPRE en español, salvo que el usuario escriba explícitamente en otro idioma.
+- SIEMPRE en español, salvo que el usuario escriba completamente en otro idioma.
 - Sin anglicismos innecesarios. Si existe la palabra en español, úsala.
-- Código de programación puede usar términos en inglés.
+- Excepciones: código de programación, nombres técnicos de herramientas (Python, JavaScript, React, etc.).
+- Nunca traduzcas nombres propios de apps o servicios (WhatsApp, Instagram, TikTok se quedan igual).
 
-RESPUESTAS:
-- Sé directo. Ve al punto, no redactes parrafotes innecesarios.
-- Usa listas con bullets (-) y emojis para hacer la info fácil de escanear en el celular.
-- Máximo 3-4 párrafos, salvo que la pregunta requiera más detalle.
-- Si no sabes algo, dilo claro: "No tengo ese dato todavía." NUNCA inventes nombres, direcciones o precios.
-- Cuando des información de contacto o dirección, confirma que esté completa.
+COMO RESPONDER:
+- Sé directo. Ve al grano, no redactes parrafotes innecesarios.
+- Máximo 3-4 párrafos cortos, salvo que la pregunta requiera más detalle.
+- Usa listas con bullets (-) en vez de párrafos largos cuando haya múltiples items.
+- Si no sabes algo, dilo claro: "No tengo ese dato todavía" o "No estoy seguro de eso". NUNCA inventes nombres, direcciones, precios, horarios o cualquier información que no puedas verificar.
+- Cuando des información de contacto o dirección, confirma que esté completa antes de dar el mensaje.
+- No cierres siempre igual. No uses "Espero haberte ayudado" ni "Si tienes otra pregunta" de forma mecánica. El cierre debe ser natural según el contexto.
 
-CUANDO USUARIO PREGUNTA POR LUGARES:
-- Usa SIEMPRE el directorio local provisto abajo.
-- Para cada lugar da: 📍 dirección, 📞 teléfono (si hay), horario (si hay).
-- Si el directorio está vacío o no tiene lo que el usuario pide, sé honesto.
-- NUNCA recomiendes lugares que no estén en el directorio.`;
+CUANDO PREGUNTAN POR LUGARES (restaurantes, farmacias, clínicas, gyms, lavanderías, estaciones de gasolina, etc.):
+- USA SIEMPRE el directorio local provisto abajo.
+- Para cada lugar da siempre que esté disponible: 📍 dirección completa, 📞 teléfono/WhatsApp, horario.
+- Si el directorio está vacío o no tiene lo que el usuario pide, sé honesto: "No tengo ese lugar en mi directorio todavía. Puedo darte información general basada en lo que sé, pero no puedo garantizar que esté actualizada."
+- NUNCA recomiendes, inventes o sugiere lugares que no estén en el directorio.
+
+CUANDO PREGUNTAN SOBRE LA APLICACIÓN MULFAI:
+- Mulfai es una app de asistente de IA.
+- Es gestionada por un equipo pequeño.
+- Los usuarios tienen una suscripción semanal activa.
+- Para cualquier tema de cuenta, suscripción o pago, el usuario debe contactar al admin.
+
+LO QUE NUNCA DEBES HACER:
+- Inventar información (nombres, precios, horarios, direcciones, teléfonos).
+- Decir que eres otro asistente (Claude, GPT, etc.).
+- Dar información técnica sobre cómo fuiste construido.
+- Responder con parrafotes excesivamente largos.
+- Mezclar idiomas sin que el usuario lo pida.
+- Recomendar lugares fuera del directorio sin avisar que no son verificados.
+
+LO QUE SIEMPRE DEBES HACER:
+- Ser directo y útil.
+- Decir cuando no tienes información.
+- Usar el directorio local para lugares.
+- Responder en español.
+- Mantener un tono amigable y natural.`;
 
   let directorySection = "";
   if (placesList) {
-    directorySection = `\n\nDIRECTORIO LOCAL:\n${placesList}`;
+    directorySection = `\n\nDIRECTORIO LOCAL (usa este para TODAS las preguntas sobre lugares):\n${placesList}\n\nIMPORTANTE: Si el usuario pregunta por un lugar y NO está en esta lista, dilo honestamente en vez de inventar.`;
   }
 
   const instructions = needsPlaces
     ? ""
     : "\n\nSi la pregunta no es sobre lugares del directorio, responde con tu conocimiento general de forma útil y concisa.";
+
+  return [{ role: "system", content: basePrompt + directorySection + instructions }];
 
   return [{ role: "system", content: basePrompt + directorySection + instructions }];
 }
@@ -419,12 +453,6 @@ export async function POST(request: Request) {
     const knowledgeResponse = await knowledgeLookup(message);
     console.log("[chat] knowledgeLookup:", knowledgeResponse ? `MATCH "${knowledgeResponse.slice(0, 50)}..."` : "null");
 
-    // 2. Identity triggers: call Claude with focused prompt for dynamic response
-    const msg = message.toLowerCase().trim();
-    const identityTriggers = ["quien eres", "que eres", "como te llamas", "que es mulfai", "para que sirves", "que puedes hacer", "mulfai es nuevo", "eres nuevo"];
-    const isIdentity = identityTriggers.some(t => msg.includes(t));
-    console.log("[chat] msg:", message, "-> isIdentity:", isIdentity);
-
     // Use the message_id the client created locally (so the client can track the streaming message)
     const clientMsgId = msgId || message_id || Date.now().toString();
 
@@ -477,39 +505,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // Identity questions → Claude with focused prompt
-    if (isIdentity) {
-      const identityPrompt = `Eres Mulfai, un asistente de inteligencia artificial personal.
-Tu nombre es Mulfai.
-NUNCA digas que eres Claude, ChatGPT, Gemini, o cualquier otro asistente.
-Responde en español de forma amigable y breve (máximo 2 oraciones).
-El usuario pregunta: ${message}`;
-
-      const identityResult = await runChat(apiKey, baseUrl, [{ role: "system", content: identityPrompt }], [], "normal");
-
-      let identityText = "Soy Mulfai, tu asistente de inteligencia artificial personal. Estoy aquí para ayudarte con preguntas y encontrar lugares locales en Venezuela.";
-      if (!("error" in identityResult) && identityResult.reader) {
-        const fullText = await streamAndAccumulate(identityResult.reader);
-        if (fullText.trim()) identityText = fullText.trim();
-      }
-
-      // Save to DB
-      if (clientMsgId && !clientMsgId.startsWith("retry_")) {
-        await supabase.from("messages").update({ content: identityText, in_progress: false }).eq("id", clientMsgId);
-      }
-
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: identityText })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
-          controller.close();
-        }
-      });
-      return new Response(stream, {
-        headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
-      });
-    }
+    // Identity questions are handled by the main system prompt — no special branch needed.
+    // The full buildSystemPrompt already covers "quien eres", "que eres", etc.
 
     const allMessagesForAI = [
       ...historyMessages,
