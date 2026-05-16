@@ -155,21 +155,11 @@ async function fetchKnowledge(supabaseUrl: string, serviceKey: string, needs: an
 
   // Fetch from knowledge table
   if (!needs.general) {
-    const conditions: string[] = ["status='approved'"];
-    const params: string[] = [];
-    let idx = 1;
+    const conditions: string[] = ["status=eq.approved"];
+    needs.cities?.forEach((c: string) => conditions.push(`city=ilike.*${encodeURIComponent(c)}*`));
+    needs.categories?.forEach((c: string) => conditions.push(`category=ilike.*${encodeURIComponent(c)}*`));
 
-    if (needs.cities?.length) {
-      conditions.push(`(${needs.cities.map(() => `city.ilike._${idx++}`).join(" OR ")})`);
-      needs.cities.forEach(() => params.push(`%${needs.cities[idx - 2]}%`));
-    }
-    if (needs.categories?.length) {
-      conditions.push(`(${needs.categories.map(() => `category.ilike._${idx++}`).join(" OR ")})`);
-      needs.categories.forEach(() => params.push(`%${needs.categories[idx - 2 - (needs.cities?.length || 0)]}%`));
-    }
-
-    const where = conditions.join(" AND ");
-    const url = `${supabaseUrl}/rest/v1/knowledge?select=*&${where}&order=created_at.desc&limit=30`;
+    const url = `${supabaseUrl}/rest/v1/knowledge?select=*&${conditions.join("&")}&order=created_at.desc&limit=30`;
 
     try {
       const res = await fetch(url, { headers });
@@ -180,16 +170,14 @@ async function fetchKnowledge(supabaseUrl: string, serviceKey: string, needs: an
     } catch {}
 
     // Also fetch from places table
-    const placeConds: string[] = ["active=true"];
-    let pidx = 1;
+    const placeConds: string[] = ["active=eq.true"];
     if (needs.cities?.length) {
-      placeConds.push(`(cities.name.ilike._${pidx++})`);
+      placeConds.push(`cities.name=ilike.*${encodeURIComponent(needs.cities[0])}*`);
     }
     if (needs.categories?.length) {
-      placeConds.push(`(categories.name.ilike._${pidx++})`);
+      placeConds.push(`categories.name=ilike.*${encodeURIComponent(needs.categories[0])}*`);
     }
-    const pWhere = placeConds.join(" AND ");
-    const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${pWhere}&order=rating.desc&limit=30`;
+    const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${placeConds.join("&")}&order=rating.desc&limit=30`;
 
     try {
       const res = await fetch(pUrl, { headers });

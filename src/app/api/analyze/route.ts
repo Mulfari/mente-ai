@@ -76,26 +76,22 @@ Ejemplos:
 
     if (!analysis.needs.general) {
       // Fetch knowledge table
-      const conditions = ["status='approved'"];
-      if (analysis.needs.cities?.length) {
-        conditions.push(`(${analysis.needs.cities.map((c: string) => `city.ilike.'%${c}%'`).join(" OR ")})`);
-      }
-      if (analysis.needs.categories?.length) {
-        conditions.push(`(${analysis.needs.categories.map((c: string) => `category.ilike.'%${c}%'`).join(" OR ")})`);
-      }
-      const url = `${supabaseUrl}/rest/v1/knowledge?select=*&${conditions.join(" AND ")}&order=created_at.desc&limit=30`;
-      const kRes = await fetch(url, { headers });
+      const kParts: string[] = ["status=eq.approved"];
+      analysis.needs.cities?.forEach((c: string) => kParts.push(`city=ilike.*${encodeURIComponent(c)}*`));
+      analysis.needs.categories?.forEach((c: string) => kParts.push(`category=ilike.*${encodeURIComponent(c)}*`));
+      const kUrl = `${supabaseUrl}/rest/v1/knowledge?select=*&${kParts.join("&")}&order=created_at.desc&limit=30`;
+      const kRes = await fetch(kUrl, { headers });
       if (kRes.ok) knowledge.push(...await kRes.json());
 
       // Fetch places table
-      const pConds = ["active=true"];
+      const pParts: string[] = ["active=eq.true"];
       if (analysis.needs.cities?.length) {
-        pConds.push(`(cities.name.ilike.'%${analysis.needs.cities[0]}%')`);
+        pParts.push(`cities.name=ilike.*${encodeURIComponent(analysis.needs.cities[0])}*`);
       }
       if (analysis.needs.categories?.length) {
-        pConds.push(`(categories.name.ilike.'%${analysis.needs.categories[0]}%')`);
+        pParts.push(`categories.name=ilike.*${encodeURIComponent(analysis.needs.categories[0])}*`);
       }
-      const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${pConds.join(" AND ")}&order=rating.desc&limit=30`;
+      const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${pParts.join("&")}&order=rating.desc&limit=30`;
       const pRes = await fetch(pUrl, { headers });
       if (pRes.ok) {
         const places = await pRes.json();
