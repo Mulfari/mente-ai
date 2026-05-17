@@ -99,7 +99,7 @@ Ejemplos:
       "x-api-key": apiKey,
     },
     body: JSON.stringify({
-      model: "claude-sonnet-4-7-20260220",
+      model: "[private model]",
       max_tokens: 512,
       stream: false,
       system: prompt,
@@ -198,7 +198,7 @@ async function runChat(
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "claude-sonnet-4-7-20260220",
+      model: "[private model]",
       max_tokens: 8192,
       stream: true,
       system: systemPrompt,
