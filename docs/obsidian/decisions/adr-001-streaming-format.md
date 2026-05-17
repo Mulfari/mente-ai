@@ -1,7 +1,7 @@
 # ADR-001: Formato de eventos SSE para streaming
 
 **Fecha:** 2026-05-17
-**Estado:** En progreso
+**Estado:** Resuelto ✅ (2026-05-17)
 
 ## Contexto
 
@@ -35,10 +35,14 @@ Cuando el usuario envía un mensaje:
 
 ## Solución adoptada
 
-**Opción 1 (recomendada):** Transformar en backend de B → A
-- El backend recibe formato B de Anthropic
+**Opción 1 (recomendada):** Transformar en backend de B → A ✅ Implementado 2026-05-17
+
+Commit `03db1b5`: `fix(chat): emit SSE as type=chunk/text to match frontend`
+
+- El backend recibe formato B de Anthropic en `/api/chat`
 - Transforma cada `content_block_delta` a `{ type: "chunk", text: delta }`
-- El frontend sigue funcionando sin cambios
+- Frontend sigue funcionando sin cambios
+- DB se actualiza con texto acumulativo en cada delta
 
 ## Consecuencias
 - Mínimo cambio en código

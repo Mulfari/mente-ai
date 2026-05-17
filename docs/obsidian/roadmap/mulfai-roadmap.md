@@ -12,7 +12,7 @@
 - [x] Retry de respuestas
 - [x] Syntax highlighting
 - [x] Research command
-- [ ] **FIX: Streaming SSE** (frontend/backend mismatch)
+- [x] **FIX: Streaming SSE** ✅ 2026-05-17 (ADR-001)
 - [ ] Mejorar RAG (knowledge_rules en prompt + places destacados)
 
 ## Fase 2: Directorio local
