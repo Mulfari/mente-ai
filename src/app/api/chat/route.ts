@@ -317,15 +317,6 @@ export async function POST(request: Request) {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
           let accumulated = "";
-          let done = false;
-
-          const processChunk = async (chunk: Uint8Array): Promise<string> => {
-            const decoder = new TextDecoder();
-            const text = decoder.decode(chunk, { stream: true });
-            accumulated += text;
-            return accumulated;
-          };
-
           let latestMsgId = assistantMsgId;
 
           const readStream = async () => {
@@ -333,18 +324,6 @@ export async function POST(request: Request) {
               while (true) {
                 const { done: d, value } = await reader!.read();
                 if (d) {
-                  if (accumulated) {
-                    const clean = accumulated.replace(/^data:\s*/gm, "").trim();
-                    if (clean) {
-                      await supabase.from("messages").upsert({
-                        id: latestMsgId,
-                        conversation_id: convId,
-                        role: "assistant",
-                        content: clean,
-                      }, { onConflict: "id" });
-                      sendEvent({ type: "message", id: latestMsgId, content: clean });
-                    }
-                  }
                   sendEvent({ type: "done" });
                   controller.close();
                   return;
@@ -358,27 +337,16 @@ export async function POST(request: Request) {
                     if (line.startsWith("data: ")) {
                       try {
                         const json = JSON.parse(line.slice(6));
-                        if (json.type === "content_block_start" && json.content_block?.type === "text") {
-                          const upsertRes = await supabase.from("messages").upsert({
-                            conversation_id: convId,
-                            role: "assistant",
-                            content: "",
-                          }, { onConflict: "id" });
-                          if (upsertRes.data && Array.isArray(upsertRes.data) && upsertRes.data[0]) {
-                            latestMsgId = (upsertRes.data[0] as any).id || latestMsgId;
-                          }
-                          sendEvent({ type: "message_start", id: latestMsgId });
-                        }
                         if (json.type === "content_block_delta" && json.delta?.text) {
                           const delta = json.delta.text;
                           fullResponse += delta;
-                          const upserted = await supabase.from("messages").upsert({
+                          await supabase.from("messages").upsert({
                             id: latestMsgId,
                             conversation_id: convId,
                             role: "assistant",
                             content: fullResponse,
                           }, { onConflict: "id" });
-                          sendEvent({ type: "delta", id: latestMsgId, content: fullResponse });
+                          sendEvent({ type: "chunk", id: latestMsgId, text: delta });
                         }
                       } catch {}
                     }
