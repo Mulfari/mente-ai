@@ -262,29 +262,8 @@ export async function POST(request: Request) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
     }
 
-    const clientMsgId = msgId || message_id || Date.now().toString();
-
-    let convId = conversation_id;
-    if (!convId) {
-      const { data: newConv } = await supabase
-        .from("conversations").insert({ user_id: user.id }).select("id").single();
-      convId = newConv?.id;
-    }
-
-    const contentObj = message?.trim()
-      ? { type: "text", text: message }
-      : (attachments?.length ? { type: "text", text: attachments[0] } : null);
-
-    if (contentObj) {
-      const { data: inserted } = await supabase.from("messages").insert({
-        id: msgId || undefined,
-        conversation_id: convId,
-        role: "user",
-        content: message || "",
-        attachments: attachments || [],
-      }).select("id").single();
-      if (inserted && !msgId) msgId = inserted.id;
-    }
+    const clientMsgId = message_id || Date.now().toString();
+    const convId = conversation_id;
 
     const analysis = await analyzeUserMessage(message, apiKey, baseUrl);
     const knowledge = await fetchKnowledge(supabaseUrl, serviceKey, analysis.needs);
