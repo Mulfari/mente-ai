@@ -708,7 +708,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: s, conversation_id: convId, mode: responseMode }),
+        body: JSON.stringify({ message: s, conversation_id: convId, mode: responseMode, message_id: msgId }),
       });
 
       if (!res.ok) {

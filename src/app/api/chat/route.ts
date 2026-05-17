@@ -282,7 +282,7 @@ export async function POST(request: Request) {
 
     const { reader } = result;
 
-    const assistantMsgId = crypto.randomUUID();
+    const assistantMsgId = message_id || crypto.randomUUID();
     let fullResponse = "";
     const encoder = new TextEncoder();
 
