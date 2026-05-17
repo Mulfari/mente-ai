@@ -337,7 +337,7 @@ export async function POST(request: Request) {
                     if (line.startsWith("data: ")) {
                       try {
                         const json = JSON.parse(line.slice(6));
-                        if (json.type === "content_block_delta" && json.delta?.text) {
+                        if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
                           const delta = json.delta.text;
                           fullResponse += delta;
                           await supabase.from("messages").upsert({
@@ -372,6 +372,7 @@ export async function POST(request: Request) {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
       },
     });
 
