@@ -331,7 +331,7 @@ export async function POST(request: Request) {
           const readStream = async () => {
             try {
               while (true) {
-                const { done: d, value } = await reader.read();
+                const { done: d, value } = await reader!.read();
                 if (d) {
                   if (accumulated) {
                     const clean = accumulated.replace(/^data:\s*/gm, "").trim();
@@ -364,8 +364,8 @@ export async function POST(request: Request) {
                             role: "assistant",
                             content: "",
                           }, { onConflict: "id" });
-                          if (upsertRes.data) {
-                            latestMsgId = upsertRes.data.id || latestMsgId;
+                          if (upsertRes.data && Array.isArray(upsertRes.data) && upsertRes.data[0]) {
+                            latestMsgId = (upsertRes.data[0] as any).id || latestMsgId;
                           }
                           sendEvent({ type: "message_start", id: latestMsgId });
                         }
