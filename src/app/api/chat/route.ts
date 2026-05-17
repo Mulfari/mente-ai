@@ -37,7 +37,7 @@ function validateUser(supabase: any, userId: string) {
     .select("status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at, weekly_reset_at")
     .eq("id", userId)
     .single()
-    .then(({ data: profile }) => profile);
+    .then(({ data: profile }: { data: any }) => profile);
 }
 
 function validateProfile(profile: any, now: Date) {
