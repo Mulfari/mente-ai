@@ -28,13 +28,13 @@ async function fetchWithRetry(url: string, options: RequestInit): Promise<Respon
       throw err;
     }
   }
-  throw new Error("Max retries exceeded");
+  throw new Error("fetchWithRetry exhausted");
 }
 
-function validateUser(supabase: Awaited<ReturnType<typeof createClient>>, userId: string) {
+function validateUser(supabase: any, userId: string) {
   return supabase
     .from("profiles")
-    .select("status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at")
+    .select("status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at, weekly_reset_at")
     .eq("id", userId)
     .single()
     .then(({ data: profile }) => profile);
@@ -64,30 +64,6 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
-// ─── Knowledge lookup (knowledge_rules table) ────────────────────────────────
-async function knowledgeLookup(userMessage: string): Promise<string | null> {
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!serviceKey || !supabaseUrl) return null;
-  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
-  try {
-    const res = await fetch(
-      `${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`,
-      { headers }
-    );
-    if (!res.ok) return null;
-    const rules: any[] = await res.json();
-    const msg = userMessage.toLowerCase().trim();
-    for (const rule of rules) {
-      if (rule.trigger_type === "keyword" && msg.includes(rule.trigger_value.toLowerCase())) {
-        return rule.response;
-      }
-    }
-  } catch {}
-  return null;
-}
-
-// ─── Analyze user message → what data is needed ───────────────────────────────
 async function analyzeUserMessage(message: string, apiKey: string, baseUrl: string) {
   const prompt = `Eres un analizador de consultas. Dado un mensaje de usuario en español, determina qué información necesita del directorio.
 
@@ -123,7 +99,7 @@ Ejemplos:
       "x-api-key": apiKey,
     },
     body: JSON.stringify({
-      model: "[private model]",
+      model: "claude-sonnet-4-7-20260220",
       max_tokens: 512,
       stream: false,
       system: prompt,
@@ -131,12 +107,12 @@ Ejemplos:
     }),
   });
 
-  if (!res.ok) return { needs: { general: true }, knowledge: [] };
+  if (!res.ok) return { needs: { general: true } };
 
   const data = await res.json();
   const text = data.content?.[0]?.text || "";
   const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return { needs: { general: true }, knowledge: [] };
+  if (!match) return { needs: { general: true } };
 
   let analysis = JSON.parse(match[0]);
   if (!analysis.needs) analysis = { needs: { general: true } };
@@ -144,88 +120,57 @@ Ejemplos:
   if (!analysis.needs.cities) analysis.needs.cities = [];
   if (!analysis.needs.categories) analysis.needs.categories = [];
   if (!analysis.needs.keywords) analysis.needs.keywords = [];
-
   return analysis;
 }
 
-// ─── Fetch relevant knowledge from DB ────────────────────────────────────────
 async function fetchKnowledge(supabaseUrl: string, serviceKey: string, needs: any) {
   const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
   const knowledge: any[] = [];
 
-  // Fetch from knowledge table
   if (!needs.general) {
     const conditions: string[] = ["status=eq.approved"];
     needs.cities?.forEach((c: string) => conditions.push(`city=ilike.*${encodeURIComponent(c)}*`));
     needs.categories?.forEach((c: string) => conditions.push(`category=ilike.*${encodeURIComponent(c)}*`));
+    const kUrl = `${supabaseUrl}/rest/v1/knowledge?select=*&${conditions.join("&")}&order=created_at.desc&limit=30`;
+    const kRes = await fetch(kUrl, { headers });
+    if (kRes.ok) knowledge.push(...await kRes.json());
 
-    const url = `${supabaseUrl}/rest/v1/knowledge?select=*&${conditions.join("&")}&order=created_at.desc&limit=30`;
-
-    try {
-      const res = await fetch(url, { headers });
-      if (res.ok) {
-        const data = await res.json();
-        knowledge.push(...data);
-      }
-    } catch {}
-
-    // Also fetch from places table
-    const placeConds: string[] = ["active=eq.true"];
+    const pParts: string[] = ["active=eq.true"];
     if (needs.cities?.length) {
-      placeConds.push(`cities.name=ilike.*${encodeURIComponent(needs.cities[0])}*`);
+      pParts.push(`cities.name=ilike.*${encodeURIComponent(needs.cities[0])}*`);
     }
     if (needs.categories?.length) {
-      placeConds.push(`categories.name=ilike.*${encodeURIComponent(needs.categories[0])}*`);
+      pParts.push(`categories.name=ilike.*${encodeURIComponent(needs.categories[0])}*`);
     }
-    const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${placeConds.join("&")}&order=rating.desc&limit=30`;
-
-    try {
-      const res = await fetch(pUrl, { headers });
-      if (res.ok) {
-        const places = await res.json();
-        for (const p of places) {
-          knowledge.push({
-            source: "place",
-            content: `${p.name}${p.cities?.name ? `, ${p.cities.name}` : ""}: ${p.address || "Direccion no disponible"}. ${p.specialty || p.description || ""} ${p.phone ? `📞 ${p.phone}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`,
-          });
-        }
+    const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${pParts.join("&")}&order=rating.desc&limit=30`;
+    const pRes = await fetch(pUrl, { headers });
+    if (pRes.ok) {
+      const places = await pRes.json();
+      for (const p of places) {
+        knowledge.push({
+          source: "place",
+          content: `${p.name}${p.cities?.name ? `, ${p.cities.name}` : ""}: ${p.address || "Direccion no disponible"}. ${p.specialty || p.description || ""} ${p.phone ? `📞 ${p.phone}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`,
+        });
       }
-    } catch {}
+    }
   }
 
   return knowledge;
 }
 
-// ─── Build system prompt with only relevant data ─────────────────────────────
-function buildSystemPrompt(knowledge: any[]): { role: "system"; content: string }[] {
-  const dataSection = knowledge.length
-    ? `\n\nDIRECTORIO LOCAL:\n${knowledge.map(k => `- ${k.content}`).join("\n")}\n\nUsa este directorio para responder. Si no está aquí, dilo honestamente.`
-    : "";
+async function buildSystemPrompt(serviceKey: string, supabaseUrl: string, userMessage: string, knowledge: any[]) {
+  let dataSection = "";
+  if (knowledge.length > 0) {
+    const lines = knowledge.map(k => k.content || (typeof k === "string" ? k : "")).filter(Boolean);
+    if (lines.length) {
+      dataSection = "\n\n## Contexto del directorio:\n" + lines.slice(0, 20).join("\n");
+    }
+  }
 
   return [{
     role: "system",
-    content: `Eres Mulfai — ese es tu único nombre.
-
-SOBRE MULFAI:
-- Asistente de IA creado para ayudar a personas en Venezuela.
-- No eres Claude, ChatGPT, Gemini, ni ningún otro asistente. Eres Mulfai.
-- Si te preguntan qué modelo eres, responde: "Soy Mulfai, un asistente de IA creado para ayudarte. No doy detalles técnicos sobre cómo fui construido."
-
-TONO:
-- Cercano, directo, sin rodeos.
-- Emojis con moderación (📍📞✅❌⚠️💡🔥) — máximo 2-3 por respuesta.
-- Máximo 3-4 párrafos cortos, salvo que la pregunta exija más.
-- Usa bullets (-) para listas.
-- Cierre natural, no mecánico.
-
-IDIOMA:
-- SIEMPRE en español, salvo que el usuario escriba completamente en otro idioma.
-- Sin anglicismos innecesarios. Código y nombres de apps (WhatsApp, TikTok) se quedan como están.
-
-NUNCA:
-- Inventar información (nombres, precios, horarios, direcciones).
-- Decir que eres otro asistente.
-- Responder con parrafotes excesivos o cierres repetitivos.
+    content: `Eres Mulfai, un asistente de IA útil y conversacional. Respondes en español.
+Tu identidad principal es ser útil, no dar información técnica sobre modelos o arquitectura.
 
 SIEMPRE:
 - Ser directo y útil.
@@ -236,7 +181,6 @@ SIEMPRE:
   }];
 }
 
-// ─── Run chat ─────────────────────────────────────────────────────────────────
 async function runChat(
   apiKey: string,
   baseUrl: string,
@@ -254,7 +198,7 @@ async function runChat(
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "[private model]",
+      model: "claude-sonnet-4-7-20260220",
       max_tokens: 8192,
       stream: true,
       system: systemPrompt,
@@ -273,7 +217,6 @@ async function runChat(
   return { reader: response.body!.getReader(), ok: true };
 }
 
-// ─── Main POST handler ───────────────────────────────────────────────────────
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -297,7 +240,6 @@ export async function POST(request: Request) {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
-    // History
     const historyMessages: { role: string; content: any[] }[] = [];
     if (conversation_id) {
       const { data: prevMessages } = await supabase
@@ -320,147 +262,152 @@ export async function POST(request: Request) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
     }
 
-    // Knowledge rules check (pre-defined responses)
-    const knowledgeResponse = await knowledgeLookup(message);
-
     const clientMsgId = msgId || message_id || Date.now().toString();
 
-    // Conversation ID
     let convId = conversation_id;
     if (!convId) {
-      const { data: newConv } = await supabase.from("conversations").insert({ user_id: user.id, title: message?.trim().slice(0, 40) }).select("id").single();
-      if (newConv) convId = newConv.id;
+      const { data: newConv } = await supabase
+        .from("conversations").insert({ user_id: user.id }).select("id").single();
+      convId = newConv?.id;
     }
 
-    // Save user message
-    if (!resume_message_id) {
-      await supabase.from("messages").insert({
-        conversation_id: convId || undefined,
-        user_id: user.id,
+    const contentObj = message?.trim()
+      ? { type: "text", text: message }
+      : (attachments?.length ? { type: "text", text: attachments[0] } : null);
+
+    if (contentObj) {
+      const { data: inserted } = await supabase.from("messages").insert({
+        id: msgId || undefined,
+        conversation_id: convId,
         role: "user",
-        content: message,
-        attachments: attachments?.length ? attachments : null,
-      });
+        content: message || "",
+        attachments: attachments || [],
+      }).select("id").single();
+      if (inserted && !msgId) msgId = inserted.id;
     }
 
-    // Update hourly count
-    const newHourlyCount = (profile.hourly_msg_count ?? 0) + 1;
-    const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-    const needsReset = !hourlyResetAt || now >= hourlyResetAt;
-    await supabase.from("profiles").update({
-      last_message_at: now.toISOString(),
-      hourly_msg_count: newHourlyCount,
-      hourly_reset_at: needsReset ? new Date(now.getTime() + 60 * 60 * 1000).toISOString() : hourlyResetAt!.toISOString(),
-    }).eq("id", user.id);
-
-    if (convId) {
-      const title = message?.trim().slice(0, 40) + (message?.trim().length > 40 ? "..." : "");
-      supabase.from("conversations").update({ title, updated_at: new Date().toISOString() }).eq("id", convId);
-    }
-
-    // Knowledge rule matched → stream directly
-    if (knowledgeResponse) {
-      const stream = new ReadableStream({
-        start(controller) {
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "start", message_id: clientMsgId })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "chunk", text: knowledgeResponse })}\n\n`));
-          controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ type: "message_stop" })}\n\n`));
-          controller.close();
-        }
-      });
-      return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" } });
-    }
-
-    // Analyze + fetch relevant knowledge (RAG)
     const analysis = await analyzeUserMessage(message, apiKey, baseUrl);
     const knowledge = await fetchKnowledge(supabaseUrl, serviceKey, analysis.needs);
-
-    const systemPrompt = buildSystemPrompt(knowledge);
+    const systemPrompt = await buildSystemPrompt(serviceKey, supabaseUrl, message, knowledge);
 
     const allMessagesForAI = [
       ...historyMessages,
-      { role: "user", content: attachments?.length ? attachments : [{ type: "text", text: message }] },
+      ...(message?.trim() ? [{ role: "user", content: [{ type: "text", text: message }] }] : []),
     ];
 
-    const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode);
-    if ("error" in result) return NextResponse.json({ error: result.error, code: result.code }, { status: result.code });
+    const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode || "normal");
 
-    const reader = result.reader;
+    if (result.error) {
+      return NextResponse.json({ error: result.error, code: result.code || 500 }, { status: result.code || 500 });
+    }
 
-    // Stream to client + save to DB
+    const { reader } = result;
+
+    const assistantMsgId = msgId || Date.now().toString() + "-a";
+    let fullResponse = "";
+    const encoder = new TextEncoder();
+
     const stream = new ReadableStream({
       async start(controller) {
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let fullText = "";
-        const saveId = msgId || message_id;
-
-        const sendChunk = (text: string) => {
-          const chunk = `data: ${JSON.stringify({ type: "chunk", text })}\n\n`;
-          try { controller.enqueue(new TextEncoder().encode(chunk)); } catch {}
-        };
-
-        const saveToDb = async (content: string, inProgress: boolean) => {
-          if (!saveId || !convId) return;
-          await supabase.from("messages").upsert({
-            id: saveId,
-            conversation_id: convId,
-            role: "assistant",
-            content,
-            in_progress: inProgress,
-          }, { onConflict: "id" });
+        const sendEvent = (data: any) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         };
 
         try {
-          let chunk_count = 0;
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          sendEvent({ type: "start", message_id: assistantMsgId });
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines[lines.length - 1] ?? "";
+          let accumulated = "";
+          let done = false;
 
-            for (let i = 0; i < lines.length - 1; i++) {
-              const line = lines[i];
-              if (!line.startsWith("data: ")) continue;
-              const data = line.slice(6);
-              if (data === "[DONE]") continue;
+          const processChunk = async (chunk: Uint8Array): Promise<string> => {
+            const decoder = new TextDecoder();
+            const text = decoder.decode(chunk, { stream: true });
+            accumulated += text;
+            return accumulated;
+          };
 
-              try {
-                const json = JSON.parse(data);
-                if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                  fullText += json.delta.text;
-                  sendChunk(json.delta.text);
-                  chunk_count++;
-                  // Progressive save every 500 chars
-                  if (chunk_count % 50 === 0) {
-                    saveToDb(fullText, true);
+          let latestMsgId = assistantMsgId;
+
+          const readStream = async () => {
+            try {
+              while (true) {
+                const { done: d, value } = await reader.read();
+                if (d) {
+                  if (accumulated) {
+                    const clean = accumulated.replace(/^data:\s*/gm, "").trim();
+                    if (clean) {
+                      await supabase.from("messages").upsert({
+                        id: latestMsgId,
+                        conversation_id: convId,
+                        role: "assistant",
+                        content: clean,
+                      }, { onConflict: "id" });
+                      sendEvent({ type: "message", id: latestMsgId, content: clean });
+                    }
+                  }
+                  sendEvent({ type: "done" });
+                  controller.close();
+                  return;
+                }
+                if (value) {
+                  const raw = new TextDecoder().decode(value, { stream: true });
+                  accumulated += raw;
+
+                  const lines = raw.split("\n");
+                  for (const line of lines) {
+                    if (line.startsWith("data: ")) {
+                      try {
+                        const json = JSON.parse(line.slice(6));
+                        if (json.type === "content_block_start" && json.content_block?.type === "text") {
+                          const upsertRes = await supabase.from("messages").upsert({
+                            conversation_id: convId,
+                            role: "assistant",
+                            content: "",
+                          }, { onConflict: "id" });
+                          if (upsertRes.data) {
+                            latestMsgId = upsertRes.data.id || latestMsgId;
+                          }
+                          sendEvent({ type: "message_start", id: latestMsgId });
+                        }
+                        if (json.type === "content_block_delta" && json.delta?.text) {
+                          const delta = json.delta.text;
+                          fullResponse += delta;
+                          const upserted = await supabase.from("messages").upsert({
+                            id: latestMsgId,
+                            conversation_id: convId,
+                            role: "assistant",
+                            content: fullResponse,
+                          }, { onConflict: "id" });
+                          sendEvent({ type: "delta", id: latestMsgId, content: fullResponse });
+                        }
+                      } catch {}
+                    }
                   }
                 }
-              } catch {}
+              }
+            } catch (err: any) {
+              sendEvent({ type: "error", error: err.message });
+              controller.close();
             }
-          }
+          };
 
-          // Final save
-          const finalContent = fullText.trim() || "(respuesta no disponible)";
-          await saveToDb(finalContent, false);
-          try { controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n")); controller.close(); } catch {}
-        } catch (err) {
-          await saveToDb(fullText.trim() || "(error en respuesta)", false);
-          try { controller.error(err as Error); } catch {}
+          await readStream();
+        } catch (err: any) {
+          sendEvent({ type: "error", error: err.message });
+          controller.close();
         }
       },
     });
 
     return new Response(stream, {
-      headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" },
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+      },
     });
 
   } catch (err: any) {
-    if (err.name === "AbortError" || err.message?.includes("fetch")) {
-      return NextResponse.json({ error: "El servidor tardo demasiado en responder.", code: 504 }, { status: 504 });
-    }
-    return NextResponse.json({ error: "Error 500.", code: 500 }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Error" }, { status: 500 });
   }
 }

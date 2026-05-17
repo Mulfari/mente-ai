@@ -75,7 +75,6 @@ Ejemplos:
     const knowledge: any[] = [];
 
     if (!analysis.needs.general) {
-      // Fetch knowledge table
       const kParts: string[] = ["status=eq.approved"];
       analysis.needs.cities?.forEach((c: string) => kParts.push(`city=ilike.*${encodeURIComponent(c)}*`));
       analysis.needs.categories?.forEach((c: string) => kParts.push(`category=ilike.*${encodeURIComponent(c)}*`));
@@ -83,7 +82,6 @@ Ejemplos:
       const kRes = await fetch(kUrl, { headers });
       if (kRes.ok) knowledge.push(...await kRes.json());
 
-      // Fetch places table
       const pParts: string[] = ["active=eq.true"];
       if (analysis.needs.cities?.length) {
         pParts.push(`cities.name=ilike.*${encodeURIComponent(analysis.needs.cities[0])}*`);
