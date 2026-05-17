@@ -303,7 +303,7 @@ export async function POST(request: Request) {
 
     const { reader } = result;
 
-    const assistantMsgId = msgId || Date.now().toString() + "-a";
+    const assistantMsgId = crypto.randomUUID();
     let fullResponse = "";
     const encoder = new TextEncoder();
 
