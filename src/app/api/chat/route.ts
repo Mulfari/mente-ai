@@ -212,13 +212,16 @@ async function runChat(
     const text = await response.text().catch(() => "");
     let errorMsg = "Por favor intente de nuevo.";
     try { errorMsg = JSON.parse(text)?.error?.message || errorMsg; } catch {}
+    console.log("[Mulfai] API error:", response.status, text.substring(0, 200));
     return { response, isJson: true, errorMsg, statusCode: response.status };
   }
 
+  console.log("[Mulfai] API ok, streaming...");
   return { response, isJson: false };
 }
 
 export async function POST(request: Request) {
+  console.log("[Mulfai] POST /api/chat called");
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -315,6 +318,7 @@ export async function POST(request: Request) {
                         if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
                           const delta = json.delta.text;
                           fullResponse += delta;
+                          console.log("[Mulfai] chunk received:", delta.substring(0, 50));
                           await supabase.from("messages").upsert({
                             id: latestMsgId,
                             conversation_id: convId,
