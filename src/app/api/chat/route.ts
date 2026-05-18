@@ -64,7 +64,7 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
-async function analyzeUserMessage(message: string, apiKey: string, baseUrl: string) {
+async function analyzeUserMessage(message: string, apiKey: string, baseUrl: string, model: string) {
   const prompt = `Eres un analizador de consultas. Dado un mensaje de usuario en español, determina qué información necesita del directorio.
 
 Devuelve un JSON con esta estructura exacta, sin texto adicional:
@@ -99,7 +99,7 @@ Ejemplos:
       "x-api-key": apiKey,
     },
     body: JSON.stringify({
-      model: "[private model]",
+      model: model,
       max_tokens: 512,
       stream: false,
       system: prompt,
@@ -184,6 +184,7 @@ SIEMPRE:
 async function runChat(
   apiKey: string,
   baseUrl: string,
+  model: string,
   systemPrompt: { role: string; content: string }[],
   allMessages: any[],
   mode: string,
@@ -198,7 +199,7 @@ async function runChat(
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "[private model]",
+      model: model,
       max_tokens: 8192,
       stream: true,
       system: systemPrompt,
@@ -237,6 +238,7 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
     const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
+    const model = process.env.ANTHROPIC_MODEL || "[private model]";
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
@@ -263,7 +265,7 @@ export async function POST(request: Request) {
 
     const convId = conversation_id;
 
-    const analysis = await analyzeUserMessage(message, apiKey, baseUrl);
+    const analysis = await analyzeUserMessage(message, apiKey, baseUrl, model);
     const knowledge = await fetchKnowledge(supabaseUrl, serviceKey, analysis.needs);
     const systemPrompt = await buildSystemPrompt(serviceKey, supabaseUrl, message, knowledge);
 
@@ -272,7 +274,7 @@ export async function POST(request: Request) {
       ...(message?.trim() ? [{ role: "user", content: [{ type: "text", text: message }] }] : []),
     ];
 
-    const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode || "normal");
+    const result = await runChat(apiKey, baseUrl, model, systemPrompt, allMessagesForAI, mode || "normal");
 
     if (result.isJson) {
       return NextResponse.json({ error: result.errorMsg || "Error" }, { status: result.statusCode || 500 });

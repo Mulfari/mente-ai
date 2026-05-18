@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.ANTHROPIC_API_KEY || "";
   const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
+  const model = process.env.ANTHROPIC_MODEL || "[private model]";
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
@@ -51,7 +52,7 @@ Ejemplos:
         "x-api-key": apiKey,
       },
       body: JSON.stringify({
-        model: "claude-opus-4-6-1m",
+        model: model,
         max_tokens: 512,
         stream: false,
         system: prompt,
