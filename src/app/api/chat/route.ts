@@ -201,7 +201,7 @@ async function runChat(
     body: JSON.stringify({
       model: model,
       max_tokens: 8192,
-      stream: true,
+      stream: false,
       system: systemPrompt,
       messages: allMessages,
       ...(mode === "deep" ? { thinking: { type: "enabled", budget_tokens: 10000 } } : {}),
@@ -217,6 +217,7 @@ async function runChat(
   }
 
   console.log("[Mulfai] API ok, streaming...");
+  console.log("[Mulfai] (stream=false mode, reading full response)");
   return { response, isJson: false };
 }
 
@@ -296,50 +297,64 @@ export async function POST(request: Request) {
         try {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
-          const reader = result.response.body!.getReader();
-          let latestMsgId = assistantMsgId;
+          // Read full response first
+          const raw = await result.response.text();
+          console.log("[Mulfai] response size:", raw.length, "preview:", raw.substring(0, 100));
 
-          const readStream = async () => {
-            try {
-              while (true) {
-                const { done: d, value } = await reader.read();
-                if (d) {
-                  sendEvent({ type: "done" });
-                  controller.close();
-                  return;
-                }
-                if (value) {
-                  const raw = new TextDecoder().decode(value, { stream: true });
-                  const lines = raw.split("\n");
-                  for (const line of lines) {
-                    if (line.startsWith("data: ")) {
-                      try {
-                        const json = JSON.parse(line.slice(6));
-                        if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                          const delta = json.delta.text;
-                          fullResponse += delta;
-                          console.log("[Mulfai] chunk received:", delta.substring(0, 50));
-                          await supabase.from("messages").upsert({
-                            id: latestMsgId,
-                            conversation_id: convId,
-                            role: "assistant",
-                            content: fullResponse,
-                          }, { onConflict: "id" });
-                          sendEvent({ type: "chunk", id: latestMsgId, text: delta });
-                        }
-                      } catch {}
-                    }
-                  }
+          // Try to parse as JSON (non-streaming response)
+          try {
+            const data = JSON.parse(raw);
+            // Check if it's an Anthropic API error
+            if (data.error) {
+              sendEvent({ type: "error", error: data.error.message || data.error });
+              controller.close();
+              return;
+            }
+            // Non-streaming: extract text from content array
+            if (data.content && Array.isArray(data.content)) {
+              for (const block of data.content) {
+                if (block.type === "text") {
+                  fullResponse += block.text;
                 }
               }
-            } catch (err: any) {
-              sendEvent({ type: "error", error: err.message });
-              controller.close();
             }
-          };
+            if (fullResponse) {
+              await supabase.from("messages").upsert({
+                id: assistantMsgId,
+                conversation_id: convId,
+                role: "assistant",
+                content: fullResponse,
+              }, { onConflict: "id" });
+              sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse });
+            }
+          } catch {
+            // SSE stream: parse line by line
+            const lines = raw.split("\n");
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                try {
+                  const json = JSON.parse(line.slice(6));
+                  if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
+                    const delta = json.delta.text;
+                    fullResponse += delta;
+                    console.log("[Mulfai] chunk received:", delta.substring(0, 50));
+                    await supabase.from("messages").upsert({
+                      id: assistantMsgId,
+                      conversation_id: convId,
+                      role: "assistant",
+                      content: fullResponse,
+                    }, { onConflict: "id" });
+                    sendEvent({ type: "chunk", id: assistantMsgId, text: delta });
+                  }
+                } catch {}
+              }
+            }
+          }
 
-          await readStream();
+          sendEvent({ type: "done" });
+          controller.close();
         } catch (err: any) {
+          console.log("[Mulfai] stream error:", err.message);
           sendEvent({ type: "error", error: err.message });
           controller.close();
         }
