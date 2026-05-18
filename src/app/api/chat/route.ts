@@ -99,7 +99,7 @@ Ejemplos:
       "x-api-key": apiKey,
     },
     body: JSON.stringify({
-      model: "claude-opus-4-6-1m",
+      model: "[private model]",
       max_tokens: 512,
       stream: false,
       system: prompt,
@@ -187,7 +187,7 @@ async function runChat(
   systemPrompt: { role: string; content: string }[],
   allMessages: any[],
   mode: string,
-) {
+): Promise<{ response: Response; isJson: boolean; errorMsg?: string; statusCode?: number }> {
   const headers = new Headers();
   headers.set("Authorization", `Bearer ${apiKey}`);
   headers.set("Content-Type", "application/json");
@@ -198,7 +198,7 @@ async function runChat(
     method: "POST",
     headers,
     body: JSON.stringify({
-      model: "claude-opus-4-6-1m",
+      model: "[private model]",
       max_tokens: 8192,
       stream: true,
       system: systemPrompt,
@@ -211,10 +211,10 @@ async function runChat(
     const text = await response.text().catch(() => "");
     let errorMsg = "Por favor intente de nuevo.";
     try { errorMsg = JSON.parse(text)?.error?.message || errorMsg; } catch {}
-    return { error: errorMsg, code: response.status };
+    return { response, isJson: true, errorMsg, statusCode: response.status };
   }
 
-  return { reader: response.body!.getReader(), ok: true };
+  return { response, isJson: false };
 }
 
 export async function POST(request: Request) {
@@ -257,12 +257,10 @@ export async function POST(request: Request) {
       }
     }
 
-    let msgId = resume_message_id;
     if (resume_message_id) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
     }
 
-    const clientMsgId = message_id || Date.now().toString();
     const convId = conversation_id;
 
     const analysis = await analyzeUserMessage(message, apiKey, baseUrl);
@@ -276,11 +274,9 @@ export async function POST(request: Request) {
 
     const result = await runChat(apiKey, baseUrl, systemPrompt, allMessagesForAI, mode || "normal");
 
-    if (result.error) {
-      return NextResponse.json({ error: result.error, code: result.code || 500 }, { status: result.code || 500 });
+    if (result.isJson) {
+      return NextResponse.json({ error: result.errorMsg || "Error" }, { status: result.statusCode || 500 });
     }
-
-    const { reader } = result;
 
     const assistantMsgId = message_id || crypto.randomUUID();
     let fullResponse = "";
@@ -295,13 +291,13 @@ export async function POST(request: Request) {
         try {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
-          let accumulated = "";
+          const reader = result.response.body!.getReader();
           let latestMsgId = assistantMsgId;
 
           const readStream = async () => {
             try {
               while (true) {
-                const { done: d, value } = await reader!.read();
+                const { done: d, value } = await reader.read();
                 if (d) {
                   sendEvent({ type: "done" });
                   controller.close();
@@ -309,8 +305,6 @@ export async function POST(request: Request) {
                 }
                 if (value) {
                   const raw = new TextDecoder().decode(value, { stream: true });
-                  accumulated += raw;
-
                   const lines = raw.split("\n");
                   for (const line of lines) {
                     if (line.startsWith("data: ")) {
