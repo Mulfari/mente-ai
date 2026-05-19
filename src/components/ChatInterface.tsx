@@ -711,6 +711,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: s, conversation_id: convId, mode: responseMode, message_id: msgId }),
       });
+      console.log("[Mulfai] fetch sent, mode:", responseMode, "status:", res.status);
 
       if (!res.ok) {
         if (assistantMsg) supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
@@ -753,6 +754,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 if (data === "[DONE]") continue;
                 try {
                   const json = JSON.parse(data);
+                  console.log("[Mulfai] received chunk, is_deep:", json.is_deep, "text len:", json.text?.length);
                   if (json.type === "chunk") {
                     if (json.is_deep) { console.log("[Mulfai] deep mode detected!"); isDeep = true; }
                     if (json.text) { fullText += json.text; await updateStreamText(fullText); }
@@ -1039,6 +1041,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts, mode: responseMode, message_id: msgId }),
       });
+      console.log("[Mulfai] fetch sent (attachments), mode:", responseMode, "status:", res.status);
 
       if (!res.ok) {
         const result = await res.json();
