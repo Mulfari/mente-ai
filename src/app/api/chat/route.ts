@@ -105,10 +105,11 @@ export async function POST(request: Request) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              question: combinedQuestion,
+              question: message,
               user_id: user.id,
               conversation_id: convId,
               mode: mode || "normal",
+              attachments: attachments || [],
             }),
             signal: AbortSignal.timeout(TIMEOUT_MS),
           });
