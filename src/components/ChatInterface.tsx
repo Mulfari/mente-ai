@@ -1043,14 +1043,18 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
     if (!conv) return;
 
+    // Get current user ID for storage uploads
+    const { data: authData } = await supabase.auth.getUser();
+    const currentUserId = authData?.user?.id;
+
     // Upload attachments to storage first so they persist
-      const uploadedUrls: string[] = [];
-      for (const file of filesToSend) {
-        if (file.type.startsWith("image/")) {
-          const url = await uploadAttachment(file, userId);
-          if (url) uploadedUrls.push(url);
-        }
+    const uploadedUrls: string[] = [];
+    for (const file of filesToSend) {
+      if (file.type.startsWith("image/") && currentUserId) {
+        const url = await uploadAttachment(file, currentUserId);
+        if (url) uploadedUrls.push(url);
       }
+    }
 
     const { data: inserted } = await supabase
       .from("messages")
