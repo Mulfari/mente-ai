@@ -36,7 +36,9 @@ type Conversation = {
 
 export default function ChatInterface({ userId, convIdFromUrl }: { userId: string; convIdFromUrl?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConv, setActiveConv] = useState<Conversation | null>(null);
+  const [activeConv, setActiveConv] = useState<Conversation | null>(
+    convIdFromUrl ? { id: convIdFromUrl, title: "", created_at: "", updated_at: "" } : null
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -1753,7 +1755,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 </div>
               </div>
             </div>
-          ) : (!activeConv && !loadingConvId && messages.length === 0) ? (
+          ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
