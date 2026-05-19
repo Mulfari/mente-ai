@@ -1700,8 +1700,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               <span style={{ color: "var(--primary)" }}>M</span>ulfai
             </span>
           </div>
-          {/* Subscription indicator */}
-          {isLoggedIn && profile && (
+          {/* Subscription indicator / Login button */}
+          {isLoggedIn && profile ? (
             <button onClick={() => setShowAccountMenu(true)}
               className="absolute right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-80"
               style={{
@@ -1722,6 +1722,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               ) : (
                 <span>Expirado</span>
               )}
+            </button>
+          ) : (
+            <button onClick={() => setShowAuthPrompt(true)}
+              className="absolute right-4 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
+              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+              Iniciar sesion
             </button>
           )}
         </header>
