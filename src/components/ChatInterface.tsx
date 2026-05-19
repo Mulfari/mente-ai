@@ -276,7 +276,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   // Runs whenever isLoggedIn or userId changes, plus checks URL on mount
   useEffect(() => {
     async function loadFromUrl() {
-      if (!isLoggedIn || !userId) return;
+      if (!isLoggedIn) return;
 
       const parts = window.location.pathname.split("/").filter(Boolean);
       const urlId = parts[parts.length - 1];
@@ -284,7 +284,10 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       // urlHasConv is already true from convIdFromUrl prop
       console.log("[Mulfai] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
 
-      if (!urlId || urlId === "chat" || urlId === userId) {
+      // Use convIdFromUrl prop as authoritative ID (passed from server-side page)
+      // Fall back to URL parsing only when prop is not available
+      const effectiveId = convIdFromUrl || urlId;
+      if (!effectiveId || effectiveId === "chat") {
         setActiveConv(null);
         setMessages([]);
         setConvLoaded(false);
@@ -294,8 +297,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const { data, error } = await supabase
         .from("conversations")
         .select("id, title, created_at, updated_at")
-        .eq("id", urlId)
-        .eq("user_id", userId)
+        .eq("id", effectiveId)
         .single();
       console.log("[Mulfai] conv result:", data?.id, "error:", error);
 
