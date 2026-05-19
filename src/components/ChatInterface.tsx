@@ -36,16 +36,16 @@ type Conversation = {
 
 export default function ChatInterface({ userId, convIdFromUrl }: { userId: string; convIdFromUrl?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConv, setActiveConv] = useState<Conversation | null>(
-    convIdFromUrl ? { id: convIdFromUrl, title: "", created_at: "", updated_at: "" } : null
-  );
+  const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
-  // Tracks whether a direct-URL conversation load has completed (avoids flash of welcome screen)
+  // Tracks whether a direct-URL conversation load has completed
   const [convLoaded, setConvLoaded] = useState(false);
-  // true when URL contains a conv ID (passed from server page) — suppress welcome hero
+  // Set to the conv ID when URL has one — triggers skeleton loading while loadMessages runs
+  const [loadingConvId, setLoadingConvId] = useState<string | null>(convIdFromUrl || null);
+  // true when URL contains a conv ID — suppress welcome hero
   const [urlHasConv] = useState(!!convIdFromUrl);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -250,6 +250,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
   async function loadMessages(conversationId: string) {
     setLoadingMessages(true);
+    setLoadingConvId(conversationId);
     const { data, error } = await supabase
       .from("messages")
       .select("*")
@@ -266,6 +267,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     lastErrorRef.current = null;
     setLoadingMessages(false);
     setConvLoaded(true);
+    setLoadingConvId(null);
   }
 
   useEffect(() => {
@@ -289,6 +291,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         setActiveConv(null);
         setMessages([]);
         setConvLoaded(false);
+        setLoadingConvId(null);
         return;
       }
 
@@ -603,6 +606,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
     setActiveConv({ ...conv, updated_at: new Date().toISOString() });
     setConvLoaded(false);
+    setLoadingConvId(conv.id);
     window.history.pushState(null, "", `/chat/${conv.id}`);
     setShowSidebar(false);
     await loadMessages(conv.id);
@@ -1707,7 +1711,34 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
         {/* Messages */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {(urlHasConv && !activeConv) ? null : (!activeConv || !convLoaded) ? (
+          {loadingConvId && !activeConv ? (
+            <div className="max-w-4xl mx-auto px-4 py-5">
+              {/* Skeleton while loading direct URL conversation */}
+              <div className="flex justify-end mb-4">
+                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite" }}>
+                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "120px" }} />
+                </div>
+              </div>
+              <div className="flex justify-start mb-4">
+                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-sm" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.2s" }}>
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "200px" }} />
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "160px" }} />
+                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "100px" }} />
+                </div>
+              </div>
+              <div className="flex justify-end mb-4">
+                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite 0.4s" }}>
+                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "80px" }} />
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-md" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.6s" }}>
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "240px" }} />
+                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "180px" }} />
+                </div>
+              </div>
+            </div>
+          ) : (!activeConv && !urlHasConv) ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
@@ -1798,33 +1829,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           ) : activeConv && !convLoaded ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton messages for direct URL access */}
-              <div className="flex justify-end mb-4">
-                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite" }}>
-                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "120px" }} />
-                </div>
-              </div>
-              <div className="flex justify-start mb-4">
-                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-sm" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.2s" }}>
-                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "200px" }} />
-                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "160px" }} />
-                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "100px" }} />
-                </div>
-              </div>
-              <div className="flex justify-end mb-4">
-                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite 0.4s" }}>
-                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "80px" }} />
-                </div>
-              </div>
-              <div className="flex justify-start">
-                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-md" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.6s" }}>
-                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "240px" }} />
-                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "180px" }} />
-                </div>
-              </div>
-            </div>
-          ) : activeConv && !convLoaded ? (
-            <div className="max-w-4xl mx-auto px-4 py-5">
-              {/* Skeleton messages */}
               <div className="flex justify-end mb-4">
                 <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite" }}>
                   <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "120px" }} />
