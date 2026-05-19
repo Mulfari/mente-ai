@@ -21,6 +21,7 @@ type Message = {
   _loading?: boolean;
   in_progress?: boolean;
   _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
+  _isDeep?: boolean;
 };
 
 type Conversation = {
@@ -737,6 +738,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       const processStream = async () => {
         try {
+          let isDeep = false;
           let result = await reader.read();
           while (!result.done) {
             buffer += decoder.decode(result.value, { stream: true });
@@ -749,7 +751,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 if (data === "[DONE]") continue;
                 try {
                   const json = JSON.parse(data);
-                  if (json.type === "chunk" && json.text) { fullText += json.text; await updateStreamText(fullText); }
+                  if (json.type === "chunk") {
+                    if (json.is_deep) isDeep = true;
+                    if (json.text) { fullText += json.text; await updateStreamText(fullText); }
+                  }
                 } catch {}
               }
             }
@@ -758,7 +763,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           // Stream done: await final save and flush reveal animation
           await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false });
           flushReveal(msgId, fullText);
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false } : m));
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m));
           currentStreamReqRef.current = null;
           setSending(false);
           setStreamingMsgId(null);
@@ -1073,6 +1078,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         const processStream = async () => {
           try {
+            let isDeep = false;
             let result = await reader.read();
             while (!result.done) {
               buffer += decoder.decode(result.value, { stream: true });
@@ -1085,9 +1091,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   if (data === "[DONE]") continue;
                   try {
                     const json = JSON.parse(data);
-                    if (json.type === "chunk" && json.text) {
-                      fullText += json.text;
-                      await updateStreamText(fullText);
+                    if (json.type === "chunk") {
+                      if (json.is_deep) isDeep = true;
+                      if (json.text) { fullText += json.text; await updateStreamText(fullText); }
                     }
                   } catch {}
                 }
@@ -1105,7 +1111,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             else console.log("[Mulfai] saved to DB:", msgId, "chars:", fullText.length);
             flushReveal(msgId, fullText);
             setMessages(prev => prev.map(m =>
-              m.id === msgId ? { ...m, content: fullText, _loading: false } : m
+              m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m
             ));
             currentStreamReqRef.current = null;
             setSending(false);
@@ -1804,6 +1810,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         backgroundColor: msg.role === "user" ? "var(--primary)" : "var(--surface)",
                         color: msg.role === "user" ? "white" : "var(--text-primary)",
                         borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                        borderLeft: msg.role === "assistant" && msg._isDeep ? "2px solid var(--primary)" : "2px solid transparent",
                       }}>
                       {msg.role === "user" ? (
                         <>
