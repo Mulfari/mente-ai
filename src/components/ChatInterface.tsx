@@ -21,6 +21,7 @@ type Message = {
   _loading?: boolean;
   in_progress?: boolean;
   _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
+  mode?: string;
   _isDeep?: boolean;
 };
 
