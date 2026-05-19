@@ -43,8 +43,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   // Tracks whether a direct-URL conversation load has completed (avoids flash of welcome screen)
   const [convLoaded, setConvLoaded] = useState(false);
-  // Holds the conversation being loaded from a direct URL (shown as skeleton while loading)
-  const [urlLoadingConv, setUrlLoadingConv] = useState<Conversation | null>(null);
+  // Prevents SSR/hydration flash of welcome screen on direct URL access
+  const [mounted, setMounted] = useState(false);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
@@ -193,6 +193,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Track when component mounts on client to avoid SSR/hydration flash
+  useEffect(() => { setMounted(true); }, []);
 
   // Load daily suggestions
   function loadSuggestions() {
@@ -1702,7 +1705,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         {/* Messages */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {(!activeConv || !convLoaded) ? (
+          {!mounted ? null : (!activeConv || !convLoaded) ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
