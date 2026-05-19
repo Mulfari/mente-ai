@@ -43,8 +43,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   // Tracks whether a direct-URL conversation load has completed (avoids flash of welcome screen)
   const [convLoaded, setConvLoaded] = useState(false);
-  // Prevents SSR/hydration flash of welcome screen on direct URL access
-  const [mounted, setMounted] = useState(false);
+  // Set synchronously on mount if URL has a conv ID — used to suppress welcome hero during load
+  const [urlHasConv, setUrlHasConv] = useState(false);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
@@ -194,9 +194,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Track when component mounts on client to avoid SSR/hydration flash
-  useEffect(() => { setMounted(true); }, []);
-
   // Load daily suggestions
   function loadSuggestions() {
     if (!isLoggedIn) return;
@@ -281,12 +278,15 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       const parts = window.location.pathname.split("/").filter(Boolean);
       const urlId = parts[parts.length - 1];
+      // Immediately mark that we have a conversation in the URL — suppresses hero before DB query
+      if (urlId && urlId !== "chat" && urlId !== userId) setUrlHasConv(true);
       console.log("[Mulfai] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
 
       if (!urlId || urlId === "chat" || urlId === userId) {
         setActiveConv(null);
         setMessages([]);
         setConvLoaded(false);
+        setUrlHasConv(false);
         return;
       }
 
@@ -601,6 +601,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
     setActiveConv({ ...conv, updated_at: new Date().toISOString() });
     setConvLoaded(false);
+    setUrlHasConv(true);
     window.history.pushState(null, "", `/chat/${conv.id}`);
     setShowSidebar(false);
     await loadMessages(conv.id);
@@ -1705,7 +1706,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         {/* Messages */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {!mounted ? null : (!activeConv || !convLoaded) ? (
+          {(urlHasConv && !activeConv) ? null : (!activeConv || !convLoaded) ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
