@@ -321,6 +321,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       }
 
       setActiveConv(data);
+      setConvLoaded(true);
       setConversations(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
       console.log("[Mulfai] calling loadMessages:", data.id);
       await loadMessages(data.id);
@@ -1752,7 +1753,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 </div>
               </div>
             </div>
-          ) : (!activeConv && !loadingConvId) ? (
+          ) : (!activeConv && !loadingConvId && messages.length === 0) ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
