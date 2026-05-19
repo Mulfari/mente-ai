@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import dynamic from "next/dynamic";
@@ -1867,6 +1868,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
                           <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
                             components={{
                               code({ className, children }) {
                                 const match = /language-(\w+)/.exec(className || "");

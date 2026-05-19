@@ -201,3 +201,34 @@ body::before {
   color: var(--text-secondary);
   margin: 0.5em 0;
 }
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.8em 0;
+  font-size: 0.875em;
+  overflow-x: auto;
+  display: block;
+}
+.prose thead tr {
+  background: rgba(255,255,255,0.05);
+}
+.prose th {
+  padding: 0.5em 0.8em;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+.prose td {
+  padding: 0.4em 0.8em;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-secondary);
+}
+.prose tbody tr:hover {
+  background: rgba(255,255,255,0.02);
+}
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1em 0;
+}
