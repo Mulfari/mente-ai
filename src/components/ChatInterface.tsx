@@ -45,6 +45,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [convLoaded, setConvLoaded] = useState(false);
   // Set to the conv ID when URL has one — triggers skeleton loading while loadMessages runs
   const [loadingConvId, setLoadingConvId] = useState<string | null>(convIdFromUrl || null);
+  // True when actively loading messages for a real conversation (used for skeleton during message load)
+  const [isLoadingMsgs, setIsLoadingMsgs] = useState(false);
   // true when URL contains a conv ID — suppress welcome hero
   const [urlHasConv] = useState(!!convIdFromUrl);
   const [sending, setSending] = useState(false);
@@ -251,6 +253,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   async function loadMessages(conversationId: string) {
     setLoadingMessages(true);
     setLoadingConvId(conversationId);
+    setIsLoadingMsgs(true);
     const { data, error } = await supabase
       .from("messages")
       .select("*")
@@ -268,6 +271,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     setLoadingMessages(false);
     setConvLoaded(true);
     setLoadingConvId(null);
+    setIsLoadingMsgs(false);
   }
 
   useEffect(() => {
@@ -601,6 +605,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     setMessages([]);
     setConvLoaded(false);
     setLoadingConvId(null);
+    setIsLoadingMsgs(false);
     setShowSidebar(false);
     loadConversations();
     window.history.pushState(null, "", "/chat");
@@ -709,6 +714,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
+        setIsLoadingMsgs(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
     }
@@ -1029,6 +1035,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
     try {
       const convId = conv.id;
+      setIsLoadingMsgs(false);
 
       // Build message content for API
       const contentParts: any[] = [{ type: "text", text: userMsg }];
@@ -1718,7 +1725,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
         {/* Messages */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {loadingConvId && activeConv?.id ? (
+          {(isLoadingMsgs || sending) && !messages.length ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
               <div className="flex justify-end mb-4">
