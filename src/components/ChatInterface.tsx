@@ -897,7 +897,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   async function sendMessage() {
     if (!input.trim() && attachments.length === 0) return;
     const block = getBlockReason();
-    if (!block.canSend) return;
+    if (!block.canSend) { if (!isLoggedIn) setShowAuthPrompt(true); return; }
 
     // If AI is currently streaming, queue this message (max 1)
     if (sending) {
