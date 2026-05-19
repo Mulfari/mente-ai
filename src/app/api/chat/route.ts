@@ -279,6 +279,7 @@ export async function POST(request: Request) {
     ];
 
     const result = await runChat(apiKey, baseUrl, model, systemPrompt, allMessagesForAI, mode || "normal");
+    console.log("[Mulfai] runChat returned, mode was:", (mode || "normal"));
 
     if (result.isJson) {
       return NextResponse.json({ error: result.errorMsg || "Error" }, { status: result.statusCode || 500 });
@@ -311,13 +312,17 @@ export async function POST(request: Request) {
               return;
             }
             // Non-streaming: extract text from content array
+            console.log("[Mulfai] content blocks:", JSON.stringify(data.content?.map((c: any) => c.type)));
             if (data.content && Array.isArray(data.content)) {
               for (const block of data.content) {
                 if (block.type === "text") {
                   fullResponse += block.text;
+                } else if (block.type === "thinking") {
+                  console.log("[Mulfai] thinking block found, text length:", block.thinking?.length);
                 }
               }
             }
+            console.log("[Mulfai] final fullResponse length:", fullResponse.length);
             if (fullResponse) {
               await supabase.from("messages").upsert({
                 id: assistantMsgId,
@@ -325,7 +330,7 @@ export async function POST(request: Request) {
                 role: "assistant",
                 content: fullResponse,
               }, { onConflict: "id" });
-              sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse });
+              sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse, is_deep: mode === "deep" });
             }
           } catch {
             // SSE stream: parse line by line
@@ -344,7 +349,7 @@ export async function POST(request: Request) {
                       role: "assistant",
                       content: fullResponse,
                     }, { onConflict: "id" });
-                    sendEvent({ type: "chunk", id: assistantMsgId, text: delta });
+                    sendEvent({ type: "chunk", id: assistantMsgId, text: delta, is_deep: mode === "deep" });
                   }
                 } catch {}
               }
