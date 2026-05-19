@@ -1802,8 +1802,11 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     {/* Sender label */}
                     <div className="flex items-center gap-1.5 mb-1.5">
                       {msg.role === "assistant" && msg._isDeep && (
-                        <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
-                          style={{ backgroundColor: "var(--primary)" }} />
+                        <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none">
+                          <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.6 5 8.5.6.4 1.4.4 2 0 1-.7 1.8-1.5 2.5-2.3" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M9 22c.5-.6 1.2-1.2 2-1.7M15 22c-.5-.6-1.2-1.2-2-1.7" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
+                          <path d="M12 5v1M9.5 7.5l-.7.4M14.5 7.5l.7.4" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
+                        </svg>
                       )}
                       <p className={`text-xs font-semibold ${msg.role === "user" ? "text-right" : ""}`}
                         style={{ color: msg.role === "user" ? "rgba(255,255,255,0.6)" : "var(--text-tertiary)" }}>
@@ -1816,7 +1819,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         backgroundColor: msg.role === "user" ? "var(--primary)" : "var(--surface)",
                         color: msg.role === "user" ? "white" : "var(--text-primary)",
                         borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                        borderLeft: msg.role === "assistant" && msg._isDeep ? "2px solid var(--primary)" : "2px solid transparent",
+                        boxShadow: msg.role === "assistant" && msg._isDeep ? "inset 2px 0 0 #a78bfa" : "none",
+                        borderLeft: msg.role === "assistant" && msg._isDeep ? "2px solid #a78bfa" : "none",
                       }}>
                       {msg.role === "user" ? (
                         <>
