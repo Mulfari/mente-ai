@@ -1810,14 +1810,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
                       <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                         {msg.role === "user" ? "Tú" : "Mulfai"}
                       </span>
-                      {msg.role === "assistant" && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${msg._isDeep ? "text-white" : "text-white opacity-50"}`}
-                          style={msg._isDeep
-                            ? { background: "linear-gradient(135deg, #7c3aed, #a78bfa)", letterSpacing: "0.02em" }
-                            : { background: "rgba(255,255,255,0.1)", letterSpacing: "0.02em" }
-                          }>
-                          {msg._isDeep ? "Pensar" : "Normal"}
-                        </span>
+                      {msg.role === "assistant" && msg._isDeep && (
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a78bfa" }}>
+                          <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+                          <path d="M9 18h6"/>
+                          <path d="M10 21h4"/>
+                        </svg>
                       )}
                     </div>
                     <div
