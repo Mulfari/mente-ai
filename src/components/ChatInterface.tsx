@@ -752,7 +752,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 try {
                   const json = JSON.parse(data);
                   if (json.type === "chunk") {
-                    if (json.is_deep) isDeep = true;
+                    if (json.is_deep) { console.log("[Mulfai] deep mode detected!"); isDeep = true; }
                     if (json.text) { fullText += json.text; await updateStreamText(fullText); }
                   }
                 } catch {}
@@ -760,10 +760,12 @@ export default function ChatInterface({ userId }: { userId: string }) {
             }
             result = await reader.read();
           }
+          console.log("[Mulfai] stream done, isDeep:", isDeep);
           // Stream done: await final save and flush reveal animation
           await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false });
           flushReveal(msgId, fullText);
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m));
+          console.log("[Mulfai] setMessages called with _isDeep:", isDeep);
           currentStreamReqRef.current = null;
           setSending(false);
           setStreamingMsgId(null);
@@ -1092,7 +1094,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   try {
                     const json = JSON.parse(data);
                     if (json.type === "chunk") {
-                      if (json.is_deep) isDeep = true;
+                      if (json.is_deep) { console.log("[Mulfai] deep mode detected!"); isDeep = true; }
                       if (json.text) { fullText += json.text; await updateStreamText(fullText); }
                     }
                   } catch {}
