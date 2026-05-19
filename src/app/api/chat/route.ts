@@ -64,128 +64,20 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
-async function analyzeUserMessage(message: string, apiKey: string, baseUrl: string, model: string) {
-  const prompt = `Eres un analizador de consultas. Dado un mensaje de usuario en español, determina qué información necesita del directorio.
-
-Devuelve un JSON con esta estructura exacta, sin texto adicional:
-{
-  "needs": {
-    "cities": ["ciudad"],
-    "categories": ["categoria"],
-    "keywords": ["palabra"],
-    "general": true/false
-  },
-  "search_query": "consulta simplificada"
-}
-
-Reglas:
-- cities: ciudades mencionadas (maracay, caracas, valencia, barquisimeto, etc.)
-- categories: categorias del directorio (restaurante, farmacia, clinica, gym, lavanderia, estacion)
-- keywords: palabras clave relevantes adicionales
-- general: true si es pregunta general que no es sobre lugares
-- search_query: una consulta corta para buscar en la DB
-
-Ejemplos:
-- "restaurantes en Maracay" → needs: {cities: ["Maracay"], categories: ["restaurante"], general: false}
-- "dame una clinica cerca" → needs: {cities: [], categories: ["clinica"], general: false}
-- "como funciona esto?" → needs: {general: true}`;
-
-  const res = await fetch(`${baseUrl}/v1/messages`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "anthropic-version": "2023-06-01",
-      "x-api-key": apiKey,
-    },
-    body: JSON.stringify({
-      model: model,
-      max_tokens: 512,
-      stream: false,
-      system: prompt,
-      messages: [{ role: "user", content: message }],
-    }),
-  });
-
-  if (!res.ok) return { needs: { general: true } };
-
-  const data = await res.json();
-  const text = data.content?.[0]?.text || "";
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return { needs: { general: true } };
-
-  let analysis = JSON.parse(match[0]);
-  if (!analysis.needs) analysis = { needs: { general: true } };
-  if (!analysis.needs.general) analysis.needs.general = false;
-  if (!analysis.needs.cities) analysis.needs.cities = [];
-  if (!analysis.needs.categories) analysis.needs.categories = [];
-  if (!analysis.needs.keywords) analysis.needs.keywords = [];
-  return analysis;
-}
-
-async function fetchKnowledge(supabaseUrl: string, serviceKey: string, needs: any) {
-  const headers = { apikey: serviceKey, Authorization: `Bearer ${serviceKey}` };
-  const knowledge: any[] = [];
-
-  if (!needs.general) {
-    const conditions: string[] = ["status=eq.approved"];
-    needs.cities?.forEach((c: string) => conditions.push(`city=ilike.*${encodeURIComponent(c)}*`));
-    needs.categories?.forEach((c: string) => conditions.push(`category=ilike.*${encodeURIComponent(c)}*`));
-    const kUrl = `${supabaseUrl}/rest/v1/knowledge?select=*&${conditions.join("&")}&order=created_at.desc&limit=30`;
-    const kRes = await fetch(kUrl, { headers });
-    if (kRes.ok) knowledge.push(...await kRes.json());
-
-    const pParts: string[] = ["active=eq.true"];
-    if (needs.cities?.length) {
-      pParts.push(`cities.name=ilike.*${encodeURIComponent(needs.cities[0])}*`);
-    }
-    if (needs.categories?.length) {
-      pParts.push(`categories.name=ilike.*${encodeURIComponent(needs.categories[0])}*`);
-    }
-    const pUrl = `${supabaseUrl}/rest/v1/places?select=*,cities(name),categories(name)&${pParts.join("&")}&order=rating.desc&limit=30`;
-    const pRes = await fetch(pUrl, { headers });
-    if (pRes.ok) {
-      const places = await pRes.json();
-      for (const p of places) {
-        knowledge.push({
-          source: "place",
-          content: `${p.name}${p.cities?.name ? `, ${p.cities.name}` : ""}: ${p.address || "Direccion no disponible"}. ${p.specialty || p.description || ""} ${p.phone ? `📞 ${p.phone}` : ""} ${p.google_maps_url ? `📍 ${p.google_maps_url}` : ""}`,
-        });
-      }
-    }
-  }
-
-  return knowledge;
-}
-
-async function buildSystemPrompt(serviceKey: string, supabaseUrl: string, userMessage: string, knowledge: any[]) {
-  let dataSection = "";
-  if (knowledge.length > 0) {
-    const lines = knowledge.map(k => k.content || (typeof k === "string" ? k : "")).filter(Boolean);
-    if (lines.length) {
-      dataSection = "\n\n## Contexto del directorio:\n" + lines.slice(0, 20).join("\n");
-    }
-  }
-
-  return [{
-    role: "system",
-    content: `Eres Mulfai, un asistente de IA útil y conversacional. Respondes en español.
+const SYSTEM_PROMPT = {
+  role: "system",
+  content: `Eres Mulfai, un asistente de IA útil y conversacional. Respondes en español.
 Tu identidad principal es ser útil, no dar información técnica sobre modelos o arquitectura.
 
 SIEMPRE:
 - Ser directo y útil.
-- Decir cuando no tienes info: "No tengo ese dato todavía."
-- Usar el directorio local para lugares.
-- Responder en español.${dataSection}
-`
-  }];
-}
+- Responder en español.`,
+};
 
 async function runChat(
   apiKey: string,
   baseUrl: string,
   model: string,
-  systemPrompt: { role: string; content: string }[],
   allMessages: any[],
   mode: string,
 ): Promise<{ response: Response; isJson: boolean; errorMsg?: string; statusCode?: number }> {
@@ -202,7 +94,7 @@ async function runChat(
       model: model,
       max_tokens: 8192,
       stream: false,
-      system: systemPrompt,
+      system: SYSTEM_PROMPT,
       messages: allMessages,
       ...(mode === "deep" ? { thinking: { type: "enabled", budget_tokens: 1024 } } : {}),
     }),
@@ -212,16 +104,13 @@ async function runChat(
     const text = await response.text().catch(() => "");
     let errorMsg = "Por favor intente de nuevo.";
     try { errorMsg = JSON.parse(text)?.error?.message || errorMsg; } catch {}
-    console.log("[Mulfai] API error:", response.status, text.substring(0, 200));
     return { response, isJson: true, errorMsg, statusCode: response.status };
   }
 
-  console.log("[Mulfai] API ok, streaming...");
   return { response, isJson: false };
 }
 
 export async function POST(request: Request) {
-  console.log("[Mulfai] POST /api/chat called");
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -242,8 +131,6 @@ export async function POST(request: Request) {
     const apiKey = process.env.ANTHROPIC_API_KEY || "";
     const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
     const model = process.env.ANTHROPIC_MODEL || "[private model]";
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
     const historyMessages: { role: string; content: any[] }[] = [];
     if (conversation_id) {
@@ -268,16 +155,12 @@ export async function POST(request: Request) {
 
     const convId = conversation_id;
 
-    const analysis = await analyzeUserMessage(message, apiKey, baseUrl, model);
-    const knowledge = await fetchKnowledge(supabaseUrl, serviceKey, analysis.needs);
-    const systemPrompt = await buildSystemPrompt(serviceKey, supabaseUrl, message, knowledge);
-
     const allMessagesForAI = [
       ...historyMessages,
       ...(message?.trim() ? [{ role: "user", content: [{ type: "text", text: message }] }] : []),
     ];
 
-    const result = await runChat(apiKey, baseUrl, model, systemPrompt, allMessagesForAI, mode || "normal");
+    const result = await runChat(apiKey, baseUrl, model, allMessagesForAI, mode || "normal");
 
     if (result.isJson) {
       return NextResponse.json({ error: result.errorMsg || "Error" }, { status: result.statusCode || 500 });
@@ -296,20 +179,15 @@ export async function POST(request: Request) {
         try {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
-          // Read full response first
           const raw = await result.response.text();
-          console.log("[Mulfai] response size:", raw.length, "preview:", raw.substring(0, 100));
 
-          // Try to parse as JSON (non-streaming response)
           try {
             const data = JSON.parse(raw);
-            // Check if it's an Anthropic API error
             if (data.error) {
               sendEvent({ type: "error", error: data.error.message || data.error });
               controller.close();
               return;
             }
-            // Non-streaming: extract text from content array
             if (data.content && Array.isArray(data.content)) {
               for (const block of data.content) {
                 if (block.type === "text") {
@@ -327,22 +205,20 @@ export async function POST(request: Request) {
               sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse, is_deep: mode === "deep" });
             }
           } catch {
-            // SSE stream: parse line by line
             const lines = raw.split("\n");
             for (const line of lines) {
               if (line.startsWith("data: ")) {
                 try {
                   const json = JSON.parse(line.slice(6));
                   if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                    const delta = json.delta.text;
-                    fullResponse += delta;
+                    fullResponse += json.delta.text;
                     await supabase.from("messages").upsert({
                       id: assistantMsgId,
                       conversation_id: convId,
                       role: "assistant",
                       content: fullResponse,
                     }, { onConflict: "id" });
-                    sendEvent({ type: "chunk", id: assistantMsgId, text: delta, is_deep: mode === "deep" });
+                    sendEvent({ type: "chunk", id: assistantMsgId, text: json.delta.text, is_deep: mode === "deep" });
                   }
                 } catch {}
               }
@@ -352,7 +228,6 @@ export async function POST(request: Request) {
           sendEvent({ type: "done" });
           controller.close();
         } catch (err: any) {
-          console.log("[Mulfai] stream error:", err.message);
           sendEvent({ type: "error", error: err.message });
           controller.close();
         }
