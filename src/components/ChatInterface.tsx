@@ -1725,7 +1725,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
         {/* Messages */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {(isLoadingMsgs || sending) && !messages.length ? (
+          {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
               <div className="flex justify-end mb-4">
@@ -1840,7 +1840,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 )}
               </div>
             </div>
-          ) : activeConv && !convLoaded ? (
+          ) : activeConv?.id && !convLoaded ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton messages for direct URL access */}
               <div className="flex justify-end mb-4">
