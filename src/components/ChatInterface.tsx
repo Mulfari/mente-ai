@@ -41,6 +41,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  // Tracks whether a direct-URL conversation load has completed (avoids flash of welcome screen)
+  const [convLoaded, setConvLoaded] = useState(false);
+  // Holds the conversation being loaded from a direct URL (shown as skeleton while loading)
+  const [urlLoadingConv, setUrlLoadingConv] = useState<Conversation | null>(null);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
@@ -259,6 +263,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setMessages(valid);
     lastErrorRef.current = null;
     setLoadingMessages(false);
+    setConvLoaded(true);
   }
 
   useEffect(() => {
@@ -278,6 +283,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       if (!urlId || urlId === "chat" || urlId === userId) {
         setActiveConv(null);
         setMessages([]);
+        setConvLoaded(false);
         return;
       }
 
@@ -579,6 +585,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     setActiveConv(null);
     setMessages([]);
+    setConvLoaded(false);
     setShowSidebar(false);
     loadConversations();
     window.history.pushState(null, "", "/chat");
@@ -590,6 +597,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     // Update updated_at in sidebar list so date label doesn't disappear
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
     setActiveConv({ ...conv, updated_at: new Date().toISOString() });
+    setConvLoaded(false);
     window.history.pushState(null, "", `/chat/${conv.id}`);
     setShowSidebar(false);
     await loadMessages(conv.id);
@@ -1694,7 +1702,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
         {/* Messages */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {messages.length === 0 && !loading ? (
+          {(!activeConv || !convLoaded) ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
@@ -1782,7 +1790,34 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 )}
               </div>
             </div>
-          ) : loadingMessages ? (
+          ) : activeConv && !convLoaded ? (
+            <div className="max-w-4xl mx-auto px-4 py-5">
+              {/* Skeleton messages for direct URL access */}
+              <div className="flex justify-end mb-4">
+                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite" }}>
+                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "120px" }} />
+                </div>
+              </div>
+              <div className="flex justify-start mb-4">
+                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-sm" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.2s" }}>
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "200px" }} />
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "160px" }} />
+                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "100px" }} />
+                </div>
+              </div>
+              <div className="flex justify-end mb-4">
+                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite 0.4s" }}>
+                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "80px" }} />
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-md" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.6s" }}>
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "240px" }} />
+                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "180px" }} />
+                </div>
+              </div>
+            </div>
+          ) : activeConv && !convLoaded ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton messages */}
               <div className="flex justify-end mb-4">
@@ -1808,10 +1843,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "180px" }} />
                 </div>
               </div>
-            </div>
-          ) : messages.length === 0 ? (
-            <div className="flex items-center justify-center h-full">
-              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Esta conversacion esta vacia</p>
             </div>
           ) : (
             <div className="max-w-4xl mx-auto px-4 py-5">
