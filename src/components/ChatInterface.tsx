@@ -714,7 +714,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
-        setIsLoadingMsgs(true);
+        setConvLoaded(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
     }
