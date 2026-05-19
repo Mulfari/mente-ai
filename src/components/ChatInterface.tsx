@@ -34,17 +34,19 @@ type Conversation = {
 };
 
 
-export default function ChatInterface({ userId }: { userId: string }) {
+export default function ChatInterface({ userId, convIdFromUrl }: { userId: string; convIdFromUrl?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConv, setActiveConv] = useState<Conversation | null>(null);
+  const [activeConv, setActiveConv] = useState<Conversation | null>(
+    convIdFromUrl ? { id: convIdFromUrl, title: "", created_at: "", updated_at: "" } : null
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   // Tracks whether a direct-URL conversation load has completed (avoids flash of welcome screen)
   const [convLoaded, setConvLoaded] = useState(false);
-  // Set synchronously on mount if URL has a conv ID — used to suppress welcome hero during load
-  const [urlHasConv, setUrlHasConv] = useState(false);
+  // Set to true when URL contains a conv ID — suppress welcome hero on first paint
+  const [urlHasConv] = useState(!!convIdFromUrl);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
@@ -279,14 +281,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
       const parts = window.location.pathname.split("/").filter(Boolean);
       const urlId = parts[parts.length - 1];
       // Immediately mark that we have a conversation in the URL — suppresses hero before DB query
-      if (urlId && urlId !== "chat" && urlId !== userId) setUrlHasConv(true);
+      // urlHasConv is already true from convIdFromUrl prop
       console.log("[Mulfai] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
 
       if (!urlId || urlId === "chat" || urlId === userId) {
         setActiveConv(null);
         setMessages([]);
         setConvLoaded(false);
-        setUrlHasConv(false);
         return;
       }
 
@@ -601,7 +602,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
     setActiveConv({ ...conv, updated_at: new Date().toISOString() });
     setConvLoaded(false);
-    setUrlHasConv(true);
     window.history.pushState(null, "", `/chat/${conv.id}`);
     setShowSidebar(false);
     await loadMessages(conv.id);
