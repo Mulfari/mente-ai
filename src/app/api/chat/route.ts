@@ -129,6 +129,7 @@ export async function POST(request: Request) {
               conversation_id: convId,
               role: "assistant",
               content: fullResponse,
+              mode: mode || "normal",
             }, { onConflict: "id" });
             sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse, is_deep: mode === "deep" });
           }
