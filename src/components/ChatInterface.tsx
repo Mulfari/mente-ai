@@ -1800,10 +1800,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   )}
                   <div className="relative max-w-[90%] lg:max-w-[78%]">
                     {/* Sender label */}
-                    <p className={`text-xs font-semibold mb-1.5 ${msg.role === "user" ? "text-right" : ""}`}
-                      style={{ color: msg.role === "user" ? "rgba(255,255,255,0.6)" : "var(--text-tertiary)" }}>
-                      {msg.role === "user" ? "Tú" : "Mulfai"}
-                    </p>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      {msg.role === "assistant" && msg._isDeep && (
+                        <span className="inline-block w-1.5 h-1.5 rounded-full animate-pulse"
+                          style={{ backgroundColor: "var(--primary)" }} />
+                      )}
+                      <p className={`text-xs font-semibold ${msg.role === "user" ? "text-right" : ""}`}
+                        style={{ color: msg.role === "user" ? "rgba(255,255,255,0.6)" : "var(--text-tertiary)" }}>
+                        {msg.role === "user" ? "Tú" : "Mulfai"}
+                      </p>
+                    </div>
                     <div
                       className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                       style={{
