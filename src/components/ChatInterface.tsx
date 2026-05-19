@@ -80,7 +80,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const revealTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
   const revealCancelled = useRef<Record<string, boolean>>({});
 
-  function smoothReveal(msgId: string, text: string) {
+  function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     // Cancel any pending reveal for this message
     if (revealTimers.current[msgId]) {
       clearTimeout(revealTimers.current[msgId]!);
@@ -95,7 +95,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     if (text.length > current.length + 15) {
       // Flash all new content immediately so it never looks stuck
       setDisplayedText(prev => ({ ...prev, [msgId]: text }));
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, ...(_isDeep !== undefined ? { _isDeep } : {}) } : m));
       return;
     }
 
@@ -106,7 +106,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       charIndex++;
       const revealed = text.slice(0, charIndex);
       setDisplayedText(prev => ({ ...prev, [msgId]: revealed }));
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: revealed } : m));
+      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: revealed, ...(_isDeep !== undefined ? { _isDeep } : {}) } : m));
 
       if (charIndex >= text.length) return; // Done
 
@@ -126,7 +126,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     revealTimers.current[msgId] = setTimeout(tick, 40);
   }
 
-  function flushReveal(msgId: string, text: string) {
+  function flushReveal(msgId: string, text: string, _isDeep?: boolean) {
     // Called when streaming ends — cancel reveal and show full text
     revealCancelled.current[msgId] = true;
     if (revealTimers.current[msgId]) {
@@ -134,7 +134,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
       revealTimers.current[msgId] = null;
     }
     setDisplayedText(prev => ({ ...prev, [msgId]: text }));
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text } : m));
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, ...(_isDeep !== undefined ? { _isDeep } : {}) } : m));
   }
   type QueuedMsg = { text: string; files: File[]; previews: Record<string, string> };
   const queuedMsgRef = useRef<QueuedMsg | null>(null);
@@ -731,14 +731,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
       let buffer = "";
       let fullText = "";
 
+      let isDeep = false;
+
       const updateStreamText = async (text: string) => {
-        smoothReveal(msgId, text);
+        smoothReveal(msgId, text, isDeep);
         await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
       };
 
       const processStream = async () => {
         try {
-          let isDeep = false;
+          isDeep = false;
           let result = await reader.read();
           while (!result.done) {
             buffer += decoder.decode(result.value, { stream: true });
@@ -763,7 +765,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
           console.log("[Mulfai] stream done, isDeep:", isDeep);
           // Stream done: await final save and flush reveal animation
           await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false });
-          flushReveal(msgId, fullText);
+          flushReveal(msgId, fullText, isDeep);
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m));
           console.log("[Mulfai] setMessages called with _isDeep:", isDeep);
           currentStreamReqRef.current = null;
@@ -1072,15 +1074,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
         let buffer = "";
         let fullText = "";
 
+        let isDeep = false;
+
         const updateStreamText = async (text: string) => {
           // Update both local state and DB progressively
-          smoothReveal(msgId, text);
+          smoothReveal(msgId, text, isDeep);
           await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
         };
 
         const processStream = async () => {
           try {
-            let isDeep = false;
+            isDeep = false;
             let result = await reader.read();
             while (!result.done) {
               buffer += decoder.decode(result.value, { stream: true });
@@ -1111,7 +1115,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
             });
             if (saveError) console.error("[Mulfai] save failed:", saveError);
             else console.log("[Mulfai] saved to DB:", msgId, "chars:", fullText.length);
-            flushReveal(msgId, fullText);
+            flushReveal(msgId, fullText, isDeep);
             setMessages(prev => prev.map(m =>
               m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m
             ));
