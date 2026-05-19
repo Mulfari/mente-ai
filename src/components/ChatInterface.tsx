@@ -675,10 +675,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   async function uploadAttachment(file: File, userId: string): Promise<string | null> {
     const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/gif" ? "gif" : file.type === "image/webp" ? "webp" : file.type.split("/")[1] || "bin";
     const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const { error } = await supabase.storage.from("attachments").upload(fileName, file, { contentType: file.type, upsert: false });
-    if (error) { console.error("Upload error:", error); return null; }
-    const { data } = supabase.storage.from("attachments").getPublicUrl(fileName);
-    return data.publicUrl;
+    console.log("[Mulfai] Uploading attachment:", fileName, file.type, file.size);
+    const { data, error } = await supabase.storage.from("attachments").upload(fileName, file, { contentType: file.type, upsert: false });
+    if (error) { console.error("[Mulfai] Upload error:", error); return null; }
+    console.log("[Mulfai] Upload success:", data);
+    const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(fileName);
+    console.log("[Mulfai] Public URL:", urlData.publicUrl);
+    return urlData.publicUrl;
   }
   }
 
