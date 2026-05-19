@@ -6,30 +6,7 @@ const RETRY_DELAY_MS = 5000;
 const TIMEOUT_MS = 300_000;
 const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
-
-async function fetchWithRetry(url: string, options: RequestInit): Promise<Response> {
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    try {
-      const res = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (!res.ok && res.status >= 500 && attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
-        continue;
-      }
-      return res;
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      if (attempt < MAX_RETRIES) {
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * (attempt + 1)));
-        continue;
-      }
-      throw err;
-    }
-  }
-  throw new Error("fetchWithRetry exhausted");
-}
+const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
 
 function validateUser(supabase: any, userId: string) {
   return supabase
@@ -64,52 +41,6 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
-const SYSTEM_PROMPT = {
-  role: "system",
-  content: `Eres Mulfai, un asistente de IA útil y conversacional. Respondes en español.
-Tu identidad principal es ser útil, no dar información técnica sobre modelos o arquitectura.
-
-SIEMPRE:
-- Ser directo y útil.
-- Responder en español.`,
-};
-
-async function runChat(
-  apiKey: string,
-  baseUrl: string,
-  model: string,
-  allMessages: any[],
-  mode: string,
-): Promise<{ response: Response; isJson: boolean; errorMsg?: string; statusCode?: number }> {
-  const headers = new Headers();
-  headers.set("Authorization", `Bearer ${apiKey}`);
-  headers.set("Content-Type", "application/json");
-  headers.set("anthropic-version", "2023-06-01");
-  headers.set("x-api-key", apiKey);
-
-  const response = await fetchWithRetry(`${baseUrl}/v1/messages`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model: model,
-      max_tokens: 8192,
-      stream: false,
-      system: SYSTEM_PROMPT,
-      messages: allMessages,
-      ...(mode === "deep" ? { thinking: { type: "enabled", budget_tokens: 1024 } } : {}),
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text().catch(() => "");
-    let errorMsg = "Por favor intente de nuevo.";
-    try { errorMsg = JSON.parse(text)?.error?.message || errorMsg; } catch {}
-    return { response, isJson: true, errorMsg, statusCode: response.status };
-  }
-
-  return { response, isJson: false };
-}
-
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -127,10 +58,6 @@ export async function POST(request: Request) {
     if (!message?.trim() && (!attachments || attachments.length === 0)) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
     }
-
-    const apiKey = process.env.ANTHROPIC_API_KEY || "";
-    const baseUrl = process.env.ANTHROPIC_BASE_URL || "https://api.selectapi.vip";
-    const model = process.env.ANTHROPIC_MODEL || "[private model]";
 
     const historyMessages: { role: string; content: any[] }[] = [];
     if (conversation_id) {
@@ -154,22 +81,16 @@ export async function POST(request: Request) {
     }
 
     const convId = conversation_id;
+    const assistantMsgId = message_id || crypto.randomUUID();
 
-    const allMessagesForAI = [
-      ...historyMessages,
-      ...(message?.trim() ? [{ role: "user", content: [{ type: "text", text: message }] }] : []),
-    ];
-
-    const result = await runChat(apiKey, baseUrl, model, allMessagesForAI, mode || "normal");
-
-    if (result.isJson) {
-      return NextResponse.json({ error: result.errorMsg || "Error" }, { status: result.statusCode || 500 });
+    // Build combined question with history context for VPS
+    let combinedQuestion = message;
+    if (historyMessages.length > 0) {
+      const historyText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`).join("\n");
+      combinedQuestion = `Contexto de la conversacion anterior:\n${historyText}\n\nUsuario: ${message}`;
     }
 
-    const assistantMsgId = message_id || crypto.randomUUID();
-    let fullResponse = "";
     const encoder = new TextEncoder();
-
     const stream = new ReadableStream({
       async start(controller) {
         const sendEvent = (data: any) => {
@@ -179,56 +100,43 @@ export async function POST(request: Request) {
         try {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
-          const raw = await result.response.text();
+          // Call VPS orchestrator
+          const vpsResponse = await fetch(`${VPS_URL}/api/orchestrate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: combinedQuestion,
+              user_id: user.id,
+              conversation_id: convId,
+              mode: mode || "normal",
+            }),
+            signal: AbortSignal.timeout(TIMEOUT_MS),
+          });
 
-          try {
-            const data = JSON.parse(raw);
-            if (data.error) {
-              sendEvent({ type: "error", error: data.error.message || data.error });
-              controller.close();
-              return;
-            }
-            if (data.content && Array.isArray(data.content)) {
-              for (const block of data.content) {
-                if (block.type === "text") {
-                  fullResponse += block.text;
-                }
-              }
-            }
-            if (fullResponse) {
-              await supabase.from("messages").upsert({
-                id: assistantMsgId,
-                conversation_id: convId,
-                role: "assistant",
-                content: fullResponse,
-              }, { onConflict: "id" });
-              sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse, is_deep: mode === "deep" });
-            }
-          } catch {
-            const lines = raw.split("\n");
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                try {
-                  const json = JSON.parse(line.slice(6));
-                  if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
-                    fullResponse += json.delta.text;
-                    await supabase.from("messages").upsert({
-                      id: assistantMsgId,
-                      conversation_id: convId,
-                      role: "assistant",
-                      content: fullResponse,
-                    }, { onConflict: "id" });
-                    sendEvent({ type: "chunk", id: assistantMsgId, text: json.delta.text, is_deep: mode === "deep" });
-                  }
-                } catch {}
-              }
-            }
+          if (!vpsResponse.ok) {
+            const errText = await vpsResponse.text();
+            sendEvent({ type: "error", error: "Error del servidor. Intenta de nuevo." });
+            controller.close();
+            return;
+          }
+
+          const result = await vpsResponse.json();
+          const fullResponse = result.response || "";
+
+          if (fullResponse) {
+            await supabase.from("messages").upsert({
+              id: assistantMsgId,
+              conversation_id: convId,
+              role: "assistant",
+              content: fullResponse,
+            }, { onConflict: "id" });
+            sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse, is_deep: mode === "deep" });
           }
 
           sendEvent({ type: "done" });
           controller.close();
         } catch (err: any) {
-          sendEvent({ type: "error", error: err.message });
+          sendEvent({ type: "error", error: err.message || "Error de conexion." });
           controller.close();
         }
       },
