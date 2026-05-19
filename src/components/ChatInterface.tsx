@@ -704,6 +704,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     setSending(true);
     setSuggestions([]);
+    if (!activeConv) setConvLoaded(true);
 
     let conv = activeConv;
     if (!conv) {
