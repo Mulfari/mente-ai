@@ -711,7 +711,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: s, conversation_id: convId, mode: responseMode, message_id: msgId }),
       });
-      console.log("[Mulfai] fetch sent, mode:", responseMode, "status:", res.status);
 
       if (!res.ok) {
         if (assistantMsg) supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
@@ -754,9 +753,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 if (data === "[DONE]") continue;
                 try {
                   const json = JSON.parse(data);
-                  console.log("[Mulfai] received chunk, is_deep:", json.is_deep, "text len:", json.text?.length);
                   if (json.type === "chunk") {
-                    if (json.is_deep) { console.log("[Mulfai] deep mode detected!"); isDeep = true; }
+                    if (json.is_deep) isDeep = true;
                     if (json.text) { fullText += json.text; await updateStreamText(fullText); }
                   }
                 } catch {}
@@ -764,12 +762,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
             }
             result = await reader.read();
           }
-          console.log("[Mulfai] stream done, isDeep:", isDeep);
           // Stream done: await final save and flush reveal animation
           await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false });
           flushReveal(msgId, fullText, isDeep);
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m));
-          console.log("[Mulfai] setMessages called with _isDeep:", isDeep);
           currentStreamReqRef.current = null;
           setSending(false);
           setStreamingMsgId(null);
@@ -1041,7 +1037,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts, mode: responseMode, message_id: msgId }),
       });
-      console.log("[Mulfai] fetch sent (attachments), mode:", responseMode, "status:", res.status);
 
       if (!res.ok) {
         const result = await res.json();
@@ -1101,7 +1096,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   try {
                     const json = JSON.parse(data);
                     if (json.type === "chunk") {
-                      if (json.is_deep) { console.log("[Mulfai] deep mode detected!"); isDeep = true; }
+                      if (json.is_deep) isDeep = true;
                       if (json.text) { fullText += json.text; await updateStreamText(fullText); }
                     }
                   } catch {}
@@ -1810,17 +1805,18 @@ export default function ChatInterface({ userId }: { userId: string }) {
                   <div className="relative max-w-[90%] lg:max-w-[78%]">
                     {/* Sender label */}
                     <div className="flex items-center gap-1.5 mb-1.5">
-                      {msg.role === "assistant" && msg._isDeep && (
-                        <svg className="shrink-0" width="12" height="12" viewBox="0 0 24 24" fill="none">
-                          <path d="M12 2a9 9 0 0 0-9 9c0 3.6 2.4 6.6 5 8.5.6.4 1.4.4 2 0 1-.7 1.8-1.5 2.5-2.3" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M9 22c.5-.6 1.2-1.2 2-1.7M15 22c-.5-.6-1.2-1.2-2-1.7" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
-                          <path d="M12 5v1M9.5 7.5l-.7.4M14.5 7.5l.7.4" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round"/>
-                        </svg>
-                      )}
-                      <p className={`text-xs font-semibold ${msg.role === "user" ? "text-right" : ""}`}
-                        style={{ color: msg.role === "user" ? "rgba(255,255,255,0.6)" : "var(--text-tertiary)" }}>
+                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                         {msg.role === "user" ? "Tú" : "Mulfai"}
-                      </p>
+                      </span>
+                      {msg.role === "assistant" && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${msg._isDeep ? "text-white" : "text-white opacity-50"}`}
+                          style={msg._isDeep
+                            ? { background: "linear-gradient(135deg, #7c3aed, #a78bfa)", letterSpacing: "0.02em" }
+                            : { background: "rgba(255,255,255,0.1)", letterSpacing: "0.02em" }
+                          }>
+                          {msg._isDeep ? "Pensar" : "Normal"}
+                        </span>
+                      )}
                     </div>
                     <div
                       className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
@@ -1828,8 +1824,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
                         backgroundColor: msg.role === "user" ? "var(--primary)" : "var(--surface)",
                         color: msg.role === "user" ? "white" : "var(--text-primary)",
                         borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                        boxShadow: msg.role === "assistant" && msg._isDeep ? "inset 2px 0 0 #a78bfa" : "none",
-                        borderLeft: msg.role === "assistant" && msg._isDeep ? "2px solid #a78bfa" : "none",
+                        border: msg.role === "assistant" && msg._isDeep ? "1px solid #a78bfa" : "1px solid transparent",
+                        borderLeft: msg.role === "assistant" && msg._isDeep ? "3px solid #7c3aed" : "none",
                       }}>
                       {msg.role === "user" ? (
                         <>
@@ -2115,10 +2111,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 {/* Mode selector — pill tabs */}
                 <div className="flex items-center gap-1 px-4 pt-3">
                   <button onClick={() => setResponseMode("normal")}
-                    className="relative px-3 py-1.5 text-xs font-medium rounded-full transition-all"
-                    style={{ color: responseMode === "normal" ? "white" : "var(--text-tertiary)" }}>
+                    className="relative px-3 py-1.5 text-xs font-semibold rounded-full transition-all"
+                    style={{ color: responseMode === "normal" ? "#10A37F" : "var(--text-tertiary)" }}>
                     {responseMode === "normal" && (
-                      <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", opacity: 0.15 }} />
+                      <span className="absolute inset-0 rounded-full border" style={{ borderColor: "#10A37F", opacity: 0.3 }} />
                     )}
                     <span className="relative flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -2128,10 +2124,10 @@ export default function ChatInterface({ userId }: { userId: string }) {
                     </span>
                   </button>
                   <button onClick={() => setResponseMode("deep")}
-                    className="relative px-3 py-1.5 text-xs font-medium rounded-full transition-all"
-                    style={{ color: responseMode === "deep" ? "white" : "var(--text-tertiary)" }}>
+                    className="relative px-3 py-1.5 text-xs font-semibold rounded-full transition-all"
+                    style={{ color: responseMode === "deep" ? "#a78bfa" : "var(--text-tertiary)" }}>
                     {responseMode === "deep" && (
-                      <span className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", opacity: 0.15 }} />
+                      <span className="absolute inset-0 rounded-full border" style={{ borderColor: "#a78bfa", opacity: 0.4 }} />
                     )}
                     <span className="relative flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
