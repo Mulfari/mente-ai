@@ -217,7 +217,6 @@ async function runChat(
   }
 
   console.log("[Mulfai] API ok, streaming...");
-  console.log("[Mulfai] (stream=false mode, reading full response)");
   return { response, isJson: false };
 }
 
@@ -337,7 +336,6 @@ export async function POST(request: Request) {
                   if (json.type === "content_block_delta" && json.delta?.type === "text_delta") {
                     const delta = json.delta.text;
                     fullResponse += delta;
-                    console.log("[Mulfai] chunk received:", delta.substring(0, 50));
                     await supabase.from("messages").upsert({
                       id: assistantMsgId,
                       conversation_id: convId,
