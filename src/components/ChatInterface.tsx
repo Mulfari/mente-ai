@@ -40,6 +40,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
@@ -242,7 +243,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   }
 
   async function loadMessages(conversationId: string) {
-    setLoading(true);
+    setLoadingMessages(true);
     const { data, error } = await supabase
       .from("messages")
       .select("*")
@@ -257,7 +258,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
     setStreamingMsgId(null);
     setMessages(valid);
     lastErrorRef.current = null;
-    setLoading(false);
+    setLoadingMessages(false);
   }
 
   useEffect(() => {
@@ -1781,12 +1782,31 @@ export default function ChatInterface({ userId }: { userId: string }) {
                 )}
               </div>
             </div>
-          ) : loading ? (
-            <div className="flex items-center justify-center h-full">
-              <div className="flex items-center gap-2.5" style={{ color: "var(--text-secondary)" }}>
-                <div className="w-5 h-5 border-2 rounded-full animate-spin"
-                  style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
-                <span className="text-sm">Cargando...</span>
+          ) : loadingMessages ? (
+            <div className="max-w-4xl mx-auto px-4 py-5">
+              {/* Skeleton messages */}
+              <div className="flex justify-end mb-4">
+                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite" }}>
+                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "120px" }} />
+                </div>
+              </div>
+              <div className="flex justify-start mb-4">
+                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-sm" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.2s" }}>
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "200px" }} />
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "160px" }} />
+                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "100px" }} />
+                </div>
+              </div>
+              <div className="flex justify-end mb-4">
+                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite 0.4s" }}>
+                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "80px" }} />
+                </div>
+              </div>
+              <div className="flex justify-start">
+                <div className="rounded-2xl rounded-bl-4px px-5 py-3 max-w-md" style={{ backgroundColor: "var(--surface)", animation: "pulse 1.5s ease-in-out infinite 0.6s" }}>
+                  <div className="h-4 rounded mb-2" style={{ backgroundColor: "var(--border)", width: "240px" }} />
+                  <div className="h-4 rounded" style={{ backgroundColor: "var(--border)", width: "180px" }} />
+                </div>
               </div>
             </div>
           ) : messages.length === 0 ? (
