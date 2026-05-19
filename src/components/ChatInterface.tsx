@@ -1717,7 +1717,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
         {/* Messages */}
         <main className="flex-1 min-h-0 overflow-y-auto">
-          {loadingConvId && !activeConv ? (
+          {loadingConvId && activeConv?.id ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
               <div className="flex justify-end mb-4">
