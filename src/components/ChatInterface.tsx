@@ -600,6 +600,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     setActiveConv(null);
     setMessages([]);
     setConvLoaded(false);
+    setLoadingConvId(null);
     setShowSidebar(false);
     loadConversations();
     window.history.pushState(null, "", "/chat");
@@ -1744,7 +1745,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 </div>
               </div>
             </div>
-          ) : (!activeConv && !urlHasConv) ? (
+          ) : (!activeConv && !loadingConvId) ? (
             <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
