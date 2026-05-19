@@ -45,7 +45,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [loadingMessages, setLoadingMessages] = useState(false);
   // Tracks whether a direct-URL conversation load has completed (avoids flash of welcome screen)
   const [convLoaded, setConvLoaded] = useState(false);
-  // Set to true when URL contains a conv ID — suppress welcome hero on first paint
+  // true when URL contains a conv ID (passed from server page) — suppress welcome hero
   const [urlHasConv] = useState(!!convIdFromUrl);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
@@ -281,11 +281,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const parts = window.location.pathname.split("/").filter(Boolean);
       const urlId = parts[parts.length - 1];
       // Immediately mark that we have a conversation in the URL — suppresses hero before DB query
-      // urlHasConv is already true from convIdFromUrl prop
+      // urlHasConv is derived from prop
       console.log("[Mulfai] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
 
-      // Use convIdFromUrl prop as authoritative ID (passed from server-side page)
-      // Fall back to URL parsing only when prop is not available
       const effectiveId = convIdFromUrl || urlId;
       if (!effectiveId || effectiveId === "chat") {
         setActiveConv(null);
@@ -298,6 +296,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         .from("conversations")
         .select("id, title, created_at, updated_at")
         .eq("id", effectiveId)
+        .eq("user_id", userId)
         .single();
       console.log("[Mulfai] conv result:", data?.id, "error:", error);
 
