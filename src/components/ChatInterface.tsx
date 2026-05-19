@@ -18,6 +18,7 @@ type Message = {
   user_id?: string;
   conversation_id?: string;
   attachments?: string[];
+  attachment_urls?: string[];
   _previewUrls?: Record<string, string>;
   _loading?: boolean;
   in_progress?: boolean;
@@ -671,6 +672,16 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     });
   }
 
+  async function uploadAttachment(file: File, userId: string): Promise<string | null> {
+    const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/gif" ? "gif" : file.type === "image/webp" ? "webp" : file.type.split("/")[1] || "bin";
+    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const { error } = await supabase.storage.from("attachments").upload(fileName, file, { contentType: file.type, upsert: false });
+    if (error) { console.error("Upload error:", error); return null; }
+    const { data } = supabase.storage.from("attachments").getPublicUrl(fileName);
+    return data.publicUrl;
+  }
+  }
+
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     const newFiles: File[] = [];
@@ -740,7 +751,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       const msgId = assistantMsg?.id || Date.now().toString();
       if (assistantMsg) setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
-      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
+      else {
+        const loadingText = responseMode === "deep"
+          ? "Pensando... (modo profundo, puede tardar un poco)"
+          : "";
+        setMessages(prev => [...prev, { id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
+      }
       setStreamingMsgId(msgId);
 
       const res = await fetch("/api/chat", {
@@ -1027,13 +1043,22 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
     if (!conv) return;
 
+    // Upload attachments to storage first so they persist
+      const uploadedUrls: string[] = [];
+      for (const file of filesToSend) {
+        if (file.type.startsWith("image/")) {
+          const url = await uploadAttachment(file, userId);
+          if (url) uploadedUrls.push(url);
+        }
+      }
+
     const { data: inserted } = await supabase
       .from("messages")
-      .insert({ conversation_id: conv.id, role: "user", content: userMsg, attachments: filesToSend.map(f => f.name) })
+      .insert({ conversation_id: conv.id, role: "user", content: userMsg, attachments: filesToSend.map(f => f.name), attachment_urls: uploadedUrls })
       .select()
       .single();
     if (inserted) {
-      setMessages(prev => [...prev, { ...inserted, _previewUrls: savedPreviews }]);
+      setMessages(prev => [...prev, { ...inserted, ...(savedPreviews && Object.keys(savedPreviews).length > 0 ? { _previewUrls: savedPreviews } : {}) }]);
     }
 
     try {
@@ -1063,8 +1088,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       if (assistantMsg) {
         setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
       } else {
+        const loadingText = responseMode === "deep"
+          ? "Pensando... (modo profundo, puede tardar un poco)"
+          : "";
         setMessages(prev => [...prev, {
-          id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
+          id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
         }]);
       }
       setStreamingMsgId(msgId);
@@ -1886,9 +1914,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                       }}>
                       {msg.role === "user" ? (
                         <>
-                          {msg._previewUrls && (
+                          {msg.attachment_urls && msg.attachment_urls.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mb-2">
-                              {Object.values(msg._previewUrls).map((url, i) => (
+                              {msg.attachment_urls.map((url, i) => (
                                 <img key={i} src={url} alt="adjunto"
                                   onClick={() => setLightboxUrl(url)}
                                   className="rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
