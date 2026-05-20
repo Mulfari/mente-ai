@@ -1593,29 +1593,21 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           {/* Nueva conversacion + Buscador */}
           <div className="px-4 shrink-0 pb-2 space-y-2">
             <button onClick={newConversation}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
-              style={{
-                backgroundColor: "transparent",
-                color: "var(--text-secondary)",
-                border: "1px solid transparent",
-              }}
+              className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
+              style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor = "var(--surface-hover)";
                 el.style.color = "var(--primary)";
-                el.style.borderColor = "var(--border)";
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor = "transparent";
-                el.style.color = "var(--text-secondary)";
-                el.style.borderColor = "transparent";
+                el.style.color = "var(--text-tertiary)";
               }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Nueva conversación
+              <span className="relative">Nueva conversación</span>
             </button>
 
             {/* Buscador */}
