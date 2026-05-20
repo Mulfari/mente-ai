@@ -1346,6 +1346,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             </span>
           </button>
 
+          {/* TODO: Re-enable agent button after /agent page is ready
           <button onClick={() => window.location.href = "/agent"}
             className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
             style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
@@ -1365,6 +1366,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               Ir al Agente
             </span>
           </button>
+          */}
 
           {/* Buscador */}
           <div className="relative">
@@ -1658,6 +1660,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               <span className="relative">Nueva conversación</span>
             </button>
 
+            {/* TODO: Re-enable agent button after /agent page is ready
             <button onClick={() => window.location.href = "/agent"}
               className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
               style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
@@ -1675,6 +1678,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               </svg>
               <span className="relative">Ir al Agente</span>
             </button>
+            */}
 
             {/* Buscador */}
             <div className="relative">
