@@ -668,19 +668,19 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                                 </p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="flex items-center gap-1.5">
-                                <input
-                                  type="number"
-                                  min="1"
-                                  max="52"
-                                  value={weeksToAdd[user.id] ?? 1}
-                                  onChange={e => setWeeksToAdd({ ...weeksToAdd, [user.id]: parseInt(e.target.value) || 1 })}
-                                  className="w-16 px-3 py-2 rounded-xl text-sm text-center outline-none font-medium"
-                                  style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-                                />
-                                <span className="text-xs hidden sm:inline" style={{ color: "var(--text-tertiary)" }}>sem.</span>
-                              </div>
+                            <div className="flex items-center gap-3 shrink-0">
+                              <input
+                                type="range"
+                                min="1"
+                                max="52"
+                                value={weeksToAdd[user.id] ?? 1}
+                                onChange={e => setWeeksToAdd({ ...weeksToAdd, [user.id]: parseInt(e.target.value) })}
+                                className="w-28 h-1.5 rounded-full appearance-none cursor-pointer"
+                                style={{ accentColor: "var(--primary)", backgroundColor: "var(--border)" }}
+                              />
+                              <span className="text-xs font-semibold w-5 text-right shrink-0" style={{ color: "var(--primary)" }}>
+                                {weeksToAdd[user.id] ?? 1}
+                              </span>
                               <button
                                 onClick={() => addWeeks(user.id, weeksToAdd[user.id] ?? 1)}
                                 disabled={actionLoading === user.id + "-add"}
