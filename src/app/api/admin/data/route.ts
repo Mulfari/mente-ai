@@ -124,10 +124,14 @@ export async function DELETE(request: Request) {
     const type = searchParams.get("type");
     const id = searchParams.get("id");
 
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-    console.log("[admin/data DELETE] supabaseUrl:", supabaseUrl ? "SET" : "UNDEFINED");
+    if (!supabaseUrl || !serviceKey) {
+      return NextResponse.json({ error: "Missing env vars" }, { status: 500 });
+    }
+
+    console.log("[admin/data DELETE] supabaseUrl:", supabaseUrl);
     console.log("[admin/data DELETE] serviceKey:", serviceKey ? "SET" : "UNDEFINED");
     console.log("[admin/data DELETE] type:", type, "id:", id);
 
