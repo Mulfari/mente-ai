@@ -1312,7 +1312,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               Mulfai
             </span>
           </div>
-          <button onClick={() => setShowSidebar(false)} className="md:hidden p-1.5 rounded-md transition-colors hover:bg-white/5" style={{ color: "var(--text-tertiary)" }}>
+          <button onClick={() => setShowSidebar(false)} className="md:hidden p-1.5 rounded-md transition-colors cursor-pointer" style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -1538,8 +1540,16 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               </div>
             <button onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
               className="p-2 rounded-xl transition-all hover:scale-110 ml-auto group cursor-pointer"
-              style={{ color: "var(--primary)", backgroundColor: "rgba(16,163,127,0.08)" }}
-              title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}>
+              style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+              title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}
+              onMouseEnter={e => {
+                const svg = e.currentTarget.querySelector("svg");
+                if (svg) { (svg as SVGElement).style.color = "var(--primary)"; (svg as SVGElement).style.filter = "drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 60%, transparent))"; }
+              }}
+              onMouseLeave={e => {
+                const svg = e.currentTarget.querySelector("svg");
+                if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
+              }}>
               {sidebarLock === "locked" ? (
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.15)" }} />
@@ -2062,14 +2072,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               }
                             }}
                               className="p-1.5 rounded-lg transition-all hover:scale-110 cursor-pointer"
-                              style={{ color: "var(--text-tertiary)", backgroundColor: "var(--surface-hover)" }}
+                              style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
                               onMouseEnter={e => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface)";
                                 const svg = e.currentTarget.querySelector("svg");
-                                if (svg) { (svg as SVGElement).style.color = "var(--text-primary)"; (svg as SVGElement).style.filter = "none"; }
+                                if (svg) { (svg as SVGElement).style.color = "var(--primary)"; (svg as SVGElement).style.filter = "drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 60%, transparent))"; }
                               }}
                               onMouseLeave={e => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)";
                                 const svg = e.currentTarget.querySelector("svg");
                                 if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
                               }}
