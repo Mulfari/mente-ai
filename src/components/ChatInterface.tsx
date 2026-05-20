@@ -1324,27 +1324,28 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* New chat button */}
         <div className="px-4 shrink-0 pb-3">
           <button onClick={newConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer group"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.97] cursor-pointer group"
             style={{
-              backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)",
+              backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
               color: "var(--primary)",
-              border: "1px solid color-mix(in srgb, var(--primary) 15%, transparent)",
-              boxShadow: "0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--primary) 30%, transparent)",
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "color-mix(in srgb, var(--primary) 20%, transparent)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in srgb, var(--primary) 40%, transparent)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px color-mix(in srgb, var(--primary) 25%, transparent)";
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.02)";
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.backgroundColor = "color-mix(in srgb, var(--primary) 18%, transparent)";
+              el.style.borderColor = "var(--primary)";
+              el.style.boxShadow = "0 0 16px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 0 12px color-mix(in srgb, var(--primary) 8%, transparent)";
+              el.style.transform = "scale(1.03)";
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, transparent)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in srgb, var(--primary) 15%, transparent)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent)";
-              (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.backgroundColor = "color-mix(in srgb, var(--primary) 12%, transparent)";
+              el.style.borderColor = "color-mix(in srgb, var(--primary) 30%, transparent)";
+              el.style.boxShadow = "none";
+              el.style.transform = "scale(1)";
             }}
           >
-            <svg className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" style={{ cursor: "pointer" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
             Nuevo chat
