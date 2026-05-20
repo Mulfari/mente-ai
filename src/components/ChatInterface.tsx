@@ -1440,7 +1440,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         </div>
 
         {/* Bottom */}
-        <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid var(--border)" }}>
           {/* User */}
           <button onClick={() => setShowAccountMenu(true)}
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
@@ -1494,16 +1494,16 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             className="absolute inset-y-0 left-0 z-50 flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
             onClick={() => setSidebarLock("locked")}
             onMouseEnter={() => setSidebarHovered(true)}
-            style={{ width: 48, backgroundColor: "rgba(22,22,22,0.98)" }}>
+            style={{ width: 48, backgroundColor: "var(--surface)" }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 2px 12px color-mix(in srgb, var(--primary) 30%, transparent)" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
             {/* Unlocked icon with pulse glow */}
             <div className="relative">
-              <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 20%, transparent)", filter: "blur(4px)" }} />
+              <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.2)", filter: "blur(4px)" }} />
               <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                 style={{ color: "var(--primary)" }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
@@ -1538,11 +1538,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               </div>
             <button onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
               className="p-2 rounded-xl transition-all hover:scale-110 ml-auto group cursor-pointer"
-              style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}
+              style={{ color: "var(--primary)", backgroundColor: "rgba(16,163,127,0.08)" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}>
               {sidebarLock === "locked" ? (
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }} />
+                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.15)" }} />
                   <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                     style={{ color: "var(--primary)" }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -1550,7 +1550,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 </div>
               ) : (
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }} />
+                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.15)" }} />
                   <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                     style={{ color: "var(--primary)" }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
@@ -1643,7 +1643,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           </div>
 
           {/* Bottom */}
-          <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid var(--border)" }}>
             <button onClick={() => setShowAccountMenu(true)}
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
               style={{ color: "var(--text-secondary)" }}>
@@ -2435,7 +2435,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
 
   if (removed) {
     return <div className="rounded-xl mb-0.5 overflow-hidden" style={{ height: 53, transition: "height 0.3s ease-in, opacity 0.2s ease-in", opacity: 0 }}>
-      <div className="h-full rounded-xl" style={{ backgroundColor: "#141414", transform: "translateX(-100%)" }} />
+      <div className="h-full rounded-xl" style={{ backgroundColor: "var(--surface)", transform: "translateX(-100%)" }} />
     </div>;
   }
 
@@ -2489,7 +2489,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
       <div
         className="relative flex items-center gap-2.5 px-4 py-3 cursor-pointer select-none rounded-xl"
         style={{
-          backgroundColor: "#141414",
+          backgroundColor: "transparent",
           transform: `translateX(-${offset}px)`,
           willChange: "transform",
           transition: dragging ? "none" : offset > 0 ? "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
@@ -2500,10 +2500,10 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
-        onMouseEnter={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
+        onMouseEnter={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)"; }}
         onMouseLeave={e => {
           if (!dragging) {
-            (e.currentTarget as HTMLDivElement).style.backgroundColor = "#141414";
+            (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent";
             if (offset > 0) setOffset(0);
           }
         }}
@@ -2512,16 +2512,16 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
         )}
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface-hover)" }}>
+          style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface)" }}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
             style={{ color: isActive ? "var(--primary)" : "var(--text-tertiary)" }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         </div>
-        <p className="flex-1 text-xs font-medium truncate" style={{ color: isActive ? "var(--text-primary)" : "rgba(255,255,255,0.55)" }}>
+        <p className="flex-1 text-xs font-medium truncate" style={{ color: isActive ? "var(--text-primary)" : "var(--text-secondary)" }}>
           {conv.title}
         </p>
-        <span className="text-[10px] shrink-0" style={{ color: "rgba(255,255,255,0.2)" }}>{dateLabel}</span>
+        <span className="text-[10px] shrink-0" style={{ color: "var(--text-tertiary)" }}>{dateLabel}</span>
       </div>
     </div>
   );
