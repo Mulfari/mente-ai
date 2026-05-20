@@ -2184,14 +2184,15 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                             )}
                           </button>
                           {(() => {
-                            const showFeedback = parseInt((msg as any).id?.slice(-8) || "0", 16) % 10 < 3 && !(msg as any)._feedbackGiven;
+                            const showFeedback = parseInt((msg as any).id?.slice(-8) || "0", 16) % 10 < 3 && !(msg as any)._feedbackGiven && (msg as any).feedback_vote === undefined;
                             if (!showFeedback) return null;
                             return <div className="inline-flex items-center gap-0.5">
                               <button onClick={async () => {
                                 if ((msg as any)._feedbackGiven) return;
-                                (msg as any)._feedbackGiven = true;
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _feedbackGiven: true } : m));
                                 const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
                                 await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true }) });
+                                await supabase.from("messages").update({ feedback_vote: true }).eq("id", msg.id);
                                 setNotification("Gracias por tu feedback");
                                 if (notifTimer.current) clearTimeout(notifTimer.current);
                                 notifTimer.current = setTimeout(() => setNotification(null), 2500);
@@ -2205,9 +2206,10 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               </button>
                               <button onClick={async () => {
                                 if ((msg as any)._feedbackGiven) return;
-                                (msg as any)._feedbackGiven = true;
+                                setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, _feedbackGiven: true } : m));
                                 const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
                                 await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false }) });
+                                await supabase.from("messages").update({ feedback_vote: false }).eq("id", msg.id);
                                 setNotification("Entendido, lo mejoraremos");
                                 if (notifTimer.current) clearTimeout(notifTimer.current);
                                 notifTimer.current = setTimeout(() => setNotification(null), 2500);
