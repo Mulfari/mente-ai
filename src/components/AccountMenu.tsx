@@ -65,7 +65,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
       if (diffMs <= 0) return { bg: "rgba(239,68,68,0.2)", color: "var(--danger)" };
       if (diffMs < 3 * 24 * 60 * 60 * 1000) return { bg: "rgba(245,158,11,0.2)", color: "var(--warning)" };
     }
-    return { bg: "color-mix(in srgb, var(--primary) 20%, transparent)", color: "var(--primary)" };
+    return { bg: "rgba(16,163,127,0.2)", color: "var(--primary)" };
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -206,7 +206,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
               {showDaysAdded && (
                 <div className="mt-3 text-center animate-fade-in">
                   <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl"
-                    style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", border: "1px solid color-mix(in srgb, var(--primary) 25%, transparent)" }}>
+                    style={{ backgroundColor: "rgba(16,163,127,0.15)", border: "1px solid rgba(16,163,127,0.25)" }}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
                       style={{ color: "var(--primary)" }}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
@@ -277,7 +277,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
 
               {success && (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl"
-                  style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
+                  style={{ backgroundColor: "rgba(16,163,127,0.1)", border: "1px solid rgba(16,163,127,0.2)" }}>
                   <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>

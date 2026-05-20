@@ -1886,11 +1886,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     <div
                       className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                       style={{
-                        backgroundColor: msg.role === "user" ? "var(--user-bubble)" : "var(--user-bubble-other)",
+                        backgroundColor: msg.role === "user" ? "var(--user-bubble)" : "var(--surface)",
                         color: msg.role === "user" ? "white" : "var(--text-primary)",
                         borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                        border: msg.role === "assistant" && msg._isDeep ? "1px solid var(--accent)" : "1px solid transparent",
-                        borderLeft: msg.role === "assistant" && msg._isDeep ? "3px solid var(--accent)" : "none",
+                        border: msg.role === "assistant" && msg._isDeep ? "1px solid #a78bfa" : "1px solid transparent",
+                        borderLeft: msg.role === "assistant" && msg._isDeep ? "3px solid #7c3aed" : "none",
                       }}>
                       {msg.role === "user" ? (
                         <>

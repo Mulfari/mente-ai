@@ -1,42 +1,40 @@
 @import "tailwindcss";
 
 [data-theme="dark"] {
-  --primary: #60A5FA;
-  --primary-hover: #3B82F6;
-  --background: #0F172A;
-  --surface: #1E293B;
-  --surface-hover: #334155;
-  --border: #334155;
-  --text-primary: #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #64748B;
-  --danger: #F87171;
-  --warning: #FBBF24;
+  --primary: #10A37F;
+  --primary-hover: #0D8B6A;
+  --background: #0d1117;
+  --surface: #161b22;
+  --surface-hover: #1c2128;
+  --border: #30363d;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
+  --danger: #EF4444;
+  --warning: #F59E0B;
   --success: #4ADE80;
-  --user-bubble: #1B4F9C;
-  --user-bubble-other: #334155;
-  --accent: #FFD700;
+  --user-bubble: #10A37F;
+  --accent: #10A37F;
   --code-bg: rgba(255,255,255,0.08);
   --code-block-bg: rgba(255,255,255,0.05);
   --table-row-hover: rgba(255,255,255,0.03);
 }
 
 [data-theme="light"] {
-  --primary: #1B4F9C;
-  --primary-hover: #174688;
-  --background: #F8FAFC;
-  --surface: #FFFFFF;
-  --surface-hover: #F1F5F9;
-  --border: #E2E8F0;
-  --text-primary: #1E293B;
-  --text-secondary: #64748B;
-  --text-tertiary: #94A3B8;
-  --danger: #DC2626;
-  --warning: #F59E0B;
+  --primary: #10A37F;
+  --primary-hover: #0D8B6A;
+  --background: #f6f8fa;
+  --surface: #ffffff;
+  --surface-hover: #f0f2f5;
+  --border: #d0d7de;
+  --text-primary: #1f2328;
+  --text-secondary: #57606a;
+  --text-tertiary: #8c959f;
+  --danger: #E53E3E;
+  --warning: #DD6B20;
   --success: #16A34A;
-  --user-bubble: #FFFFFF;
-  --user-bubble-other: #F1F5F9;
-  --accent: #FFD700;
+  --user-bubble: #10A37F;
+  --accent: #10A37F;
   --code-bg: rgba(0,0,0,0.06);
   --code-block-bg: rgba(0,0,0,0.04);
   --table-row-hover: rgba(0,0,0,0.02);

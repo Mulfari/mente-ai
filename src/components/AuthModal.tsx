@@ -115,7 +115,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 8px 32px color-mix(in srgb, var(--primary) 30%, transparent)" }}>
+            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 8px 32px rgba(16,163,127,0.3)" }}>
             <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
@@ -136,7 +136,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
               style={{
                 backgroundColor: mode === m ? "var(--primary)" : "transparent",
                 color: mode === m ? "white" : "var(--text-secondary)",
-                boxShadow: mode === m ? "0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent)" : "none",
+                boxShadow: mode === m ? "0 4px 12px rgba(16,163,127,0.3)" : "none",
               }}>
               {m === "login" ? "Iniciar sesión" : "Registrarse"}
             </button>
