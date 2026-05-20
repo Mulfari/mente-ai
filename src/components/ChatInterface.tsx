@@ -18,7 +18,6 @@ type Message = {
   user_id?: string;
   conversation_id?: string;
   attachments?: string[];
-  attachment_urls?: string[];
   _previewUrls?: Record<string, string>;
   _loading?: boolean;
   in_progress?: boolean;
@@ -672,19 +671,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     });
   }
 
-  async function uploadAttachment(file: File, userId: string): Promise<string | null> {
-    const ext = file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/gif" ? "gif" : file.type === "image/webp" ? "webp" : file.type.split("/")[1] || "bin";
-    const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    console.log("[Mulfai] Uploading attachment:", fileName, file.type, file.size);
-    const { data, error } = await supabase.storage.from("attachments").upload(fileName, file, { contentType: file.type, upsert: false });
-    if (error) { console.error("[Mulfai] Upload error:", error); return null; }
-    console.log("[Mulfai] Upload success:", data);
-    const { data: urlData } = supabase.storage.from("attachments").getPublicUrl(fileName);
-    console.log("[Mulfai] Public URL:", urlData.publicUrl);
-    return urlData.publicUrl;
-  }
-  }
-
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     const newFiles: File[] = [];
@@ -754,12 +740,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       const msgId = assistantMsg?.id || Date.now().toString();
       if (assistantMsg) setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
-      else {
-        const loadingText = responseMode === "deep"
-          ? "Pensando... (modo profundo, puede tardar un poco)"
-          : "";
-        setMessages(prev => [...prev, { id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
-      }
+      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
       setStreamingMsgId(msgId);
 
       const res = await fetch("/api/chat", {
@@ -916,7 +897,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   async function sendMessage() {
     if (!input.trim() && attachments.length === 0) return;
     const block = getBlockReason();
-    if (!block.canSend) { if (!isLoggedIn) setShowAuthPrompt(true); return; }
+    if (!block.canSend) return;
 
     // If AI is currently streaming, queue this message (max 1)
     if (sending) {
@@ -1046,26 +1027,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
     if (!conv) return;
 
-    // Get current user ID for storage uploads
-    const { data: authData } = await supabase.auth.getUser();
-    const currentUserId = authData?.user?.id;
-
-    // Upload attachments to storage first so they persist
-    const uploadedUrls: string[] = [];
-    for (const file of filesToSend) {
-      if (file.type.startsWith("image/") && currentUserId) {
-        const url = await uploadAttachment(file, currentUserId);
-        if (url) uploadedUrls.push(url);
-      }
-    }
-
     const { data: inserted } = await supabase
       .from("messages")
-      .insert({ conversation_id: conv.id, role: "user", content: userMsg, attachments: filesToSend.map(f => f.name), attachment_urls: uploadedUrls })
+      .insert({ conversation_id: conv.id, role: "user", content: userMsg, attachments: filesToSend.map(f => f.name) })
       .select()
       .single();
     if (inserted) {
-      setMessages(prev => [...prev, { ...inserted, ...(savedPreviews && Object.keys(savedPreviews).length > 0 ? { _previewUrls: savedPreviews } : {}) }]);
+      setMessages(prev => [...prev, { ...inserted, _previewUrls: savedPreviews }]);
     }
 
     try {
@@ -1095,11 +1063,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       if (assistantMsg) {
         setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
       } else {
-        const loadingText = responseMode === "deep"
-          ? "Pensando... (modo profundo, puede tardar un poco)"
-          : "";
         setMessages(prev => [...prev, {
-          id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
+          id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
         }]);
       }
       setStreamingMsgId(msgId);
@@ -1921,9 +1886,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                       }}>
                       {msg.role === "user" ? (
                         <>
-                          {msg.attachment_urls && msg.attachment_urls.length > 0 && (
+                          {msg._previewUrls && (
                             <div className="flex flex-wrap gap-1.5 mb-2">
-                              {msg.attachment_urls.map((url, i) => (
+                              {Object.values(msg._previewUrls).map((url, i) => (
                                 <img key={i} src={url} alt="adjunto"
                                   onClick={() => setLightboxUrl(url)}
                                   className="rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
