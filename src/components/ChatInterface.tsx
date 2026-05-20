@@ -2176,7 +2176,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                             )}
                           </button>
                           {(() => {
-                            const showFeedback = parseInt((msg as any).id?.slice(-8) || "0", 16) % 10 < 3 && !(msg as any)._feedbackGiven && (msg as any).feedback_vote === undefined;
+                            const showFeedback = parseInt((msg as any).id?.slice(-8) || "0", 16) % 10 < 3 && !(msg as any)._feedbackGiven && (msg as any).feedback_vote == null;
                             if (!showFeedback) return null;
                             return <div className="inline-flex items-center gap-0.5">
                               <button onClick={async () => {
