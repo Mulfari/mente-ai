@@ -1576,9 +1576,30 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           {/* New chat button */}
           <div className="px-4 shrink-0 pb-3">
             <button onClick={newConversation}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer"
-              style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", color: "var(--primary)", border: "1px solid color-mix(in srgb, var(--primary) 15%, transparent)" }}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
+              style={{
+                backgroundColor: "var(--surface)",
+                color: "var(--text-secondary)",
+                border: "1px solid var(--border)",
+              }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.backgroundColor = "var(--surface-hover)";
+                el.style.color = "var(--primary)";
+                el.style.borderColor = "var(--primary)";
+                el.style.transform = "scale(1.02)";
+                el.style.boxShadow = "0 0 0 1px var(--primary), 0 4px 16px color-mix(in srgb, var(--primary) 15%, transparent)";
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.backgroundColor = "var(--surface)";
+                el.style.color = "var(--text-secondary)";
+                el.style.borderColor = "var(--border)";
+                el.style.transform = "scale(1)";
+                el.style.boxShadow = "none";
+              }}
+            >
+              <svg className="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
               Nuevo chat
