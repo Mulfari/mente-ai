@@ -1925,10 +1925,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5">
-                              {[0, 150, 300].map((delay, i) => (
-                                <span key={i} className="w-2 h-2 rounded-full animate-pulse-dot"
-                                  style={{ backgroundColor: "var(--text-secondary)", animationDelay: `${delay}ms` }} />
-                              ))}
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
+                              <span className="typing-dot" />
                             </span>
                           )}
                         </div>

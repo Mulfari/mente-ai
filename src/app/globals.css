@@ -120,13 +120,21 @@ body::before {
   50% { box-shadow: 0 0 0 3px #EF4444, 0 0 22px rgba(239,68,68,0.7); }
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+@keyframes typingDot {
+  0%, 100% { opacity: 0.15; transform: scale(0.7); }
+  30%, 60% { opacity: 1; transform: scale(1); }
 }
-.animate-pulse-dot {
-  animation: pulse 1.4s ease-in-out infinite;
+.typing-dot {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--text-secondary);
+  vertical-align: middle;
 }
+.typing-dot:nth-child(1) { animation: typingDot 1.4s ease-in-out infinite 0.0s; }
+.typing-dot:nth-child(2) { animation: typingDot 1.4s ease-in-out infinite 0.2s; }
+.typing-dot:nth-child(3) { animation: typingDot 1.4s ease-in-out infinite 0.4s; }
 
 /* Typing cursor for streaming */
 .typing-cursor {
