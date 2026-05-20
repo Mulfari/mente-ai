@@ -83,12 +83,12 @@ export async function POST(request: Request) {
     const convId = conversation_id;
     const assistantMsgId = message_id || crypto.randomUUID();
 
-    // Build combined question with history context for VPS
-    let combinedQuestion = message;
-    if (historyMessages.length > 0) {
-      const historyText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`).join("\n");
-      combinedQuestion = `Contexto de la conversacion anterior:\n${historyText}\n\nUsuario: ${message}`;
-    }
+    // Fetch user personal context from Supabase
+    const { data: userContext } = await supabase
+      .from("user_context")
+      .select("full_name, city, interests, custom_notes")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -100,7 +100,12 @@ export async function POST(request: Request) {
         try {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
-          // Call VPS orchestrator
+          // Build conversation history for VPS
+          const historyText = historyMessages.length > 0
+            ? historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`).join("\n")
+            : "";
+
+          // Call VPS orchestrator with full context
           const vpsResponse = await fetch(`${VPS_URL}/api/orchestrate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -110,6 +115,13 @@ export async function POST(request: Request) {
               conversation_id: convId,
               mode: mode || "normal",
               attachments: attachments || [],
+              user_context: userContext ? {
+                name: userContext.full_name || "",
+                city: userContext.city || "",
+                interests: userContext.interests || "",
+                notes: userContext.custom_notes || "",
+              } : null,
+              conversation_history: historyText || undefined,
             }),
             signal: AbortSignal.timeout(TIMEOUT_MS),
           });

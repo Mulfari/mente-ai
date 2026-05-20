@@ -224,6 +224,15 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
         {/* Actions */}
         {view === "main" ? (
           <div className="space-y-2">
+            <button onClick={() => window.location.href = "/context"}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+              style={{ backgroundColor: "var(--surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                style={{ color: "var(--primary)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+              Mi contexto
+            </button>
             <button onClick={() => setView("coupon")}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all hover:opacity-90"
               style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
