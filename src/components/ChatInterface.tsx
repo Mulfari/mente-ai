@@ -1559,7 +1559,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
               </div>
             <button onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
-              className="p-2 rounded-xl transition-all hover:scale-110 ml-auto group cursor-pointer"
+              className="p-2 rounded-xl cursor-pointer"
               style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}
               onMouseEnter={e => {
@@ -1571,21 +1571,15 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
               }}>
               {sidebarLock === "locked" ? (
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.15)" }} />
-                  <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-                    style={{ color: "var(--primary)" }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                </div>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                  style={{ color: "var(--text-tertiary)" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
               ) : (
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.15)" }} />
-                  <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-                    style={{ color: "var(--primary)" }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                  </svg>
-                </div>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                  style={{ color: "var(--text-tertiary)" }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                </svg>
               )}
             </button>
           </div>
