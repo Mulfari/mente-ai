@@ -2184,57 +2184,56 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                             )}
                           </button>
                           {(() => {
-                            const showFeedback = Math.random() < 0.3 && !msg._feedbackGiven;
+                            const showFeedback = Math.random() < 0.3 && !(msg as any)._feedbackGiven;
                             if (!showFeedback) return null;
-                            return (
-                              <>
-                                <button onClick={async () => {
-                                  if ((msg as any)._feedbackGiven) return;
-                                  (msg as any)._feedbackGiven = true;
-                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                                  try {
-                                    await fetch("/api/feedback", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true }),
-                                    });
-                                    setNotification("Gracias por tu feedback");
-                                    if (notifTimer.current) clearTimeout(notifTimer.current);
-                                    notifTimer.current = setTimeout(() => setNotification(null), 2500);
-                                  } catch {}
-                                }}
-                                  className="p-1 rounded transition-all cursor-pointer text-base leading-none"
-                                  style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
-                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#22c55e"; }}
-                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
-                                  title="Útil">
-                                  👍
-                                </button>
-                                <button onClick={async () => {
-                                  if ((msg as any)._feedbackGiven) return;
-                                  (msg as any)._feedbackGiven = true;
-                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                                  try {
-                                    await fetch("/api/feedback", {
-                                      method: "POST",
-                                      headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false }),
-                                    });
-                                    setNotification("Entendido, lo mejoraremos");
-                                    if (notifTimer.current) clearTimeout(notifTimer.current);
-                                    notifTimer.current = setTimeout(() => setNotification(null), 2500);
-                                  } catch {}
-                                }}
-                                  className="p-1 rounded transition-all cursor-pointer text-base leading-none"
-                                  style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
-                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--danger)"; }}
-                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
-                                  title="No útil">
-                                  👎
-                                </button>
-                              </>
-                            );
+                            return <div className="inline-flex items-center gap-0.5">
+                              <button onClick={async () => {
+                                if ((msg as any)._feedbackGiven) return;
+                                (msg as any)._feedbackGiven = true;
+                                const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
+                                try {
+                                  await fetch("/api/feedback", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true }),
+                                  });
+                                  setNotification("Gracias por tu feedback");
+                                  if (notifTimer.current) clearTimeout(notifTimer.current);
+                                  notifTimer.current = setTimeout(() => setNotification(null), 2500);
+                                } catch {}
+                              }}
+                                className="p-1 rounded transition-all cursor-pointer text-base leading-none"
+                                style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#22c55e"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
+                                title="Util">
+                                👍
+                              </button>
+                              <button onClick={async () => {
+                                if ((msg as any)._feedbackGiven) return;
+                                (msg as any)._feedbackGiven = true;
+                                const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
+                                try {
+                                  await fetch("/api/feedback", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false }),
+                                  });
+                                  setNotification("Entendido, lo mejoraremos");
+                                  if (notifTimer.current) clearTimeout(notifTimer.current);
+                                  notifTimer.current = setTimeout(() => setNotification(null), 2500);
+                                } catch {}
+                              }}
+                                className="p-1 rounded transition-all cursor-pointer text-base leading-none"
+                                style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--danger)"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
+                                title="No util">
+                                👎
+                              </button>
+                            </div>;
                           })()}
+                        </>
                       )}
                       <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                         {formatTime(msg.created_at)}
