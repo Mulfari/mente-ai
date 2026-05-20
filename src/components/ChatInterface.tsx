@@ -2068,17 +2068,18 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               setDisplayedText(prev => { const n = { ...prev }; delete n[msg.id]; return n; });
                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "", _loading: true } : m));
                               setRetryMode(msg.id);
-                              // Spin + bounce animation — clear first to force re-render
-                              setRetryingId(null);
-                              setTimeout(() => setRetryingId(msg.id), 10);
-                              setTimeout(() => setRetryingId(null), 510);
-                              // Wobble the retry button
+                              // Wobble + spin animations — wait for them to play before resetting
                               const el2 = retryRef.current;
                               if (el2) {
                                 el2.classList.remove("icon-wobble");
                                 void (el2 as unknown as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect();
                                 el2.classList.add("icon-wobble");
                               }
+                              setRetryingId(null);
+                              setTimeout(() => setRetryingId(msg.id), 10);
+                              setTimeout(() => setRetryingId(null), 510);
+                              // Wait for animations to complete before resetting
+                              await new Promise(r => setTimeout(r, 550));
                               // Clear DB message and mark in_progress for new response
                               await supabase.from("messages").update({ content: "", in_progress: true }).eq("id", msg.id);
                               const res = await fetch("/api/chat", {
