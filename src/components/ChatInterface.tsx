@@ -1346,6 +1346,26 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             </span>
           </button>
 
+          <button onClick={() => window.location.href = "/agent"}
+            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
+            style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.color = "var(--primary)";
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.color = "var(--text-tertiary)";
+            }}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span className="relative">
+              Ir al Agente
+            </span>
+          </button>
+
           {/* Buscador */}
           <div className="relative">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
