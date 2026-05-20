@@ -131,8 +131,13 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Missing env vars" }, { status: 500 });
     }
 
+    const headers: Record<string, string> = {
+      apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
+    };
+
     console.log("[admin/data DELETE] supabaseUrl:", supabaseUrl);
-    console.log("[admin/data DELETE] serviceKey:", serviceKey ? "SET" : "UNDEFINED");
+    console.log("[admin/data DELETE] serviceKey: SET");
     console.log("[admin/data DELETE] type:", type, "id:", id);
 
     // Verify admin
@@ -148,11 +153,6 @@ export async function DELETE(request: Request) {
     if (!profile || profile.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    };
 
     if (type === "coupon" && id) {
       const res = await fetch(`${supabaseUrl}/rest/v1/coupons?id=eq.${id}`, {
