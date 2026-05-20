@@ -1324,25 +1324,33 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* New chat button */}
         <div className="px-4 shrink-0 pb-3">
           <button onClick={newConversation}
-            className="group relative w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer overflow-hidden"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
+            style={{
+              backgroundColor: "var(--surface)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.backgroundColor = "var(--surface-hover)";
+              el.style.color = "var(--primary)";
+              el.style.borderColor = "var(--primary)";
+              el.style.transform = "scale(1.02)";
+              el.style.boxShadow = "0 0 0 1px var(--primary), 0 4px 16px color-mix(in srgb, var(--primary) 15%, transparent)";
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLButtonElement;
+              el.style.backgroundColor = "var(--surface)";
+              el.style.color = "var(--text-secondary)";
+              el.style.borderColor = "var(--border)";
+              el.style.transform = "scale(1)";
+              el.style.boxShadow = "none";
+            }}
           >
-            {/* Ripple layer */}
-            <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-              style={{ background: "radial-gradient(circle at center, color-mix(in srgb, var(--primary) 18%, transparent), transparent 70%)" }} />
-            {/* Border overlay */}
-            <span className="absolute inset-0 rounded-xl pointer-events-none transition-all duration-300"
-              style={{ border: "1px solid transparent", background: "var(--surface)" }} />
-            <span className="absolute inset-0 rounded-xl pointer-events-none transition-all duration-300 group-hover:opacity-100"
-              style={{ border: "1px solid var(--primary)", opacity: 0.3 }} />
-            {/* Content */}
-            <span className="relative flex items-center gap-2 transition-all duration-300"
-              style={{ color: "var(--text-secondary)" }}>
-              <svg className="w-4 h-4 transition-all duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
-                style={{}}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-              </svg>
-              <span className="transition-all duration-300 group-hover:text-[var(--primary)]">Nuevo chat</span>
-            </span>
+            <svg className="w-4 h-4 transition-transform duration-300" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Nuevo chat
           </button>
         </div>
 
@@ -2112,6 +2120,55 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                               </svg>
                             )}
+                          </button>
+                          {/* Feedback buttons */}
+                          <button onClick={async () => {
+                            if ((msg as any)._feedback) return;
+                            (msg as any)._feedback = true;
+                            try {
+                              const prevIdx = messages.findIndex((_: any, i: number) => i === messages.indexOf(msg)) - 1;
+                              await fetch("http://177.7.46.156:3000/api/feedback", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ question: messages[prevIdx]?.content || "", response: msg.content, rating: true }),
+                              });
+                              setNotification("Gracias por tu feedback");
+                              if (notifTimer.current) clearTimeout(notifTimer.current);
+                              notifTimer.current = setTimeout(() => setNotification(null), 2500);
+                            } catch {}
+                          }}
+                            className="p-1.5 rounded-lg transition-all cursor-pointer"
+                            style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                            onMouseEnter={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "#22c55e"; (svg as SVGElement).style.filter = "drop-shadow(0 0 4px rgba(34,197,94,0.6))"; } }}
+                            onMouseLeave={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; } }}
+                            title="Respuesta útil">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.095 0-.189.002-.282.006L7 6h-.028A2 2 0 005 8H2v6a2 2 0 002 2h4m0 0v1a3 3 0 01-3 3H7" />
+                            </svg>
+                          </button>
+                          <button onClick={async () => {
+                            if ((msg as any)._feedback) return;
+                            (msg as any)._feedback = true;
+                            try {
+                              const prevIdx = messages.findIndex((_: any, i: number) => i === messages.indexOf(msg)) - 1;
+                              await fetch("http://177.7.46.156:3000/api/feedback", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ question: messages[prevIdx]?.content || "", response: msg.content, rating: false }),
+                              });
+                              setNotification("Entendido, lo mejoraremos");
+                              if (notifTimer.current) clearTimeout(notifTimer.current);
+                              notifTimer.current = setTimeout(() => setNotification(null), 2500);
+                            } catch {}
+                          }}
+                            className="p-1.5 rounded-lg transition-all cursor-pointer"
+                            style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                            onMouseEnter={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "var(--danger)"; (svg as SVGElement).style.filter = "drop-shadow(0 0 4px rgba(239,68,68,0.6))"; } }}
+                            onMouseLeave={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; } }}
+                            title="Respuesta no útil">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l1.5-5A2 2 0 018.736 6h4.528a2 2 0 011.789 2.894l-.75 2.5m4 0h4a2 2 0 012 2v1a2 2 0 01-2 2H7a2 2 0 01-2-2v-1a2 2 0 012-2m-4 0V5a2 2 0 012-2h3.528M10 14V5a2 2 0 012-2h2a2 2 0 012 2v9" />
+                            </svg>
                           </button>
                           </>
                       )}
