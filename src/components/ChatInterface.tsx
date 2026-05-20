@@ -57,6 +57,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     typeof window !== "undefined" ? ((localStorage.getItem("mulfai-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
   );
   const lockRef = useRef<SVGSVGElement>(null);
+  const retryRef = useRef<SVGSVGElement>(null);
   const [sidebarHovered, setSidebarHovered] = useState(false);
 
   // Persist sidebar lock state
@@ -1567,9 +1568,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 });
                 const el = lockRef.current as SVGSVGElement | null;
                 if (el) {
-                  el.classList.remove("lock-bounce");
+                  el.classList.remove("icon-bounce");
                   void (el as unknown as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect();
-                  el.classList.add("lock-bounce");
+                  el.classList.add("icon-bounce");
                 }
               }}
               className="p-2 rounded-xl cursor-pointer"
@@ -2067,10 +2068,17 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               setDisplayedText(prev => { const n = { ...prev }; delete n[msg.id]; return n; });
                               setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, content: "", _loading: true } : m));
                               setRetryMode(msg.id);
-                              // Spin animation — clear first to force re-render and restart animation
+                              // Spin + bounce animation — clear first to force re-render
                               setRetryingId(null);
                               setTimeout(() => setRetryingId(msg.id), 10);
                               setTimeout(() => setRetryingId(null), 510);
+                              // Wobble the retry button
+                              const el2 = retryRef.current;
+                              if (el2) {
+                                el2.classList.remove("icon-wobble");
+                                void (el2 as unknown as { getBoundingClientRect: () => DOMRect }).getBoundingClientRect();
+                                el2.classList.add("icon-wobble");
+                              }
                               // Clear DB message and mark in_progress for new response
                               await supabase.from("messages").update({ content: "", in_progress: true }).eq("id", msg.id);
                               const res = await fetch("/api/chat", {
@@ -2146,6 +2154,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               }}
                               title="Reintentar">
                               <svg
+                                ref={retryRef}
                                 className={`w-3.5 h-3.5 ${retryingId === msg.id ? "spin-once" : ""}`}
                                 fill="none"
                                 stroke="currentColor"
