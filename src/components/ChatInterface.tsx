@@ -1325,29 +1325,23 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* Nueva conversacion + Buscador */}
         <div className="px-4 shrink-0 pb-2 space-y-2">
           <button onClick={newConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
-            style={{
-              backgroundColor: "transparent",
-              color: "var(--text-secondary)",
-              border: "1px solid transparent",
-            }}
+            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
+            style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
-              el.style.backgroundColor = "var(--surface-hover)";
               el.style.color = "var(--primary)";
-              el.style.borderColor = "var(--border)";
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLButtonElement;
-              el.style.backgroundColor = "transparent";
-              el.style.color = "var(--text-secondary)";
-              el.style.borderColor = "transparent";
+              el.style.color = "var(--text-tertiary)";
             }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nueva conversación
+            <span className="relative">
+              Nueva conversación
+            </span>
           </button>
 
           {/* Buscador */}
@@ -2189,56 +2183,58 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               </svg>
                             )}
                           </button>
-                          {/* Feedback buttons */}
-                          <button onClick={async () => {
-                            if ((msg as any)._feedbackGiven) return;
-                            (msg as any)._feedbackGiven = true;
-                            const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                            try {
-                              await fetch("/api/feedback", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true }),
-                              });
-                              setNotification("Gracias por tu feedback");
-                              if (notifTimer.current) clearTimeout(notifTimer.current);
-                              notifTimer.current = setTimeout(() => setNotification(null), 2500);
-                            } catch {}
-                          }}
-                            className="p-1.5 rounded-lg transition-all cursor-pointer"
-                            style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
-                            onMouseEnter={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "#22c55e"; (svg as SVGElement).style.filter = "drop-shadow(0 0 4px rgba(34,197,94,0.6))"; } }}
-                            onMouseLeave={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; } }}
-                            title="Respuesta útil">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.095 0-.189.002-.282.006L7 6h-.028A2 2 0 005 8H2v6a2 2 0 002 2h4m0 0v1a3 3 0 01-3 3H7" />
-                            </svg>
-                          </button>
-                          <button onClick={async () => {
-                            if ((msg as any)._feedbackGiven) return;
-                            (msg as any)._feedbackGiven = true;
-                            const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                            try {
-                              await fetch("/api/feedback", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false }),
-                              });
-                              setNotification("Entendido, lo mejoraremos");
-                              if (notifTimer.current) clearTimeout(notifTimer.current);
-                              notifTimer.current = setTimeout(() => setNotification(null), 2500);
-                            } catch {}
-                          }}
-                            className="p-1.5 rounded-lg transition-all cursor-pointer"
-                            style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
-                            onMouseEnter={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "var(--danger)"; (svg as SVGElement).style.filter = "drop-shadow(0 0 4px rgba(239,68,68,0.6))"; } }}
-                            onMouseLeave={e => { const svg = e.currentTarget.querySelector("svg"); if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; } }}
-                            title="Respuesta no útil">
-                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l1.5-5A2 2 0 018.736 6h4.528a2 2 0 011.789 2.894l-.75 2.5m4 0h4a2 2 0 012 2v1a2 2 0 01-2 2H7a2 2 0 01-2-2v-1a2 2 0 012-2m-4 0V5a2 2 0 012-2h3.528M10 14V5a2 2 0 012-2h2a2 2 0 012 2v9" />
-                            </svg>
-                          </button>
-                          </>
+                          {(() => {
+                            const showFeedback = Math.random() < 0.3 && !msg._feedbackGiven;
+                            if (!showFeedback) return null;
+                            return (
+                              <>
+                                <button onClick={async () => {
+                                  if ((msg as any)._feedbackGiven) return;
+                                  (msg as any)._feedbackGiven = true;
+                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
+                                  try {
+                                    await fetch("/api/feedback", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true }),
+                                    });
+                                    setNotification("Gracias por tu feedback");
+                                    if (notifTimer.current) clearTimeout(notifTimer.current);
+                                    notifTimer.current = setTimeout(() => setNotification(null), 2500);
+                                  } catch {}
+                                }}
+                                  className="p-1 rounded transition-all cursor-pointer text-base leading-none"
+                                  style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#22c55e"; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
+                                  title="Útil">
+                                  👍
+                                </button>
+                                <button onClick={async () => {
+                                  if ((msg as any)._feedbackGiven) return;
+                                  (msg as any)._feedbackGiven = true;
+                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
+                                  try {
+                                    await fetch("/api/feedback", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false }),
+                                    });
+                                    setNotification("Entendido, lo mejoraremos");
+                                    if (notifTimer.current) clearTimeout(notifTimer.current);
+                                    notifTimer.current = setTimeout(() => setNotification(null), 2500);
+                                  } catch {}
+                                }}
+                                  className="p-1 rounded transition-all cursor-pointer text-base leading-none"
+                                  style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--danger)"; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
+                                  title="No útil">
+                                  👎
+                                </button>
+                              </>
+                            );
+                          })()}
                       )}
                       <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
                         {formatTime(msg.created_at)}
