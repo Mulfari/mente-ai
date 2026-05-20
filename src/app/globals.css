@@ -13,7 +13,8 @@
   --danger: #F87171;
   --warning: #FBBF24;
   --success: #4ADE80;
-  --user-bubble: #60A5FA;
+  --user-bubble: #1B4F9C;
+  --user-bubble-other: #334155;
   --accent: #FFD700;
   --code-bg: rgba(255,255,255,0.08);
   --code-block-bg: rgba(255,255,255,0.05);
@@ -33,7 +34,8 @@
   --danger: #DC2626;
   --warning: #F59E0B;
   --success: #16A34A;
-  --user-bubble: #1B4F9C;
+  --user-bubble: #FFFFFF;
+  --user-bubble-other: #F1F5F9;
   --accent: #FFD700;
   --code-bg: rgba(0,0,0,0.06);
   --code-block-bg: rgba(0,0,0,0.04);
