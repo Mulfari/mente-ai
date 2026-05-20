@@ -1290,9 +1290,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       <div
         className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
-          backgroundColor: "rgba(22,22,22,0.96)",
+          backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
           backdropFilter: "blur(40px)",
-          borderRight: "1px solid rgba(255,255,255,0.05)",
+          borderRight: "1px solid var(--border)",
           transform: `translateX(${showSidebar ? "0" : "-100%"})`,
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
           touchAction: "pan-y",
@@ -1352,13 +1352,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
           <div className="pb-2">
-            <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>
+            <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "var(--text-tertiary)" }}>
               Historial
             </p>
           </div>
           {conversations.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>Sin conversaciones</p>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin conversaciones</p>
             </div>
           ) : (
             <div className="space-y-0.5 pb-4">
@@ -1396,21 +1396,21 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                   <div key={conv.id}
                     className="group w-full text-left rounded-xl flex items-center gap-3 cursor-pointer transition-all duration-200 px-3 py-3 relative"
                     onClick={() => selectConv(conv)}
-                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
                     {isActive && (
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
                     )}
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ backgroundColor: isActive ? "rgba(16,163,127,0.15)" : "rgba(255,255,255,0.04)" }}>
+                      style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface-hover)" }}>
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-                        style={{ color: isActive ? "#10A37F" : "rgba(255,255,255,0.3)" }}>
+                        style={{ color: isActive ? "var(--primary)" : "var(--text-tertiary)" }}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate leading-tight" style={{ color: isActive ? "var(--text-primary)" : "rgba(255,255,255,0.55)" }}>{conv.title}</p>
-                      <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.2)" }}>{dateLabel}</p>
+                      <p className="text-xs font-medium truncate leading-tight" style={{ color: "var(--text-secondary)" }}>{conv.title}</p>
+                      <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{dateLabel}</p>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
                       className="shrink-0 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 p-2 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer"
@@ -1514,9 +1514,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div
           className={`h-full flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
-            backgroundColor: "rgba(22,22,22,0.96)",
+            backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
             backdropFilter: "blur(40px)",
-            borderRight: "1px solid rgba(255,255,255,0.05)",
+            borderRight: "1px solid var(--border)",
             overflow: "hidden",
           }}
           onMouseEnter={() => {
@@ -1575,11 +1575,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           {/* Conversations */}
           <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
             <div className="pb-2">
-              <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.25)" }}>Historial</p>
+              <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "var(--text-tertiary)" }}>Historial</p>
             </div>
             {conversations.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-xs" style={{ color: "rgba(255,255,255,0.2)" }}>Sin conversaciones</p>
+                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin conversaciones</p>
               </div>
             ) : (
               <div className="space-y-0.5 pb-4">
@@ -1601,21 +1601,21 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     <div key={conv.id}
                       className="group w-full text-left rounded-xl flex items-center gap-3 cursor-pointer transition-all duration-200 px-3 py-3 relative"
                       onClick={() => selectConv(conv)}
-                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "rgba(255,255,255,0.03)"; }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)"; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
                       {isActive && (
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
                       )}
                       <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ backgroundColor: isActive ? "rgba(16,163,127,0.15)" : "rgba(255,255,255,0.04)" }}>
+                        style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface-hover)" }}>
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-                          style={{ color: isActive ? "#10A37F" : "rgba(255,255,255,0.3)" }}>
+                          style={{ color: isActive ? "var(--primary)" : "var(--text-tertiary)" }}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate leading-tight" style={{ color: isActive ? "var(--text-primary)" : "rgba(255,255,255,0.55)" }}>{conv.title}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.2)" }}>{dateLabel}</p>
+                        <p className="text-xs font-medium truncate leading-tight" style={{ color: "var(--text-secondary)" }}>{conv.title}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{dateLabel}</p>
                       </div>
                       <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
                         className="shrink-0 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 p-2 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer"
@@ -1687,10 +1687,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           style={{
             background: "linear-gradient(180deg, rgba(38,38,38,0.98) 0%, rgba(28,28,28,0.99) 100%)",
             backdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid var(--border)",
           }}>
           <button onClick={() => setShowSidebar(true)}
-            className="absolute left-4 p-2 rounded-full transition-colors hover:bg-white/10" style={{ color: "var(--text-secondary)" }}>
+            className="absolute left-4 p-2 rounded-full transition-colors" style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
@@ -1745,7 +1747,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               {/* Skeleton while loading direct URL conversation */}
               <div className="flex justify-end mb-4">
                 <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite" }}>
-                  <div className="h-4 rounded" style={{ backgroundColor: "rgba(255,255,255,0.3)", width: "120px" }} />
+                  <div className="h-4 rounded" style={{ backgroundColor: "color-mix(in srgb, var(--text-primary) 25%, transparent)", width: "120px" }} />
                 </div>
               </div>
               <div className="flex justify-start mb-4">
@@ -1936,18 +1938,18 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                                 const match = /language-(\w+)/.exec(className || "");
                                 const code = String(children).replace(/\n$/, "");
                                 if (!match) {
-                                  return <code className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "#a5d6ff" }}>{code}</code>;
+                                  return <code className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ backgroundColor: "var(--code-bg)", color: "var(--primary)" }}>{code}</code>;
                                 }
                                 return (
                                   <div className="relative group rounded-xl overflow-hidden my-2" style={{ maxWidth: "100%" }}>
                                     <div className="flex items-center justify-between px-4 py-2"
-                                      style={{ backgroundColor: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                                      <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.4)" }}>
+                                      style={{ backgroundColor: "color-mix(in srgb, var(--surface) 80%, transparent)", borderBottom: "1px solid var(--border)" }}>
+                                      <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
                                         {match[1]}
                                       </span>
                                       <button onClick={() => navigator.clipboard.writeText(code)}
                                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
-                                        style={{ backgroundColor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.5)" }}>
+                                        style={{ backgroundColor: "var(--code-bg)", color: "var(--text-secondary)" }}>
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                         </svg>
@@ -2060,14 +2062,14 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               }
                             }}
                               className="p-1.5 rounded-lg transition-all hover:scale-110 cursor-pointer"
-                              style={{ color: "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
+                              style={{ color: "var(--text-tertiary)", backgroundColor: "var(--surface-hover)" }}
                               onMouseEnter={e => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.12)";
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface)";
                                 const svg = e.currentTarget.querySelector("svg");
-                                if (svg) { (svg as SVGElement).style.color = "#ffffff"; (svg as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))"; }
+                                if (svg) { (svg as SVGElement).style.color = "var(--text-primary)"; (svg as SVGElement).style.filter = "none"; }
                               }}
                               onMouseLeave={e => {
-                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
+                                (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)";
                                 const svg = e.currentTarget.querySelector("svg");
                                 if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
                               }}
@@ -2512,9 +2514,9 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "#10A37F" }} />
         )}
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: isActive ? "rgba(16,163,127,0.15)" : "rgba(255,255,255,0.04)" }}>
+          style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface-hover)" }}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-            style={{ color: isActive ? "#10A37F" : "rgba(255,255,255,0.3)" }}>
+            style={{ color: isActive ? "var(--primary)" : "var(--text-tertiary)" }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         </div>

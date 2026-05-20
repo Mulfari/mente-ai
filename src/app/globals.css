@@ -3,31 +3,37 @@
 [data-theme="dark"] {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #0f0f0f;
-  --surface: #1a1a1a;
-  --surface-hover: #222222;
-  --border: #2e2e2e;
-  --text-primary: #f0f0f0;
-  --text-secondary: #a0a0a0;
-  --text-tertiary: #666666;
+  --background: #0d1117;
+  --surface: #161b22;
+  --surface-hover: #1c2128;
+  --border: #30363d;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
   --danger: #EF4444;
   --warning: #F59E0B;
   --user-bubble: #10A37F;
+  --code-bg: rgba(255,255,255,0.08);
+  --code-block-bg: rgba(255,255,255,0.05);
+  --table-row-hover: rgba(255,255,255,0.03);
 }
 
 [data-theme="light"] {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #f0f2f5;
+  --background: #f6f8fa;
   --surface: #ffffff;
-  --surface-hover: #f5f7fa;
-  --border: #e2e6eb;
-  --text-primary: #1a1a2e;
-  --text-secondary: #4a5568;
-  --text-tertiary: #a0aec0;
+  --surface-hover: #f0f2f5;
+  --border: #d0d7de;
+  --text-primary: #1f2328;
+  --text-secondary: #57606a;
+  --text-tertiary: #8c959f;
   --danger: #E53E3E;
   --warning: #DD6B20;
   --user-bubble: #10A37F;
+  --code-bg: rgba(0,0,0,0.06);
+  --code-block-bg: rgba(0,0,0,0.04);
+  --table-row-hover: rgba(0,0,0,0.02);
 }
 
 @theme inline {
@@ -147,14 +153,14 @@ body::before {
   margin-bottom: 0;
 }
 .prose code {
-  background: rgba(255,255,255,0.08);
+  background: var(--code-bg);
   padding: 0.15em 0.4em;
   border-radius: 4px;
   font-size: 0.875em;
   font-family: monospace;
 }
 .prose pre {
-  background: rgba(255,255,255,0.05);
+  background: var(--code-block-bg);
   padding: 1em;
   border-radius: 8px;
   overflow-x: auto;
@@ -210,7 +216,7 @@ body::before {
   display: block;
 }
 .prose thead tr {
-  background: rgba(255,255,255,0.05);
+  background: var(--code-block-bg);
 }
 .prose th {
   padding: 0.5em 0.8em;
@@ -225,7 +231,7 @@ body::before {
   color: var(--text-secondary);
 }
 .prose tbody tr:hover {
-  background: rgba(255,255,255,0.02);
+  background: var(--table-row-hover);
 }
 .prose hr {
   border: none;
