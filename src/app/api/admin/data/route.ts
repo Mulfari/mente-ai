@@ -136,10 +136,6 @@ export async function DELETE(request: Request) {
       Authorization: `Bearer ${serviceKey}`,
     };
 
-    console.log("[admin/data DELETE] supabaseUrl:", supabaseUrl);
-    console.log("[admin/data DELETE] serviceKey: SET");
-    console.log("[admin/data DELETE] type:", type, "id:", id);
-
     // Verify admin
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -164,7 +160,18 @@ export async function DELETE(request: Request) {
     }
 
     if (type === "profile" && id) {
-      // 1. Delete auth user first — cascades to profile deletion
+      // 1. Clear coupons first (FK RESTRICT blocks auth user deletion otherwise)
+      await fetch(`${supabaseUrl}/rest/v1/coupons?used_by=eq.${id}`, {
+        method: "PATCH",
+        headers: { ...headers, Prefer: "return=minimal" },
+        body: JSON.stringify({ used_by: null, used_by_email: null, used_by_name: null, used_at: null }),
+      }).catch(() => {});
+      // 2. Delete conversations (user_id FK cascades to messages)
+      await fetch(`${supabaseUrl}/rest/v1/conversations?user_id=eq.${id}`, {
+        method: "DELETE",
+        headers,
+      }).catch(() => {});
+      // 3. Delete auth user — cascades to profile deletion
       const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, {
         method: "DELETE",
         headers,
@@ -174,17 +181,6 @@ export async function DELETE(request: Request) {
         console.error("[admin/data DELETE] Auth delete failed:", authRes.status, body);
         return NextResponse.json({ error: `Auth delete failed: ${authRes.status} ${body}` }, { status: 500 });
       }
-      // 2. Delete conversations (user_id FK cascades to messages)
-      await fetch(`${supabaseUrl}/rest/v1/conversations?user_id=eq.${id}`, {
-        method: "DELETE",
-        headers,
-      }).catch(() => {});
-      // 3. Clear coupons (release their codes for reuse)
-      await fetch(`${supabaseUrl}/rest/v1/coupons?used_by=eq.${id}`, {
-        method: "PATCH",
-        headers: { ...headers, Prefer: "return=minimal" },
-        body: JSON.stringify({ used_by: null, used_by_email: null, used_by_name: null, used_at: null }),
-      }).catch(() => {});
       return NextResponse.json({ success: true });
     }
 
