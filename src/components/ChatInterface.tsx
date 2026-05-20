@@ -1806,7 +1806,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 </button>
                 <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
                   className="p-1.5 rounded-lg transition-all"
-                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)", display: "none" }}
+                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)" }}
                   title="Cerrar sesión">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -1878,7 +1878,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         </header>
 
         {/* Messages */}
-        <main className="flex-[private model]in-h-0 overflow-y-auto chat-gradient-bg">
+        <main className="flex-1 min-h-0 overflow-y-auto">
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
