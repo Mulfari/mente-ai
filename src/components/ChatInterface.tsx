@@ -1746,7 +1746,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
               <div className="flex justify-end mb-4">
-                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--primary)", animation: "pulse 1.5s ease-in-out infinite" }}>
+                <div className="rounded-2xl rounded-br-4px px-5 py-3 max-w-xs" style={{ backgroundColor: "var(--user-bubble)", animation: "pulse 1.5s ease-in-out infinite" }}>
                   <div className="h-4 rounded" style={{ backgroundColor: "color-mix(in srgb, var(--text-primary) 25%, transparent)", width: "120px" }} />
                 </div>
               </div>
@@ -1886,7 +1886,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     <div
                       className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
                       style={{
-                        backgroundColor: msg.role === "user" ? "var(--primary)" : "var(--surface)",
+                        backgroundColor: msg.role === "user" ? "var(--user-bubble)" : "var(--surface)",
                         color: msg.role === "user" ? "white" : "var(--text-primary)",
                         borderRadius: msg.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                         border: msg.role === "assistant" && msg._isDeep ? "1px solid #a78bfa" : "1px solid transparent",

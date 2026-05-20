@@ -21,16 +21,16 @@
 [data-theme="light"] {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #2d2d2d;
-  --surface: #252525;
-  --surface-hover: #333333;
-  --border: #404040;
-  --text-primary: #e8e8e8;
-  --text-secondary: #a0a0a0;
-  --text-tertiary: #707070;
+  --background: #3a3a3a;
+  --surface: #303030;
+  --surface-hover: #404040;
+  --border: #505050;
+  --text-primary: #f0f0f0;
+  --text-secondary: #a8a8a8;
+  --text-tertiary: #777777;
   --danger: #E53E3E;
   --warning: #DD6B20;
-  --user-bubble: #10A37F;
+  --user-bubble: #0d8b6a;
   --code-bg: rgba(255,255,255,0.08);
   --code-block-bg: rgba(255,255,255,0.05);
   --table-row-hover: rgba(255,255,255,0.03);
