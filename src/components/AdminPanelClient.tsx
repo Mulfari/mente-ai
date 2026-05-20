@@ -750,14 +750,15 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                                   onClick={async () => {
                                     setActionLoading(user.id + "-delete");
                                     try {
-                                      await adminFetch(`/api/admin/data?type=profile&id=${user.id}&email=${encodeURIComponent(user.email)}`, {
+                                      const data = await adminFetch(`/api/admin/data?type=profile&id=${user.id}&email=${encodeURIComponent(user.email)}`, {
                                         method: "DELETE",
                                         headers: { "Content-Type": "application/json" },
                                       });
+                                      void data;
                                       await loadUsers();
                                       showToast("success", "Usuario eliminado");
-                                    } catch {
-                                      showToast("error", "Error al eliminar usuario");
+                                    } catch (err: any) {
+                                      showToast("error", err.message || "Error al eliminar usuario");
                                     }
                                     setActionLoading(null);
                                     setDeleteConfirmUser(null);

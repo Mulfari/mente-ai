@@ -160,27 +160,26 @@ export async function DELETE(request: Request) {
     }
 
     if (type === "profile" && id) {
-      // 1. Clear used_by in coupons (release their coupons first)
-      await fetch(`${supabaseUrl}/rest/v1/coupons?used_by=eq.${id}`, {
-        method: "PATCH",
-        headers: { ...headers, Prefer: "return=minimal" },
-        body: JSON.stringify({ used_by: null, used_by_email: null, used_by_name: null, used_at: null }),
-      }).catch(() => {});
-      // 2. Delete conversations (cascades to messages)
+      // 1. Delete auth user first — cascades to profile deletion
+      const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, {
+        method: "DELETE",
+        headers,
+      });
+      if (!authRes.ok) {
+        const body = await authRes.text();
+        console.error("[admin/data DELETE] Auth delete failed:", authRes.status, body);
+        return NextResponse.json({ error: `Auth delete failed: ${authRes.status} ${body}` }, { status: 500 });
+      }
+      // 2. Delete conversations (user_id FK cascades to messages)
       await fetch(`${supabaseUrl}/rest/v1/conversations?user_id=eq.${id}`, {
         method: "DELETE",
         headers,
       }).catch(() => {});
-      // 3. Delete profile
-      const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${id}`, {
-        method: "DELETE",
-        headers,
-      });
-      if (!res.ok) return NextResponse.json({ error: "Failed to delete profile" }, { status: 500 });
-      // 4. Delete auth user
-      await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, {
-        method: "DELETE",
-        headers,
+      // 3. Clear coupons (release their codes for reuse)
+      await fetch(`${supabaseUrl}/rest/v1/coupons?used_by=eq.${id}`, {
+        method: "PATCH",
+        headers: { ...headers, Prefer: "return=minimal" },
+        body: JSON.stringify({ used_by: null, used_by_email: null, used_by_name: null, used_at: null }),
       }).catch(() => {});
       return NextResponse.json({ success: true });
     }
