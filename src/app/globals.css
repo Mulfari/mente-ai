@@ -158,10 +158,11 @@ body::before {
 }
 .prose code {
   background: var(--code-bg);
-  padding: 0.15em 0.4em;
-  border-radius: 4px;
+  padding: 0.15em 0.5em;
+  border-radius: 6px;
   font-size: 0.875em;
   font-family: monospace;
+  border: 1px solid var(--border);
 }
 .prose pre {
   background: var(--code-block-bg);
@@ -207,9 +208,11 @@ body::before {
 }
 .prose blockquote {
   border-left: 3px solid var(--primary);
-  padding-left: 0.8em;
+  padding: 0.5em 1em;
+  background: var(--surface);
+  border-radius: 0 8px 8px 0;
   color: var(--text-secondary);
-  margin: 0.5em 0;
+  margin: 0.6em 0;
 }
 .prose table {
   width: 100%;
@@ -218,24 +221,40 @@ body::before {
   font-size: 0.875em;
   overflow-x: auto;
   display: block;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
 }
 .prose thead tr {
-  background: var(--code-block-bg);
+  background: var(--surface);
 }
 .prose th {
-  padding: 0.5em 0.8em;
+  padding: 0.6em 1em;
   text-align: left;
   font-weight: 600;
   border-bottom: 1px solid var(--border);
   color: var(--text-primary);
+  font-size: 0.8em;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 .prose td {
-  padding: 0.4em 0.8em;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  padding: 0.5em 1em;
+  border-bottom: 1px solid var(--border);
   color: var(--text-secondary);
+  font-size: 0.875em;
+}
+.prose tbody tr {
+  transition: background-color 0.15s;
+}
+.prose tbody tr:last-child td {
+  border-bottom: none;
+}
+.prose tbody tr:nth-child(even) {
+  background: var(--table-row-hover);
 }
 .prose tbody tr:hover {
-  background: var(--table-row-hover);
+  background: var(--surface-hover);
 }
 .prose hr {
   border: none;
