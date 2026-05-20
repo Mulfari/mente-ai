@@ -67,22 +67,6 @@ html, body {
   font-family: var(--font-inter), system-ui, sans-serif;
   margin: 0;
   padding: 0;
-  transition: background-color 0.25s ease;
-}
-
-/* Subtle wave pattern on background (Telegram-style) */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='20' viewBox='0 0 60 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10 Q15 0 30 10 Q45 20 60 10' stroke='%23c5cdc0' stroke-width='0.5' fill='none' opacity='0.5'/%3E%3C/svg%3E");
-  background-size: 60px 20px;
-  pointer-events: none;
-  z-index: 0;
-}
-
-:root[class~="dark"] body::before {
-  background-image: url("data:image/svg+xml,%3Csvg width='60' height='20' viewBox='0 0 60 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10 Q15 0 30 10 Q45 20 60 10' stroke='%23262630' stroke-width='0.5' fill='none' opacity='0.8'/%3E%3C/svg%3E");
 }
 
 ::-webkit-scrollbar {
