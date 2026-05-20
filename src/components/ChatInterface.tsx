@@ -87,6 +87,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
   const [streamError, setStreamError] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [displayedText, setDisplayedText] = useState<Record<string, string>>({});
   // Typing reveal state per message
@@ -1321,8 +1322,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         </div>
 
         
-        {/* New chat button */}
-        <div className="px-4 shrink-0 pb-2">
+        {/* Nueva conversacion + Buscador */}
+        <div className="px-4 shrink-0 pb-2 space-y-2">
           <button onClick={newConversation}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
             style={{
@@ -1346,8 +1347,37 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Nuevo chat
+            Nueva conversación
           </button>
+
+          {/* Buscador */}
+          <div className="relative">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+              style={{ color: "var(--text-tertiary)" }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Buscar conversaciones..."
+              className="w-full pl-9 pr-3 py-2 rounded-xl text-xs transition-all cursor-pointer"
+              style={{
+                backgroundColor: "var(--surface-hover)",
+                color: "var(--text-secondary)",
+                border: "1px solid transparent",
+                outline: "none",
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.backgroundColor = "var(--surface)";
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = "transparent";
+                e.currentTarget.style.backgroundColor = "var(--surface-hover)";
+              }}
+            />
+          </div>
         </div>
 
         <div className="px-4 pb-1 shrink-0" style={{ height: "1px", backgroundColor: "var(--border)" }} />
@@ -1356,11 +1386,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
           {conversations.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin conversaciones</p>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{searchQuery ? "Sin resultados" : "Sin conversaciones"}</p>
             </div>
           ) : (
             <div className="space-y-0.5 pb-4">
-              {conversations.map(conv => {
+              {conversations.filter(c => !searchQuery || c.title.toLowerCase().includes(searchQuery.toLowerCase())).map(conv => {
                 const isActive = activeConv?.id === conv.id;
                 const dateStr = (conv.updated_at && conv.updated_at !== conv.created_at) ? conv.updated_at : conv.created_at;
                 const d = new Date(dateStr || "");
@@ -1566,10 +1596,10 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             </button>
           </div>
 
-          {/* New chat button */}
-          <div className="px-4 shrink-0 pb-3">
+          {/* Nueva conversacion + Buscador */}
+          <div className="px-4 shrink-0 pb-2 space-y-2">
             <button onClick={newConversation}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
               style={{
                 backgroundColor: "transparent",
                 color: "var(--text-secondary)",
@@ -1591,22 +1621,50 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              Nuevo chat
+              Nueva conversación
             </button>
+
+            {/* Buscador */}
+            <div className="relative">
+              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                style={{ color: "var(--text-tertiary)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar conversaciones..."
+                className="w-full pl-9 pr-3 py-2 rounded-xl text-xs transition-all cursor-pointer"
+                style={{
+                  backgroundColor: "var(--surface-hover)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid transparent",
+                  outline: "none",
+                }}
+                onFocus={e => {
+                  e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.backgroundColor = "var(--surface)";
+                }}
+                onBlur={e => {
+                  e.currentTarget.style.borderColor = "transparent";
+                  e.currentTarget.style.backgroundColor = "var(--surface-hover)";
+                }}
+              />
+            </div>
           </div>
+
+          <div className="px-4 pb-1 shrink-0" style={{ height: "1px", backgroundColor: "var(--border)" }} />
 
           {/* Conversations */}
           <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
-            <div className="pb-2">
-              <p className="px-2 pb-2 text-[11px] font-medium tracking-widest uppercase" style={{ color: "var(--text-tertiary)" }}>Historial</p>
-            </div>
             {conversations.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Sin conversaciones</p>
+                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{searchQuery ? "Sin resultados" : "Sin conversaciones"}</p>
               </div>
             ) : (
               <div className="space-y-0.5 pb-4">
-                {conversations.map(conv => {
+                {conversations.filter(c => !searchQuery || c.title.toLowerCase().includes(searchQuery.toLowerCase())).map(conv => {
                   const isActive = activeConv?.id === conv.id;
                   const dateStr = (conv.updated_at && conv.updated_at !== conv.created_at) ? conv.updated_at : conv.created_at;
                   const d = new Date(dateStr || "");
