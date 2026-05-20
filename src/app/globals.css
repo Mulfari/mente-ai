@@ -70,32 +70,14 @@ html, body {
   transition: background-color 0.25s ease;
 }
 
-/* WhatsApp-style dot pattern on background */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23b9c9b9' fill-opacity='0.8'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
-}
 
-:root[class~="dark"] body::before {
-  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%231a252d' fill-opacity='0.6'/%3E%3C/svg%3E");
+/* Chat area subtle gradient */
+.chat-gradient-bg {
+  background: linear-gradient(180deg, var(--background) 0%, color-mix(in srgb, var(--primary) 3%, var(--background)) 100%);
 }
 
 ::-webkit-scrollbar {
   width: 5px;
-}
-
-
-/* Chat messages area subtle dot texture */
-.chat-bg {
-  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23b9c9b9' fill-opacity='0.6'/%3E%3C/svg%3E");
-}
-
-[data-theme="dark"] .chat-bg {
-  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%231a252d' fill-opacity='0.8'/%3E%3C/svg%3E");
 }
 
 ::-webkit-scrollbar-track {
@@ -110,7 +92,12 @@ body::before {
 }
 
 /* Sidebar content scroll hidden in mobile */
-.sidebar-no-scroll::-webkit-scrollbar { display: none; }
+.sidebar-no-scroll/* Chat area subtle gradient */
+.chat-gradient-bg {
+  background: linear-gradient(180deg, var(--background) 0%, color-mix(in srgb, var(--primary) 3%, var(--background)) 100%);
+}
+
+::-webkit-scrollbar { display: none; }
 .sidebar-no-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 
 @keyframes fadeIn {
