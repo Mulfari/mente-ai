@@ -601,7 +601,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto pr-1" style={{ scrollbarWidth: "thin" }}>
                 {filtered.map(user => {
                   const isAdmin = user.role === "admin";
                   const endDate = getEndDate(user.subscription_start, user.subscription_weeks);
