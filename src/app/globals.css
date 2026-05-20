@@ -87,6 +87,17 @@ body::before {
 ::-webkit-scrollbar {
   width: 5px;
 }
+
+
+/* Chat messages area subtle dot texture */
+.chat-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23b9c9b9' fill-opacity='0.6'/%3E%3C/svg%3E");
+}
+
+[data-theme="dark"] .chat-bg {
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%231a252d' fill-opacity='0.8'/%3E%3C/svg%3E");
+}
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
