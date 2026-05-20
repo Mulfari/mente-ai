@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const VPS_URL = process.env.NEXT_PUBLIC_VPS_URL || "http://177.7.46.156:3000";
+const VPS_URL = process.env.VPS_URL || "http://177.7.46.156:3000";
 
 export async function POST(req: Request) {
   try {
