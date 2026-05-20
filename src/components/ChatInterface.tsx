@@ -2184,51 +2184,38 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                             )}
                           </button>
                           {(() => {
-                            const showFeedback = parseInt((msg as any).id?.slice(-8) || "0", 16) % 10 < 3;
+                            const showFeedback = parseInt((msg as any).id?.slice(-8) || "0", 16) % 10 < 3 && !(msg as any)._feedbackGiven;
                             if (!showFeedback) return null;
-                            const given = (msg as any)._feedbackGiven as string | undefined;
                             return <div className="inline-flex items-center gap-0.5">
                               <button onClick={async () => {
-                                if (given === "false") {
-                                  (msg as any)._feedbackGiven = "updating";
-                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                                  await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true, update: true }) });
-                                  (msg as any)._feedbackGiven = "true";
-                                } else if (!given) {
-                                  (msg as any)._feedbackGiven = "true";
-                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                                  await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true }) });
-                                  setNotification("Gracias por tu feedback");
-                                  if (notifTimer.current) clearTimeout(notifTimer.current);
-                                  notifTimer.current = setTimeout(() => setNotification(null), 2500);
-                                }
+                                if ((msg as any)._feedbackGiven) return;
+                                (msg as any)._feedbackGiven = true;
+                                const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
+                                await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: true }) });
+                                setNotification("Gracias por tu feedback");
+                                if (notifTimer.current) clearTimeout(notifTimer.current);
+                                notifTimer.current = setTimeout(() => setNotification(null), 2500);
                               }}
                                 className="p-1 rounded transition-all cursor-pointer text-base leading-none"
-                                style={{ color: given ? "#22c55e" : "var(--text-tertiary)", backgroundColor: "transparent" }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = given ? "#22c55e" : "#22c55e"; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = given ? "#22c55e" : "var(--text-tertiary)"; }}
+                                style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#22c55e"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
                                 title="Util">
                                 👍
                               </button>
                               <button onClick={async () => {
-                                if (given === "true") {
-                                  (msg as any)._feedbackGiven = "updating";
-                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                                  await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false, update: true }) });
-                                  (msg as any)._feedbackGiven = "false";
-                                } else if (!given) {
-                                  (msg as any)._feedbackGiven = "false";
-                                  const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
-                                  await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false }) });
-                                  setNotification("Entendido, lo mejoraremos");
-                                  if (notifTimer.current) clearTimeout(notifTimer.current);
-                                  notifTimer.current = setTimeout(() => setNotification(null), 2500);
-                                }
+                                if ((msg as any)._feedbackGiven) return;
+                                (msg as any)._feedbackGiven = true;
+                                const prevMsg = messages.find((m, i) => i > 0 && messages[i - 1].id === msg.id && messages[i - 1].role === "user") || messages.filter(m => m.role === "user").at(-1);
+                                await fetch("/api/feedback", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: prevMsg?.content || "", response: msg.content, rating: false }) });
+                                setNotification("Entendido, lo mejoraremos");
+                                if (notifTimer.current) clearTimeout(notifTimer.current);
+                                notifTimer.current = setTimeout(() => setNotification(null), 2500);
                               }}
                                 className="p-1 rounded transition-all cursor-pointer text-base leading-none"
-                                style={{ color: given === "false" ? "var(--danger)" : "var(--text-tertiary)", backgroundColor: "transparent" }}
-                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = given === "false" ? "var(--danger)" : "var(--danger)"; }}
-                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = given === "false" ? "var(--danger)" : "var(--text-tertiary)"; }}
+                                style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
+                                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "var(--danger)"; }}
+                                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "var(--text-tertiary)"; }}
                                 title="No util">
                                 👎
                               </button>
