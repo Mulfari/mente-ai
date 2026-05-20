@@ -3,17 +3,17 @@
 [data-theme="dark"] {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #111B21;
-  --surface: #1F2C33;
-  --surface-hover: #2A3942;
-  --border: #374045;
-  --text-primary: #e9edef;
-  --text-secondary: #8696a0;
-  --text-tertiary: #667781;
+  --background: #0d1117;
+  --surface: #161b22;
+  --surface-hover: #1c2128;
+  --border: #30363d;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8b949e;
+  --text-tertiary: #6e7681;
   --danger: #EF4444;
   --warning: #F59E0B;
   --success: #4ADE80;
-  --user-bubble: #005C4B;
+  --user-bubble: #10A37F;
   --accent: #10A37F;
   --code-bg: rgba(255,255,255,0.08);
   --code-block-bg: rgba(255,255,255,0.05);
@@ -70,16 +70,24 @@ html, body {
   transition: background-color 0.25s ease;
 }
 
+/* Subtle wave pattern on background (Telegram-style) */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='20' viewBox='0 0 60 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10 Q15 0 30 10 Q45 20 60 10' stroke='%23c5cdc0' stroke-width='0.5' fill='none' opacity='0.5'/%3E%3C/svg%3E");
+  background-size: 60px 20px;
+  pointer-events: none;
+  z-index: 0;
+}
 
-/* Chat area subtle gradient */
-.chat-gradient-bg {
-  background: linear-gradient(180deg, var(--background) 0%, color-mix(in srgb, var(--primary) 3%, var(--background)) 100%);
+:root[class~="dark"] body::before {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='20' viewBox='0 0 60 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 10 Q15 0 30 10 Q45 20 60 10' stroke='%23262630' stroke-width='0.5' fill='none' opacity='0.8'/%3E%3C/svg%3E");
 }
 
 ::-webkit-scrollbar {
   width: 5px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
@@ -92,12 +100,7 @@ html, body {
 }
 
 /* Sidebar content scroll hidden in mobile */
-.sidebar-no-scroll/* Chat area subtle gradient */
-.chat-gradient-bg {
-  background: linear-gradient(180deg, var(--background) 0%, color-mix(in srgb, var(--primary) 3%, var(--background)) 100%);
-}
-
-::-webkit-scrollbar { display: none; }
+.sidebar-no-scroll::-webkit-scrollbar { display: none; }
 .sidebar-no-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 
 @keyframes fadeIn {
