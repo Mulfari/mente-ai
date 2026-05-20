@@ -115,7 +115,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", boxShadow: "0 8px 32px rgba(16,163,127,0.3)" }}>
+            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 8px 32px color-mix(in srgb, var(--primary) 30%, transparent)" }}>
             <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
             </svg>
@@ -136,7 +136,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
               style={{
                 backgroundColor: mode === m ? "var(--primary)" : "transparent",
                 color: mode === m ? "white" : "var(--text-secondary)",
-                boxShadow: mode === m ? "0 4px 12px rgba(16,163,127,0.3)" : "none",
+                boxShadow: mode === m ? "0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent)" : "none",
               }}>
               {m === "login" ? "Iniciar sesión" : "Registrarse"}
             </button>
@@ -253,7 +253,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
           {/* Success */}
           {success && (
             <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
-              style={{ backgroundColor: "rgba(16,163,127,0.1)", border: "1px solid rgba(16,163,127,0.2)" }}>
+              style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -264,7 +264,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
           {/* Submit button */}
           <button type="submit" disabled={loading}
             className="w-full py-3.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all relative"
-            style={{ backgroundColor: "var(--primary)", color: "white", boxShadow: "0 4px 14px rgba(16,163,127,0.4)" }}>
+            style={{ backgroundColor: "var(--primary)", color: "white", boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 40%, transparent)" }}>
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

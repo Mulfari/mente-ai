@@ -436,7 +436,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div className="space-y-2 mt-4">
           <div className="flex justify-end">
             <div className="px-3 py-2 rounded-2xl rounded-br-md text-xs font-medium"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
               Explícame qué es el machine learning
             </div>
           </div>
@@ -465,7 +465,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             Adjunta una imagen...
           </div>
           <div className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
             <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
             </svg>
@@ -480,7 +480,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       preview: (
         <div className="flex items-center gap-2 mt-4">
           <div className="flex-1 h-8 rounded-xl overflow-hidden" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
-            <div className="h-full rounded-xl flex items-center gap-1.5 px-3" style={{ background: "rgba(16,163,127,0.08)" }}>
+            <div className="h-full rounded-xl flex items-center gap-1.5 px-3" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
               <svg className="w-3 h-3 shrink-0" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
@@ -488,7 +488,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             </div>
           </div>
           <span className="text-[10px] font-semibold px-2 py-1 rounded-full"
-            style={{ backgroundColor: "rgba(16,163,127,0.15)", color: "var(--primary)" }}>
+            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
             Pensar
           </span>
         </div>
@@ -501,7 +501,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       preview: (
         <div className="flex items-center gap-3 mt-4 px-3 py-3 rounded-xl" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, rgba(16,163,127,0.2), rgba(16,163,127,0.05))" }}>
+            style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--primary) 5%, transparent))" }}>
             <svg className="w-4 h-4" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -511,7 +511,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Restablece cada lunes</p>
           </div>
           <button className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
-            style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
             Añadir
           </button>
         </div>
@@ -525,7 +525,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       <div>
         <div className="flex items-center gap-3 mb-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, rgba(16,163,127,0.15), rgba(16,163,127,0.05))" }}>
+            style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 15%, transparent), color-mix(in srgb, var(--primary) 5%, transparent))" }}>
             <svg className="w-5 h-5" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
             </svg>
@@ -1303,7 +1303,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-              style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
               <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
@@ -1324,21 +1324,21 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           <button onClick={newConversation}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer group"
             style={{
-              backgroundColor: "rgba(16,163,127,0.1)",
-              color: "#10A37F",
-              border: "1px solid rgba(16,163,127,0.15)",
-              boxShadow: "0 0 0 0 rgba(16,163,127,0)",
+              backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)",
+              color: "var(--primary)",
+              border: "1px solid color-mix(in srgb, var(--primary) 15%, transparent)",
+              boxShadow: "0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent)",
             }}
             onMouseEnter={e => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(16,163,127,0.2)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(16,163,127,0.4)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px rgba(16,163,127,0.25)";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "color-mix(in srgb, var(--primary) 20%, transparent)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in srgb, var(--primary) 40%, transparent)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 20px color-mix(in srgb, var(--primary) 25%, transparent)";
               (e.currentTarget as HTMLButtonElement).style.transform = "scale(1.02)";
             }}
             onMouseLeave={e => {
-              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(16,163,127,0.1)";
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(16,163,127,0.15)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 0 rgba(16,163,127,0)";
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, transparent)";
+              (e.currentTarget as HTMLButtonElement).style.borderColor = "color-mix(in srgb, var(--primary) 15%, transparent)";
+              (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 0 0 0 color-mix(in srgb, var(--primary) 0%, transparent)";
               (e.currentTarget as HTMLButtonElement).style.transform = "scale(1)";
             }}
           >
@@ -1446,13 +1446,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
             style={{ color: "var(--text-secondary)" }}>
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
-              style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
             </div>
             <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{userEmail}</span>
             {profile && (
               <div className="w-1.5 h-1.5 rounded-full ml-1 shrink-0"
-                style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "#10A37F" : "#EF4444" }} />
+                style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "var(--primary)" : "var(--danger)" }} />
             )}
           </button>
           {/* Actions */}
@@ -1496,14 +1496,14 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             onMouseEnter={() => setSidebarHovered(true)}
             style={{ width: 48, backgroundColor: "rgba(22,22,22,0.98)" }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
-              style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 2px 12px color-mix(in srgb, var(--primary) 30%, transparent)" }}>
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
             {/* Unlocked icon with pulse glow */}
             <div className="relative">
-              <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.2)", filter: "blur(4px)" }} />
+              <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 20%, transparent)", filter: "blur(4px)" }} />
               <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                 style={{ color: "var(--primary)" }}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
@@ -1529,7 +1529,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
             <div className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+                  style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
                   <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
@@ -1538,11 +1538,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               </div>
             <button onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
               className="p-2 rounded-xl transition-all hover:scale-110 ml-auto group cursor-pointer"
-              style={{ color: "var(--primary)", backgroundColor: "rgba(16,163,127,0.08)" }}
+              style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}>
               {sidebarLock === "locked" ? (
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.15)" }} />
+                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }} />
                   <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                     style={{ color: "var(--primary)" }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -1550,7 +1550,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 </div>
               ) : (
                 <div className="relative">
-                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "rgba(16,163,127,0.15)" }} />
+                  <div className="absolute inset-0 rounded-full animate-pulse" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)" }} />
                   <svg className="w-4 h-4 relative" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                     style={{ color: "var(--primary)" }}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
@@ -1564,7 +1564,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           <div className="px-4 shrink-0 pb-3">
             <button onClick={newConversation}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.98] cursor-pointer"
-              style={{ backgroundColor: "rgba(16,163,127,0.1)", color: "#10A37F", border: "1px solid rgba(16,163,127,0.15)" }}>
+              style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", color: "var(--primary)", border: "1px solid color-mix(in srgb, var(--primary) 15%, transparent)" }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
@@ -1648,7 +1648,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
               style={{ color: "var(--text-secondary)" }}>
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
-                style={{ background: "linear-gradient(135deg, #10A37F, #0d8b6a)" }}>
+                style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
                 {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
               </div>
               <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{userEmail}</span>
@@ -1699,7 +1699,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           </button>
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", boxShadow: "0 2px 10px rgba(16,163,127,0.35)" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 2px 10px color-mix(in srgb, var(--primary) 35%, transparent)" }}>
               <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
@@ -1714,7 +1714,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               className="absolute right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-80"
               style={{
                 backgroundColor: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
-                  ? "rgba(16,163,127,0.15)" : "rgba(239,68,68,0.15)",
+                  ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "rgba(239,68,68,0.15)",
                 color: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
                   ? "var(--primary)" : "var(--danger)",
               }}>
@@ -1734,7 +1734,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           ) : (
             <button onClick={() => setShowAuthPrompt(true)}
               className="absolute right-4 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
               Iniciar sesion
             </button>
           )}
@@ -1776,7 +1776,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 <div className="text-center mb-8">
                   {/* Gradient logo */}
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+                    style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
                     <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
@@ -1791,7 +1791,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                   <div className="text-center mt-2 mb-6">
                     <button onClick={() => setShowAuthPrompt(true)}
                       className="px-6 sm:px-10 py-3 rounded-xl text-sm font-semibold shadow-lg transition-all hover:opacity-90 active:scale-95"
-                      style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                      style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
                       Iniciar sesion
                     </button>
                   </div>
@@ -1820,7 +1820,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                             </p>
                             <button onClick={() => setShowAccountMenu(true)}
                               className="px-6 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
-                              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
                               Anadir tiempo
                             </button>
                           </div>
@@ -1842,7 +1842,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                               className="text-left px-4 py-2.5 rounded-lg text-xs transition-all flex items-center gap-2 group"
                               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
                               <span className="w-5 h-5 rounded flex items-center justify-center shrink-0"
-                                style={{ backgroundColor: "rgba(16,163,127,0.12)", color: "var(--primary)" }}>
+                                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)", color: "var(--primary)" }}>
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                                 </svg>
@@ -1863,7 +1863,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"} mb-4 animate-fade-in group`}>
                   {msg.role === "assistant" && (
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2.5 mt-0.5 shrink-0"
-                      style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+                      style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
                       <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                       </svg>
@@ -2088,14 +2088,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                           )}
                           <button onClick={() => copyMessage(msg.content, msg.id)}
                             className="p-1.5 rounded-lg transition-all hover:scale-110 group cursor-pointer"
-                            style={{ color: copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)", backgroundColor: "rgba(255,255,255,0.04)" }}
+                            style={{ color: copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)", backgroundColor: "transparent" }}
                             onMouseEnter={e => {
-                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.1)";
                               const svg = e.currentTarget.querySelector("svg");
-                              if (svg) { (svg as SVGElement).style.color = "#ffffff"; (svg as SVGElement).style.filter = "drop-shadow(0 0 8px rgba(255,255,255,0.6))"; }
+                              if (svg) { (svg as SVGElement).style.color = "var(--primary)"; (svg as SVGElement).style.filter = "drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 60%, transparent))"; }
                             }}
                             onMouseLeave={e => {
-                              (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(255,255,255,0.04)";
                               const svg = e.currentTarget.querySelector("svg");
                               if (svg) {
                                 (svg as SVGElement).style.color = copiedId === msg.id ? "var(--primary)" : "var(--text-tertiary)";
@@ -2178,9 +2176,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 <div className="flex items-center gap-1 px-4 pt-3">
                   <button onClick={() => setResponseMode("normal")}
                     className="relative px-3 py-1.5 text-xs font-semibold rounded-full transition-all"
-                    style={{ color: responseMode === "normal" ? "#10A37F" : "var(--text-tertiary)" }}>
+                    style={{ color: responseMode === "normal" ? "var(--primary)" : "var(--text-tertiary)" }}>
                     {responseMode === "normal" && (
-                      <span className="absolute inset-0 rounded-full border" style={{ borderColor: "#10A37F", opacity: 0.3 }} />
+                      <span className="absolute inset-0 rounded-full border" style={{ borderColor: "var(--primary)", opacity: 0.3 }} />
                     )}
                     <span className="relative flex items-center gap-1.5">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -2245,7 +2243,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     onClick={sendMessage}
                     disabled={(!input.trim() && attachments.length === 0) || sending || isDisabled}
                     className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-30"
-                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white", boxShadow: "0 2px 12px rgba(16,163,127,0.4)" }}>
+                    style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white", boxShadow: "0 2px 12px color-mix(in srgb, var(--primary) 40%, transparent)" }}>
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
                     </svg>
@@ -2312,7 +2310,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 50px rgba(0,0,0,0.6)" }}>
             {/* Header bar */}
             <div className="flex items-center justify-between px-5 py-4"
-              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/20">
                   <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -2355,13 +2353,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 {onboardingStep < 3 ? (
                   <button onClick={() => setOnboardingStep(s => s + 1)}
                     className="px-5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                    style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
                     Siguiente →
                   </button>
                 ) : (
                   <button onClick={dismissOnboarding}
                     className="px-5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                    style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
                     ¡Empezar! →
                   </button>
                 )}
@@ -2372,7 +2370,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             <div className="px-5 pb-4 flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" id="no-mostrar"
-                  className="w-4 h-4 rounded accent-[#10A37F]" />
+                  className="w-4 h-4 rounded accent-[var(--primary)]" />
                 <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>No mostrar de nuevo</span>
               </label>
               <button onClick={dismissOnboarding} className="text-[11px] hover:underline" style={{ color: "var(--text-tertiary)" }}>
@@ -2511,7 +2509,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         }}
       >
         {isActive && (
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "#10A37F" }} />
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
         )}
         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface-hover)" }}>
