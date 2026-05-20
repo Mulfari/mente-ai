@@ -1324,31 +1324,25 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* New chat button */}
         <div className="px-4 shrink-0 pb-3">
           <button onClick={newConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.97] cursor-pointer group"
-            style={{
-              backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
-              color: "var(--primary)",
-              border: "1px solid color-mix(in srgb, var(--primary) 30%, transparent)",
-            }}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.backgroundColor = "color-mix(in srgb, var(--primary) 18%, transparent)";
-              el.style.borderColor = "var(--primary)";
-              el.style.boxShadow = "0 0 16px color-mix(in srgb, var(--primary) 35%, transparent), inset 0 0 12px color-mix(in srgb, var(--primary) 8%, transparent)";
-              el.style.transform = "scale(1.03)";
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.backgroundColor = "color-mix(in srgb, var(--primary) 12%, transparent)";
-              el.style.borderColor = "color-mix(in srgb, var(--primary) 30%, transparent)";
-              el.style.boxShadow = "none";
-              el.style.transform = "scale(1)";
-            }}
+            className="group relative w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium cursor-pointer overflow-hidden"
           >
-            <svg className="w-4 h-4 transition-transform duration-300 group-hover:rotate-90" style={{ cursor: "pointer" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            Nuevo chat
+            {/* Ripple layer */}
+            <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              style={{ background: "radial-gradient(circle at center, color-mix(in srgb, var(--primary) 18%, transparent), transparent 70%)" }} />
+            {/* Border overlay */}
+            <span className="absolute inset-0 rounded-xl pointer-events-none transition-all duration-300"
+              style={{ border: "1px solid transparent", background: "var(--surface)" }} />
+            <span className="absolute inset-0 rounded-xl pointer-events-none transition-all duration-300 group-hover:opacity-100"
+              style={{ border: "1px solid var(--primary)", opacity: 0.3 }} />
+            {/* Content */}
+            <span className="relative flex items-center gap-2 transition-all duration-300"
+              style={{ color: "var(--text-secondary)" }}>
+              <svg className="w-4 h-4 transition-all duration-300 group-hover:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
+                style={{}}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="transition-all duration-300 group-hover:text-[var(--primary)]">Nuevo chat</span>
+            </span>
           </button>
         </div>
 
