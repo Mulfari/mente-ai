@@ -739,8 +739,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         .select().single();
 
       const msgId = assistantMsg?.id || Date.now().toString();
-      if (assistantMsg) setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
-      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
+      const loadingText = responseMode === "deep"
+        ? "Pensando... (modo profundo, puede tardar un poco)"
+        : "";
+      if (assistantMsg) setMessages(prev => [...prev, { ...assistantMsg, content: loadingText, _loading: true, _retryReq: reqParams }]);
+      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
       setStreamingMsgId(msgId);
 
       const res = await fetch("/api/chat", {
@@ -1060,11 +1063,14 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         .single();
 
       const msgId = assistantMsg?.id || Date.now().toString();
+      const loadingText = responseMode === "deep"
+        ? "Pensando... (modo profundo, puede tardar un poco)"
+        : "";
       if (assistantMsg) {
-        setMessages(prev => [...prev, { ...assistantMsg, _loading: true, _retryReq: reqParams }]);
+        setMessages(prev => [...prev, { ...assistantMsg, content: loadingText, _loading: true, _retryReq: reqParams }]);
       } else {
         setMessages(prev => [...prev, {
-          id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
+          id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
         }]);
       }
       setStreamingMsgId(msgId);
