@@ -253,7 +253,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       .from("messages")
       .select("*")
       .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: true })
+      .limit(100);
     if (error) console.error("loadMessages error:", error);
     // Filter out messages still actively streaming with no content.
     // If message has content (from progressive save), show it even if in_progress=true
@@ -1105,11 +1106,15 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         let fullText = "";
 
         let isDeep = false;
+        let charCount = 0;
 
         const updateStreamText = async (text: string) => {
-          // Update both local state and DB progressively
+          charCount++;
           smoothReveal(msgId, text, isDeep);
-          await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
+          // Only update DB every 10 chunks to reduce round-trips
+          if (charCount % 10 === 0) {
+            await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
+          }
         };
 
         const processStream = async () => {
