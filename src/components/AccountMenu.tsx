@@ -157,7 +157,6 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
   const [error, setError] = useState("");
   const [locating, setLocating] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [pendingCity, setPendingCity] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const supabase_client = supabase;
 
@@ -171,6 +170,43 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
         }
       });
   }, [supabase_client]);
+
+  // Auto-detect only if no city is saved yet (first time)
+  useEffect(() => {
+    if (!mounted || data.city) return;
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
+          );
+          const json = await res.json();
+          const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
+          if (city) {
+            setData(d => ({ ...d, city }));
+            const { data: existing } = await supabase_client.from("user_context").select("id").maybeSingle();
+            if (existing) {
+              await supabase_client.from("user_context").update({
+                city: city.trim(), updated_at: new Date().toISOString(),
+              }).eq("id", existing.id);
+            } else {
+              await supabase_client.from("user_context").insert({ city: city.trim() });
+            }
+            setSaved(true);
+            setTimeout(() => setSaved(false), 2000);
+          }
+        } catch {
+          // ignore
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => { setLocating(false); }
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   const total = data.full_name.length + data.city.length + data.custom_notes.length;
 
@@ -202,7 +238,7 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
 
   function handleUpdateClick() {
     if (!navigator.geolocation) return;
-    if (data.city && !showConfirm) {
+    if (data.city) {
       setShowConfirm(true);
       return;
     }
@@ -222,7 +258,6 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
           const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
           if (city) {
             setData(d => ({ ...d, city }));
-            // save immediately
             const { data: existing } = await supabase_client.from("user_context").select("id").maybeSingle();
             if (existing) {
               await supabase_client.from("user_context").update({
@@ -279,7 +314,7 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
               {locating ? (
                 <>
                   <div className="w-3 h-3 rounded-full animate-spin" style={{ border: "1.5px solid var(--border)", borderTopColor: "var(--primary)" }} />
-                  Detectando...
+                  {data.city ? "Actualizando..." : "Detectando..."}
                 </>
               ) : (
                 <>
@@ -316,6 +351,9 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
                 No
               </button>
             </div>
+          )}
+          {!data.city && !locating && (
+            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Se detecta automaticamente la primera vez</p>
           )}
         </div>
 
