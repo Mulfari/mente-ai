@@ -408,7 +408,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
           </div>
           <div className="flex items-center gap-2">
             <span className="text-base font-bold" style={{ color: "var(--text-primary)" }}>
-              <span style={{ color: "var(--primary)" }}>M</span>ulfai
+              <span style={{ color: "var(--primary)" }}>V</span>eChat
             </span>
             <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
               style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>

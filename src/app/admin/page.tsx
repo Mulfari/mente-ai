@@ -3,7 +3,7 @@ import AdminPanelClient from "@/components/AdminPanelClient";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
-export const metadata: Metadata = { title: "Admin - Mulfai" };
+export const metadata: Metadata = { title: "Admin - VeChat" };
 
 type Props = {
   initialProfiles?: any[];

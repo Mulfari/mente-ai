@@ -2588,7 +2588,7 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
   const [dragging, setDragging] = React.useState(false);
   const [removed, setRemoved] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const DELETE_THRESHOLD = 70;
+  const DELETE_THRESHOLD = 80;
 
   function handleTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -2602,8 +2602,8 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     const t = e.touches[0];
     const dy = Math.abs(t.clientY - startY);
     const dx = startX - t.clientX;
-    if (dy > 12 && dy > Math.abs(dx)) return;
-    setOffset(Math.max(0, Math.min(dx, 160)));
+    if (dy > 10 && dy > Math.abs(dx)) return;
+    setOffset(Math.max(0, Math.min(dx, 180)));
   }
 
   function handleTouchEnd() {
@@ -2611,106 +2611,125 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
     setDragging(false);
     if (offset >= DELETE_THRESHOLD) {
       setRemoved(true);
-      setTimeout(() => onDelete(), 250);
+      setTimeout(() => onDelete(), 300);
     } else {
       setOffset(0);
     }
   }
 
   function handleClick() {
-    if (offset > 5) { setOffset(0); return; }
+    if (offset > 8) { setOffset(0); return; }
     onSelect();
   }
 
   if (removed) {
-    return <div className="rounded-xl mb-0.5 overflow-hidden" style={{ height: 53, transition: "height 0.3s ease-in, opacity 0.2s ease-in", opacity: 0 }}>
-      <div className="h-full rounded-xl" style={{ backgroundColor: "var(--surface)", transform: "translateX(-100%)" }} />
-    </div>;
+    return (
+      <div className="mb-0.5 rounded-xl overflow-hidden"
+        style={{ height: 56, transition: "height 0.3s ease-in, opacity 0.25s ease-in", opacity: 0 }}>
+        <div className="h-full rounded-xl" style={{ backgroundColor: "var(--surface)", transform: "translateX(-100%)" }} />
+      </div>
+    );
   }
 
   const progress = Math.min(offset / DELETE_THRESHOLD, 1);
   const atThreshold = offset >= DELETE_THRESHOLD;
-  const actionWidth = offset + 16;
 
   return (
     <div className="relative mb-0.5" ref={containerRef}>
-      {/* Delete action */}
+      {/* Delete reveal */}
       <div
-        className="absolute inset-y-0 right-0 flex items-center"
-        style={{ width: `${actionWidth}px`, pointerEvents: "none" }}
+        className="absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden rounded-xl"
+        style={{
+          width: `${offset + 20}px`,
+          pointerEvents: "none",
+        }}
       >
         <div
-          className="w-full h-full flex items-center justify-end pl-4 pr-3 gap-2 rounded-r-xl"
+          className="h-full flex items-center gap-2.5 px-4 rounded-r-xl"
           style={{
-            backgroundColor: atThreshold ? "#B91C1C" : "#DC2626",
+            background: atThreshold
+              ? "linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)"
+              : "linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)",
+            boxShadow: atThreshold ? "0 0 0 1.5px rgba(239,68,68,0.5), 0 0 20px rgba(239,68,68,0.25)" : "none",
+            width: `${offset + 20}px`,
             opacity: offset > 0 ? 1 : 0,
-            transition: dragging ? "none" : "background-color 0.15s, opacity 0.15s",
-            boxShadow: atThreshold ? "0 0 0 2px #EF4444, 0 0 16px rgba(239,68,68,0.5)" : "none",
-            animation: atThreshold ? "pulseDelete 0.8s ease-in-out infinite" : "none",
+            transition: dragging ? "none" : "box-shadow 0.15s, background 0.15s, opacity 0.15s",
+            animation: atThreshold ? "pulseDelete 1s ease-in-out infinite" : "none",
           }}
         >
-          <span
-            className="text-xs font-semibold text-white"
-            style={{
-              opacity: atThreshold ? 1 : progress,
-              transition: "opacity 0.15s",
-            }}
-          >
-            Eliminar
-          </span>
-          <div
-            className="flex items-center justify-center rounded-full shrink-0"
-            style={{
-              width: atThreshold ? "36px" : "32px",
-              height: atThreshold ? "36px" : "32px",
-              backgroundColor: atThreshold ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.2)",
-              transition: "width 0.15s, height 0.15s, background-color 0.15s",
-            }}
-          >
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </div>
+          {offset > 10 && (
+            <>
+              <span
+                className="text-xs font-semibold whitespace-nowrap"
+                style={{
+                  color: "white",
+                  opacity: atThreshold ? 1 : Math.min(progress * 1.5, 1),
+                  transition: "opacity 0.12s",
+                }}
+              >
+                {atThreshold ? "Eliminar" : "Desliza"}
+              </span>
+              <div
+                className="flex items-center justify-center rounded-full shrink-0"
+                style={{
+                  width: atThreshold ? "34px" : "30px",
+                  height: atThreshold ? "34px" : "30px",
+                  backgroundColor: atThreshold ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)",
+                  transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                  transform: atThreshold ? "scale(1.1)" : "scale(1)",
+                }}
+              >
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
       {/* Main row */}
       <div
-        className="relative flex items-center gap-2.5 px-4 py-3 cursor-pointer select-none rounded-xl"
+        className="relative flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl"
         style={{
           backgroundColor: "transparent",
           transform: `translateX(-${offset}px)`,
           willChange: "transform",
-          transition: dragging ? "none" : offset > 0 ? "transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
+          transition: dragging ? "none" : offset > 0 ? "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
           WebkitTapHighlightColor: "transparent",
           touchAction: "pan-y",
+          zIndex: 1,
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
-        onMouseEnter={e => { if (!dragging) (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)"; }}
-        onMouseLeave={e => {
-          if (!dragging) {
-            (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent";
-            if (offset > 0) setOffset(0);
+        onMouseEnter={e => {
+          if (!dragging && offset === 0) {
+            (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)";
           }
+        }}
+        onMouseLeave={e => {
+          if (!dragging && offset === 0) {
+            (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent";
+          }
+          if (!dragging && offset > 0) setOffset(0);
         }}
       >
         {isActive && (
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
         )}
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
           style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface)" }}>
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
             style={{ color: isActive ? "var(--primary)" : "var(--text-tertiary)" }}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
         </div>
-        <p className="flex-1 text-xs font-medium truncate" style={{ color: isActive ? "var(--text-primary)" : "var(--text-secondary)" }}>
+        <p className="flex-1 text-sm font-medium truncate" style={{ color: isActive ? "var(--text-primary)" : "var(--text-secondary)" }}>
           {conv.title}
         </p>
-        <span className="text-[10px] shrink-0" style={{ color: "var(--text-tertiary)" }}>{dateLabel}</span>
+        <span className="text-[11px] shrink-0" style={{ color: "var(--text-tertiary)" }}>{dateLabel}</span>
       </div>
     </div>
   );

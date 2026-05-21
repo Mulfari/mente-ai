@@ -33,7 +33,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
 
   useEffect(() => {
     // Restore remembered email
-    const saved = localStorage.getItem("mulfai_email");
+    const saved = localStorage.getItem("vechat_email");
     if (saved) { setEmail(saved); setRememberMe(true); }
   }, []);
 
@@ -49,8 +49,8 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
     setLoading(true);
 
     if (mode === "login") {
-      if (rememberMe) localStorage.setItem("mulfai_email", email);
-      else localStorage.removeItem("mulfai_email");
+      if (rememberMe) localStorage.setItem("vechat_email", email);
+      else localStorage.removeItem("vechat_email");
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
       if (error) setError(translateError(error.message));
@@ -121,7 +121,7 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
             </svg>
           </div>
           <h1 className="text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>
-            <span style={{ color: "var(--primary)" }}>M</span>ulfai
+            <span style={{ color: "var(--primary)" }}>V</span>eChat
           </h1>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
             {mode === "login" ? "Bienvenido de nuevo" : "Crea tu cuenta"}

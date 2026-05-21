@@ -62,7 +62,7 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               </div>
-              <span className="text-xs sm:text-sm font-bold hidden sm:block" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+              <span className="text-xs sm:text-sm font-bold hidden sm:block" style={{ color: "var(--text-primary)" }}>VeChat</span>
             </div>
             <div className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl"
               style={{ backgroundColor: "var(--surface)" }}>

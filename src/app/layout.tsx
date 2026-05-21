@@ -17,9 +17,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Mulfai — Tu asistente de IA personal",
-  description: "Chatea con Mulfai, tu asistente inteligente. Conversaciones naturales, respuestas instantaneas, codigo con syntax highlighting.",
-  keywords: ["chat AI", "asistente virtual", "IA conversacional", "Mulfai"],
+  title: "VeChat — Tu asistente de IA personal",
+  description: "Chatea con VeChat, tu asistente inteligente. Conversaciones naturales, respuestas instantaneas, codigo con syntax highlighting.",
+  keywords: ["chat AI", "asistente virtual", "IA conversacional", "VeChat"],
   icons: {
     icon: "/favicon.svg",
   },
@@ -34,7 +34,7 @@ export default function RootLayout({
     <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem('mulfai-theme');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','dark');}catch(e){}})()`
+          __html: `(function(){try{var t=localStorage.getItem('vechat-theme');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','dark');}catch(e){}})()`
         }} />
       </head>
       <body className="antialiased">{children}</body>
