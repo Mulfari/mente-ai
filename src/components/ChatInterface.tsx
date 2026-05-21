@@ -454,7 +454,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
           </div>
-          <div className="flex-1 text-xs px-3 py-2.5 rounded-xl" style={{ backgroundColor: "var(--background)", color: "var(--text-tertiary)", border: "1px solid var(--border)" }}>
+          <div className="flex-1 text-xs px-3 py-2.5 rounded-xl" style={{ backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)", color: "var(--text-tertiary)", border: "1px solid var(--border)" }}>
             Adjunta una imagen...
           </div>
           <div className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -472,7 +472,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
       preview: (
         <div className="flex items-center gap-2 mt-4">
-          <div className="flex-1 h-8 rounded-xl overflow-hidden" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+          <div className="flex-1 h-8 rounded-xl overflow-hidden" style={{ backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)", border: "1px solid var(--border)" }}>
             <div className="h-full rounded-xl flex items-center gap-1.5 px-3" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
               <svg className="w-3 h-3 shrink-0" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
@@ -492,7 +492,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       sub: "Tienes un límite de mensajes semanal. Agrega tiempo desde 'Mi cuenta' cuando lo necesites.",
       icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
       preview: (
-        <div className="flex items-center gap-3 mt-4 px-3 py-3 rounded-xl" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+        <div className="flex items-center gap-3 mt-4 px-3 py-3 rounded-xl" style={{ backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)", border: "1px solid var(--border)" }}>
           <div className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--primary) 5%, transparent))" }}>
             <svg className="w-4 h-4" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -1272,12 +1272,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)", backgroundImage: "radial-gradient(ellipse 100% 50% at 20% 80%, rgba(16,163,127,0.18) 0%, transparent 60%), radial-gradient(ellipse 80% 40% at 80% 20%, rgba(16,163,127,0.12) 0%, transparent 55%), radial-gradient(ellipse 60% 30% at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)", backgroundBlendMode: "normal" }}>
+    <div className="fixed inset-0 flex" style={{ backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)", backgroundImage: "radial-gradient(ellipse 100% 50% at 20% 80%, rgba(16,163,127,0.18) 0%, transparent 60%), radial-gradient(ellipse 80% 40% at 80% 20%, rgba(16,163,127,0.12) 0%, transparent 55%), radial-gradient(ellipse 60% 30% at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 50%)", backgroundBlendMode: "normal" }}>
       {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
-          backgroundColor: "var(--background)",
+          backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
           borderRight: "1px solid var(--border)",
           transform: `translateX(${showSidebar ? "0" : "-100%"})`,
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
@@ -1529,7 +1529,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             className="absolute inset-y-0 left-0 z-[51] flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
             onClick={() => setSidebarLock("locked")}
             onMouseEnter={() => setSidebarHovered(true)}
-            style={{ width: 48, backgroundColor: "var(--background)" }}>
+            style={{ width: 48, backgroundColor: "var(--surface)" }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
               style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1549,7 +1549,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div
           className={`h-full flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
-            backgroundColor: "var(--background)",
+            backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid var(--border)",
             overflow: "hidden",
