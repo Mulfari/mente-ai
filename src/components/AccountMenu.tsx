@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -239,19 +239,6 @@ function ContextTab({ userContext, supabase }: {
 
   return (
     <form onSubmit={handleSave} className="px-5 sm:px-8 py-6 space-y-5">
-      <div className="p-4 rounded-xl flex items-start gap-3"
-        style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, var(--background))", border: "1px solid color-mix(in srgb, var(--primary) 15%, var(--border))" }}>
-        <svg className="w-4 h-4 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <div>
-          <p className="text-xs font-medium" style={{ color: "var(--primary)" }}>Mejora tus respuestas</p>
-          <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-            El asistente usara esta informacion para darte respuestas mas personalizadas.
-          </p>
-        </div>
-      </div>
-
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Tu nombre</label>
