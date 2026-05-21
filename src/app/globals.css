@@ -20,13 +20,13 @@
   --table-row-hover: rgba(255,255,255,0.03);
 }
 
-/* Radial vignette — warm glow from center */
+/* Film grain noise texture — subtle, organic */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-color: #0B1418;
-  background-image: radial-gradient(ellipse 80% 60% at 50% 50%, rgba(16,163,127,0.25) 0%, transparent 70%);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
 }

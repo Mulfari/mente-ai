@@ -74,6 +74,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [userEmail, setUserEmail] = useState("");
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(null);
+  const [userContext, setUserContext] = useState<{full_name: string; city: string; custom_notes: string} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -218,6 +219,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       .eq("id", userId)
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
+
+    supabase
+      .from("user_context")
+      .select("full_name, city, custom_notes")
+      .maybeSingle()
+      .then(({ data }) => { if (data) setUserContext(data); });
   }, [userId, isLoggedIn]);
 
   async function loadConversations(currentUserId?: string) {
@@ -1265,7 +1272,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)", backgroundImage: "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(16,163,127,0.25) 0%, transparent 70%)" }}>
+    <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E\")" }}>
       {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
@@ -2394,6 +2401,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       {showAccountMenu && <AccountMenu
         email={userEmail}
         profile={profile}
+        userContext={userContext}
         onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
         onClose={() => setShowAccountMenu(false)}
       />}
