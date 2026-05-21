@@ -1331,7 +1331,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
           {/* TODO: Re-enable agent button after /agent page is ready
           <button onClick={() => window.location.href = "/agent"}
-            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
+            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97] hidden md:flex"
             style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
@@ -1381,7 +1381,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           </div>
 
           <button onClick={() => window.location.href = "/agent"}
-            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
+            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97] hidden md:flex"
             style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
