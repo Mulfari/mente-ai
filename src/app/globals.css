@@ -27,11 +27,32 @@ body::before {
   inset: 0;
   background-color: #0B1418;
   background-image:
-    radial-gradient(ellipse 100% 50% at 20% 80%, rgba(16,163,127,0.15) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 40% at 80% 20%, rgba(16,163,127,0.10) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 30% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 50%);
+    radial-gradient(ellipse 100% 50% at 20% 80%, rgba(16,163,127,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 40% at 80% 20%, rgba(16,163,127,0.12) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 30% at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
+}
+
+/* Subtle vignette to add depth and focus to center */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 50%, rgba(0,0,0,0.35) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes aurora-drift {
+  0%, 100% { opacity: 1; transform: scale(1) translate(0, 0); }
+  33% { opacity: 0.85; transform: scale(1.02) translate(1%, -1%); }
+  66% { opacity: 0.9; transform: scale(0.99) translate(-1%, 0.5%); }
+}
+
+.aurora-layer {
+  animation: aurora-drift 12s ease-in-out infinite;
+  background-attachment: fixed;
 }
 
 @theme inline {
