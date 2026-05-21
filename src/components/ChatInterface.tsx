@@ -900,6 +900,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       return;
     }
 
+    // Set sending immediately to disable the button
+    setSending(true);
+
     let conv = activeConv;
     const queuedMsg = queuedMsgRef.current;
     queuedMsgRef.current = null;
@@ -913,7 +916,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const category = researchMatch[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20);
 
       setInput("");
-      setSending(true);
       autoResize();
 
       // Add user message
@@ -1002,15 +1004,14 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         conv = data;
         setActiveConv(data);
         window.history.pushState(null, "", `/chat/${data.id}`);
-      } else return;
+      } else { setSending(false); return; }
     }
 
-    if (!conv) return;
+    if (!conv) { setSending(false); return; }
 
     setInput("");
     setAttachments([]);
     setPreviewUrls({});
-    setSending(true);
     autoResize();
 
     const savedPreviews = queuedMsg ? queuedMsg.previews : { ...previewUrls };
@@ -1264,9 +1265,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       }]);
       setSending(false);
     }
-
-    setSending(false);
-    setTimeout(() => { autoResize(); textareaRef.current?.focus(); }, 0);
   }
 
   const isDisabled = !isLoggedIn;
