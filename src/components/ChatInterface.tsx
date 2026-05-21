@@ -1310,21 +1310,25 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* Nueva conversacion + Buscador */}
         <div className="px-4 shrink-0 pb-2 space-y-2">
           <button onClick={newConversation}
-            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
+            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
             style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--primary)";
+              el.style.backgroundColor = "var(--surface-hover)";
+              el.style.boxShadow = "0 0 12px rgba(16,163,127,0.15)";
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--text-tertiary)";
+              el.style.backgroundColor = "transparent";
+              el.style.boxShadow = "none";
             }}
           >
-            <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90 group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            <span className="relative">
+            <span className="relative" style={{ transition: "color 0.2s" }}>
               Nueva conversación
             </span>
           </button>
@@ -1584,15 +1588,23 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                   el.classList.add("icon-bounce");
                 }
               }}
-              className="p-2 rounded-xl cursor-pointer"
+              className="p-2 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.95]"
               style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}
               onMouseEnter={e => {
-                const svg = e.currentTarget.querySelector("svg");
-                if (svg) { (svg as SVGElement).style.color = "var(--primary)"; (svg as SVGElement).style.filter = "drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 60%, transparent))"; }
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.backgroundColor = "var(--surface-hover)";
+                el.style.color = "var(--primary)";
+                el.style.boxShadow = "0 0 10px rgba(16,163,127,0.2)";
+                const svg = el.querySelector("svg");
+                if (svg) (svg as SVGElement).style.filter = "drop-shadow(0 0 4px color-mix(in srgb, var(--primary) 60%, transparent))";
               }}
               onMouseLeave={e => {
-                const svg = e.currentTarget.querySelector("svg");
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.backgroundColor = "transparent";
+                el.style.color = "var(--text-tertiary)";
+                el.style.boxShadow = "none";
+                const svg = el.querySelector("svg");
                 if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
               }}>
               {sidebarLock === "locked" ? (
@@ -1707,8 +1719,18 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     <div key={conv.id}
                       className="group w-full text-left rounded-xl flex items-center gap-3 cursor-pointer transition-all duration-200 px-3 py-3 relative"
                       onClick={() => selectConv(conv)}
-                      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)"; }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent"; }}>
+                      onMouseEnter={e => {
+                        const el = e.currentTarget as HTMLDivElement;
+                        el.style.backgroundColor = "var(--surface-hover)";
+                        el.style.boxShadow = "0 0 12px rgba(16,163,127,0.12)";
+                        el.style.transform = "translateX(2px)";
+                      }}
+                      onMouseLeave={e => {
+                        const el = e.currentTarget as HTMLDivElement;
+                        el.style.backgroundColor = "transparent";
+                        el.style.boxShadow = "none";
+                        el.style.transform = "translateX(0)";
+                      }}>
                       {isActive && (
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
                       )}
