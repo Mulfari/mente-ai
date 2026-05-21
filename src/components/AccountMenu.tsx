@@ -425,7 +425,9 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
                 {(() => {
                   if (!profile?.subscription_end) return "—";
                   const s = profile.subscription_end;
-                  const d = new Date(s.endsWith("Z") ? s : s.replace(" ", "T") + "Z");
+                  const normalized = s.replace(/([+-]\d{2}):?(\d{2})?$/, "Z").replace(" ", "T");
+                  const d = new Date(normalized);
+                  if (isNaN(d.getTime())) return "—";
                   return d.toLocaleDateString("es-VE", { timeZone: "America/Caracas" });
                 })()}
               </span>
