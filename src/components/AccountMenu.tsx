@@ -333,10 +333,20 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
     return { bg: "rgba(16,163,127,0.15)", color: "var(--primary)" };
   }
 
+  function getEndTime() {
+    if (!profile?.subscription_end) return 0;
+    const s = profile.subscription_end;
+    // Force UTC parsing
+    const d = new Date(s.endsWith("Z") ? s : s.replace(" ", "T") + "Z");
+    return d.getTime();
+  }
+
   function getCountdown() {
     if (isUnlimited) return null;
-    if (!profile || weeks <= 0 || !profile.subscription_end) return null;
-    const diff = new Date(profile.subscription_end).getTime() - Date.now();
+    if (!profile || weeks <= 0) return null;
+    const endTime = getEndTime();
+    if (!endTime) return null;
+    const diff = endTime - Date.now();
     if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
     const total = Math.floor(diff / 1000);
     return { days: Math.floor(total / 86400), hours: Math.floor((total % 86400) / 3600), minutes: Math.floor((total % 3600) / 60), seconds: total % 60, expired: false };
