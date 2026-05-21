@@ -51,7 +51,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     </div>
   );
 
-  // Handle server-side admin actions (coupon generation, user updates)
   const params = await searchParams;
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
@@ -85,8 +84,5 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     redirect("/admin");
   }
 
-  // Admin confirmed — let the client component fetch its own data via API routes
-  // (this avoids server-side cookie issues while still validating admin server-side)
   return <AdminPanelClient initialProfiles={[]} />;
-}
 }
