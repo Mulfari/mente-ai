@@ -17,12 +17,6 @@ type Props = {
 
 type Tab = "context" | "subscription" | "coupon";
 
-const VENEZUELAN_CITIES = [
-  "Caracas", "Maracay", "Valencia", "Barquisimeto", "Maracaibo",
-  "Ciudad Bolívar", "Mérida", "San Cristóbal", "Barinas", "Cumaná",
-  "Puerto La Cruz", "Guarenas", "Acarigua", "Ciudad Ojeda", "Guatire",
-];
-
 const MAX_CHARS = 2000;
 
 export default function AccountMenu({ email, profile, onSignOut, onClose }: Props) {
@@ -144,7 +138,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
-            {tab === "context" ? <ContextTab email={email} supabase={supabase} /> :
+            {tab === "context" ? <ContextTab supabase={supabase} /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
           </div>
@@ -155,30 +149,54 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
 }
 
 // --- Context Tab ---
-function ContextTab({ email, supabase }: { email: string; supabase: ReturnType<typeof createClient> }) {
-  const [data, setData] = useState({ full_name: "", city: "", interests: "", custom_notes: "" });
+function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> }) {
+  const [data, setData] = useState({ full_name: "", city: "", custom_notes: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [locating, setLocating] = useState(false);
+  const supabase_client = supabase;
 
   useEffect(() => {
-    supabase.from("user_context").select("full_name, city, interests, custom_notes").maybeSingle()
+    supabase_client.from("user_context").select("full_name, city, custom_notes").maybeSingle()
       .then(({ data: d }: { data: any }) => {
         setLoading(false);
-        if (d) setData({ full_name: d.full_name || "", city: d.city || "", interests: d.interests || "", custom_notes: d.custom_notes || "" });
+        if (d) setData({ full_name: d.full_name || "", city: d.city || "", custom_notes: d.custom_notes || "" });
       });
-  }, [supabase]);
+  }, [supabase_client]);
 
-  const total = data.full_name.length + data.city.length + data.interests.length + data.custom_notes.length;
+  function detectCity() {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
+          );
+          const json = await res.json();
+          const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
+          setData(d => ({ ...d, city }));
+        } catch {
+          setData(d => ({ ...d, city: "" }));
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => { setLocating(false); }
+    );
+  }
+
+  const total = data.full_name.length + data.city.length + data.custom_notes.length;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (total > MAX_CHARS) { setError(`Maximo ${MAX_CHARS} caracteres`); return; }
     setSaving(true); setError(""); setSaved(false);
-    const { error: err } = await supabase.from("user_context").upsert({
+    const { error: err } = await supabase_client.from("user_context").upsert({
       full_name: data.full_name.trim(), city: data.city.trim(),
-      interests: data.interests.trim(), custom_notes: data.custom_notes.trim(),
+      custom_notes: data.custom_notes.trim(),
     }, { onConflict: "user_id" });
     setSaving(false);
     if (err) setError("Error al guardar.");
@@ -213,24 +231,26 @@ function ContextTab({ email, supabase }: { email: string; supabase: ReturnType<t
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Ciudad</label>
-          <select value={data.city} onChange={e => setData(d => ({ ...d, city: e.target.value }))}
-            className="w-full px-4 py-2.5 rounded-xl text-sm outline-none appearance-none"
-            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: data.city ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-            <option value="">Selecciona tu ciudad</option>
-            {VENEZUELAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Intereses</label>
-          <input type="text" value={data.interests} onChange={e => setData(d => ({ ...d, interests: e.target.value }))}
-            placeholder="gastronomia, tecnologia, deportes"
-            className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
-            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-            onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
-          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Separados por coma</p>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Ubicacion</label>
+          <div className="flex gap-2">
+            <input type="text" value={data.city} onChange={e => setData(d => ({ ...d, city: e.target.value }))}
+              placeholder="Tu ciudad" className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+              style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+              onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
+            <button type="button" onClick={detectCity} disabled={locating}
+              className="px-4 py-2.5 rounded-xl text-sm font-medium shrink-0 transition-all disabled:opacity-50"
+              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--surface-hover)"; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = "var(--surface)"; }}>
+              {locating ? "Buscando..." : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+            </button>
+          </div>
+          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Detecta automaticamente o escribe manualmente</p>
         </div>
 
         <div>
@@ -241,12 +261,13 @@ function ContextTab({ email, supabase }: { email: string; supabase: ReturnType<t
             </span>
           </div>
           <textarea value={data.custom_notes} onChange={e => setData(d => ({ ...d, custom_notes: e.target.value }))}
-            placeholder="Ej: soy estudiante de ingenieria, me gusta la fotografia..."
-            rows={4}
+            placeholder="Agrega contexto adicional sobre ti: hobbies, profesion, temas que te interesan, situaciones relevantes..."
+            rows={6}
             className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none transition-all"
             style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
             onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
             onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
+          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Completa tu perfil para respuestas mas precisas. Limite: {MAX_CHARS} caracteres.</p>
         </div>
       </div>
 
