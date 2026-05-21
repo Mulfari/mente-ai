@@ -526,7 +526,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           </div>
           <div>
             <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{s.title}</h3>
-            <p className="text-[11px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{s.sub}</p>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.8)" }}>{s.sub}</p>
           </div>
         </div>
         {s.preview}
@@ -1314,7 +1314,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div className="px-4 shrink-0 pb-2 space-y-2">
           <button onClick={newConversation}
             className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
-            style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
+            style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--primary)";
@@ -1339,7 +1339,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           {/* TODO: Re-enable agent button after /agent page is ready
           <button onClick={() => window.location.href = "/agent"}
             className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97] hidden md:flex"
-            style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
+            style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--primary)";
@@ -1372,7 +1372,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               className="w-full pl-9 pr-3 py-2 rounded-xl text-xs transition-all cursor-pointer"
               style={{
                 backgroundColor: "var(--surface-hover)",
-                color: "var(--text-secondary)",
+                color: "rgba(255,255,255,0.8)",
                 border: "1px solid transparent",
                 outline: "none",
               }}
@@ -1389,7 +1389,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
           <button onClick={() => window.location.href = "/agent"}
             className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97] hidden md:flex"
-            style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
+            style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--primary)";
@@ -1465,7 +1465,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                       </svg>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium truncate leading-tight" style={{ color: "var(--text-secondary)" }}>{conv.title}</p>
+                      <p className="text-xs font-medium truncate leading-tight" style={{ color: "rgba(255,255,255,0.8)" }}>{conv.title}</p>
                       <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{dateLabel}</p>
                     </div>
                     <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
@@ -1500,12 +1500,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           {/* User */}
           <button onClick={() => setShowAccountMenu(true)}
             className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
-            style={{ color: "var(--text-secondary)" }}>
+            style={{ color: "rgba(255,255,255,0.8)" }}>
             <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
               style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
             </div>
-            <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{userEmail}</span>
+            <span className="text-xs truncate" style={{ color: "rgba(255,255,255,0.8)" }}>{userEmail}</span>
             {profile && (
               <div className="w-1.5 h-1.5 rounded-full ml-1 shrink-0"
                 style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "var(--primary)" : "var(--danger)" }} />
@@ -1516,7 +1516,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                         <button
               onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
               className="p-1.5 rounded-lg transition-all"
-              style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)", display: "none" }}
+              style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "var(--surface-hover)", display: "none" }}
               title="Cerrar sesión">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -1620,7 +1620,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           <div className="px-4 shrink-0 pb-2 space-y-2">
             <button onClick={newConversation}
               className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
-              style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
+              style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLButtonElement;
                 el.style.color = "var(--primary)";
@@ -1629,7 +1629,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLButtonElement;
-                el.style.color = "var(--text-secondary)";
+                el.style.color = "rgba(255,255,255,0.8)";
                 el.style.backgroundColor = "transparent";
                 el.style.boxShadow = "none";
               }}
@@ -1643,7 +1643,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             {/* TODO: Re-enable agent button after /agent page is ready
             <button onClick={() => window.location.href = "/agent"}
               className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
-              style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
+              style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLButtonElement;
                 el.style.color = "var(--primary)";
@@ -1674,7 +1674,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 className="w-full pl-9 pr-3 py-2 rounded-xl text-xs transition-all cursor-pointer"
                 style={{
                   backgroundColor: "var(--surface-hover)",
-                  color: "var(--text-secondary)",
+                  color: "rgba(255,255,255,0.8)",
                   border: "1px solid transparent",
                   outline: "none",
                 }}
@@ -1740,7 +1740,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold truncate leading-tight" style={{ color: "var(--text-primary)" }}>{conv.title}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{dateLabel}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.8)" }}>{dateLabel}</p>
                       </div>
                       <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
                         className="shrink-0 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 p-2 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer"
@@ -1771,17 +1771,17 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid var(--border)" }}>
             <button onClick={() => setShowAccountMenu(true)}
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
-              style={{ color: "var(--text-secondary)" }}>
+              style={{ color: "rgba(255,255,255,0.8)" }}>
               <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
                 style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
                 {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
               </div>
-              <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{userEmail}</span>
+              <span className="text-xs truncate" style={{ color: "rgba(255,255,255,0.8)" }}>{userEmail}</span>
             </button>
               <div className="flex items-center gap-1 ml-2">
                                 <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
                   className="p-1.5 rounded-lg transition-all"
-                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)" }}
+                  style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "var(--surface-hover)" }}
                   title="Cerrar sesión">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -1802,7 +1802,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             borderBottom: "1px solid var(--border)",
           }}>
           <button onClick={() => setShowSidebar(true)}
-            className="absolute left-4 p-2 rounded-full transition-colors" style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
+            className="absolute left-4 p-2 rounded-full transition-colors" style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "transparent" }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1894,7 +1894,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     </svg>
                   </div>
                   <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Mulfai</h1>
-                  <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
                     Tu asistente de IA personal
                   </p>
                 </div>
@@ -1927,7 +1927,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                             <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--warning)" }}>
                               {"Suscripcion bloqueada"}
                             </p>
-                            <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+                            <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.8)" }}>
                               {block.reason}
                             </p>
                             <button onClick={() => setShowAccountMenu(true)}
@@ -1952,7 +1952,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                           {suggestions.map((s, i) => (
                             <button key={i} onClick={() => submitSuggestion(s)}
                               className="text-left px-4 py-2.5 rounded-lg text-xs transition-all flex items-center gap-2 group"
-                              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+                              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "rgba(255,255,255,0.8)" }}>
                               <span className="w-5 h-5 rounded flex items-center justify-center shrink-0"
                                 style={{ backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)", color: "var(--primary)" }}>
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -2021,7 +2021,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                       ) : (msg._loading || msg.id === streamingMsgId || retryMode === msg.id) ? (
                         <div className="flex items-center gap-2 py-1 min-h-[24px]">
                           {msg.content ? (
-                            <span className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)", wordBreak: "break-word" }}>
+                            <span className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.8)", wordBreak: "break-word" }}>
                               {msg.content}
                               <span className="typing-cursor ml-0.5" />
                             </span>
@@ -2055,12 +2055,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                                   <div className="relative group rounded-xl overflow-hidden my-2" style={{ maxWidth: "100%" }}>
                                     <div className="flex items-center justify-between px-4 py-2"
                                       style={{ backgroundColor: "color-mix(in srgb, var(--surface) 80%, transparent)", borderBottom: "1px solid var(--border)" }}>
-                                      <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+                                      <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
                                         {match[1]}
                                       </span>
                                       <button onClick={() => navigator.clipboard.writeText(code)}
                                         className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
-                                        style={{ backgroundColor: "var(--code-bg)", color: "var(--text-secondary)" }}>
+                                        style={{ backgroundColor: "var(--code-bg)", color: "rgba(255,255,255,0.8)" }}>
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                         </svg>
@@ -2503,7 +2503,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 {onboardingStep > 0 ? (
                   <button onClick={() => setOnboardingStep(s => s - 1)}
                     className="px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
-                    style={{ color: "var(--text-secondary)", backgroundColor: "var(--background)" }}>
+                    style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "var(--background)" }}>
                     ← Anterior
                   </button>
                 ) : (
