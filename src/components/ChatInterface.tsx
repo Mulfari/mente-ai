@@ -1277,8 +1277,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       <div
         className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
-          backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
-          backdropFilter: "blur(40px)",
+          backgroundColor: "var(--background)",
           borderRight: "1px solid var(--border)",
           transform: `translateX(${showSidebar ? "0" : "-100%"})`,
           transition: "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
@@ -1527,10 +1526,10 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* Collapsed bar - only visible when unlocked AND collapsed */}
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
           <div
-            className="absolute inset-y-0 left-0 z-50 flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
+            className="absolute inset-y-0 left-0 z-[51] flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
             onClick={() => setSidebarLock("locked")}
             onMouseEnter={() => setSidebarHovered(true)}
-            style={{ width: 48, backgroundColor: "var(--surface)" }}>
+            style={{ width: 48, backgroundColor: "var(--background)" }}>
             <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
               style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 2px 12px rgba(16,163,127,0.3)" }}>
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -1550,7 +1549,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div
           className={`h-full flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
-            backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
+            backgroundColor: "var(--background)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid var(--border)",
             overflow: "hidden",
