@@ -1588,23 +1588,15 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                   el.classList.add("icon-bounce");
                 }
               }}
-              className="p-2 rounded-xl cursor-pointer transition-all duration-200 active:scale-[0.95]"
+              className="p-2 rounded-xl cursor-pointer"
               style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}
               onMouseEnter={e => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor = "var(--surface-hover)";
-                el.style.color = "var(--primary)";
-                el.style.boxShadow = "0 0 10px rgba(16,163,127,0.2)";
-                const svg = el.querySelector("svg");
-                if (svg) (svg as SVGElement).style.filter = "drop-shadow(0 0 4px color-mix(in srgb, var(--primary) 60%, transparent))";
+                const svg = e.currentTarget.querySelector("svg");
+                if (svg) { (svg as SVGElement).style.color = "var(--primary)"; (svg as SVGElement).style.filter = "drop-shadow(0 0 6px color-mix(in srgb, var(--primary) 60%, transparent))"; }
               }}
               onMouseLeave={e => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor = "transparent";
-                el.style.color = "var(--text-tertiary)";
-                el.style.boxShadow = "none";
-                const svg = el.querySelector("svg");
+                const svg = e.currentTarget.querySelector("svg");
                 if (svg) { (svg as SVGElement).style.color = "var(--text-tertiary)"; (svg as SVGElement).style.filter = "none"; }
               }}>
               {sidebarLock === "locked" ? (
@@ -1722,14 +1714,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                       onMouseEnter={e => {
                         const el = e.currentTarget as HTMLDivElement;
                         el.style.backgroundColor = "var(--surface-hover)";
-                        el.style.boxShadow = "0 0 12px rgba(16,163,127,0.12)";
-                        el.style.transform = "translateX(2px)";
+                        el.style.boxShadow = "inset 3px 0 0 var(--primary)";
                       }}
                       onMouseLeave={e => {
                         const el = e.currentTarget as HTMLDivElement;
                         el.style.backgroundColor = "transparent";
                         el.style.boxShadow = "none";
-                        el.style.transform = "translateX(0)";
                       }}>
                       {isActive && (
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
@@ -1742,8 +1732,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium truncate leading-tight" style={{ color: "var(--text-secondary)" }}>{conv.title}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{dateLabel}</p>
+                        <p className="text-sm font-semibold truncate leading-tight" style={{ color: "var(--text-primary)" }}>{conv.title}</p>
+                        <p className="text-[10px] mt-0.5" style={{ color: "var(--text-secondary)" }}>{dateLabel}</p>
                       </div>
                       <button onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
                         className="shrink-0 opacity-0 group-hover:opacity-100 scale-75 group-hover:scale-100 p-2 rounded-xl transition-all duration-200 flex items-center justify-center cursor-pointer"
