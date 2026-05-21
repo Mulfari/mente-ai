@@ -156,11 +156,13 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [locating, setLocating] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const supabase_client = supabase;
 
   useEffect(() => {
     supabase_client.from("user_context").select("full_name, city, custom_notes").maybeSingle()
       .then(({ data: d }: { data: any }) => {
+        setMounted(true);
         setLoading(false);
         if (d) setData({ full_name: d.full_name || "", city: d.city || "", custom_notes: d.custom_notes || "" });
       });
@@ -179,7 +181,7 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
           const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
           setData(d => ({ ...d, city }));
         } catch {
-          setData(d => ({ ...d, city: "" }));
+          // keep current city on error
         } finally {
           setLocating(false);
         }
@@ -203,7 +205,7 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
     else { setSaved(true); setTimeout(() => setSaved(false), 2500); }
   }
 
-  if (loading) return <LoadingState />;
+  if (!mounted) return <LoadingState />;
 
   return (
     <form onSubmit={handleSave} className="px-5 sm:px-8 py-6 space-y-5">
