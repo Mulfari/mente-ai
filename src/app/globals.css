@@ -20,14 +20,16 @@
   --table-row-hover: rgba(255,255,255,0.03);
 }
 
-/* WhatsApp-style subtle dot pattern on background */
+/* Subtle grain texture on background (premium paper feel) */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23b2d8d0' fill-opacity='0.15'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
   pointer-events: none;
   z-index: 0;
+  mix-blend-mode: overlay;
+  opacity: 0.04;
 }
 
 @theme inline {
