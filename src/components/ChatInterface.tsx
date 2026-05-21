@@ -88,7 +88,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
   const [streamError, setStreamError] = useState<string | null>(null);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const theme = "dark";
   const [searchQuery, setSearchQuery] = useState("");
 
   const [displayedText, setDisplayedText] = useState<Record<string, string>>({});
@@ -162,14 +162,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const lastErrorRef = useRef<{ message: string; conversationId: string | null; attachments: any[] } | null>(null);
 
   useEffect(() => {
-    // Read theme from localStorage on mount
-    try {
-      const saved = localStorage.getItem("mulfai-theme");
-      const initialTheme = saved === "light" ? "light" : "dark";
-      setTheme(initialTheme);
-      document.documentElement.setAttribute("data-theme", initialTheme);
-    } catch {}
-
     supabase.auth.getSession().then(({ data: d }) => {
       setIsLoggedIn(!!d.session);
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
@@ -226,17 +218,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       .then(({ data }) => { if (data) setProfile(data); });
   }, [userId, isLoggedIn]);
 
-  // Theme: read from localStorage and sync with document
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("mulfai-theme") as "dark" | "light" | null;
-      if (stored === "light" || stored === "dark") {
-        setTheme(stored);
-        document.documentElement.setAttribute("data-theme", stored);
-      }
-    } catch {}
-  }, []);
-
+  
   async function loadConversations(currentUserId?: string) {
     const uid = currentUserId ?? userId;
     if (!uid) return;
@@ -596,12 +578,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     return { canSend: true, canWrite: true, reason: "" };
   }
 
-  function toggleTheme() {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-    try { localStorage.setItem("mulfai-theme", next); } catch {}
-  }
 
 
   async function newConversation() {
@@ -1293,7 +1269,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       <div
         className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
-          backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
+          backgroundColor: "var(--surface)",
           backdropFilter: "blur(40px)",
           borderRight: "1px solid var(--border)",
           transform: `translateX(${showSidebar ? "0" : "-100%"})`,
@@ -1523,19 +1499,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           </button>
           {/* Actions */}
           <div className="flex items-center gap-1 ml-2">
-            <button onClick={toggleTheme}
+            <button disabled
               className="p-1.5 rounded-lg transition-all"
               style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)", display: "none" }}
-              title={theme === "dark" ? "Claro" : "Oscuro"}>
-              {theme === "dark" ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
+              title="Tema">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+              </svg>
             </button>
             <button
               onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
@@ -1580,7 +1550,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div
           className={`h-full flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
-            backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
+            backgroundColor: "var(--surface)",
             backdropFilter: "blur(40px)",
             borderRight: "1px solid var(--border)",
             overflow: "hidden",
@@ -1791,18 +1761,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               <span className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>{userEmail}</span>
             </button>
               <div className="flex items-center gap-1 ml-2">
-                <button onClick={toggleTheme}
+                <button disabled
                   className="p-1.5 rounded-lg transition-all"
                   style={{ color: "var(--text-secondary)", backgroundColor: "var(--surface-hover)" }}>
-                  {theme === "dark" ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                  )}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
                 </button>
                 <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
                   className="p-1.5 rounded-lg transition-all"
@@ -1813,7 +1777,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                   </svg>
                 </button>
               </div>
-            </div>
           </div>
         </div>
 
@@ -1822,7 +1785,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         {/* Top bar */}
         <header className="h-14 flex items-center justify-center px-4 shrink-0 md:hidden"
           style={{
-            background: "linear-gradient(180deg, rgba(38,38,38,0.98) 0%, rgba(28,28,28,0.99) 100%)",
+            background: "var(--surface-hover)",
             backdropFilter: "blur(20px)",
             borderBottom: "1px solid var(--border)",
           }}>
@@ -2349,7 +2312,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             <div className="relative">
               <div className="rounded-2xl overflow-hidden"
                 style={{
-                  backgroundColor: "rgba(26,26,26,0.8)",
+                  backgroundColor: "color-mix(in srgb, var(--surface) 100%, transparent)",
                   backdropFilter: "blur(20px)",
                   border: "1px solid rgba(255,255,255,0.06)",
                   boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)",
@@ -2468,7 +2431,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       )}
       {lightboxUrl && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.9)", backdropFilter: "blur(6px)" }}
+          style={{ backgroundColor: "var(--surface)", backdropFilter: "blur(6px)" }}
           onClick={() => setLightboxUrl(null)}>
           <button className="absolute top-4 right-4 p-2.5 rounded-xl transition-colors hover:bg-white/10"
             style={{ color: "white" }}
@@ -2487,7 +2450,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       {/* Onboarding overlay */}
       {showOnboarding && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)" }}
+          style={{ backgroundColor: "var(--surface)", backdropFilter: "blur(16px)" }}
           onClick={(e) => { if (e.target === e.currentTarget) dismissOnboarding(); }}>
           <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-fade-in"
             style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 50px rgba(0,0,0,0.6)" }}>
