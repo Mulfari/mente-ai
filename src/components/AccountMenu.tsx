@@ -171,43 +171,6 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
       });
   }, [supabase_client]);
 
-  // Auto-detect only if no city is saved yet (first time)
-  useEffect(() => {
-    if (!mounted || data.city) return;
-    if (!navigator.geolocation) return;
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
-          );
-          const json = await res.json();
-          const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
-          if (city) {
-            setData(d => ({ ...d, city }));
-            const { data: existing } = await supabase_client.from("user_context").select("id").maybeSingle();
-            if (existing) {
-              await supabase_client.from("user_context").update({
-                city: city.trim(), updated_at: new Date().toISOString(),
-              }).eq("id", existing.id);
-            } else {
-              await supabase_client.from("user_context").insert({ city: city.trim() });
-            }
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
-          }
-        } catch {
-          // ignore
-        } finally {
-          setLocating(false);
-        }
-      },
-      () => { setLocating(false); }
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted]);
-
   const total = data.full_name.length + data.city.length + data.custom_notes.length;
 
   async function handleSave(e: React.FormEvent) {
@@ -238,7 +201,7 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
 
   function handleUpdateClick() {
     if (!navigator.geolocation) return;
-    if (data.city) {
+    if (data.city && !showConfirm) {
       setShowConfirm(true);
       return;
     }
@@ -311,20 +274,11 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
           <div className="flex items-center gap-2">
             <div className="flex-1 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
               style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: data.city ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-              {locating ? (
-                <>
-                  <div className="w-3 h-3 rounded-full animate-spin" style={{ border: "1.5px solid var(--border)", borderTopColor: "var(--primary)" }} />
-                  {data.city ? "Actualizando..." : "Detectando..."}
-                </>
-              ) : (
-                <>
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {data.city || "Sin configurar"}
-                </>
-              )}
+              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {data.city || "Sin configurar"}
             </div>
             <button type="button" onClick={handleUpdateClick} disabled={locating}
               className="px-3 py-2.5 rounded-xl text-xs font-medium shrink-0 transition-all disabled:opacity-50"
@@ -351,9 +305,6 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
                 No
               </button>
             </div>
-          )}
-          {!data.city && !locating && (
-            <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Se detecta automaticamente la primera vez</p>
           )}
         </div>
 
