@@ -342,9 +342,11 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   }
 
   const filtered = users.filter(u => {
-    const matchesSearch = u.email.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === "all" || u.status === filter;
-    return matchesSearch && matchesFilter;
+    try {
+      const matchesSearch = u.email.toLowerCase().includes(search.toLowerCase());
+      const matchesFilter = filter === "all" || u.status === filter;
+      return matchesSearch && matchesFilter;
+    } catch { return false; }
   });
 
   const stats = {
