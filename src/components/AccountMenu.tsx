@@ -391,7 +391,6 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
 
   return (
     <div className="px-5 sm:px-8 py-6 space-y-5">
-      {/* Status card */}
       <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: sc.bg, color: sc.color }}>
@@ -420,38 +419,30 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
             <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Anade tiempo con un cupon</p>
           </div>
         ) : (
-          <div className="grid grid-cols-4 gap-2 text-center">
-            {([
-              { value: cd.days, label: "dias" },
-              { value: cd.hours, label: "hrs" },
-              { value: cd.minutes, label: "min" },
-              { value: cd.seconds, label: "seg" },
-            ] as { value: number; label: string }[]).map(({ value, label }) => (
-              <div key={label} className="rounded-xl py-3" style={{ backgroundColor: "var(--surface)" }}>
-                <span className="text-xl font-bold block" style={{ color: sc.color }}>
-                  {String(value).padStart(2, "0")}
-                </span>
-                <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{label}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="rounded-xl p-4" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
-        <div className="space-y-2">
-          {[
-            { label: "Semanas restantes", value: weeks < 0 ? "Ilimitado" : `${weeks} semana${weeks !== 1 ? "s" : ""}` },
-            { label: "Inicio", value: profile?.subscription_start ? new Date(profile.subscription_start).toLocaleDateString("es-VE") : "—" },
-            { label: "Fin", value: profile?.subscription_end ? new Date(profile.subscription_end).toLocaleDateString("es-VE") : "—" },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex items-center justify-between">
-              <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>{label}</span>
-              <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{value}</span>
+          <>
+            <div className="grid grid-cols-4 gap-2 text-center mb-4">
+              {([
+                { value: cd.days, label: "dias" },
+                { value: cd.hours, label: "hrs" },
+                { value: cd.minutes, label: "min" },
+                { value: cd.seconds, label: "seg" },
+              ] as { value: number; label: string }[]).map(({ value, label }) => (
+                <div key={label} className="rounded-xl py-3" style={{ backgroundColor: "var(--surface)" }}>
+                  <span className="text-xl font-bold block" style={{ color: sc.color }}>
+                    {String(value).padStart(2, "0")}
+                  </span>
+                  <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Finaliza</span>
+              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                {profile?.subscription_end ? new Date(profile.subscription_end).toLocaleDateString("es-VE") : "—"}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
