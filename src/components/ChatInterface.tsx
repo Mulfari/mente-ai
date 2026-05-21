@@ -2582,109 +2582,164 @@ type SwipeableConvProps = {
 };
 
 function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }: SwipeableConvProps) {
-  const [offset, setOffset] = React.useState(0);
+  const [swipeX, setSwipeX] = React.useState(0);
   const [startX, setStartX] = React.useState(0);
   const [startY, setStartY] = React.useState(0);
-  const [dragging, setDragging] = React.useState(false);
-  const [removed, setRemoved] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const [confirming, setConfirming] = React.useState(false);
+  const [snapping, setSnapping] = React.useState(false);
+  const [gone, setGone] = React.useState(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
-  const DELETE_THRESHOLD = 80;
+  const DELETE_THRESHOLD = 72;
+  const MAX_SWIPE = 180;
 
   function handleTouchStart(e: React.TouchEvent) {
+    if (confirming || gone) return;
     const t = e.touches[0];
     setStartX(t.clientX);
     setStartY(t.clientY);
-    setDragging(true);
+    setIsDragging(true);
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (!dragging) return;
+    if (!isDragging || confirming || gone) return;
     const t = e.touches[0];
     const dy = Math.abs(t.clientY - startY);
     const dx = startX - t.clientX;
     if (dy > 10 && dy > Math.abs(dx)) return;
-    setOffset(Math.max(0, Math.min(dx, 180)));
+
+    // Elastic resistance past threshold
+    const raw = Math.min(Math.max(dx, 0), MAX_SWIPE);
+    const clamped = raw > DELETE_THRESHOLD
+      ? DELETE_THRESHOLD + (raw - DELETE_THRESHOLD) * 0.18
+      : raw;
+    setSwipeX(clamped);
   }
 
   function handleTouchEnd() {
-    if (!dragging) return;
-    setDragging(false);
-    if (offset >= DELETE_THRESHOLD) {
-      setRemoved(true);
-      setTimeout(() => onDelete(), 300);
+    if (!isDragging || confirming || gone) return;
+    setIsDragging(false);
+    if (swipeX >= DELETE_THRESHOLD) {
+      // Confirm
+      setConfirming(true);
+      setTimeout(() => setGone(true), 200);
+      setTimeout(() => onDelete(), 400);
     } else {
-      setOffset(0);
+      // Snap back with spring
+      setSnapping(true);
+      setSwipeX(0);
+      setTimeout(() => setSnapping(false), 400);
     }
   }
 
   function handleClick() {
-    if (offset > 8) { setOffset(0); return; }
+    if (swipeX > 8 || confirming || gone) { setSwipeX(0); return; }
     onSelect();
   }
 
-  if (removed) {
+  if (gone) {
     return (
-      <div className="mb-0.5 rounded-xl overflow-hidden"
-        style={{ height: 56, transition: "height 0.3s ease-in, opacity 0.25s ease-in", opacity: 0 }}>
-        <div className="h-full rounded-xl" style={{ backgroundColor: "var(--surface)", transform: "translateX(-100%)" }} />
+      <div
+        className="mb-0.5 rounded-xl overflow-hidden"
+        style={{
+          height: 56,
+          transition: confirming ? "none" : "height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-in",
+          opacity: confirming ? 1 : 0,
+          transform: confirming ? "none" : "translateX(-100%)",
+        }}
+      >
+        <div className="h-full rounded-xl" style={{ backgroundColor: "var(--surface)" }} />
       </div>
     );
   }
 
-  const progress = Math.min(offset / DELETE_THRESHOLD, 1);
-  const atThreshold = offset >= DELETE_THRESHOLD;
+  const past = swipeX >= DELETE_THRESHOLD;
+  const progress = Math.min(swipeX / DELETE_THRESHOLD, 1);
+  const revealW = Math.max(swipeX, 20);
 
   return (
     <div className="relative mb-0.5" ref={containerRef}>
-      {/* Delete reveal */}
+      {/* Delete background reveal */}
       <div
-        className="absolute inset-y-0 right-0 flex items-center justify-end overflow-hidden rounded-xl"
-        style={{
-          width: `${offset + 20}px`,
-          pointerEvents: "none",
-        }}
+        className="absolute inset-y-0 right-0 overflow-hidden pointer-events-none rounded-xl"
+        style={{ width: `${revealW + 24}px` }}
       >
         <div
-          className="h-full flex items-center gap-2.5 px-4 rounded-r-xl"
+          className="h-full flex flex-col items-end justify-center rounded-r-xl"
           style={{
-            background: atThreshold
-              ? "linear-gradient(135deg, #B91C1C 0%, #991B1B 100%)"
-              : "linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)",
-            boxShadow: atThreshold ? "0 0 0 1.5px rgba(239,68,68,0.5), 0 0 20px rgba(239,68,68,0.25)" : "none",
-            width: `${offset + 20}px`,
-            opacity: offset > 0 ? 1 : 0,
-            transition: dragging ? "none" : "box-shadow 0.15s, background 0.15s, opacity 0.15s",
-            animation: atThreshold ? "pulseDelete 1s ease-in-out infinite" : "none",
+            width: `${revealW + 24}px`,
+            background: past
+              ? "linear-gradient(90deg, #B91C1C 0%, #DC2626 100%)"
+              : "linear-gradient(90deg, #7F1D1D 0%, #DC2626 100%)",
+            opacity: swipeX > 0 ? 1 : 0,
+            transition: isDragging ? "none" : "background 0.2s, opacity 0.2s",
+            animation: past ? "pulseDelete 1s ease-in-out infinite" : "none",
+            boxShadow: past ? "0 0 0 1.5px rgba(239,68,68,0.4), 0 0 24px rgba(239,68,68,0.2)" : "none",
           }}
         >
-          {offset > 10 && (
-            <>
+          {swipeX > 10 && (
+            <div className="flex items-center gap-2 pr-4">
               <span
-                className="text-xs font-semibold whitespace-nowrap"
+                className="text-xs font-semibold"
                 style={{
                   color: "white",
-                  opacity: atThreshold ? 1 : Math.min(progress * 1.5, 1),
-                  transition: "opacity 0.12s",
+                  opacity: past ? 1 : Math.min(progress * 1.2, 1),
+                  transition: "opacity 0.15s",
+                  whiteSpace: "nowrap",
                 }}
               >
-                {atThreshold ? "Eliminar" : "Desliza"}
+                {past ? "Eliminar" : `Desliza +${Math.round(progress * 100)}%`}
               </span>
               <div
                 className="flex items-center justify-center rounded-full shrink-0"
                 style={{
-                  width: atThreshold ? "34px" : "30px",
-                  height: atThreshold ? "34px" : "30px",
-                  backgroundColor: atThreshold ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.15)",
+                  width: past ? 36 : 30,
+                  height: past ? 36 : 30,
+                  backgroundColor: past ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.12)",
+                  transform: past ? "scale(1)" : `scale(${0.8 + progress * 0.2})`,
+                  animation: past ? "pop-check 0.3s ease-out forwards" : "none",
                   transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  transform: atThreshold ? "scale(1.1)" : "scale(1)",
+                  boxShadow: past ? "0 0 12px rgba(255,255,255,0.3)" : "none",
                 }}
               >
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <svg
+                  className="text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                  viewBox="0 0 24 24"
+                  style={{
+                    width: past ? 16 : 14,
+                    height: past ? 16 : 14,
+                    transform: past ? "scale(1)" : `scale(${0.85 + progress * 0.15})`,
+                    transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
+                    filter: past ? "drop-shadow(0 0 4px rgba(255,255,255,0.5))" : "none",
+                  }}
+                >
+                  {past ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  )}
                 </svg>
               </div>
-            </>
+            </div>
           )}
+          {/* Progress line at bottom */}
+          <div
+            className="absolute bottom-0 left-0 right-0"
+            style={{ height: 3, overflow: "hidden" }}
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${progress * 100}%`,
+                background: past ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)",
+                boxShadow: past ? "0 0 6px rgba(255,255,255,0.5)" : "none",
+                transition: isDragging ? "none" : "width 0.2s, background 0.2s",
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -2693,9 +2748,11 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         className="relative flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl"
         style={{
           backgroundColor: "transparent",
-          transform: `translateX(-${offset}px)`,
+          transform: `translateX(-${swipeX}px)`,
           willChange: "transform",
-          transition: dragging ? "none" : offset > 0 ? "transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)" : "none",
+          transition: snapping
+            ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
+            : isDragging ? "none" : `transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
           WebkitTapHighlightColor: "transparent",
           touchAction: "pan-y",
           zIndex: 1,
@@ -2705,15 +2762,15 @@ function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
         onMouseEnter={e => {
-          if (!dragging && offset === 0) {
+          if (!isDragging && swipeX === 0) {
             (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)";
           }
         }}
         onMouseLeave={e => {
-          if (!dragging && offset === 0) {
+          if (!isDragging && swipeX === 0) {
             (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent";
           }
-          if (!dragging && offset > 0) setOffset(0);
+          if (!isDragging && swipeX > 0) setSwipeX(0);
         }}
       >
         {isActive && (
