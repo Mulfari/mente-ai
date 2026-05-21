@@ -20,14 +20,27 @@
   --table-row-hover: rgba(255,255,255,0.03);
 }
 
-/* Subtle rounded dot texture on background (WhatsApp-style) */
+/* Subtle crosshatch texture (premium linen feel) */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-color: var(--background);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='2' height='2' x='12' y='12' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='37' y='12' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='62' y='12' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='87' y='12' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='12' y='37' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='37' y='37' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='62' y='37' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='87' y='37' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='12' y='62' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='37' y='62' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='62' y='62' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='87' y='62' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='12' y='87' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='37' y='87' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='62' y='87' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3Crect width='2' height='2' x='87' y='87' fill='rgba(255,255,255,0.08)' rx='0.5'/%3E%3C/svg%3E");
-  background-size: 100px 100px;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 20px,
+      rgba(255,255,255,0.04) 20px,
+      rgba(255,255,255,0.04) 21px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 20px,
+      rgba(255,255,255,0.03) 20px,
+      rgba(255,255,255,0.03) 21px
+    );
   pointer-events: none;
   z-index: 0;
 }
