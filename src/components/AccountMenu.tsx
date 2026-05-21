@@ -41,17 +41,17 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
     <div className="fixed inset-0 flex items-center justify-center z-50"
       style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-3xl h-[90vh] max-h-[90vh] rounded-2xl overflow-hidden flex animate-fade-in"
+      <div className="w-full max-w-lg sm:max-w-2xl lg:max-w-[52rem] max-h-[92vh] rounded-2xl overflow-hidden flex animate-fade-in"
         style={{ backgroundColor: "var(--surface)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
 
         {/* Left sidebar */}
-        <div className="w-16 sm:w-64 shrink-0 flex flex-col py-5 sm:py-6"
-          style={{ backgroundColor: "rgba(0,0,0,0.4)", borderRight: "1px solid var(--border)" }}>
+        <div className="w-14 sm:w-52 shrink-0 flex flex-col py-5 sm:py-6"
+          style={{ backgroundColor: "rgba(0,0,0,0.35)", borderRight: "1px solid var(--border)" }}>
 
           {/* Header */}
           <div className="px-4 sm:px-5 mb-5 sm:mb-6">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0"
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0"
                 style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -59,7 +59,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
               </div>
               <span className="text-xs sm:text-sm font-bold hidden sm:block" style={{ color: "var(--text-primary)" }}>Mulfai</span>
             </div>
-            <div className="flex items-center gap-2 px-2.5 sm:px-3 py-2 sm:py-2.5 rounded-xl"
+            <div className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl"
               style={{ backgroundColor: "var(--surface)" }}>
               <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
                 style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
@@ -91,7 +91,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
               )},
             ] as { id: Tab; label: string; icon: React.ReactNode }[]).map(({ id, label, icon }) => (
               <button key={id} onClick={() => setTab(id)}
-                className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 sm:py-2.5 rounded-xl text-sm font-medium transition-all tooltip-wrapper"
+                className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{
                   backgroundColor: tab === id ? "var(--surface)" : "transparent",
                   color: tab === id ? "var(--primary)" : "var(--text-secondary)",
@@ -121,7 +121,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
         {/* Right content */}
         <div className="flex-1 flex flex-col min-w-0">
           {/* Top bar */}
-          <div className="flex items-center justify-between px-5 sm:px-7 py-4 sm:py-5 shrink-0"
+          <div className="flex items-center justify-between px-6 sm:px-8 py-4 sm:py-5 shrink-0"
             style={{ borderBottom: "1px solid var(--border)" }}>
             <div>
               <h2 className="text-base sm:text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -143,7 +143,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto" style={{ minHeight: "420px" }}>
+          <div className="flex-1 overflow-y-auto" style={{ minHeight: "460px" }}>
             {tab === "context" ? <ContextTab email={email} supabase={supabase} /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
@@ -384,7 +384,7 @@ function CouponTab({ email, onClose }: { email: string; onClose: () => void }) {
   }
 
   return (
-    <form onSubmit={handleApply} className="p-6 space-y-5">
+    <form onSubmit={handleApply} className="px-6 sm:px-8 py-6 space-y-5">
       <div>
         <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Codigo de cupon</label>
         <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
