@@ -18,8 +18,7 @@ type Props = {
 
 export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const supabase = await createClient();
-  const { data } = await supabase.auth.getSession();
-  const user = data.session?.user;
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return null;
 
