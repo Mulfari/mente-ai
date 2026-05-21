@@ -324,21 +324,20 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
   const isUnlimited = weeks < 0;
   const isActive = profile && (weeks > 0 || isUnlimited);
 
-  function getStatusColor() {
-    if (isUnlimited) return { bg: "rgba(139,92,246,0.15)", color: "#8b5cf6" };
-    if (!profile || weeks <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
-    const diff = profile.subscription_end ? new Date(profile.subscription_end).getTime() - Date.now() : 0;
-    if (diff <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
-    if (diff < 3 * 24 * 60 * 60 * 1000) return { bg: "rgba(245,158,11,0.15)", color: "var(--warning)" };
-    return { bg: "rgba(16,163,127,0.15)", color: "var(--primary)" };
-  }
-
   function getEndTime() {
     if (!profile?.subscription_end) return 0;
     const s = profile.subscription_end;
-    // Force UTC parsing
     const d = new Date(s.endsWith("Z") ? s : s.replace(" ", "T") + "Z");
     return d.getTime();
+  }
+
+  function getStatusColor() {
+    if (isUnlimited) return { bg: "rgba(139,92,246,0.15)", color: "#8b5cf6" };
+    if (!profile || weeks <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
+    const diff = getEndTime() - Date.now();
+    if (diff <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
+    if (diff < 3 * 24 * 60 * 60 * 1000) return { bg: "rgba(245,158,11,0.15)", color: "var(--warning)" };
+    return { bg: "rgba(16,163,127,0.15)", color: "var(--primary)" };
   }
 
   function getCountdown() {
@@ -404,7 +403,12 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
             <div className="flex items-center justify-between">
               <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Finaliza</span>
               <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                {profile?.subscription_end ? new Date(profile.subscription_end).toLocaleDateString("es-VE") : "—"}
+                {(() => {
+                  if (!profile?.subscription_end) return "—";
+                  const s = profile.subscription_end;
+                  const d = new Date(s.endsWith("Z") ? s : s.replace(" ", "T") + "Z");
+                  return d.toLocaleDateString("es-VE", { timeZone: "America/Caracas" });
+                })()}
               </span>
             </div>
           </>
