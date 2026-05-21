@@ -69,6 +69,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAnimId, setCopiedAnimId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
@@ -177,6 +178,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           if (!seen && !never) setShowOnboarding(true);
         }, 1500);
       }
+      setMounted(true);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -193,6 +195,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           if (!seen && !never) setShowOnboarding(true);
         }, 800);
       }
+      setMounted(true);
     });
 
     return () => subscription.unsubscribe();
@@ -1278,7 +1281,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)", backgroundImage: "radial-gradient(ellipse 120% 60% at 15% 85%, rgba(16,163,127,0.35) 0%, transparent 55%), radial-gradient(ellipse 90% 50% at 85% 15%, rgba(16,163,127,0.22) 0%, transparent 50%), radial-gradient(ellipse 70% 35% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 55%)" }}>
       {/* Sidebar */}
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+        className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!mounted || !isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
           backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
           borderRight: "1px solid var(--border)",
@@ -1554,7 +1557,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           </div>
         )}
         <div
-          className={`h-full flex flex-col ${!isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
+          className={`h-full flex flex-col ${!mounted || !isLoggedIn ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
             backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
             backdropFilter: "blur(40px)",
@@ -1821,7 +1824,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             </span>
           </div>
           {/* Subscription indicator / Login button */}
-          {isLoggedIn && profile ? (
+          {mounted ? (isLoggedIn && profile ? (
             <button onClick={() => setShowAccountMenu(true)}
               className="absolute right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-80"
               style={{
@@ -1849,7 +1852,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
               Iniciar sesion
             </button>
-          )}
+          )) : null}
         </header>
 
         {/* Messages */}
