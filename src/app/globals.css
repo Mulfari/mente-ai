@@ -20,13 +20,16 @@
   --table-row-hover: rgba(255,255,255,0.03);
 }
 
-/* Film grain noise texture — subtle, organic */
+/* Aurora — layered teal gradients like northern lights */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-color: #0B1418;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.25'/%3E%3C/svg%3E");
+  background-image:
+    radial-gradient(ellipse 100% 50% at 20% 80%, rgba(16,163,127,0.15) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 40% at 80% 20%, rgba(16,163,127,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 30% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
