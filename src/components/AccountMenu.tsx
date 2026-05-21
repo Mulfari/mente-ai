@@ -377,7 +377,7 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
                     {isUnlimited ? "Ilimitado" : !endTime || (now >= endTime) ? "Expirada" : "Activa"}
                   </p>
                   <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                    end={endTime} now={now} diff={endTime - now}
+                    profile={!!profile} weeks={weeks} end={endTime} now={now}
                   </p>
                 </div>
               </>
