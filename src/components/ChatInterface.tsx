@@ -1314,7 +1314,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         <div className="px-4 shrink-0 pb-2 space-y-2">
           <button onClick={newConversation}
             className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
-            style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
+            style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--primary)";
@@ -1339,7 +1339,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           {/* TODO: Re-enable agent button after /agent page is ready
           <button onClick={() => window.location.href = "/agent"}
             className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97] hidden md:flex"
-            style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
+            style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--primary)";
@@ -1389,7 +1389,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
           <button onClick={() => window.location.href = "/agent"}
             className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97] hidden md:flex"
-            style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
+            style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
               el.style.color = "var(--primary)";
@@ -1619,27 +1619,31 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           {/* Nueva conversacion + Buscador */}
           <div className="px-4 shrink-0 pb-2 space-y-2">
             <button onClick={newConversation}
-              className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
-              style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
+              className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
+              style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLButtonElement;
                 el.style.color = "var(--primary)";
+                el.style.backgroundColor = "var(--surface-hover)";
+                el.style.boxShadow = "0 0 12px rgba(16,163,127,0.15)";
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLButtonElement;
-                el.style.color = "var(--text-tertiary)";
+                el.style.color = "var(--text-secondary)";
+                el.style.backgroundColor = "transparent";
+                el.style.boxShadow = "none";
               }}
             >
-              <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90 group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
               </svg>
-              <span className="relative">Nueva conversación</span>
+              <span className="relative" style={{ transition: "color 0.2s" }}>Nueva conversación</span>
             </button>
 
             {/* TODO: Re-enable agent button after /agent page is ready
             <button onClick={() => window.location.href = "/agent"}
               className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-150 active:scale-[0.97]"
-              style={{ backgroundColor: "transparent", color: "var(--text-tertiary)" }}
+              style={{ backgroundColor: "transparent", color: "var(--text-secondary)" }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLButtonElement;
                 el.style.color = "var(--primary)";
