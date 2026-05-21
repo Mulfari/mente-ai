@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Props = {
   email: string;
-  profile: {
+  profile?: {
     subscription_weeks?: number;
     subscription_start?: string;
     subscription_end?: string;
@@ -20,10 +20,20 @@ type Tab = "context" | "subscription" | "coupon";
 
 const MAX_CHARS = 2000;
 
-export default function AccountMenu({ email, profile, userContext, onSignOut, onClose }: Props) {
+export default function AccountMenu({ email, profile: profileProp, userContext, onSignOut, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("context");
   const [tick, setTick] = useState(0);
+  const [profile, setProfile] = useState(profileProp ?? null);
   const supabase = createClient();
+
+  // Always fetch fresh profile so it's never null
+  useEffect(() => {
+    supabase
+      .from("profiles")
+      .select("subscription_weeks, subscription_start, subscription_end")
+      .single()
+      .then(({ data }) => { if (data) setProfile(data); });
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000);
@@ -375,9 +385,6 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
                   <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Estado</p>
                   <p className="text-sm font-semibold" style={{ color: sc.color }}>
                     {isUnlimited ? "Ilimitado" : !endTime || (now >= endTime) ? "Expirada" : "Activa"}
-                  </p>
-                  <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                    profile={!!profile} weeks={weeks} end={endTime} now={now}
                   </p>
                 </div>
               </>
