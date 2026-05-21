@@ -127,6 +127,11 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
 
   // Load initial data — prefer server props, fall back to client-side fetch
   useEffect(() => {
+    // Debug: log what we received from server
+    if (typeof window !== "undefined") {
+      console.log("[AdminPanel] initialProfiles:", initialProfiles?.length ?? "undefined");
+    }
+
     const merged = (initialProfiles || []).map(p => ({
       id: p.id,
       email: p.email || "Sin email",
@@ -139,10 +144,12 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       used_coupon_label_color: p.used_coupon_label_color ?? null,
     } as Profile));
     if (merged.length > 0) {
+      console.log("[AdminPanel] Using server data, users:", merged.length);
       setUsers(merged);
       setLoading(false);
     } else {
       // No server data — fetch client-side via API route
+      console.log("[AdminPanel] No server data, fetching client-side...");
       loadUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
