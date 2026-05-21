@@ -41,12 +41,12 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
     <div className="fixed inset-0 flex items-center justify-center z-50"
       style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-[42rem] max-h-[88vh] rounded-2xl overflow-hidden flex animate-fade-in"
+      <div className="w-full max-w-[48rem] max-h-[78vh] rounded-2xl overflow-hidden flex animate-fade-in"
         style={{ backgroundColor: "var(--surface)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
 
         {/* Left sidebar */}
         <div className="w-14 sm:w-52 shrink-0 self-start sticky top-0 flex flex-col py-5 sm:py-6"
-          style={{ backgroundColor: "rgba(0,0,0,0.35)", borderRight: "1px solid var(--border)", height: "88vh" }}>
+          style={{ backgroundColor: "rgba(0,0,0,0.35)", borderRight: "1px solid var(--border)", height: "78vh" }}>
 
           {/* Header */}
           <div className="px-4 sm:px-5 mb-5 sm:mb-6">
@@ -119,9 +119,9 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
         </div>
 
         {/* Right content */}
-        <div className="flex-1 flex flex-col min-w-0" style={{ height: "88vh" }}>
+        <div className="flex-1 flex flex-col min-w-0" style={{ height: "78vh" }}>
           {/* Top bar */}
-          <div className="flex items-center justify-between px-6 sm:px-8 py-4 sm:py-5 shrink-0"
+          <div className="flex items-center justify-between px-6 sm:px-8 py-4 shrink-0"
             style={{ borderBottom: "1px solid var(--border)" }}>
             <div>
               <h2 className="text-base sm:text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -143,7 +143,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto" style={{ height: "calc(88vh - 73px)" }}>
+          <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
             {tab === "context" ? <ContextTab email={email} supabase={supabase} /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
