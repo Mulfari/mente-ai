@@ -45,7 +45,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
         style={{ backgroundColor: "var(--surface)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
 
         {/* Left sidebar */}
-        <div className="w-56 shrink-0 flex flex-col py-6"
+        <div className="w-14 sm:w-56 shrink-0 flex flex-col py-6"
           style={{ backgroundColor: "var(--background)", borderRight: "1px solid var(--border)" }}>
 
           {/* Header */}
