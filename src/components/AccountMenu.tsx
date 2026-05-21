@@ -16,8 +16,13 @@ type Props = {
 };
 
 export default function AccountMenu({ email, profile, onSignOut, onClose }: Props) {
-  const [view, setView] = useState<"main" | "coupon">("main");
+  const [view, setView] = useState<"main" | "coupon" | "context">("main");
   const [couponCode, setCouponCode] = useState("");
+  const [context, setContext] = useState({ full_name: "", city: "", interests: "", custom_notes: "" });
+  const [contextLoading, setContextLoading] = useState(true);
+  const [contextSaving, setContextSaving] = useState(false);
+  const [contextSaved, setContextSaved] = useState(false);
+  const [contextError, setContextError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -31,6 +36,24 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
     const interval = setInterval(() => setTick(t => t + 1), 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Load user context
+  useEffect(() => {
+    if (view === "context") {
+      supabase
+        .from("user_context")
+        .select("full_name, city, interests, custom_notes")
+        .maybeSingle()
+        .then(({ data }) => {
+          setContextLoading(false);
+          if (data) {
+            setContext({ full_name: data.full_name || "", city: data.city || "", interests: data.interests || "", custom_notes: data.custom_notes || "" });
+          }
+        });
+    }
+  }, [view]);
+
+  const MAX_CHARS = 2000;
 
   const weeks = profile?.subscription_weeks ?? 0;
   const isUnlimited = weeks < 0;
@@ -107,6 +130,38 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
       }, 2500);
     }
   }
+
+  function contextTotalChars() {
+    return context.full_name.length + context.city.length + context.interests.length + context.custom_notes.length;
+  }
+
+  async function saveContext(e: React.FormEvent) {
+    e.preventDefault();
+    if (contextTotalChars() > MAX_CHARS) {
+      setContextError(`Máximo ${MAX_CHARS} caracteres`);
+      return;
+    }
+    setContextSaving(true);
+    setContextError("");
+    setContextSaved(false);
+
+    const { error } = await supabase.from("user_context").upsert({
+      full_name: context.full_name.trim(),
+      city: context.city.trim(),
+      interests: context.interests.trim(),
+      custom_notes: context.custom_notes.trim(),
+    }, { onConflict: "user_id" });
+
+    setContextSaving(false);
+    if (error) {
+      setContextError("Error guardando. Intenta de nuevo.");
+    } else {
+      setContextSaved(true);
+      setTimeout(() => setContextSaved(false), 2500);
+    }
+  }
+
+  const VENEZUELAN_CITIES = ["Caracas", "Maracay", "Valencia", "Barquisimeto", "Maracaibo", "Ciudad Bolívar", "Mérida", "San Cristóbal", "Barinas", "Cumaná", "Puerto La Cruz", "Guarenas", "Acarigua", "Ciudad Ojeda", "Guatire"];
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 px-4"
@@ -224,7 +279,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
         {/* Actions */}
         {view === "main" ? (
           <div className="space-y-2">
-            <button onClick={() => window.location.href = "/context"}
+            <button onClick={() => { setView("context"); setContextLoading(true); }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
               style={{ backgroundColor: "var(--surface)", color: "var(--text-primary)", border: "1px solid var(--border)" }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"
@@ -250,6 +305,72 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
               Cerrar sesión
             </button>
           </div>
+        ) : view === "context" ? (
+          <form onSubmit={saveContext} className="space-y-3">
+            <button type="button" onClick={() => { setView("main"); setContextError(""); setContextSaved(false); }}
+              className="flex items-center gap-2 text-xs transition-colors hover:underline"
+              style={{ color: "var(--text-tertiary)" }}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Volver
+            </button>
+
+            {contextLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="w-6 h-6 rounded-full animate-spin" style={{ border: "2px solid var(--border)", borderTopColor: "var(--primary)" }} />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>Personaliza tu contexto</p>
+                  <span className="text-xs" style={{ color: contextTotalChars() > MAX_CHARS ? "var(--danger)" : "var(--text-tertiary)" }}>
+                    {contextTotalChars()}/{MAX_CHARS}
+                  </span>
+                </div>
+
+                <input type="text" value={context.full_name}
+                  onChange={e => setContext(c => ({ ...c, full_name: e.target.value }))}
+                  placeholder="Tu nombre"
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+
+                <select value={context.city}
+                  onChange={e => setContext(c => ({ ...c, city: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none appearance-none"
+                  style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: context.city ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+                  <option value="">Ciudad</option>
+                  {VENEZUELAN_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+
+                <input type="text" value={context.interests}
+                  onChange={e => setContext(c => ({ ...c, interests: e.target.value }))}
+                  placeholder="Intereses (separados por coma)"
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none"
+                  style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+
+                <textarea value={context.custom_notes}
+                  onChange={e => setContext(c => ({ ...c, custom_notes: e.target.value }))}
+                  placeholder="Notas personales"
+                  rows={3}
+                  className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none"
+                  style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+
+                {contextError && (
+                  <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(239,68,68,0.1)", color: "var(--danger)" }}>{contextError}</p>
+                )}
+                {contextSaved && (
+                  <p className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(16,163,127,0.1)", color: "var(--primary)" }}>Guardado correctamente</p>
+                )}
+
+                <button type="submit" disabled={contextSaving || contextTotalChars() > MAX_CHARS}
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all hover:opacity-90"
+                  style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                  {contextSaving ? "Guardando..." : "Guardar contexto"}
+                </button>
+              </>
+            )}
+          </form>
         ) : (
           <div className="space-y-3">
             <button onClick={() => { setView("main"); setError(""); setSuccess(""); setCouponCode(""); }}
