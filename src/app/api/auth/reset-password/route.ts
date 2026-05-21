@@ -34,13 +34,13 @@ export async function POST(request: Request) {
     const supabaseUrl = linkData.properties.action_link;
     const urlObj = new URL(supabaseUrl);
     const token = urlObj.searchParams.get("token");
-    const confirmUrl = `https://mulfai.com.ve/reset-password?token=${token}&email=${encodeURIComponent(email)}&type=recovery`;
+    const confirmUrl = `https://vechat.com.ve/reset-password?token=${token}&email=${encodeURIComponent(email)}&type=recovery`;
 
     // Send branded email via Resend
     const { error: sendError } = await getResend().emails.send({
-      from: "Mulfai <noreply@mulfai.com.ve>",
+      from: "VeChat <noreply@vechat.com.ve>",
       to: email,
-      subject: "Restablece tu contraseña — Mulfai",
+      subject: "Restablece tu contraseña — VeChat",
       html: `
 <!DOCTYPE html>
 <html>
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
           <path d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
         </svg>
       </div>
-      <h1 style="color:#f0f0f0;font-size:28px;font-weight:700;margin:0 0 10px"><span style="color:#10A37F">M</span>ulfai</h1>
+      <h1 style="color:#f0f0f0;font-size:28px;font-weight:700;margin:0 0 10px"><span style="color:#10A37F">V</span>eChat</h1>
       <p style="color:#888;font-size:16px;margin:0">Restablecer contraseña</p>
     </div>
     <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:36px;text-align:center">

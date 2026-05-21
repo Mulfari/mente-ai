@@ -54,7 +54,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
-    typeof window !== "undefined" ? ((localStorage.getItem("mulfai-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
+    typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
   );
   const lockRef = useRef<SVGSVGElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
@@ -63,7 +63,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   // Persist sidebar lock state
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("mulfai-sidebar-lock", sidebarLock);
+      localStorage.setItem("vechat-sidebar-lock", sidebarLock);
     }
   }, [sidebarLock]);
   const [retryingId, setRetryingId] = useState<string | null>(null);
@@ -296,7 +296,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const urlId = parts[parts.length - 1];
       // Immediately mark that we have a conversation in the URL — suppresses hero before DB query
       // urlHasConv is derived from prop
-      console.log("[Mulfai] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
+      console.log("[VeChat] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
 
       const effectiveId = convIdFromUrl || urlId;
       if (!effectiveId || effectiveId === "chat") {
@@ -318,7 +318,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         .eq("id", effectiveId)
         .eq("user_id", currentUserId)
         .single();
-      console.log("[Mulfai] conv result:", data?.id, "error:", error);
+      console.log("[VeChat] conv result:", data?.id, "error:", error);
 
       if (!data || error) {
         // Conversation not found — reset to home
@@ -329,9 +329,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       setActiveConv(data);
       setConversations(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
-      console.log("[Mulfai] calling loadMessages:", data.id);
+      console.log("[VeChat] calling loadMessages:", data.id);
       await loadMessages(data.id);
-      console.log("[Mulfai] done, messages count:", messages.length);
+      console.log("[VeChat] done, messages count:", messages.length);
     }
     loadFromUrl();
   }, [isLoggedIn, userId]);
@@ -401,13 +401,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           });
           if (document.hidden && "Notification" in window) {
             if (Notification.permission === "granted") {
-              new Notification("Mulfai", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
+              new Notification("VeChat", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
             } else if (Notification.permission !== "denied") {
               Notification.requestPermission().then(p => {
-                if (p === "granted") new Notification("Mulfai", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
+                if (p === "granted") new Notification("VeChat", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
               });
             }
-            setNotification("Nuevo mensaje de Mulfai");
+            setNotification("Nuevo mensaje de VeChat");
             if (notifTimer.current) clearTimeout(notifTimer.current);
             notifTimer.current = setTimeout(() => setNotification(null), 5000);
           }
@@ -435,7 +435,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const steps = [
     {
       title: "Escribe lo que necesites",
-      sub: "Puedes chatear con Mulfai como si hablaras con una persona. Pregunta lo que quieras, en cualquier tema.",
+      sub: "Puedes chatear con VeChat como si hablaras con una persona. Pregunta lo que quieras, en cualquier tema.",
       icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
       preview: (
         <div className="space-y-2 mt-4">
@@ -1159,8 +1159,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               content: fullText,
               in_progress: false,
             });
-            if (saveError) console.error("[Mulfai] save failed:", saveError);
-            else console.log("[Mulfai] saved to DB:", msgId, "chars:", fullText.length);
+            if (saveError) console.error("[VeChat] save failed:", saveError);
+            else console.log("[VeChat] saved to DB:", msgId, "chars:", fullText.length);
             flushReveal(msgId, fullText, isDeep);
             setMessages(prev => prev.map(m =>
               m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m
@@ -1308,7 +1308,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
-            <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+            <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
           </div>
           <button onClick={() => setShowSidebar(false)} className="md:hidden p-2 rounded-xl cursor-pointer"
             style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
@@ -1593,12 +1593,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </div>
-                <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+                <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
               </div>
             <button onClick={() => {
                 setSidebarLock(s => {
                   const next = s === "locked" ? "unlocked" : "locked";
-                  try { localStorage.setItem("mulfai-sidebar-lock", next); } catch {}
+                  try { localStorage.setItem("vechat-sidebar-lock", next); } catch {}
                   return next;
                 });
                 const el = lockRef.current as SVGSVGElement | null;
@@ -1923,7 +1923,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Mulfai</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>VeChat</h1>
                   <p className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
                     Tu asistente de IA personal
                   </p>
@@ -2015,7 +2015,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     {/* Sender label */}
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                        {msg.role === "user" ? "Tú" : "Mulfai"}
+                        {msg.role === "user" ? "Tú" : "VeChat"}
                       </span>
                       {msg.role === "assistant" && msg._isDeep && (
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a78bfa" }}>
@@ -2506,7 +2506,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </div>
-                <span className="text-white font-semibold text-sm">Tour rápido de Mulfai</span>
+                <span className="text-white font-semibold text-sm">Tour rápido de VeChat</span>
               </div>
               <button onClick={dismissOnboarding}
                 className="w-7 h-7 rounded-full flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors">

@@ -69,7 +69,7 @@ export default function ConfirmEmailClient() {
             </svg>
           </div>
           <h1 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>
-            <span style={{ color: "var(--primary)" }}>M</span>ulfai
+            <span style={{ color: "var(--primary)" }}>V</span>eChat
           </h1>
           <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 mt-4"
             style={{ backgroundColor: "rgba(16,163,127,0.15)" }}>
@@ -82,7 +82,7 @@ export default function ConfirmEmailClient() {
             Tu correo ha sido confirmado exitosamente.
           </p>
           <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
-            Ya puedes iniciar sesión en <strong>mulfai.com.ve</strong> con tus datos de acceso.
+            Ya puedes iniciar sesión en <strong>vechat.com.ve</strong> con tus datos de acceso.
           </p>
           <div className="w-full h-px my-4" style={{ backgroundColor: "var(--border)" }} />
           <p className="text-xs mb-4" style={{ color: "var(--text-tertiary)" }}>
@@ -110,7 +110,7 @@ export default function ConfirmEmailClient() {
             </svg>
           </div>
           <h1 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>
-            <span style={{ color: "var(--primary)" }}>M</span>ulfai
+            <span style={{ color: "var(--primary)" }}>V</span>eChat
           </h1>
           <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 mt-4"
             style={{ backgroundColor: "rgba(239,68,68,0.15)" }}>
@@ -143,7 +143,7 @@ export default function ConfirmEmailClient() {
           </svg>
         </div>
         <h1 className="text-xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>
-          <span style={{ color: "var(--primary)" }}>M</span>ulfai
+          <span style={{ color: "var(--primary)" }}>V</span>eChat
         </h1>
         <div className="flex items-center justify-center gap-3 py-10">
           <svg className="w-5 h-5 animate-spin" style={{ color: "var(--primary)" }} fill="none" viewBox="0 0 24 24">

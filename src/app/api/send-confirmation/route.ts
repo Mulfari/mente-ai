@@ -40,9 +40,9 @@ export async function POST(request: Request) {
 
     const resend = getResend();
     const { error: sendError } = await resend.emails.send({
-      from: "Mulfai <noreply@mulfai.com.ve>",
+      from: "VeChat <noreply@vechat.com.ve>",
       to: email,
-      subject: "Confirma tu correo - Mulfai",
+      subject: "Confirma tu correo - VeChat",
       html: `
         <!DOCTYPE html>
         <html>
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
                 </svg>
               </div>
               <h1 style="color:#f0f0f0;font-size:28px;font-weight:700;margin:0 0 8px">Confirma tu correo</h1>
-              <p style="color:#888;font-size:15px;margin:0">Accede a Mulfai confirmando tu dirección de correo electrónico.</p>
+              <p style="color:#888;font-size:15px;margin:0">Accede a VeChat confirmando tu dirección de correo electrónico.</p>
             </div>
             <div style="background:#1a1a1a;border:1px solid #2e2e2e;border-radius:16px;padding:32px;text-align:center">
               <a href="${confirmUrl}" style="display:inline-block;background:linear-gradient(135deg,#10A37F,#0d8b6a);color:white;text-decoration:none;font-size:16px;font-weight:600;padding:14px 32px;border-radius:12px">
