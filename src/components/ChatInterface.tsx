@@ -1300,17 +1300,17 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           scrollbarWidth: "none",
         }}>
         {/* Sidebar header */}
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+        <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
               style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
-            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Mulfai</span>
+            <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>Mulfai</span>
           </div>
-          <button onClick={() => setShowSidebar(false)} className="md:hidden p-1.5 rounded-md cursor-pointer"
+          <button onClick={() => setShowSidebar(false)} className="md:hidden p-2 rounded-xl cursor-pointer"
             style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
@@ -1322,9 +1322,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
         
         {/* Nueva conversacion + Buscador */}
-        <div className="px-4 shrink-0 pb-2 space-y-2">
+        <div className="px-4 shrink-0 pb-3 space-y-2">
           <button onClick={newConversation}
-            className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
+            className="group w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
             style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
             onMouseEnter={e => {
               const el = e.currentTarget as HTMLButtonElement;
@@ -1334,7 +1334,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             }}
             onMouseLeave={e => {
               const el = e.currentTarget as HTMLButtonElement;
-              el.style.color = "var(--text-tertiary)";
+              el.style.color = "rgba(255,255,255,0.8)";
               el.style.backgroundColor = "transparent";
               el.style.boxShadow = "none";
             }}
@@ -1507,33 +1507,39 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         </div>
 
         {/* Bottom */}
-        <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid var(--border)" }}>
-          {/* User */}
+        <div className="px-3 pb-4 pt-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
           <button onClick={() => setShowAccountMenu(true)}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
-            style={{ color: "rgba(255,255,255,0.8)" }}>
-            <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
+            style={{ backgroundColor: "transparent" }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 0 12px rgba(16,163,127,0.35)" }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
             </div>
-            <span className="text-xs truncate" style={{ color: "rgba(255,255,255,0.8)" }}>{userEmail}</span>
+            <div className="flex-[private model]in-w-0 text-left">
+              <p className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{userEmail}</p>
+              {profile && (
+                <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
+                  {(profile.subscription_weeks ?? 0) !== 0 ? `${profile.subscription_weeks} semanas` : "Sin suscripcion"}
+                </p>
+              )}
+            </div>
             {profile && (
-              <div className="w-1.5 h-1.5 rounded-full ml-1 shrink-0"
-                style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "var(--primary)" : "var(--danger)" }} />
+              <div className="w-2 h-2 rounded-full shrink-0"
+                style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "var(--primary)" : "var(--danger)", boxShadow: (profile.subscription_weeks ?? 0) !== 0 ? "0 0 6px rgba(16,163,127,0.6)" : "none" }} />
             )}
           </button>
-          {/* Actions */}
-          <div className="flex items-center gap-1 ml-2">
-                        <button
-              onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-              className="p-1.5 rounded-lg transition-all"
-              style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "var(--surface-hover)", display: "none" }}
-              title="Cerrar sesión">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-            </button>
-          </div>
+          <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all mt-1"
+            style={{ color: "rgba(255,255,255,0.5)", backgroundColor: "transparent" }}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            <span className="text-xs">Cerrar sesion</span>
+          </button>
         </div>
       </div>
 
@@ -1779,27 +1785,40 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           </div>
 
           {/* Bottom */}
-          <div className="px-3 pb-4 pt-2 shrink-0 flex items-center" style={{ borderTop: "1px solid var(--border)" }}>
+          <div className="px-3 pb-4 pt-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
             <button onClick={() => setShowAccountMenu(true)}
-              className="flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all flex-1 min-w-0"
-              style={{ color: "rgba(255,255,255,0.8)" }}>
-              <div className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0"
-                style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
+              style={{ backgroundColor: "transparent" }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
+                style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 0 12px rgba(16,163,127,0.35)" }}>
                 {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
               </div>
-              <span className="text-xs truncate" style={{ color: "rgba(255,255,255,0.8)" }}>{userEmail}</span>
-            </button>
-              <div className="flex items-center gap-1 ml-2">
-                                <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-                  className="p-1.5 rounded-lg transition-all"
-                  style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "var(--surface-hover)" }}
-                  title="Cerrar sesión">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
+              <div className="flex-[private model]in-w-0 text-left">
+                <p className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{userEmail}</p>
+                {profile && (
+                  <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
+                    {(profile.subscription_weeks ?? 0) !== 0 ? `${profile.subscription_weeks} semanas` : "Sin suscripcion"}
+                  </p>
+                )}
               </div>
-            </div>
+              {profile && (
+                <div className="w-2 h-2 rounded-full shrink-0"
+                  style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "var(--primary)" : "var(--danger)", boxShadow: (profile.subscription_weeks ?? 0) !== 0 ? "0 0 6px rgba(16,163,127,0.6)" : "none" }} />
+              )}
+            </button>
+            <button onClick={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all mt-1"
+              style={{ color: "rgba(255,255,255,0.5)", backgroundColor: "transparent" }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              <span className="text-xs">Cerrar sesion</span>
+            </button>
+          </div>
           </div>
         </div>
 
