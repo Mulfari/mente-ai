@@ -215,7 +215,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     if (!isLoggedIn) return;
     supabase
       .from("profiles")
-      .select("subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at, status")
+      .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
       .eq("id", userId)
       .single()
       .then(({ data }) => { if (data) setProfile(data); });

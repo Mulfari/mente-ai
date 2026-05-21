@@ -320,20 +320,21 @@ function ContextTab({ userContext, supabase }: {
 
 // --- Subscription Tab ---
 function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: number }) {
-  const weeks = profile?.subscription_weeks ?? 0;
+  const weeks = (profile?.subscription_weeks ?? 0) || 0;
   const isUnlimited = weeks < 0;
   const isActive = profile && (weeks > 0 || isUnlimited);
 
   function getEndTime() {
     if (!profile?.subscription_end) return 0;
     const s = profile.subscription_end;
-    const d = new Date(s.endsWith("Z") ? s : s.replace(" ", "T") + "Z");
-    return d.getTime();
+    // Normalize: +00 or +00:00 -> Z so Date parses as UTC
+    const normalized = s.replace(/([+-]\d{2}):?(\d{2})?$/, "Z").replace(" ", "T");
+    return new Date(normalized).getTime();
   }
 
   function getStatusColor() {
     if (isUnlimited) return { bg: "rgba(139,92,246,0.15)", color: "#8b5cf6" };
-    if (!profile || weeks <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
+    if (!profile || weeks == null || weeks <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
     const diff = getEndTime() - Date.now();
     if (diff <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
     if (diff < 3 * 24 * 60 * 60 * 1000) return { bg: "rgba(245,158,11,0.15)", color: "var(--warning)" };
@@ -342,7 +343,7 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
 
   function getCountdown() {
     if (isUnlimited) return null;
-    if (!profile || weeks <= 0) return null;
+    if (!profile || weeks == null || weeks <= 0) return null;
     const endTime = getEndTime();
     if (!endTime) return null;
     const diff = endTime - Date.now();
@@ -358,19 +359,30 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
     <div className="px-5 sm:px-8 py-6 space-y-5">
       <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: sc.bg, color: sc.color }}>
-            {isUnlimited ? <span className="text-lg font-bold">∞</span> : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
-          </div>
-          <div>
-            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Estado</p>
-            <p className="text-sm font-semibold" style={{ color: sc.color }}>
-              {isUnlimited ? "Ilimitado" : isActive ? "Activa" : cd?.expired ? "Expirada" : "Inactiva"}
-            </p>
-          </div>
+          {(() => {
+            const endTime = getEndTime();
+            const now = Date.now();
+            return (
+              <>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: sc.bg, color: sc.color }}>
+                  {isUnlimited ? <span className="text-lg font-bold">∞</span> : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Estado</p>
+                  <p className="text-sm font-semibold" style={{ color: sc.color }}>
+                    {isUnlimited ? "Ilimitado" : !endTime || (now >= endTime) ? "Expirada" : "Activa"}
+                  </p>
+                  <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                    end={endTime} now={now} diff={endTime - now}
+                  </p>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {isUnlimited ? (
