@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
@@ -10,6 +10,7 @@ type Props = {
     subscription_start?: string;
     subscription_end?: string;
   } | null;
+  userContext: { full_name: string; city: string; custom_notes: string } | null;
   onSignOut: () => void;
   onClose: () => void;
   onProfileUpdate?: (updates: Partial<Props["profile"]>) => void;
@@ -19,7 +20,7 @@ type Tab = "context" | "subscription" | "coupon";
 
 const MAX_CHARS = 2000;
 
-export default function AccountMenu({ email, profile, onSignOut, onClose }: Props) {
+export default function AccountMenu({ email, profile, userContext, onSignOut, onClose }: Props) {
   const [tab, setTab] = useState<Tab>("context");
   const [tick, setTick] = useState(0);
   const supabase = createClient();
@@ -138,7 +139,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
-            {tab === "context" ? <ContextTab supabase={supabase} /> :
+            {tab === "context" ? <ContextTab userContext={userContext} supabase={supabase} /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
           </div>
@@ -149,27 +150,21 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
 }
 
 // --- Context Tab ---
-function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> }) {
-  const [data, setData] = useState({ full_name: "", city: "", custom_notes: "" });
-  const [loading, setLoading] = useState(true);
+function ContextTab({ userContext, supabase }: {
+  userContext: { full_name: string; city: string; custom_notes: string } | null;
+  supabase: ReturnType<typeof createClient>;
+}) {
+  const [data, setData] = useState(() => ({
+    full_name: userContext?.full_name || "",
+    city: userContext?.city || "",
+    custom_notes: userContext?.custom_notes || "",
+  }));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [locating, setLocating] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const supabase_client = supabase;
-
-  useEffect(() => {
-    supabase_client.from("user_context").select("full_name, city, custom_notes").maybeSingle()
-      .then(({ data: d }: { data: any }) => {
-        setMounted(true);
-        setLoading(false);
-        if (d) {
-          setData({ full_name: d.full_name || "", city: d.city || "", custom_notes: d.custom_notes || "" });
-        }
-      });
-  }, [supabase_client]);
 
   const total = data.full_name.length + data.city.length + data.custom_notes.length;
 
@@ -241,8 +236,6 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
       () => { setLocating(false); }
     );
   }
-
-  if (!mounted) return <LoadingState />;
 
   return (
     <form onSubmit={handleSave} className="px-5 sm:px-8 py-6 space-y-5">
