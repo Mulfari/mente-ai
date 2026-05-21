@@ -38,10 +38,10 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
   const _ = tick;
 
   return (
-    <div className="fixed inset-0 z-50"
+    <div className="fixed inset-0 flex items-center justify-center z-50"
       style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-3xl h-full sm:h-auto sm:max-h-[90vh] sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl overflow-hidden flex animate-fade-in absolute top-0 left-0"
+      <div className="w-full max-w-3xl h-[90vh] max-h-[90vh] rounded-2xl overflow-hidden flex animate-fade-in"
         style={{ backgroundColor: "var(--surface)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
 
         {/* Left sidebar */}
@@ -143,7 +143,7 @@ export default function AccountMenu({ email, profile, onSignOut, onClose }: Prop
           </div>
 
           {/* Tab content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto" style={{ minHeight: "420px" }}>
             {tab === "context" ? <ContextTab email={email} supabase={supabase} /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
