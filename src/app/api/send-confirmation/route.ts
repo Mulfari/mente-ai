@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     const resend = getResend();
     const { error: sendError } = await resend.emails.send({
-      from: "VeChat <noreply@vechat.com.ve>",
+      from: "VeChat <noreply@mulfai.com.ve>",
       to: email,
       subject: "Confirma tu correo - VeChat",
       html: `

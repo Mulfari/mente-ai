@@ -34,11 +34,11 @@ export async function POST(request: Request) {
     const supabaseUrl = linkData.properties.action_link;
     const urlObj = new URL(supabaseUrl);
     const token = urlObj.searchParams.get("token");
-    const confirmUrl = `https://vechat.com.ve/reset-password?token=${token}&email=${encodeURIComponent(email)}&type=recovery`;
+    const confirmUrl = `https://mulfai.com.ve/reset-password?token=${token}&email=${encodeURIComponent(email)}&type=recovery`;
 
     // Send branded email via Resend
     const { error: sendError } = await getResend().emails.send({
-      from: "VeChat <noreply@vechat.com.ve>",
+      from: "VeChat <noreply@mulfai.com.ve>",
       to: email,
       subject: "Restablece tu contraseña — VeChat",
       html: `

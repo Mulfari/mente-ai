@@ -82,7 +82,7 @@ export default function ConfirmEmailClient() {
             Tu correo ha sido confirmado exitosamente.
           </p>
           <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>
-            Ya puedes iniciar sesión en <strong>vechat.com.ve</strong> con tus datos de acceso.
+            Ya puedes iniciar sesión en <strong>mulfai.com.ve</strong> con tus datos de acceso.
           </p>
           <div className="w-full h-px my-4" style={{ backgroundColor: "var(--border)" }} />
           <p className="text-xs mb-4" style={{ color: "var(--text-tertiary)" }}>
