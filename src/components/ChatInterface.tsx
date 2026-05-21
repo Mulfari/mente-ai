@@ -167,18 +167,34 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: d }) => {
-      setIsLoggedIn(!!d.session);
+      const loggedIn = !!d.session;
+      setIsLoggedIn(loggedIn);
       if (d.session?.user?.email) setUserEmail(d.session.user.email);
       if (d.session) loadConversations(d.session.user.id);
-      if (d.session) {
+      if (d.session && d.session.user.id) {
+        supabase
+          .from("profiles")
+          .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
+          .eq("id", d.session.user.id)
+          .single()
+          .then(({ data: p }) => { if (p) setProfile(p); });
+        supabase
+          .from("user_context")
+          .select("full_name, city, custom_notes")
+          .maybeSingle()
+          .then(({ data: uc }) => { if (uc) setUserContext(uc); });
         setTimeout(() => {
           const seen = localStorage.getItem("mulfai_onboarding_seen");
           const never = localStorage.getItem("mulfai_onboarding_never");
-          console.log("[Onboarding] getSession — seen:", seen, "never:", never, "→ shouldShow:", !seen && !never);
           if (!seen && !never) setShowOnboarding(true);
         }, 1500);
       }
-      setMounted(true);
+      // Only become "mounted" (show UI) after profile is loaded
+      if (loggedIn) {
+          setTimeout(() => setMounted(true), 400);
+        } else {
+          setMounted(true);
+        }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -187,15 +203,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       if (session?.user?.email) setUserEmail(session.user.email);
       if (loggedIn && session?.user?.id) {
         loadConversations(session.user.id);
-        // Show onboarding on login (only if not already dismissed)
-        setTimeout(() => {
-          const seen = localStorage.getItem("mulfai_onboarding_seen");
-          const never = localStorage.getItem("mulfai_onboarding_never");
-          console.log("[Onboarding] onAuthStateChange — seen:", seen, "never:", never, "→ shouldShow:", !seen && !never);
-          if (!seen && !never) setShowOnboarding(true);
-        }, 800);
       }
-      setMounted(true);
     });
 
     return () => subscription.unsubscribe();
