@@ -31,8 +31,8 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
     supabase
       .from("profiles")
       .select("subscription_weeks, subscription_start, subscription_end")
-      .single()
-      .then(({ data }) => { if (data) setProfile(data); });
+      .maybeSingle()
+      .then(({ data }) => { setProfile(data); });
   }, []);
 
   useEffect(() => {
