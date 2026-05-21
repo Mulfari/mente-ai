@@ -5,22 +5,30 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Admin - VeChat" };
 
-type Props = {
-  initialProfiles?: any[];
-  initialCoupons?: any[];
-  initialPlaces?: any[];
-  initialCategories?: any[];
-  initialCities?: any[];
-  initialKnowledgeRules?: any[];
-  initialKnowledge?: any[];
-  fetchError?: string;
-};
-
 export default async function AdminPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) return null;
+  if (!user) return (
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+      <div className="text-center p-8 rounded-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+          style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Acceso restringido</h1>
+        <p className="text-sm mb-6" style={{ color: "var(--text-secondary)" }}>Inicia sesión para acceder al panel de administración</p>
+        <form action="/auth/login" method="POST">
+          <button type="submit" className="px-6 py-3 rounded-xl font-semibold text-sm"
+            style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+            Iniciar sesión
+          </button>
+        </form>
+      </div>
+    </div>
+  );
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -28,9 +36,22 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     .eq("id", user.id)
     .single();
 
-  if (!profile || profile.role !== "admin") return null;
+  if (!profile || profile.role !== "admin") return (
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+      <div className="text-center p-8 rounded-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+        <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(239,68,68,0.1)" }}>
+          <svg className="w-8 h-8" style={{ color: "var(--danger)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h1 className="text-xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>Sin permisos</h1>
+        <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>Tu cuenta no tiene acceso de administrador</p>
+        <a href="/" className="text-sm font-medium" style={{ color: "var(--primary)" }}>← Volver al inicio</a>
+      </div>
+    </div>
+  );
 
-  // Handle server-side admin actions
+  // Handle server-side admin actions (coupon generation, user updates)
   const params = await searchParams;
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
@@ -41,10 +62,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
       Authorization: `Bearer ${serviceKey}`,
     };
     if (params.action === "delete-coupon" && params.id) {
-      await fetch(`${supabaseUrl}/rest/v1/coupons?id=eq.${params.id}`, {
-        method: "DELETE",
-        headers,
-      });
+      await fetch(`${supabaseUrl}/rest/v1/coupons?id=eq.${params.id}`, { method: "DELETE", headers });
     }
     if (params.action === "generate-coupons" && params.codes && params.config) {
       const codes = JSON.parse(params.codes);
@@ -67,62 +85,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     redirect("/admin");
   }
 
-  let profiles: any[] = [];
-  let coupons: any[] = [];
-  let places: any[] = [];
-  let categories: any[] = [];
-  let cities: any[] = [];
-  let knowledgeRules: any[] = [];
-  let knowledge: any[] = [];
-  let fetchError = "";
-
-  if (!serviceKey || !supabaseUrl) {
-    console.error("[AdminPage] Missing env vars:", { hasServiceKey: !!serviceKey, hasUrl: !!supabaseUrl });
-  } else {
-    try {
-      const headers = {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-      };
-      const [pRes, cRes, placesRes, catsRes, citiesRes, rulesRes, knowledgeRes] = await Promise.all([
-        fetch(`${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`, { headers }),
-        fetch(`${supabaseUrl}/rest/v1/coupons?select=*&order=created_at.desc`, { headers }),
-        fetch(`${supabaseUrl}/rest/v1/places?select=*,cities(name,slug),categories(name,slug,icon,color)&active=eq.true&order=rating.desc`, { headers }),
-        fetch(`${supabaseUrl}/rest/v1/categories?select=*&active=eq.true&order=sort_order.asc`, { headers }),
-        fetch(`${supabaseUrl}/rest/v1/cities?select=*&active=eq.true&order=name.asc`, { headers }),
-        fetch(`${supabaseUrl}/rest/v1/knowledge_rules?select=*&active=eq.true&order=priority.desc`, { headers }),
-        fetch(`${supabaseUrl}/rest/v1/knowledge?select=*&order=created_at.desc`, { headers }),
-      ]);
-      if (!pRes.ok) { fetchError += `profiles: ${pRes.status} `; } else { profiles = await pRes.json(); }
-      if (!cRes.ok) { fetchError += `coupons: ${cRes.status} `; } else { coupons = await cRes.json(); }
-      if (!placesRes.ok) { console.error("[AdminPage] Places failed:", placesRes.status); } else { places = await placesRes.json(); }
-      if (!catsRes.ok) { console.error("[AdminPage] Categories failed:", catsRes.status); } else { categories = await catsRes.json(); }
-      if (!citiesRes.ok) { console.error("[AdminPage] Cities failed:", citiesRes.status); } else { cities = await citiesRes.json(); }
-      if (!rulesRes.ok) { console.error("[AdminPage] Rules failed:", rulesRes.status); } else { knowledgeRules = await rulesRes.json(); }
-      if (!knowledgeRes.ok) { console.error("[AdminPage] Knowledge failed:", knowledgeRes.status); } else { knowledge = await knowledgeRes.json(); }
-      // Inject emails from auth.users into profiles
-      try {
-        const emailRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { headers });
-        if (emailRes.ok) {
-          const usersData: any = await emailRes.json();
-          const emailMap: Record<string, string> = {};
-          if (Array.isArray(usersData.users)) {
-            for (const u of usersData.users) emailMap[u.id] = u.email;
-          }
-          for (const p of profiles) (p as any).email = emailMap[p.id] || null;
-        }
-      } catch {}
-    } catch (e: any) { console.error("[AdminPage] Catch error:", e.message); fetchError = e.message; }
-  }
-
-  return <AdminPanelClient
-    initialProfiles={profiles}
-    initialCoupons={coupons}
-    initialPlaces={places}
-    initialCategories={categories}
-    initialCities={cities}
-    initialKnowledgeRules={knowledgeRules}
-    initialKnowledge={knowledge}
-    fetchError={fetchError}
-  />;
+  // Admin confirmed — let the client component fetch its own data via API routes
+  // (this avoids server-side cookie issues while still validating admin server-side)
+  return <AdminPanelClient initialProfiles={[]} />;
+}
 }

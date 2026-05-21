@@ -125,7 +125,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     setLoading(false);
   }
 
-  // Load initial data from server props (bypasses Vercel Auth)
+  // Load initial data — prefer server props, fall back to client-side fetch
   useEffect(() => {
     const merged = (initialProfiles || []).map(p => ({
       id: p.id,
@@ -138,8 +138,13 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       used_coupon_label: p.used_coupon_label ?? null,
       used_coupon_label_color: p.used_coupon_label_color ?? null,
     } as Profile));
-    setUsers(merged);
-    setLoading(false);
+    if (merged.length > 0) {
+      setUsers(merged);
+      setLoading(false);
+    } else {
+      // No server data — fetch client-side via API route
+      loadUsers();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
