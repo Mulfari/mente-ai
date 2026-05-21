@@ -164,11 +164,15 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
       .then(({ data: d }: { data: any }) => {
         setMounted(true);
         setLoading(false);
-        if (d) setData({ full_name: d.full_name || "", city: d.city || "", custom_notes: d.custom_notes || "" });
+        if (d) {
+          setData({ full_name: d.full_name || "", city: d.city || "", custom_notes: d.custom_notes || "" });
+        }
       });
   }, [supabase_client]);
 
-  function detectCity() {
+  // Auto-detect city on mount if empty
+  useEffect(() => {
+    if (!mounted || data.city) return;
     if (!navigator.geolocation) return;
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
@@ -179,16 +183,19 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
           );
           const json = await res.json();
           const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
-          setData(d => ({ ...d, city }));
+          if (city) {
+            setData(d => ({ ...d, city }));
+          }
         } catch {
-          // keep current city on error
+          // ignore
         } finally {
           setLocating(false);
         }
       },
       () => { setLocating(false); }
     );
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   const total = data.full_name.length + data.city.length + data.custom_notes.length;
 
@@ -196,12 +203,27 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
     e.preventDefault();
     if (total > MAX_CHARS) { setError(`Maximo ${MAX_CHARS} caracteres`); return; }
     setSaving(true); setError(""); setSaved(false);
-    const { error: err } = await supabase_client.from("user_context").upsert({
-      full_name: data.full_name.trim(), city: data.city.trim(),
-      custom_notes: data.custom_notes.trim(),
-    }, { onConflict: "user_id" });
+
+    const { data: existing } = await supabase_client
+      .from("user_context").select("id").maybeSingle();
+
+    let err: any = null;
+    if (existing) {
+      const { error: e } = await supabase_client.from("user_context").update({
+        full_name: data.full_name.trim(), city: data.city.trim(),
+        custom_notes: data.custom_notes.trim(), updated_at: new Date().toISOString(),
+      }).eq("id", existing.id);
+      err = e;
+    } else {
+      const { error: e } = await supabase_client.from("user_context").insert({
+        full_name: data.full_name.trim(), city: data.city.trim(),
+        custom_notes: data.custom_notes.trim(),
+      });
+      err = e;
+    }
+
     setSaving(false);
-    if (err) setError("Error al guardar.");
+    if (err) { setError("Error al guardar: " + (err.message || "Intenta de nuevo")); }
     else { setSaved(true); setTimeout(() => setSaved(false), 2500); }
   }
 
@@ -234,25 +256,25 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
 
         <div>
           <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Ubicacion</label>
-          <div className="flex gap-2">
-            <input type="text" value={data.city} onChange={e => setData(d => ({ ...d, city: e.target.value }))}
-              placeholder="Tu ciudad" className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
-              style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-              onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-              onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
+          <div className="flex items-center gap-2">
+            <div className="flex-1 px-4 py-2.5 rounded-xl text-sm"
+              style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: data.city ? "var(--text-primary)" : "var(--text-tertiary)" }}>
+              {locating ? (
+                <span className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full animate-spin" style={{ border: "1.5px solid var(--border)", borderTopColor: "var(--primary)" }} />
+                  Detectando ubicacion...
+                </span>
+              ) : data.city || "Sin detectar"}
+            </div>
             <button type="button" onClick={detectCity} disabled={locating}
-              className="px-4 py-2.5 rounded-xl text-sm font-medium shrink-0 transition-all disabled:opacity-50"
+              className="px-3 py-2.5 rounded-xl text-xs font-medium shrink-0 transition-all disabled:opacity-50"
               style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--surface-hover)"; }}
               onMouseLeave={e => { e.currentTarget.style.backgroundColor = "var(--surface)"; }}>
-              {locating ? "Buscando..." : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
+              {locating ? "..." : "Actualizar"}
             </button>
           </div>
-          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Detecta automaticamente o escribe manualmente</p>
+          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Se detecta automaticamente al entrar</p>
         </div>
 
         <div>
@@ -283,6 +305,28 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
       </button>
     </form>
   );
+
+  function detectCity() {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
+          );
+          const json = await res.json();
+          const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
+          setData(d => ({ ...d, city }));
+        } catch {
+          // keep current city on error
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => { setLocating(false); }
+    );
+  }
 }
 
 // --- Subscription Tab ---
