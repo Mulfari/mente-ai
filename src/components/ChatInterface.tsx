@@ -2582,195 +2582,168 @@ type SwipeableConvProps = {
 };
 
 function SwipeableConversation({ conv, isActive, dateLabel, onSelect, onDelete }: SwipeableConvProps) {
-  const [swipeX, setSwipeX] = React.useState(0);
-  const [startX, setStartX] = React.useState(0);
-  const [startY, setStartY] = React.useState(0);
-  const [isDragging, setIsDragging] = React.useState(false);
-  const [confirming, setConfirming] = React.useState(false);
-  const [snapping, setSnapping] = React.useState(false);
-  const [gone, setGone] = React.useState(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const rowRef = React.useRef<HTMLDivElement>(null);
+  const bgRef = React.useRef<HTMLDivElement>(null);
+  const stateRef = React.useRef({ startX: 0, startY: 0, isDragging: false, currentX: 0, confirming: false, gone: false });
   const DELETE_THRESHOLD = 72;
-  const MAX_SWIPE = 180;
+  const MAX_SWIPE = 160;
+
+  function setSwipe(x: number) {
+    const s = stateRef.current;
+    s.currentX = x;
+    const row = rowRef.current;
+    if (row) row.style.transform = `translateX(-${x}px)`;
+    const bg = bgRef.current;
+    if (bg) {
+      const revealW = Math.max(x, 0);
+      bg.style.width = `${revealW + 32}px`;
+      bg.style.opacity = x > 0 ? "1" : "0";
+      const past = x >= DELETE_THRESHOLD;
+      bg.style.background = past
+        ? "linear-gradient(90deg, #B91C1C 0%, #DC2626 100%)"
+        : "linear-gradient(90deg, #7F1D1D 0%, #DC2626 100%)";
+      // Progress bar
+      const bar = bg.querySelector<HTMLDivElement>(".swipe-bar");
+      if (bar) bar.style.width = `${Math.min(x / DELETE_THRESHOLD, 1) * 100}%`;
+      // Icon
+      const iconWrap = bg.querySelector<HTMLDivElement>(".swipe-icon");
+      if (iconWrap) {
+        iconWrap.style.backgroundColor = past ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.12)";
+        iconWrap.style.width = past ? "36px" : "30px";
+        iconWrap.style.height = past ? "36px" : "30px";
+        iconWrap.style.boxShadow = past ? "0 0 12px rgba(255,255,255,0.3)" : "none";
+      }
+      const svg = bg.querySelector<SVGElement>(".swipe-svg");
+      if (svg) {
+        svg.style.width = past ? "16px" : "14px";
+        svg.style.height = past ? "16px" : "14px";
+        svg.style.filter = past ? "drop-shadow(0 0 4px rgba(255,255,255,0.5))" : "none";
+        svg.innerHTML = past
+          ? '<path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>'
+          : '<path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>';
+      }
+      // Label
+      const label = bg.querySelector<HTMLSpanElement>(".swipe-label");
+      if (label) {
+        const progress = Math.min(x / DELETE_THRESHOLD, 1);
+        label.textContent = past ? "Eliminar" : `Desliza +${Math.round(progress * 100)}%`;
+      }
+    }
+  }
 
   function handleTouchStart(e: React.TouchEvent) {
-    if (confirming || gone) return;
+    const s = stateRef.current;
+    if (s.confirming || s.gone) return;
     const t = e.touches[0];
-    setStartX(t.clientX);
-    setStartY(t.clientY);
-    setIsDragging(true);
+    s.startX = t.clientX;
+    s.startY = t.clientY;
+    s.isDragging = true;
   }
 
   function handleTouchMove(e: React.TouchEvent) {
-    if (!isDragging || confirming || gone) return;
+    const s = stateRef.current;
+    if (!s.isDragging || s.confirming || s.gone) return;
     const t = e.touches[0];
-    const dy = Math.abs(t.clientY - startY);
-    const dx = startX - t.clientX;
-    if (dy > 10 && dy > Math.abs(dx)) return;
-
-    // Elastic resistance past threshold
+    const dy = Math.abs(t.clientY - s.startY);
+    if (dy > 10 && dy > Math.abs(s.startX - t.clientX)) return;
+    const dx = s.startX - t.clientX;
     const raw = Math.min(Math.max(dx, 0), MAX_SWIPE);
-    const clamped = raw > DELETE_THRESHOLD
-      ? DELETE_THRESHOLD + (raw - DELETE_THRESHOLD) * 0.18
-      : raw;
-    setSwipeX(clamped);
+    // Gentle elastic — just cap, no resistance math
+    const clamped = Math.min(raw, DELETE_THRESHOLD + 12);
+    setSwipe(clamped);
   }
 
   function handleTouchEnd() {
-    if (!isDragging || confirming || gone) return;
-    setIsDragging(false);
-    if (swipeX >= DELETE_THRESHOLD) {
-      // Confirm
-      setConfirming(true);
-      setTimeout(() => setGone(true), 200);
-      setTimeout(() => onDelete(), 400);
+    const s = stateRef.current;
+    if (!s.isDragging || s.confirming || s.gone) return;
+    s.isDragging = false;
+    if (s.currentX >= DELETE_THRESHOLD - 4) {
+      // Trigger confirmation
+      s.confirming = true;
+      setSwipe(DELETE_THRESHOLD + 12);
+      setTimeout(() => {
+        s.gone = true;
+        const row = rowRef.current;
+        if (row) row.style.transition = "transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-in";
+        if (row) row.style.transform = "translateX(-120%)";
+        if (row) row.style.opacity = "0";
+        setTimeout(() => onDelete(), 350);
+      }, 180);
     } else {
-      // Snap back with spring
-      setSnapping(true);
-      setSwipeX(0);
-      setTimeout(() => setSnapping(false), 400);
+      // Snap back
+      const row = rowRef.current;
+      if (row) row.style.transition = "transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1)";
+      setSwipe(0);
+      setTimeout(() => {
+        if (row) row.style.transition = "";
+      }, 400);
     }
   }
 
   function handleClick() {
-    if (swipeX > 8 || confirming || gone) { setSwipeX(0); return; }
+    const s = stateRef.current;
+    if (s.currentX > 8 || s.confirming || s.gone) { setSwipe(0); return; }
     onSelect();
   }
 
-  if (gone) {
-    return (
-      <div
-        className="mb-0.5 rounded-xl overflow-hidden"
-        style={{
-          height: 56,
-          transition: confirming ? "none" : "height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-in",
-          opacity: confirming ? 1 : 0,
-          transform: confirming ? "none" : "translateX(-100%)",
-        }}
-      >
-        <div className="h-full rounded-xl" style={{ backgroundColor: "var(--surface)" }} />
-      </div>
-    );
-  }
-
-  const past = swipeX >= DELETE_THRESHOLD;
-  const progress = Math.min(swipeX / DELETE_THRESHOLD, 1);
-  const revealW = Math.max(swipeX, 20);
+  if (stateRef.current.gone) return null;
 
   return (
-    <div className="relative mb-0.5" ref={containerRef}>
-      {/* Delete background reveal */}
+    <div className="relative mb-0.5" style={{ height: 52, overflow: "hidden" }}>
+      {/* Delete background — rendered always, opacity/width controlled via DOM */}
       <div
-        className="absolute inset-y-0 right-0 overflow-hidden pointer-events-none rounded-xl"
-        style={{ width: `${revealW + 24}px` }}
+        ref={bgRef}
+        className="absolute inset-y-0 right-0 overflow-hidden rounded-xl pointer-events-none"
+        style={{ width: 32, opacity: 0, willChange: "width, opacity" }}
       >
         <div
           className="h-full flex flex-col items-end justify-center rounded-r-xl"
-          style={{
-            width: `${revealW + 24}px`,
-            background: past
-              ? "linear-gradient(90deg, #B91C1C 0%, #DC2626 100%)"
-              : "linear-gradient(90deg, #7F1D1D 0%, #DC2626 100%)",
-            opacity: swipeX > 0 ? 1 : 0,
-            transition: isDragging ? "none" : "background 0.2s, opacity 0.2s",
-            animation: past ? "pulseDelete 1s ease-in-out infinite" : "none",
-            boxShadow: past ? "0 0 0 1.5px rgba(239,68,68,0.4), 0 0 24px rgba(239,68,68,0.2)" : "none",
-          }}
+          style={{ width: "100%", height: "100%", background: "linear-gradient(90deg, #7F1D1D 0%, #DC2626 100%)" }}
         >
-          {swipeX > 10 && (
-            <div className="flex items-center gap-2 pr-4">
-              <span
-                className="text-xs font-semibold"
-                style={{
-                  color: "white",
-                  opacity: past ? 1 : Math.min(progress * 1.2, 1),
-                  transition: "opacity 0.15s",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {past ? "Eliminar" : `Desliza +${Math.round(progress * 100)}%`}
-              </span>
-              <div
-                className="flex items-center justify-center rounded-full shrink-0"
-                style={{
-                  width: past ? 36 : 30,
-                  height: past ? 36 : 30,
-                  backgroundColor: past ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.12)",
-                  transform: past ? "scale(1)" : `scale(${0.8 + progress * 0.2})`,
-                  animation: past ? "pop-check 0.3s ease-out forwards" : "none",
-                  transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                  boxShadow: past ? "0 0 12px rgba(255,255,255,0.3)" : "none",
-                }}
-              >
-                <svg
-                  className="text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                  viewBox="0 0 24 24"
-                  style={{
-                    width: past ? 16 : 14,
-                    height: past ? 16 : 14,
-                    transform: past ? "scale(1)" : `scale(${0.85 + progress * 0.15})`,
-                    transition: "all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1)",
-                    filter: past ? "drop-shadow(0 0 4px rgba(255,255,255,0.5))" : "none",
-                  }}
-                >
-                  {past ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  )}
-                </svg>
-              </div>
+          <div className="flex items-center gap-2 pr-3">
+            <span className="swipe-label text-xs font-semibold" style={{ color: "white", whiteSpace: "nowrap" }}>Desliza +0%</span>
+            <div className="swipe-icon flex items-center justify-center rounded-full shrink-0"
+              style={{ width: 30, height: 30, backgroundColor: "rgba(255,255,255,0.12)", transition: "all 0.15s" }}>
+              <svg className="swipe-svg text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24"
+                style={{ width: 14, height: 14 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </div>
-          )}
-          {/* Progress line at bottom */}
-          <div
-            className="absolute bottom-0 left-0 right-0"
-            style={{ height: 3, overflow: "hidden" }}
-          >
-            <div
-              style={{
-                height: "100%",
-                width: `${progress * 100}%`,
-                background: past ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.35)",
-                boxShadow: past ? "0 0 6px rgba(255,255,255,0.5)" : "none",
-                transition: isDragging ? "none" : "width 0.2s, background 0.2s",
-              }}
-            />
+          </div>
+          {/* Progress bar */}
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: 3, overflow: "hidden" }}>
+            <div className="swipe-bar" style={{ height: "100%", width: "0%", background: "rgba(255,255,255,0.35)", willChange: "width" }} />
           </div>
         </div>
       </div>
 
-      {/* Main row */}
+      {/* Main row — transform driven by DOM, not state */}
       <div
-        className="relative flex items-center gap-3 px-4 py-3 cursor-pointer select-none rounded-xl"
+        ref={rowRef}
+        className="relative flex items-center gap-3 px-4 cursor-pointer select-none rounded-xl"
         style={{
+          height: 52,
           backgroundColor: "transparent",
-          transform: `translateX(-${swipeX}px)`,
           willChange: "transform",
-          transition: snapping
-            ? "transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)"
-            : isDragging ? "none" : `transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)`,
           WebkitTapHighlightColor: "transparent",
           touchAction: "pan-y",
           zIndex: 1,
+          transition: "",
         }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
         onMouseEnter={e => {
-          if (!isDragging && swipeX === 0) {
+          if (!stateRef.current.isDragging && stateRef.current.currentX === 0) {
             (e.currentTarget as HTMLDivElement).style.backgroundColor = "var(--surface-hover)";
           }
         }}
         onMouseLeave={e => {
-          if (!isDragging && swipeX === 0) {
+          if (!stateRef.current.isDragging && stateRef.current.currentX === 0) {
             (e.currentTarget as HTMLDivElement).style.backgroundColor = "transparent";
           }
-          if (!isDragging && swipeX > 0) setSwipeX(0);
+          if (!stateRef.current.isDragging && stateRef.current.currentX > 0) setSwipe(0);
         }}
       >
         {isActive && (
