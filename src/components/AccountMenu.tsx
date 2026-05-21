@@ -199,14 +199,39 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
 
   const total = data.full_name.length + data.city.length + data.custom_notes.length;
 
+  // Auto-save when city is detected or data changes after initial load
+  useEffect(() => {
+    if (!mounted || loading) return;
+    if (!data.city) return;
+    const saveTimeout = setTimeout(async () => {
+      setSaving(true);
+      const { data: existing } = await supabase_client.from("user_context").select("id").maybeSingle();
+      let err: any = null;
+      if (existing) {
+        const { error: e } = await supabase_client.from("user_context").update({
+          city: data.city.trim(), updated_at: new Date().toISOString(),
+        }).eq("id", existing.id);
+        err = e;
+      } else {
+        const { error: e } = await supabase_client.from("user_context").insert({ city: data.city.trim() });
+        err = e;
+      }
+      setSaving(false);
+      if (!err) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    }, 2000);
+    return () => clearTimeout(saveTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.city, mounted, loading]);
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (total > MAX_CHARS) { setError(`Maximo ${MAX_CHARS} caracteres`); return; }
     setSaving(true); setError(""); setSaved(false);
 
-    const { data: existing } = await supabase_client
-      .from("user_context").select("id").maybeSingle();
-
+    const { data: existing } = await supabase_client.from("user_context").select("id").maybeSingle();
     let err: any = null;
     if (existing) {
       const { error: e } = await supabase_client.from("user_context").update({
@@ -257,14 +282,22 @@ function ContextTab({ supabase }: { supabase: ReturnType<typeof createClient> })
         <div>
           <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Ubicacion</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 px-4 py-2.5 rounded-xl text-sm"
+            <div className="flex-1 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
               style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: data.city ? "var(--text-primary)" : "var(--text-tertiary)" }}>
               {locating ? (
-                <span className="flex items-center gap-2">
+                <>
                   <div className="w-3 h-3 rounded-full animate-spin" style={{ border: "1.5px solid var(--border)", borderTopColor: "var(--primary)" }} />
                   Detectando ubicacion...
-                </span>
-              ) : data.city || "Sin detectar"}
+                </>
+              ) : (
+                <>
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {data.city || "Sin detectar"}
+                </>
+              )}
             </div>
             <button type="button" onClick={detectCity} disabled={locating}
               className="px-3 py-2.5 rounded-xl text-xs font-medium shrink-0 transition-all disabled:opacity-50"
