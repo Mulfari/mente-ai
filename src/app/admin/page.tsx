@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createServiceClient } from "@supabase/supabase-js";
 import AdminPanelClient from "@/components/AdminPanelClient";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
@@ -51,23 +52,25 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     </div>
   );
 
-  const { data: allProfiles } = await supabase
+  // Use service role client to bypass RLS — admin already gatekept above
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const adminProfiles = serviceKey && supabaseUrl
+    ? createServiceClient(supabaseUrl, serviceKey)
+    : supabase;
+
+  const { data: allProfiles } = await adminProfiles
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false });
 
-  console.log("[admin] allProfiles count:", allProfiles?.length ?? 0, "first email:", allProfiles?.[0]?.email);
-  console.log("[admin] user id:", user.id, "role:", profile?.role);
-
   const params = await searchParams;
-  const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
-  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const headers = {
+    apikey: serviceKey!,
+    Authorization: `Bearer ${serviceKey}`,
+  };
 
   if (serviceKey && supabaseUrl && params.action) {
-    const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    };
     if (params.action === "delete-coupon" && params.id) {
       await fetch(`${supabaseUrl}/rest/v1/coupons?id=eq.${params.id}`, { method: "DELETE", headers });
     }
