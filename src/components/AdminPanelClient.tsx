@@ -97,32 +97,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   }
 
   async function loadUsers() {
-    setLoading(true);
-
-    let profiles: any[] = [];
-    try {
-      const data = await adminFetch("/api/admin/data?type=profiles");
-      profiles = data.data || [];
-    } catch {
-      showToast("error", "Error al recargar usuarios");
-    }
-
-    const merged = (profiles || []).map(p => {
-      return {
-        id: p.id,
-        email: p.email || "Sin email",
-        status: p.status,
-        subscription_weeks: p.subscription_weeks ?? 0,
-        subscription_start: p.subscription_start,
-        role: p.role,
-        created_at: p.created_at,
-        used_coupon_label: p.used_coupon_label ?? null,
-        used_coupon_label_color: p.used_coupon_label_color ?? null,
-      } as Profile;
-    });
-
-    setUsers(merged);
-    setLoading(false);
+    window.location.reload();
   }
 
   // Load initial data — prefer server props, fall back to client-side fetch

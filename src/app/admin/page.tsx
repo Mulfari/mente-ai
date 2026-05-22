@@ -51,6 +51,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     </div>
   );
 
+  const { data: allProfiles } = await supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false });
+
   const params = await searchParams;
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
@@ -84,5 +89,5 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     redirect("/admin");
   }
 
-  return <AdminPanelClient initialProfiles={[]} />;
+  return <AdminPanelClient initialProfiles={allProfiles || []} />;
 }
