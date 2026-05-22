@@ -33,29 +33,37 @@ export default function ContextEditor() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
   const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
-    supabase
-      .from("user_context")
-      .select("*")
-      .single()
-      .then(({ data, error }) => {
-        setLoading(false);
-        if (data) {
-          setContext({
-            full_name: data.full_name || "",
-            city: data.city || "",
-            interests: data.interests || "",
-            custom_notes: data.custom_notes || "",
-          });
-        }
-        if (error && error.code !== "PGRST116") {
-          setError("Error cargando contexto");
-        }
-      });
-  }, []);
+    supabase.auth.getUser().then(({ data: authData }) => {
+      const uid = authData?.user?.id;
+      if (!uid) { router.push("/auth/login"); return; }
+      setUserId(uid);
+
+      supabase
+        .from("user_context")
+        .select("*")
+        .eq("user_id", uid)
+        .single()
+        .then(({ data, error }) => {
+          setLoading(false);
+          if (data) {
+            setContext({
+              full_name: data.full_name || "",
+              city: data.city || "",
+              interests: data.interests || "",
+              custom_notes: data.custom_notes || "",
+            });
+          }
+          if (error && error.code !== "PGRST116") {
+            setError("Error cargando contexto");
+          }
+        });
+    });
+  }, [supabase, router]);
 
   function totalChars() {
     return context.full_name.length + context.city.length + context.interests.length + context.custom_notes.length;
@@ -63,8 +71,9 @@ export default function ContextEditor() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (totalChars() > MAX_CHARS) {
-      setError(`Máximo ${MAX_CHARS} caracteres permitidos`);
+    if (!userId || totalChars() > MAX_CHARS) {
+      if (!userId) setError("Cargando usuario...");
+      if (totalChars() > MAX_CHARS) setError(`Máximo ${MAX_CHARS} caracteres permitidos`);
       return;
     }
     setSaving(true);
@@ -74,6 +83,7 @@ export default function ContextEditor() {
     const { error: upsertError } = await supabase
       .from("user_context")
       .upsert({
+        user_id: userId,
         full_name: context.full_name.trim(),
         city: context.city.trim(),
         interests: context.interests.trim(),
