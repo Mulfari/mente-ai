@@ -65,23 +65,33 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     .select("*")
     .order("created_at", { ascending: false });
 
-  // Fetch emails from auth.users via Admin Auth API
-  const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
-    headers: { apikey: serviceKey!, Authorization: `Bearer ${serviceKey}` },
-  });
-  let emailMap: Record<string, string> = {};
-  if (authRes.ok) {
-    const authData = await authRes.json();
-    for (const u of authData.users || []) {
-      emailMap[u.id] = u.email;
+  // Attach email from profiles.email column (fallback if auth API fails)
+  const profilesWithEmail = (allProfiles || []).map(p => ({ ...p }));
+
+  // Try to enrich with emails from Admin Auth API (service role required)
+  if (serviceKey && supabaseUrl) {
+    try {
+      const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+        headers: {
+          apikey: serviceKey,
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      if (authRes.ok) {
+        const authData = await authRes.json();
+        const emailMap: Record<string, string> = {};
+        for (const u of authData.users || []) {
+          emailMap[u.id] = u.email;
+        }
+        for (const p of profilesWithEmail) {
+          if (emailMap[p.id]) p.email = emailMap[p.id];
+        }
+      }
+    } catch {
+      // Auth API unavailable — use profile emails only
     }
   }
-
-  // Attach email to each profile
-  const profilesWithEmail = (allProfiles || []).map(p => ({
-    ...p,
-    email: emailMap[p.id] || p.email || null,
-  }));
 
   const params = await searchParams;
   const headers = {
