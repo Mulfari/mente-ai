@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import React from "react";
 
 type Props = {
   initialProfiles?: any[];
@@ -97,7 +96,6 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   }
 
-  console.log("[AdminPanel] RENDER - users:", users.length, "loading:", loading);
   async function loadUsers() {
     window.location.reload();
   }
@@ -362,13 +360,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   });
 
   return (
-    <div id="admin-root" data-render="true" data-users={users.length} data-loading={String(loading)}>
-      {/* TOP DEBUG */}
-      <div style={{ background: "lime", color: "black", padding: "20px", fontSize: "24px", fontWeight: "bold", border: "5px solid black", position: "fixed", top: 0, left: 0, zIndex: 99999, width: "100%", boxSizing: "border-box" }}>
-        TOP DEBUG: users={users.length} loading={String(loading)} initialProfiles={initialProfiles.length}
-      </div>
-
-      <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
       {/* Toast notifications */}
       <div className="fixed top-5 right-5 z-50 space-y-2">
         {toasts.map(toast => (
@@ -394,9 +386,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       </div>
 
       {/* Header */}
-      <div style={{ border: "3px solid blue", padding: "8px", margin: "8px" }}>
-        ADMIN HEADER TEST
-      </div>
+      <header className="h-16 flex items-center justify-between px-6 border-b shrink-0 sticky top-0 z-10"
         style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -428,25 +418,10 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       </header>
 
       {/* Content */}
-      <main style={{ maxWidth: "960px", margin: "0 auto", padding: "32px 16px" }}>
-        {/* Simple hardcoded test */}
-        <div style={{ backgroundColor: "red", color: "white", padding: "40px", fontSize: "32px", fontWeight: "bold", textAlign: "center", border: "5px solid yellow", marginBottom: "20px" }}>
-          TEST: {users.length} USERS
-        </div>
-        <h1 style={{ backgroundColor: "#FF8800", color: "white", padding: "20px", fontSize: "28px", marginBottom: "20px" }}>
-          Panel de administracion
-        </h1>
-        <div style={{ backgroundColor: "#0000FF", color: "white", padding: "20px", marginBottom: "20px", display: "flex", gap: "20px" }}>
-          <span>Total: {stats.total}</span>
-          <span>Activos: {stats.active}</span>
-          <span>Inactivos: {stats.inactive}</span>
-          <span>Cancelados: {stats.cancelled}</span>
-          <span>Pendientes: {stats.pending}</span>
-        </div>
-        <div style={{ backgroundColor: "#8800FF", color: "white", padding: "10px", marginBottom: "20px", display: "flex", gap: "10px" }}>
-          <button style={{ padding: "10px 20px", backgroundColor: "white", color: "black" }}>Usuarios</button>
-          <button style={{ padding: "10px 20px", backgroundColor: "gray", color: "white" }}>Cupones</button>
-          <button style={{ padding: "10px 20px", backgroundColor: "gray", color: "white" }}>Lugares</button>
+      <main className="max-w-5xl mx-auto px-4 py-8">
+        {/* DEBUG: red border = main renders, red bg = main itself not visible */}
+        <div style={{ border: "2px solid red", padding: "8px", marginBottom: "8px", color: "red", fontSize: "12px" }}>
+          DEBUG: main renders here · users={users.length} · initialProfiles={initialProfiles.length}
         </div>
         {/* Error display */}
         {fetchError && (
@@ -460,11 +435,11 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
         <div className="mb-8">
           <div className="flex items-center justify-between mb-5">
             <div>
-              <h1 style={{ color: "#FF0000", fontSize: "24px", fontWeight: "bold", marginBottom: "4px" }}>Panel de administracion</h1>
-              <p style={{ color: "#00FF00", fontSize: "14px" }}>Gestiona usuarios, activa suscripciones y genera cupones</p>
+              <h1 className="text-2xl font-bold mb-0.5" style={{ color: "var(--text-primary)" }}>Panel de administracion</h1>
+              <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Gestiona usuarios, activa suscripciones y genera cupones</p>
             </div>
             <a href="/" className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
-              style={{ backgroundColor: "#333", color: "#fff", border: "1px solid #555" }}>
+              style={{ backgroundColor: "var(--surface)", color: "var(--text-secondary)", border: "1px solid var(--border)" }}>
               <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M11 17l-5-5m0 0l5-5m-5 5h12" />
               </svg>
@@ -472,25 +447,24 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
             </a>
           </div>
           {/* Stats bar */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3" style={{ border: "3px solid red" }}>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { label: "Total usuarios", value: stats.total, color: "#FF0000" },
-              { label: "Activos", value: stats.active, color: "#00FF00" },
-              { label: "Inactivos", value: stats.inactive, color: "#0000FF" },
-              { label: "Cancelados", value: stats.cancelled, color: "#FFFF00" },
-              { label: "Pendientes", value: stats.pending, color: "#FF00FF" },
+              { label: "Total usuarios", value: stats.total, color: "var(--text-primary)", bg: "var(--surface)", border: "var(--border)" },
+              { label: "Activos", value: stats.active, color: "var(--primary)", bg: "rgba(16,163,127,0.08)", border: "rgba(16,163,127,0.2)" },
+              { label: "Inactivos", value: stats.inactive, color: "var(--warning)", bg: "rgba(245,158,11,0.08)", border: "rgba(245,158,11,0.2)" },
+              { label: "Cancelados", value: stats.cancelled, color: "var(--danger)", bg: "rgba(239,68,68,0.08)", border: "rgba(239,68,68,0.2)" },
+              { label: "Pendientes", value: stats.pending, color: "#8b5cf6", bg: "rgba(139,92,246,0.08)", border: "rgba(139,92,246,0.2)" },
             ].map(s => (
-              <div key={s.label} style={{ padding: "12px", border: "2px solid " + s.color }}>
-                <p style={{ fontSize: "12px", fontWeight: "medium", color: s.color }}>{s.label}</p>
-                <p style={{ fontSize: "24px", fontWeight: "bold", color: s.color }}>{s.value}</p>
+              <div key={s.label} className="px-4 py-3 rounded-2xl" style={{ backgroundColor: s.bg, border: `1px solid ${s.border}` }}>
+                <p className="text-xs font-medium mb-1" style={{ color: s.color }}>{s.label}</p>
+                <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Tabs */}
-        <div style={{ border: "3px solid cyan", padding: "8px", marginBottom: "8px" }}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div className="flex items-center gap-1.5 p-1.5 rounded-xl self-start sm:self-auto" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
             {(["users", "coupons", "places"] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)}

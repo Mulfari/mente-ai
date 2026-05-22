@@ -7,6 +7,19 @@ const TIMEOUT_MS = 300_000;
 const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
 const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
+const TOKEN_ESTIMATE_CHARS = 4; // ~1 token per 4 chars in Spanish
+const TOKEN_THRESHOLD = 4000;    // summarize when history exceeds 4000 tokens
+const FRESH_MESSAGES = 10;        // keep last 10 messages alongside summary
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / TOKEN_ESTIMATE_CHARS);
+}
+
+function historyToText(messages: { role: string; content: any[] }[]): string {
+  return messages
+    .map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`)
+    .join("\n");
+}
 
 function validateUser(supabase: any, userId: string) {
   return supabase
@@ -59,7 +72,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
     }
 
+    // --- Load messages and check if summarization is needed ---
     const historyMessages: { role: string; content: any[] }[] = [];
+    let conversationSummary: string | null = null;
+
     if (conversation_id) {
       const { data: prevMessages } = await supabase
         .from("messages").select("id, role, content, attachments")
@@ -74,6 +90,38 @@ export async function POST(request: Request) {
           if (parts.length) historyMessages.push({ role: m.role, content: parts });
         }
       }
+
+      // Load existing summary if any
+      const { data: conv } = await supabase
+        .from("conversations").select("summary")
+        .eq("id", conversation_id).single();
+      if (conv?.summary) conversationSummary = conv.summary;
+
+      // Check token threshold — summarize if needed
+      const historyText = historyToText(historyMessages);
+      if (estimateTokens(historyText) > TOKEN_THRESHOLD) {
+        try {
+          const summarizeRes = await fetch(`${VPS_URL}/api/summarize`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversation_history: historyText }),
+            signal: AbortSignal.timeout(60000),
+          });
+
+          if (summarizeRes.ok) {
+            const { summary } = await summarizeRes.json();
+            if (summary?.trim()) {
+              conversationSummary = summary;
+              // Save summary to conversations table
+              await supabase.from("conversations").update({ summary }).eq("id", conversation_id);
+              // Trim history to last FRESH_MESSAGES
+              historyMessages.splice(0, historyMessages.length - FRESH_MESSAGES);
+            }
+          }
+        } catch {
+          // Summarization failed — continue with full history (will be truncated by model)
+        }
+      }
     }
 
     if (resume_message_id) {
@@ -83,12 +131,22 @@ export async function POST(request: Request) {
     const convId = conversation_id;
     const assistantMsgId = message_id || crypto.randomUUID();
 
-    // Fetch user personal context from Supabase
+    // Fetch user personal context
     const { data: userContext } = await supabase
       .from("user_context")
       .select("full_name, city, interests, custom_notes")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    // Build history text: [summary if exists] + [fresh messages]
+    const historyText = historyMessages.length > 0
+      ? historyToText(historyMessages)
+      : "";
+    const fullHistoryText = conversationSummary && historyText
+      ? `[Resumen de conversacion anterior]\n${conversationSummary}\n\n[Mensajes recientes]\n${historyText}`
+      : conversationSummary
+        ? `[Resumen de conversacion anterior]\n${conversationSummary}`
+        : historyText;
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -100,12 +158,7 @@ export async function POST(request: Request) {
         try {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
-          // Build conversation history for VPS
-          const historyText = historyMessages.length > 0
-            ? historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`).join("\n")
-            : "";
-
-          // Call VPS orchestrator with full context
+          // Call VPS orchestrator
           const vpsResponse = await fetch(`${VPS_URL}/api/orchestrate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -121,13 +174,12 @@ export async function POST(request: Request) {
                 interests: userContext.interests || "",
                 notes: userContext.custom_notes || "",
               } : null,
-              conversation_history: historyText || undefined,
+              conversation_history: fullHistoryText || undefined,
             }),
             signal: AbortSignal.timeout(TIMEOUT_MS),
           });
 
           if (!vpsResponse.ok) {
-            const errText = await vpsResponse.text();
             sendEvent({ type: "error", error: "Error del servidor. Intenta de nuevo." });
             controller.close();
             return;
@@ -145,6 +197,22 @@ export async function POST(request: Request) {
               mode: mode || "normal",
             }, { onConflict: "id" });
             sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse, is_deep: mode === "deep" });
+          }
+
+          // --- Persist context_delta (notas acumulativas) ---
+          if (result.context_delta?.add_notes?.trim() && userContext) {
+            try {
+              const existingNotes = userContext.custom_notes || "";
+              const newNote = result.context_delta.add_notes.trim();
+
+              // Only add if not already present
+              if (!existingNotes.includes(newNote)) {
+                const updatedNotes = existingNotes ? `${existingNotes}. ${newNote}` : newNote;
+                await supabase.from("user_context").update({ custom_notes: updatedNotes }).eq("user_id", user.id);
+              }
+            } catch {
+              // Non-critical — ignore if persistence fails
+            }
           }
 
           sendEvent({ type: "done" });
