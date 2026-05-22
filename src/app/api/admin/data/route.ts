@@ -25,7 +25,24 @@ export async function GET(request: Request) {
     if (type === "profiles") {
       const res = await fetch(`${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`, { headers });
       if (!res.ok) return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 });
-      return NextResponse.json({ data: await res.json() });
+      const profiles = await res.json();
+
+      // Enrich with emails from Admin Auth API
+      try {
+        const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { headers });
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          const emailMap: Record<string, string> = {};
+          for (const u of authData.users || []) {
+            emailMap[u.id] = u.email;
+          }
+          for (const p of profiles as any[]) {
+            if (emailMap[p.id]) p.email = emailMap[p.id];
+          }
+        }
+      } catch { /* Auth API unavailable */ }
+
+      return NextResponse.json({ data: profiles });
     }
 
     if (type === "coupons") {
