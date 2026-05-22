@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     const type = searchParams.get("type");
     const userId = searchParams.get("userId");
 
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !serviceKey) {
@@ -51,7 +51,7 @@ export async function GET(request: Request) {
 // Update a user's profile
 export async function PATCH(request: Request) {
   try {
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     if (!serviceKey || !supabaseUrl) {
@@ -96,7 +96,7 @@ export async function DELETE(request: Request) {
     const type = searchParams.get("type");
     const id = searchParams.get("id");
 
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     if (!supabaseUrl || !serviceKey) {
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").trim();
+    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     if (!serviceKey || !supabaseUrl) {
