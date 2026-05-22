@@ -80,23 +80,42 @@ export default function ContextEditor() {
     setError("");
     setSaved(false);
 
-    const { error: upsertError } = await supabase
+    const payload = {
+      user_id: userId,
+      full_name: context.full_name.trim(),
+      city: context.city.trim(),
+      interests: context.interests.trim(),
+      custom_notes: context.custom_notes.trim(),
+    };
+
+    const { error: updateError } = await supabase
       .from("user_context")
-      .upsert({
-        user_id: userId,
-        full_name: context.full_name.trim(),
-        city: context.city.trim(),
-        interests: context.interests.trim(),
-        custom_notes: context.custom_notes.trim(),
-      }, { onConflict: "user_id" });
+      .update(payload)
+      .eq("user_id", userId);
+
+    if (updateError) {
+      if (updateError.code === "PGRST116") {
+        // No row to update — insert it
+        const { error: insertError } = await supabase
+          .from("user_context")
+          .insert(payload);
+        setSaving(false);
+        if (insertError) {
+          setError("Error guardando. Intenta de nuevo.");
+        } else {
+          setSaved(true);
+          setTimeout(() => setSaved(false), 2500);
+        }
+      } else {
+        setSaving(false);
+        setError("Error guardando. Intenta de nuevo.");
+      }
+      return;
+    }
 
     setSaving(false);
-    if (upsertError) {
-      setError("Error guardando. Intenta de nuevo.");
-    } else {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2500);
   }
 
   if (loading) {
