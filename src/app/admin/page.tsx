@@ -55,14 +55,33 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   // Use service role client to bypass RLS — admin already gatekept above
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const adminProfiles = serviceKey && supabaseUrl
+  const adminClient = serviceKey && supabaseUrl
     ? createServiceClient(supabaseUrl, serviceKey)
     : supabase;
 
-  const { data: allProfiles } = await adminProfiles
+  // Fetch profiles + join email from auth.users
+  const { data: allProfiles } = await adminClient
     .from("profiles")
     .select("*")
     .order("created_at", { ascending: false });
+
+  // Fetch emails from auth.users via Admin Auth API
+  const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+    headers: { apikey: serviceKey!, Authorization: `Bearer ${serviceKey}` },
+  });
+  let emailMap: Record<string, string> = {};
+  if (authRes.ok) {
+    const authData = await authRes.json();
+    for (const u of authData.users || []) {
+      emailMap[u.id] = u.email;
+    }
+  }
+
+  // Attach email to each profile
+  const profilesWithEmail = (allProfiles || []).map(p => ({
+    ...p,
+    email: emailMap[p.id] || p.email || null,
+  }));
 
   const params = await searchParams;
   const headers = {
@@ -95,5 +114,5 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     redirect("/admin");
   }
 
-  return <AdminPanelClient initialProfiles={allProfiles || []} />;
+  return <AdminPanelClient initialProfiles={profilesWithEmail} />;
 }
