@@ -2,8 +2,13 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
 
-const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
 const VPS_SECRET = process.env.VPS_SHARED_SECRET || "";
+
+function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "https://mulfai.com.ve";
+}
 
 export async function POST() {
   const supabase = await createClient();
@@ -21,5 +26,7 @@ export async function POST() {
     .setExpirationTime("30s")
     .sign(secret);
 
-  return NextResponse.json({ token, vpsUrl: VPS_URL, expiresIn: 30 });
+  // Browser connects to Vercel (HTTPS), Vercel proxies to VPS
+  const streamUrl = `${getBaseUrl()}/api/stream`;
+  return NextResponse.json({ token, vpsUrl: streamUrl, expiresIn: 30 });
 }
