@@ -25,29 +25,9 @@ export async function GET(request: Request) {
       );
     }
 
-    // Pipe VPS stream to browser using a custom ReadableStream
-    const reader = vpsRes.body!.getReader();
-    const encoder = new TextEncoder();
-
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          let result = await reader.read();
-          while (!result.done) {
-            controller.enqueue(result.value);
-            result = await reader.read();
-          }
-          controller.close();
-        } catch (err) {
-          controller.error(err);
-        }
-      },
-      cancel() {
-        reader.cancel().catch(() => {});
-      },
-    });
-
-    return new Response(stream, {
+    // Return VPS body directly with SSE headers
+    // Node.js 24 (Vercel) supports ReadableStream in Response
+    return new Response(vpsRes.body, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
