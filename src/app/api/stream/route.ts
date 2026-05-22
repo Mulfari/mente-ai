@@ -4,11 +4,13 @@ const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
 
 export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const params = new URLSearchParams(searchParams.toString());
-    const vpsUrl = `${VPS_URL}/api/stream?${params.toString()}`;
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token") || "missing";
+    const messageId = url.searchParams.get("message_id") || "missing";
+    const question = url.searchParams.get("question") || "missing";
+    console.error(`[stream] token=${token.substring(0,20)}... msgId=${messageId} question=${question}`);
 
-    const vpsRes = await fetch(vpsUrl, {
+    const vpsRes = await fetch(`${VPS_URL}/api/stream?${url.searchParams.toString()}`, {
       headers: {
         Accept: "text/event-stream",
         "Cache-Control": "no-cache",
@@ -25,8 +27,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // Return VPS body directly with SSE headers
-    // Node.js 24 (Vercel) supports ReadableStream in Response
     return new Response(vpsRes.body, {
       headers: {
         "Content-Type": "text/event-stream",
