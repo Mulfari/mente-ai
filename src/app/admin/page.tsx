@@ -72,7 +72,15 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     .order("created_at", { ascending: false });
 
   // Attach email from profiles.email column (fallback if auth API fails)
-  const profilesWithEmail = (allProfiles || []).map(p => ({ ...p }));
+  const profilesWithEmail = (allProfiles || []).map(p => {
+    const profile: any = { ...p };
+    // Calculate daily message rate for abuse detection
+    const startDate = p.subscription_start ? new Date(p.subscription_start) : new Date(p.created_at);
+    const now = new Date();
+    const daysActive = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+    profile.daily_rate = p.messages_used > 0 ? Math.round(p.messages_used / daysActive) : 0;
+    return profile;
+  });
 
   if (serviceKey && supabaseUrl) {
     try {

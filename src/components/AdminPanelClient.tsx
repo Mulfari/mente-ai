@@ -24,6 +24,8 @@ type Profile = {
   created_at: string;
   used_coupon_label: string | null;
   used_coupon_label_color: string | null;
+  messages_used: number;
+  daily_rate: number;
 };
 
 type Coupon = {
@@ -118,6 +120,8 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       created_at: p.created_at,
       used_coupon_label: p.used_coupon_label ?? null,
       used_coupon_label_color: p.used_coupon_label_color ?? null,
+      messages_used: p.messages_used ?? 0,
+      daily_rate: p.daily_rate ?? 0,
     } as Profile));
     if (merged.length > 0) {
       console.log("[AdminPanel] Using server data, users:", merged.length);
@@ -659,6 +663,16 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                                   <span className="text-xs px-2.5 py-1 rounded-full font-semibold"
                                     style={{ backgroundColor: user.used_coupon_label_color ? `${user.used_coupon_label_color}22` : "rgba(139,92,246,0.12)", color: user.used_coupon_label_color || "#8b5cf6" }}>
                                     {user.used_coupon_label}
+                                  </span>
+                                )}
+                                {user.daily_rate > 0 && (
+                                  <span className="text-xs px-2.5 py-1 rounded-full font-semibold flex items-center gap-1"
+                                    style={{
+                                      backgroundColor: user.daily_rate > 100 ? "rgba(239,68,68,0.12)" : user.daily_rate > 50 ? "rgba(245,158,11,0.12)" : "rgba(16,163,127,0.08)",
+                                      color: user.daily_rate > 100 ? "var(--danger)" : user.daily_rate > 50 ? "var(--warning)" : "var(--text-secondary)",
+                                    }}>
+                                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: user.daily_rate > 100 ? "var(--danger)" : user.daily_rate > 50 ? "var(--warning)" : "var(--primary)" }} />
+                                    {user.daily_rate} msgs/día
                                   </span>
                                 )}
                               </div>
