@@ -5,9 +5,9 @@ import * as jose from "jose";
 const VPS_SECRET = process.env.VPS_SHARED_SECRET || "";
 
 function getBaseUrl() {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "https://mulfai.com.ve";
+  // Hardcode www to avoid redirect from mulfai.com.ve → www.mulfai.com.ve
+  // which would break SSE streaming (307 loses the stream)
+  return "https://www.mulfai.com.ve";
 }
 
 export async function POST() {
