@@ -11,6 +11,7 @@ type Props = {
   initialKnowledgeRules?: any[];
   initialKnowledge?: any[];
   fetchError?: string;
+  adminId?: string;
 };
 
 type Profile = {
@@ -47,7 +48,7 @@ type Tab = "users" | "coupons" | "places";
 type PlaceTab = "places" | "categories" | "knowledge" | "submissions";
 type Toast = { id: string; type: "success" | "error"; message: string };
 
-export default function AdminPanel({ initialProfiles = [], initialCoupons = [], initialPlaces = [], initialCategories = [], initialCities = [], initialKnowledgeRules = [], initialKnowledge = [], fetchError }: Props) {
+export default function AdminPanel({ initialProfiles = [], initialCoupons = [], initialPlaces = [], initialCategories = [], initialCities = [], initialKnowledgeRules = [], initialKnowledge = [], fetchError, adminId }: Props) {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -299,7 +300,28 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     };
     const config = couponConfig[type];
 
-    window.location.href = `/admin?action=generate-coupons&codes=${encodeURIComponent(JSON.stringify(codes))}&config=${encodeURIComponent(JSON.stringify(config))}`;
+    try {
+      const res = await fetch(`/api/admin/data?type=generate-coupons`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ codes, config, adminId }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh coupons list
+        const refreshRes = await fetch(`/api/admin/data?type=coupons`);
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          setCoupons(refreshData.data || []);
+        }
+        showToast("success", `${codes.length} cupón(es) generados`);
+      } else {
+        showToast("error", data.error || "Error al generar cupones");
+      }
+    } catch {
+      showToast("error", "Error de conexión");
+    }
+    setGeneratingCoupons(false);
   }
 
   async function copyToClipboard(text: string) {
@@ -308,7 +330,17 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
 
   async function deleteCoupon(couponId: string) {
     if (!confirm("¿Eliminar este cupón? Esta acción no se puede deshacer.")) return;
-    window.location.href = `/admin?action=delete-coupon&id=${couponId}`;
+    try {
+      const res = await fetch(`/api/admin/data?type=coupon&id=${couponId}`, { method: "DELETE" });
+      if (res.ok) {
+        setCoupons(prev => prev.filter(c => c.id !== couponId));
+        showToast("success", "Cupón eliminado");
+      } else {
+        showToast("error", "Error al eliminar cupón");
+      }
+    } catch {
+      showToast("error", "Error de conexión");
+    }
   }
 
   function formatDate(dateStr: string | null) {

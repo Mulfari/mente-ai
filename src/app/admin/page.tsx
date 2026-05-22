@@ -129,5 +129,5 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     redirect("/admin");
   }
 
-  return <AdminPanelClient initialProfiles={profilesWithEmail} initialCoupons={allCoupons || []} />;
+  return <AdminPanelClient initialProfiles={profilesWithEmail} initialCoupons={allCoupons || []} adminId={user.id} />;
 }
