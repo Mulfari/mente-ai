@@ -9,7 +9,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        backgroundColor: "var(--background)",
+        backgroundColor: "#0B1418",
         overflow: "auto",
       }}
     >
