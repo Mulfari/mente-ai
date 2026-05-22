@@ -761,7 +761,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const params = new URLSearchParams({
         token: vpsToken,
         message_id: msgId,
-        user_id: userId,
         conversation_id: convId,
         mode: responseMode,
         question: s,
@@ -1054,7 +1053,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const params = new URLSearchParams({
         token: vpsToken,
         message_id: msgId,
-        user_id: userId,
         conversation_id: convId,
         mode: responseMode,
         question: userMsg,
