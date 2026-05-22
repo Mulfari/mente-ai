@@ -775,9 +775,10 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       if (!streamRes.ok) {
         const errData = await streamRes.json().catch(() => ({}));
-        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: errData.error || 'Error de conexion' }).eq('id', msgId);
+        const status = streamRes.status;
+        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: errData.error || `Error de conexion (${status})` }).eq('id', msgId);
         setMessages(prev => prev.filter(m => m.id !== msgId));
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || 'Error de conexion', created_at: new Date().toISOString() }]);
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || `Error de conexion (${status})`, created_at: new Date().toISOString() }]);
         setSending(false);
         setStreamingMsgId(null);
         return;
@@ -840,16 +841,18 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           } else {
             textareaRef.current?.focus();
           }
-        } catch {
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: 'Error de conexion. Intenta de nuevo.', _loading: false } : m));
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: msg.includes('fetch') ? 'Error de conexion. Intenta de nuevo.' : msg, _loading: false } : m));
           setSending(false);
           setStreamingMsgId(null);
         }
       };
 
       processVPSStream();
-    } catch {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString() }]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: msg.includes('fetch') ? "Error de conexion. Intenta de nuevo." : msg, created_at: new Date().toISOString() }]);
       setSending(false);
     }
     setTimeout(() => { autoResize(); textareaRef.current?.focus(); }, 0);
@@ -1137,8 +1140,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           } else {
             textareaRef.current?.focus();
           }
-        } catch {
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: 'Error de conexion. Intenta de nuevo.', _loading: false } : m));
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: msg.includes('fetch') ? 'Error de conexion. Intenta de nuevo.' : msg, _loading: false } : m));
           setSending(false);
           setStreamingMsgId(null);
         }
