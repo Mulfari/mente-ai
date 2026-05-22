@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import React from "react";
 
 type Props = {
   initialProfiles?: any[];
@@ -361,10 +362,10 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   });
 
   return (
-    <>
+    <div id="admin-root" data-render="true" data-users={users.length} data-loading={String(loading)}>
       {/* TOP DEBUG */}
-      <div style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, background: "orange", color: "black", padding: "8px", fontSize: "12px", fontWeight: "bold" }}>
-        🔧 DEBUG: loading={String(loading)} users={users.length} initialProfiles={initialProfiles.length}
+      <div style={{ background: "lime", color: "black", padding: "20px", fontSize: "24px", fontWeight: "bold", border: "5px solid black", position: "fixed", top: 0, left: 0, zIndex: 99999, width: "100%", boxSizing: "border-box" }}>
+        TOP DEBUG: users={users.length} loading={String(loading)} initialProfiles={initialProfiles.length}
       </div>
 
       <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
