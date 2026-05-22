@@ -56,6 +56,9 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     .select("*")
     .order("created_at", { ascending: false });
 
+  console.log("[admin] allProfiles count:", allProfiles?.length ?? 0, "first email:", allProfiles?.[0]?.email);
+  console.log("[admin] user id:", user.id, "role:", profile?.role);
+
   const params = await searchParams;
   const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
   const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();

@@ -96,6 +96,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   }
 
+  console.log("[AdminPanel] RENDER - users:", users.length, "loading:", loading);
   async function loadUsers() {
     window.location.reload();
   }
@@ -360,7 +361,13 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   });
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+    <>
+      {/* TOP DEBUG */}
+      <div style={{ position: "fixed", top: 0, left: 0, zIndex: 9999, background: "orange", color: "black", padding: "8px", fontSize: "12px", fontWeight: "bold" }}>
+        🔧 DEBUG: loading={String(loading)} users={users.length} initialProfiles={initialProfiles.length}
+      </div>
+
+      <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
       {/* Toast notifications */}
       <div className="fixed top-5 right-5 z-50 space-y-2">
         {toasts.map(toast => (
@@ -386,7 +393,9 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       </div>
 
       {/* Header */}
-      <header className="h-16 flex items-center justify-between px-6 border-b shrink-0 sticky top-0 z-10"
+      <div style={{ border: "3px solid blue", padding: "8px", margin: "8px" }}>
+        ADMIN HEADER TEST
+      </div>
         style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl flex items-center justify-center"
