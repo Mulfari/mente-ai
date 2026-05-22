@@ -236,51 +236,61 @@ html, body {
   margin: 0.6em 0;
 }
 .prose table {
-  width: auto;
+  width: 100%;
   max-width: 100%;
-  border-collapse: collapse;
-  margin: 0.8em 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1em 0;
   font-size: 0.875em;
-  overflow-x: auto;
-  display: table;
-  border-radius: 12px;
   overflow: hidden;
+  display: table;
+  border-radius: 16px;
   border: 1px solid var(--border);
-  table-layout: fixed;
+  overflow-x: auto;
 }
 .prose thead tr {
   background: var(--surface);
 }
 .prose th {
-  padding: 0.6em 0.8em;
+  padding: 0.7em 1em;
   text-align: left;
   font-weight: 600;
-  border-bottom: 1px solid var(--border);
   color: var(--text-primary);
-  font-size: 0.78em;
+  font-size: 0.75em;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.06em;
   white-space: nowrap;
+  border-bottom: 1px solid var(--border);
 }
 .prose td {
-  padding: 0.5em 0.8em;
-  border-bottom: 1px solid var(--border);
+  padding: 0.7em 1em;
   color: var(--text-secondary);
   font-size: 0.875em;
-  line-height: 1.4;
+  line-height: 1.5;
   word-break: break-word;
+  vertical-align: top;
 }
 .prose tbody tr {
   transition: background-color 0.15s;
+  border-bottom: 1px solid var(--border);
 }
-.prose tbody tr:last-child td {
+.prose tbody tr:last-child {
   border-bottom: none;
 }
-.prose tbody tr:nth-child(even) {
-  background: var(--table-row-hover);
+.prose tbody tr:nth-child(even) td {
+  background: rgba(16,163,127,0.04);
 }
-.prose tbody tr:hover {
-  background: var(--surface-hover);
+.prose tbody tr:hover td {
+  background: rgba(16,163,127,0.08);
+}
+.prose tbody tr td:first-child {
+  border-left: 3px solid var(--primary);
+}
+.prose tbody tr:hover td:first-child {
+  border-left-color: #0d8b6a;
+}
+.prose thead tr th:first-child {
+  border-left: 3px solid var(--primary);
 }
 .prose table td:first-child,
 .prose table th:first-child {
