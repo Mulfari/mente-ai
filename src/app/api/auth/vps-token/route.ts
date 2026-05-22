@@ -26,7 +26,6 @@ export async function POST() {
     .setExpirationTime("30s")
     .sign(secret);
 
-  // Browser connects to Vercel (HTTPS), Vercel proxies to VPS
-  const streamUrl = `${getBaseUrl()}/api/stream`;
-  return NextResponse.json({ token, vpsUrl: streamUrl, expiresIn: 30 });
+  // Browser connects to /api/stream on Vercel (HTTPS), Vercel proxies to VPS
+  return NextResponse.json({ token, vpsUrl: getBaseUrl(), expiresIn: 30 });
 }

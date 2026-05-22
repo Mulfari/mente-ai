@@ -40,6 +40,7 @@ export async function GET(request: Request) {
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
+        "Access-Control-Allow-Origin": "*",
       },
     });
   } catch (err: any) {
