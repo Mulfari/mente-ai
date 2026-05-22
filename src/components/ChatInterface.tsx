@@ -745,71 +745,92 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
       setStreamingMsgId(msgId);
 
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: s, conversation_id: convId, mode: responseMode, message_id: msgId }),
+      // Get VPS token and connect directly to VPS for streaming
+      const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json();
+        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
+        setSending(false);
+        setStreamingMsgId(null);
+        return;
+      }
+      const { token: vpsToken, vpsUrl } = await tokenRes.json();
+
+      const params = new URLSearchParams({
+        token: vpsToken,
+        message_id: msgId,
+        user_id: userId,
+        conversation_id: convId,
+        mode: responseMode,
+        question: s,
+        attachments: JSON.stringify([]),
+        user_context: JSON.stringify(userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null),
       });
 
-      if (!res.ok) {
-        if (assistantMsg) supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
+      const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
+        headers: { Accept: 'text/event-stream' },
+      });
+
+      if (!streamRes.ok) {
+        const errData = await streamRes.json().catch(() => ({}));
+        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: errData.error || 'Error de conexion' }).eq('id', msgId);
         setMessages(prev => prev.filter(m => m.id !== msgId));
-        const result = await res.json();
-        const errorCode = result.code || res.status;
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(), role: "assistant",
-          content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
-        }]);
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || 'Error de conexion', created_at: new Date().toISOString() }]);
         setSending(false);
         setStreamingMsgId(null);
         return;
       }
 
-      const reader = res.body!.getReader();
+      const reader = streamRes.body!.getReader();
       const decoder = new TextDecoder();
-      let buffer = "";
-      let fullText = "";
-
+      let buffer = '';
       let isDeep = false;
 
-      const updateStreamText = async (text: string) => {
-        smoothReveal(msgId, text, isDeep);
-        await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
+      const updateStreamText = (text: string) => {
+        setDisplayedText(prev => ({ ...prev, [msgId]: text }));
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, _isDeep: isDeep } : m));
       };
 
-      const processStream = async () => {
+      const processVPSStream = async () => {
         try {
-          isDeep = false;
           let result = await reader.read();
           while (!result.done) {
             buffer += decoder.decode(result.value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines[lines.length - 1] ?? "";
-            for (let i = 0; i < lines.length - 1; i++) {
-              const line = lines[i];
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6);
-                if (data === "[DONE]") continue;
-                try {
-                  const json = JSON.parse(data);
-                  if (json.type === "chunk") {
-                    if (json.is_deep) isDeep = true;
-                    if (json.text) { fullText += json.text; await updateStreamText(fullText); }
-                  }
-                } catch {}
+            const lines = buffer.split('\n');
+            buffer = lines[lines.length - 1] ?? '';
+            for (const line of lines) {
+              const eventMatch = line.match(/^event: (.+)/);
+              const dataMatch = line.match(/^data: (.+)/);
+              if (!eventMatch || !dataMatch) continue;
+              let data: any;
+              try { data = JSON.parse(dataMatch[1]); } catch { continue; }
+              if (eventMatch[1] === 'chunk' && data.type === 'chunk') {
+                isDeep = data.is_deep ?? false;
+                const currentText = displayedText[msgId] || '';
+                const newText = currentText + data.text;
+                updateStreamText(newText);
+                await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: newText, role: 'assistant', in_progress: true });
+              } else if (eventMatch[1] === 'done' && data.type === 'done') {
+                isDeep = data.is_deep ?? isDeep;
+              } else if (eventMatch[1] === 'error') {
+                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
+                setSending(false);
+                setStreamingMsgId(null);
+                return;
               }
             }
             result = await reader.read();
           }
-          // Stream done: await final save and flush reveal animation
-          await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText, in_progress: false });
-          flushReveal(msgId, fullText, isDeep);
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m));
+          const finalText = displayedText[msgId] || '';
+          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: finalText, role: 'assistant', in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalText, _loading: false, _isDeep: isDeep } : m));
           currentStreamReqRef.current = null;
           setSending(false);
           setStreamingMsgId(null);
           const now = new Date().toISOString();
-          supabase.from("conversations").update({ updated_at: now }).eq("id", convId);
+          supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
           setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
           setActiveConv({ ...conv!, updated_at: now });
           if (queuedMsgRef.current) {
@@ -819,76 +840,14 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           } else {
             textareaRef.current?.focus();
           }
-        } catch (_err) {
-          const req = currentStreamReqRef.current;
-          if (req) {
-            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m));
-            setTimeout(async () => {
-              const res2 = await fetch("/api/chat", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: req.message, conversation_id: req.conversationId, attachments: req.contentParts, mode: req.mode }),
-              });
-              if (!res2.ok) {
-                const result = await res2.json();
-                supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
-                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m));
-              } else {
-                const reader2 = res2.body!.getReader();
-                const decoder2 = new TextDecoder();
-                let buffer2 = "";
-                let fullText2 = "";
-                const updateStreamText2 = async (text: string) => {
-                  smoothReveal(msgId, text);
-                  await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
-                };
-                const processStream2 = async () => {
-                  try {
-                    let result2 = await reader2.read();
-                    while (!result2.done) {
-                      buffer2 += decoder2.decode(result2.value, { stream: true });
-                      const lines2 = buffer2.split("\n");
-                      buffer2 = lines2[lines2.length - 1] ?? "";
-                      for (let i = 0; i < lines2.length - 1; i++) {
-                        const line = lines2[i];
-                        if (line.startsWith("data: ")) {
-                          const data = line.slice(6);
-                          if (data === "[DONE]") continue;
-                          try {
-                            const json = JSON.parse(data);
-                            if (json.type === "chunk" && json.text) { fullText2 += json.text; await updateStreamText2(fullText2); }
-                          } catch {}
-                        }
-                      }
-                      result2 = await reader2.read();
-                    }
-                    await supabase.from("messages").upsert({ id: msgId, conversation_id: convId, content: fullText2, in_progress: false });
-                    flushReveal(msgId, fullText2);
-                    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: fullText2, _loading: false } : m));
-                    currentStreamReqRef.current = null;
-                    setSending(false);
-                    setStreamingMsgId(null);
-                  } catch (_err) {
-                    supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
-                    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false, _retryReq: req } : m));
-                    currentStreamReqRef.current = null;
-                    setSending(false);
-                    setStreamingMsgId(null);
-                  }
-                };
-                processStream2();
-              }
-            }, 1000);
-          } else {
-            supabase.from("messages").update({ in_progress: false }).eq("id", msgId);
-            setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m));
-            setSending(false);
-            setStreamingMsgId(null);
-          }
+        } catch {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: 'Error de conexion. Intenta de nuevo.', _loading: false } : m));
+          setSending(false);
+          setStreamingMsgId(null);
         }
       };
 
-      processStream();
+      processVPSStream();
     } catch {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "Error de conexion. Intenta de nuevo.", created_at: new Date().toISOString() }]);
       setSending(false);
