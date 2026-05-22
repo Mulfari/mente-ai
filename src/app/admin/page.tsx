@@ -137,12 +137,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     redirect("/admin");
   }
 
-  console.log("[admin page] profilesWithEmail:", JSON.stringify(profilesWithEmail.map(p => ({ id: p.id, email: p.email, messages_used: p.messages_used, daily_rate: p.daily_rate }))));
-
-  return (
-    <>
-      <script dangerouslySetInnerHTML={{ __html: `window.__DEBUG_ADMIN__ = ${JSON.stringify(profilesWithEmail.map(p => ({ id: p.id.slice(0,8), email: p.email, msgs: p.messages_used, rate: p.daily_rate })))}` }} />
-      <AdminPanelClient initialProfiles={profilesWithEmail} initialCoupons={allCoupons || []} adminId={user.id} />
-    </>
-  );
+  
+  return <AdminPanelClient initialProfiles={profilesWithEmail} initialCoupons={allCoupons || []} adminId={user.id} />;
 }

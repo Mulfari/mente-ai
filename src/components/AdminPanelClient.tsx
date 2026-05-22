@@ -110,19 +110,25 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       console.log("[AdminPanel] initialProfiles:", initialProfiles?.length ?? "undefined");
     }
 
-    const merged = (initialProfiles || []).map(p => ({
-      id: p.id,
-      email: p.email || "Sin email",
-      status: p.status,
-      subscription_weeks: p.subscription_weeks ?? 0,
-      subscription_start: p.subscription_start,
-      role: p.role,
-      created_at: p.created_at,
-      used_coupon_label: p.used_coupon_label ?? null,
-      used_coupon_label_color: p.used_coupon_label_color ?? null,
-      messages_used: p.messages_used ?? 0,
-      daily_rate: p.daily_rate ?? 0,
-    } as Profile));
+    const merged = (initialProfiles || []).map(p => {
+      const startDate = p.subscription_start ? new Date(p.subscription_start) : new Date(p.created_at);
+      const now = new Date();
+      const daysActive = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const dailyRate = (p.messages_used ?? 0) > 0 ? Math.round((p.messages_used ?? 0) / daysActive) : 0;
+      return {
+        id: p.id,
+        email: p.email || "Sin email",
+        status: p.status,
+        subscription_weeks: p.subscription_weeks ?? 0,
+        subscription_start: p.subscription_start,
+        role: p.role,
+        created_at: p.created_at,
+        used_coupon_label: p.used_coupon_label ?? null,
+        used_coupon_label_color: p.used_coupon_label_color ?? null,
+        messages_used: p.messages_used ?? 0,
+        daily_rate: dailyRate,
+      } as Profile;
+    });
     if (merged.length > 0) {
       console.log("[AdminPanel] Using server data, users:", merged.length);
       setUsers(merged);
