@@ -75,7 +75,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [userEmail, setUserEmail] = useState("");
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(null);
-  const [userContext, setUserContext] = useState<{full_name: string; city: string; custom_notes: string} | null>(null);
+  const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(null);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
@@ -180,7 +180,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           .then(({ data: p }) => { if (p) setProfile(p); });
         supabase
           .from("user_context")
-          .select("full_name, city, custom_notes")
+          .select("full_name, city, interests, custom_notes")
           .maybeSingle()
           .then(({ data: uc }) => { if (uc) setUserContext(uc); });
         setTimeout(() => {
@@ -233,7 +233,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
     supabase
       .from("user_context")
-      .select("full_name, city, custom_notes")
+      .select("full_name, city, interests, custom_notes")
       .maybeSingle()
       .then(({ data }) => { if (data) setUserContext(data); });
   }, [userId, isLoggedIn]);
@@ -1075,205 +1075,117 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       }
       setStreamingMsgId(msgId);
 
-      // Send streaming request
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg, conversation_id: convId, attachments: contentParts, mode: responseMode, message_id: msgId }),
-      });
-
-      if (!res.ok) {
-        const result = await res.json();
-        const errorCode = result.code || res.status;
-        // Clear in_progress flag
-        if (assistantMsg) {
-          supabase.from("messages").update({ in_progress: false, content: result.error || `Error ${errorCode}. Intenta de nuevo.` }).eq("id", msgId);
-        }
+      // Get VPS token and connect directly to VPS for streaming
+      const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json();
+        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
         setMessages(prev => prev.filter(m => m.id !== msgId));
-        setMessages(prev => [...prev, {
-          id: Date.now().toString(), role: "assistant",
-          content: result.error || `Error ${errorCode}. Intenta de nuevo.`, created_at: new Date().toISOString(),
-        }]);
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
         setSending(false);
         setStreamingMsgId(null);
         textareaRef.current?.focus();
-        // Flush queued message on error too
+        return;
+      }
+      const { token: vpsToken, vpsUrl } = await tokenRes.json();
+
+      const params = new URLSearchParams({
+        token: vpsToken,
+        message_id: msgId,
+        user_id: userId,
+        conversation_id: convId,
+        mode: responseMode,
+        question: userMsg,
+        attachments: JSON.stringify(contentParts),
+        user_context: JSON.stringify(userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null),
+      });
+
+      const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
+        headers: { Accept: 'text/event-stream' },
+      });
+
+      if (!streamRes.ok) {
+        const errData = await streamRes.json().catch(() => ({}));
+        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: errData.error || 'Error de conexion' }).eq('id', msgId);
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || 'Error de conexion', created_at: new Date().toISOString() }]);
+        setSending(false);
+        setStreamingMsgId(null);
+        textareaRef.current?.focus();
         if (queuedMsgRef.current) {
           const q = queuedMsgRef.current as QueuedMsg;
           queuedMsgRef.current = null;
-          setTimeout(() => {
-            setInput(q.text);
-            setAttachments(q.files);
-            setPreviewUrls(q.previews);
-            autoResize();
-            sendMessage();
-          }, 500);
+          setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 500);
         }
-      } else {
-        // Process streaming response
-        const reader = res.body!.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let fullText = "";
-
-        let isDeep = false;
-        let charCount = 0;
-
-        const updateStreamText = async (text: string) => {
-          charCount++;
-          smoothReveal(msgId, text, isDeep);
-          // Only update DB every 10 chunks to reduce round-trips
-          if (charCount % 10 === 0) {
-            await supabase.from("messages").update({ content: text, in_progress: true }).eq("id", msgId);
-          }
-        };
-
-        const processStream = async () => {
-          try {
-            isDeep = false;
-            let result = await reader.read();
-            while (!result.done) {
-              buffer += decoder.decode(result.value, { stream: true });
-              const lines = buffer.split("\n");
-              buffer = lines[lines.length - 1] ?? "";
-              for (let i = 0; i < lines.length - 1; i++) {
-                const line = lines[i];
-                if (line.startsWith("data: ")) {
-                  const data = line.slice(6);
-                  if (data === "[DONE]") continue;
-                  try {
-                    const json = JSON.parse(data);
-                    if (json.type === "chunk") {
-                      if (json.is_deep) isDeep = true;
-                      if (json.text) { fullText += json.text; await updateStreamText(fullText); }
-                    }
-                  } catch {}
-                }
-              }
-              result = await reader.read();
-            }
-            // Stream done: await final save
-            const { error: saveError } = await supabase.from("messages").upsert({
-              id: msgId,
-              conversation_id: convId,
-              content: fullText,
-              in_progress: false,
-            });
-            if (saveError) console.error("[VeChat] save failed:", saveError);
-            else console.log("[VeChat] saved to DB:", msgId, "chars:", fullText.length);
-            flushReveal(msgId, fullText, isDeep);
-            setMessages(prev => prev.map(m =>
-              m.id === msgId ? { ...m, content: fullText, _loading: false, _isDeep: isDeep } : m
-            ));
-            currentStreamReqRef.current = null;
-            setSending(false);
-            setStreamingMsgId(null);
-            if (queuedMsgRef.current) {
-              const q = queuedMsgRef.current as QueuedMsg;
-              queuedMsgRef.current = null;
-              setTimeout(() => {
-                setInput(q.text);
-                setAttachments(q.files);
-                setPreviewUrls(q.previews);
-                autoResize();
-                sendMessage();
-              }, 100);
-            } else {
-              textareaRef.current?.focus();
-            }
-          } catch (_err) {
-            const req = currentStreamReqRef.current;
-            if (req) {
-              setMessages(prev => prev.map(m =>
-                m.id === msgId ? { ...m, content: "Conexion perdida. Reintentando...", _loading: true } : m
-              ));
-              setTimeout(async () => {
-                const res2 = await fetch("/api/chat", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ message: req.message, conversation_id: req.conversationId, attachments: req.contentParts, mode: req.mode }),
-                });
-                if (!res2.ok) {
-                  const result = await res2.json();
-                  setMessages(prev => prev.map(m =>
-                    m.id === msgId ? { ...m, content: result.error || "Error. Intenta de nuevo.", _loading: false } : m
-                  ));
-                } else {
-                  const reader2 = res2.body!.getReader();
-                  const decoder2 = new TextDecoder();
-                  let buffer2 = "";
-                  let fullText2 = "";
-                  const updateStreamText2 = (text: string) => {
-                    smoothReveal(msgId, text);
-                  };
-                  const processStream2 = () => {
-                    reader2.read().then(({ done, value }) => {
-                      if (done) {
-                        supabase.from("messages").upsert({ id: msgId, conversation_id: req.conversationId, role: "assistant", content: fullText2, in_progress: false });
-                        flushReveal(msgId, fullText2);
-                        setMessages(prev => prev.map(m =>
-                          m.id === msgId ? { ...m, content: fullText2, _loading: false } : m
-                        ));
-                        currentStreamReqRef.current = null;
-                        setSending(false);
-                        setStreamingMsgId(null);
-                        if (queuedMsgRef.current) {
-                          const q = queuedMsgRef.current as QueuedMsg;
-                          queuedMsgRef.current = null;
-                          setTimeout(() => {
-                            setInput(q.text);
-                            setAttachments(q.files);
-                            setPreviewUrls(q.previews);
-                            autoResize();
-                            sendMessage();
-                          }, 100);
-                        } else {
-                          textareaRef.current?.focus();
-                        }
-                        return;
-                      }
-                      buffer2 += decoder2.decode(value, { stream: true });
-                      const lines = buffer2.split("\n");
-                      buffer2 = lines[lines.length - 1] ?? "";
-                      for (let i = 0; i < lines.length - 1; i++) {
-                        const line = lines[i];
-                        if (line.startsWith("data: ")) {
-                          const data = line.slice(6);
-                          if (data === "[DONE]") continue;
-                          try {
-                            const json = JSON.parse(data);
-                            if (json.type === "chunk" && json.text) {
-                              fullText2 += json.text;
-                              updateStreamText2(fullText2);
-                            }
-                          } catch {}
-                        }
-                      }
-                      processStream2();
-                    }).catch(() => {
-                      setMessages(prev => prev.map(m =>
-                        m.id === msgId ? { ...m, content: "Error. Intenta de nuevo.", _loading: false } : m
-                      ));
-                      currentStreamReqRef.current = null;
-                      setSending(false);
-                      setStreamingMsgId(null);
-                    });
-                  };
-                  processStream2();
-                }
-              }, 1000);
-              return;
-            }
-            setMessages(prev => prev.map(m =>
-              m.id === msgId ? { ...m, content: "Error de conexion. Intenta de nuevo.", _loading: false } : m
-            ));
-            setSending(false);
-            setStreamingMsgId(null);
-          }
-        };
-
-        processStream();
+        return;
       }
+
+      const reader = streamRes.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let isDeep = false;
+      let contextDelta: { add_notes?: string } | null = null;
+
+      const updateStreamText = (text: string) => {
+        setDisplayedText(prev => ({ ...prev, [msgId]: text }));
+        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, _isDeep: isDeep } : m));
+      };
+
+      const processVPSStream = async () => {
+        try {
+          let result = await reader.read();
+          while (!result.done) {
+            buffer += decoder.decode(result.value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines[lines.length - 1] ?? '';
+            for (const line of lines) {
+              const eventMatch = line.match(/^event: (.+)/);
+              const dataMatch = line.match(/^data: (.+)/);
+              if (!eventMatch || !dataMatch) continue;
+              let data: any;
+              try { data = JSON.parse(dataMatch[1]); } catch { continue; }
+              if (eventMatch[1] === 'chunk' && data.type === 'chunk') {
+                isDeep = data.is_deep ?? false;
+                const currentText = displayedText[msgId] || '';
+                const newText = currentText + data.text;
+                updateStreamText(newText);
+                await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: newText, role: 'assistant', in_progress: true });
+              } else if (eventMatch[1] === 'done' && data.type === 'done') {
+                isDeep = data.is_deep ?? isDeep;
+                contextDelta = data.context_delta ?? null;
+              } else if (eventMatch[1] === 'error') {
+                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
+                setSending(false);
+                setStreamingMsgId(null);
+                return;
+              }
+            }
+            result = await reader.read();
+          }
+          const finalText = displayedText[msgId] || '';
+          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: finalText, role: 'assistant', in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalText, _loading: false, _isDeep: isDeep } : m));
+          setSending(false);
+          setStreamingMsgId(null);
+          const now = new Date().toISOString();
+          supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
+          setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
+          setActiveConv(prev => prev ? { ...prev, updated_at: now } : prev);
+          if (queuedMsgRef.current) {
+            const q = queuedMsgRef.current as QueuedMsg;
+            queuedMsgRef.current = null;
+            setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
+          } else {
+            textareaRef.current?.focus();
+          }
+        } catch {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: 'Error de conexion. Intenta de nuevo.', _loading: false } : m));
+          setSending(false);
+          setStreamingMsgId(null);
+        }
+      };
+
+      processVPSStream();
     } catch (_err) {
       setMessages(prev => [...prev, {
         id: Date.now().toString(), role: "assistant",
