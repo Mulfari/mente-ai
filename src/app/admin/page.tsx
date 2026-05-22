@@ -65,6 +65,11 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     .select("*")
     .order("created_at", { ascending: false });
 
+  const { data: allCoupons } = await adminClient
+    .from("coupons")
+    .select("*")
+    .order("created_at", { ascending: false });
+
   // Attach email from profiles.email column (fallback if auth API fails)
   const profilesWithEmail = (allProfiles || []).map(p => ({ ...p }));
 
@@ -124,5 +129,5 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     redirect("/admin");
   }
 
-  return <AdminPanelClient initialProfiles={profilesWithEmail} />;
+  return <AdminPanelClient initialProfiles={profilesWithEmail} initialCoupons={allCoupons || []} />;
 }

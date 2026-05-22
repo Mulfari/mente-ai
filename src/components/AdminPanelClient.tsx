@@ -132,7 +132,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
 
   // Load initial coupons from server props
   useEffect(() => {
-    if (initialCoupons.length > 0) {
+    if (initialCoupons && initialCoupons.length > 0) {
       setCoupons(initialCoupons);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
