@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server";
 
 const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
-const SHARED_SECRET = process.env.VPS_SHARED_SECRET || "";
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-
-    // Build query string for VPS
-    const params = new URLSearchParams();
-    for (const [key, value] of searchParams) {
-      params.set(key, value);
-    }
-
-    // Forward to VPS, which handles its own auth via the token param
+    const params = new URLSearchParams(searchParams.toString());
     const vpsUrl = `${VPS_URL}/api/stream?${params.toString()}`;
 
     const vpsRes = await fetch(vpsUrl, {
@@ -33,14 +25,34 @@ export async function GET(request: Request) {
       );
     }
 
-    // Stream SSE directly to browser
-    return new Response(vpsRes.body, {
+    // Pipe VPS stream to browser using a custom ReadableStream
+    const reader = vpsRes.body!.getReader();
+    const encoder = new TextEncoder();
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          let result = await reader.read();
+          while (!result.done) {
+            controller.enqueue(result.value);
+            result = await reader.read();
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+      cancel() {
+        reader.cancel().catch(() => {});
+      },
+    });
+
+    return new Response(stream, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
-        "Access-Control-Allow-Origin": "*",
       },
     });
   } catch (err: any) {
