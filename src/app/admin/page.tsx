@@ -54,7 +54,8 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   // Use service role client to bypass RLS — admin already gatekept above
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const supabaseUrl = supabaseUrlRaw.replace(/\s+/g, "");
   const adminClient = serviceKey && supabaseUrl
     ? createServiceClient(supabaseUrl, serviceKey)
     : supabase;
@@ -73,7 +74,6 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   // Attach email from profiles.email column (fallback if auth API fails)
   const profilesWithEmail = (allProfiles || []).map(p => ({ ...p }));
 
-  // Try to enrich with emails from Admin Auth API (service role required)
   if (serviceKey && supabaseUrl) {
     try {
       const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
