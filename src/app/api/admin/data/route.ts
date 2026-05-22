@@ -30,6 +30,7 @@ export async function GET(request: Request) {
       // Enrich with emails from Admin Auth API
       try {
         const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { headers });
+        console.log("[/api/admin/data profiles] Auth API status:", authRes.status);
         if (authRes.ok) {
           const authData = await authRes.json();
           const emailMap: Record<string, string> = {};
@@ -39,8 +40,13 @@ export async function GET(request: Request) {
           for (const p of profiles as any[]) {
             if (emailMap[p.id]) p.email = emailMap[p.id];
           }
+        } else {
+          const errText = await authRes.text();
+          console.log("[/api/admin/data profiles] Auth API error:", errText);
         }
-      } catch { /* Auth API unavailable */ }
+      } catch (err: any) {
+        console.log("[/api/admin/data profiles] Auth API catch:", err.message);
+      }
 
       return NextResponse.json({ data: profiles });
     }
