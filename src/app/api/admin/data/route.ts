@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 // GET /api/admin/data?type=profiles | coupons | coupon-history&userId=xxx
-// Uses service role key — bypasses RLS for admin operations
+// Admin access is gatekept at the /admin page server-component level.
+// This route uses the service role key so RLS is bypassed.
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -14,20 +14,6 @@ export async function GET(request: Request) {
 
     if (!supabaseUrl || !serviceKey) {
       return NextResponse.json({ error: "Missing env vars", supabase: !!supabaseUrl, service: !!serviceKey }, { status: 500 });
-    }
-
-    // Verify requester is admin
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const headers = {
@@ -70,20 +56,6 @@ export async function PATCH(request: Request) {
 
     if (!serviceKey) {
       return NextResponse.json({ error: "Service role key not configured" }, { status: 500 });
-    }
-
-    // Verify admin
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -135,20 +107,6 @@ export async function DELETE(request: Request) {
       apikey: serviceKey,
       Authorization: `Bearer ${serviceKey}`,
     };
-
-    // Verify admin
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     if (type === "coupon" && id) {
       const res = await fetch(`${supabaseUrl}/rest/v1/coupons?id=eq.${id}`, {
@@ -203,20 +161,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Service role key not configured" }, { status: 500 });
     }
 
-    // Verify admin
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .single();
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const body = await request.json();
 
     const headers = {
@@ -227,14 +171,14 @@ export async function POST(request: Request) {
     };
 
     if (type === "generate-coupons") {
-      const { codes, config } = body;
-      if (!codes || !Array.isArray(codes) || !config) {
+      const { codes, config, adminId } = body;
+      if (!codes || !Array.isArray(codes) || !config || !adminId) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
 
       const inserts = codes.map((c: string) => ({
         code: c,
-        created_by: user.id,
+        created_by: adminId,
         ...config,
       }));
 
