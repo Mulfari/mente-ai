@@ -103,73 +103,31 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     window.location.reload();
   }
 
-  // Load initial data — prefer server props, fall back to client-side fetch
+  // Load initial data from API (ensures fresh data with emails and daily_rate)
   useEffect(() => {
-    // Debug: log what we received from server
-    if (typeof window !== "undefined") {
-      console.log("[AdminPanel] initialProfiles:", initialProfiles?.length ?? "undefined");
-    }
-
-    const merged = (initialProfiles || []).map(p => {
-      const startDate = p.subscription_start ? new Date(p.subscription_start) : new Date(p.created_at);
-      const now = new Date();
-      const daysActive = Math.max(1, Math.ceil((now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-      const dailyRate = (p.messages_used ?? 0) > 0 ? Math.round((p.messages_used ?? 0) / daysActive) : 0;
-      return {
-        id: p.id,
-        email: p.email || "Sin email",
-        status: p.status,
-        subscription_weeks: p.subscription_weeks ?? 0,
-        subscription_start: p.subscription_start,
-        role: p.role,
-        created_at: p.created_at,
-        used_coupon_label: p.used_coupon_label ?? null,
-        used_coupon_label_color: p.used_coupon_label_color ?? null,
-        messages_used: p.messages_used ?? 0,
-        daily_rate: p.daily_rate ?? dailyRate,
-      } as Profile;
-    });
-
-    // If no server data, fetch from API (also gets emails and daily_rate)
-    if (merged.length === 0) {
-      console.log("[AdminPanel] Fetching profiles from API...");
-      fetch("/api/admin/data?type=profiles")
-        .then(r => r.json())
-        .then(data => {
-          console.log("[AdminPanel] API response:", JSON.stringify((data.data as any[])?.map((p: any) => ({ id: p.id?.slice(0,8), email: p.email, msgs: p.messages_used }))));
-          const withRate: any[] = (data.data || []).map((p: any): any => {
-            const startDate = p.subscription_start ? new Date(p.subscription_start) : new Date(p.created_at);
-            const daysActive = Math.max(1, Math.ceil((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
-            const rate = p.messages_used > 0 ? Math.round(p.messages_used / daysActive) : 0;
-            console.log("[AdminPanel] User:", p.email, "msgs=", p.messages_used, "days=", daysActive, "rate=", rate);
-            return { ...p, daily_rate: rate };
-          });
-          const mapped = withRate.map((p: any) => ({
-            id: p.id, email: p.email || "Sin email", status: p.status,
-            subscription_weeks: p.subscription_weeks ?? 0, subscription_start: p.subscription_start,
-            role: p.role, created_at: p.created_at,
-            used_coupon_label: p.used_coupon_label ?? null,
-            used_coupon_label_color: p.used_coupon_label_color ?? null,
-            messages_used: p.messages_used ?? 0, daily_rate: p.daily_rate ?? 0,
-          } as Profile));
-          setUsers(mapped);
-          setLoading(false);
+    console.log("[AdminPanel] Fetching profiles from API...");
+    fetch("/api/admin/data?type=profiles")
+      .then(r => r.json())
+      .then(data => {
+        console.log("[AdminPanel] API response:", JSON.stringify((data.data as any[])?.map((p: any) => ({ id: p.id?.slice(0,8), email: p.email, msgs: p.messages_used }))));
+        const withRate: any[] = (data.data || []).map((p: any): any => {
+          const startDate = p.subscription_start ? new Date(p.subscription_start) : new Date(p.created_at);
+          const daysActive = Math.max(1, Math.ceil((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+          const rate = p.messages_used > 0 ? Math.round(p.messages_used / daysActive) : 0;
+          console.log("[AdminPanel] User:", p.email, "msgs=", p.messages_used, "days=", daysActive, "rate=", rate);
+          return { ...p, daily_rate: rate };
         });
-      return;
-    }
-
-    console.log("[AdminPanel] Using", merged.length, "users from server props");
-    console.log("[AdminPanel] Admin user daily_rate:", merged.find((u: any) => u.role === "admin")?.daily_rate);
-    if (merged.length > 0) {
-      console.log("[AdminPanel] Using server data, users:", merged.length);
-      setUsers(merged);
-      setLoading(false);
-    } else {
-      // No server data — fetch client-side via API route
-      console.log("[AdminPanel] No server data, fetching client-side...");
-      loadUsers();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        const mapped = withRate.map((p: any) => ({
+          id: p.id, email: p.email || "Sin email", status: p.status,
+          subscription_weeks: p.subscription_weeks ?? 0, subscription_start: p.subscription_start,
+          role: p.role, created_at: p.created_at,
+          used_coupon_label: p.used_coupon_label ?? null,
+          used_coupon_label_color: p.used_coupon_label_color ?? null,
+          messages_used: p.messages_used ?? 0, daily_rate: p.daily_rate ?? 0,
+        } as Profile));
+        setUsers(mapped);
+        setLoading(false);
+      });
   }, []);
 
   // Load initial coupons from server props
