@@ -419,10 +419,6 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
 
       {/* Content */}
       <main className="max-w-5xl mx-auto px-4 py-8">
-        {/* DEBUG: red border = main renders, red bg = main itself not visible */}
-        <div style={{ border: "2px solid red", padding: "8px", marginBottom: "8px", color: "red", fontSize: "12px" }}>
-          DEBUG: main renders here · users={users.length} · initialProfiles={initialProfiles.length}
-        </div>
         {/* Error display */}
         {fetchError && (
           <div className="mb-6 p-4 rounded-2xl border" style={{ backgroundColor: "rgba(239,68,68,0.1)", borderColor: "rgba(239,68,68,0.3)" }}>
