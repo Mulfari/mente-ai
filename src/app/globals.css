@@ -188,113 +188,102 @@ html, body {
 .prose table {
   width: 100%;
   max-width: 100%;
-  border-collapse: separate;
+  border-collapse: collapse;
   border-spacing: 0;
-  margin: 1.2em 0;
+  margin: 1.5em 0;
   font-size: 0.875em;
   display: table;
-  border-radius: 20px;
+  border-radius: 16px;
   border: 1px solid var(--border);
   overflow: hidden;
   box-shadow:
-    0 0 0 1px var(--border),
-    0 4px 24px rgba(0,0,0,0.3),
-    0 0 40px rgba(16,163,127,0.04);
+    0 2px 8px rgba(0,0,0,0.25),
+    0 8px 32px rgba(0,0,0,0.15);
 }
 
 /* Header */
 .prose thead {
-  background: linear-gradient(135deg, rgba(16,163,127,0.12) 0%, rgba(16,163,127,0.06) 100%);
+  background: linear-gradient(
+    180deg,
+    rgba(26,26,26,1) 0%,
+    rgba(26,26,26,0.97) 60%,
+    rgba(16,163,127,0.08) 100%
+  );
+  border-bottom: 1px solid var(--border);
 }
 .prose thead tr th {
-  padding: 0.85em 1.2em;
+  padding: 0.9em 1.1em;
   text-align: left;
-  font-weight: 700;
-  color: var(--primary);
-  font-size: 0.7em;
+  font-weight: 600;
+  color: rgba(245,245,247,0.7);
+  font-size: 0.72em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   white-space: nowrap;
-  border-bottom: 2px solid rgba(16,163,127,0.2);
   position: relative;
 }
 
-/* Subtle gradient line under header */
-.prose thead tr th::after {
+/* Dot indicator in header cells */
+.prose thead tr th::before {
   content: "";
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(16,163,127,0.3), transparent);
-}
-
-/* Body cells */
-.prose tbody tr {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-.prose tbody tr::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 3px;
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
   background: var(--primary);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-.prose tbody tr:hover::before {
-  opacity: 1;
-}
-.prose tbody tr td {
-  padding: 0.75em 1.2em;
-  color: var(--text-secondary);
-  font-size: 0.875em;
-  line-height: 1.55;
-  word-break: break-word;
+  margin-right: 0.6em;
   vertical-align: middle;
+  opacity: 0.7;
 }
 
-/* Row separators */
+/* Body rows */
 .prose tbody tr {
-  border-bottom: 1px solid rgba(56,56,56,0.6);
+  transition: background-color 0.15s ease;
+  border-bottom: 1px solid rgba(56,56,56,0.4);
+  background: rgba(11,20,24,0.3);
 }
 .prose tbody tr:last-child {
   border-bottom: none;
 }
 
-/* Alternating rows */
-.prose tbody tr:nth-child(odd) td {
-  background: rgba(255,255,255,0.01);
-}
-.prose tbody tr:nth-child(even) td {
-  background: rgba(16,163,127,0.025);
+/* Row hover — smooth fill */
+.prose tbody tr:hover {
+  background: rgba(16,163,127,0.07);
 }
 
-/* Hover */
+/* Cells */
+.prose tbody tr td {
+  padding: 0.8em 1.1em;
+  color: rgba(245,245,247,0.75);
+  font-size: 0.875em;
+  line-height: 1.5;
+  word-break: break-word;
+  vertical-align: middle;
+}
+
+/* First column accent */
+.prose tbody tr td:first-child {
+  color: var(--text-primary);
+  font-weight: 500;
+  position: relative;
+}
+.prose tbody tr:hover td:first-child {
+  color: rgba(245,245,247,0.95);
+}
+
+/* Hovered row cell color */
 .prose tbody tr:hover td {
-  background: rgba(16,163,127,0.08);
   color: var(--text-primary);
 }
 
 /* Padding helpers */
 .prose table td:first-child,
 .prose table th:first-child {
-  padding-left: 1.25em;
+  padding-left: 1.2em;
 }
 .prose table td:last-child,
 .prose table th:last-child {
-  padding-right: 1.25em;
-}
-
-/* Horizontal scroll wrapper for narrow screens */
-.prose .table-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  border-radius: 20px;
+  padding-right: 1.2em;
 }
 
 /* === HR === */
