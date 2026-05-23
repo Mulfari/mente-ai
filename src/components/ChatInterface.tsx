@@ -345,7 +345,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   }, [userId, isLoggedIn]);
 
   // Load initial conversation from URL (works for both /chat and /chat/[id])
-  // Runs whenever isLoggedIn or userId changes, plus checks URL on mount
+  // Runs whenever auth is ready, userId changes, OR URL changes.
+// Needed because navigating from /chat/[id] to /chat via pushState
+// keeps the same ChatInterface mounted, so we must re-check the URL.
   useEffect(() => {
     async function loadFromUrl() {
       // Run when auth is ready (isLoggedIn) or when we have a direct URL conv ID
@@ -353,9 +355,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       const parts = window.location.pathname.split("/").filter(Boolean);
       const urlId = parts[parts.length - 1];
-      // Immediately mark that we have a conversation in the URL — suppresses hero before DB query
-      // urlHasConv is derived from prop
-      
 
       const effectiveId = convIdFromUrl || urlId;
       if (!effectiveId || effectiveId === "chat") {
@@ -363,6 +362,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         setMessages([]);
         setConvLoaded(false);
         setLoadingConvId(null);
+        setStreamingMsgId(null);
+        setDisplayedText({});
         return;
       }
 
@@ -377,7 +378,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         .eq("id", effectiveId)
         .eq("user_id", currentUserId)
         .single();
-      
 
       if (!data || error) {
         // Conversation not found — reset to home
@@ -388,12 +388,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       setActiveConv(data);
       setConversations(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
-      
+
       await loadMessages(data.id);
-      
+
     }
     loadFromUrl();
-  }, [isLoggedIn, userId]);
+  }, [isLoggedIn, userId, typeof window !== "undefined" ? window.location.pathname : ""]);
 
   // Sync activeConv with URL when user changes conversations
   useEffect(() => {
