@@ -165,6 +165,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const supabase = createClient();
   const lastErrorRef = useRef<{ message: string; conversationId: string | null; attachments: any[] } | null>(null);
   const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: d }) => {
@@ -269,6 +271,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   }
 
   async function loadMessages(conversationId: string) {
+    const loadId = conversationId; // capture for stale-check
+    setMessages([]); // clear stale messages immediately
     setLoadingMessages(true);
     setLoadingConvId(conversationId);
     setIsLoadingMsgs(true);
@@ -279,6 +283,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       .order("created_at", { ascending: true })
       .limit(100);
     if (error) console.error("loadMessages error:", error);
+    // Ignore stale results (race condition: user switched conv while loading)
+    if (loadId !== currentConvIdRef.current) {
+      setLoadingMessages(false);
+      setLoadingConvId(null);
+      setIsLoadingMsgs(false);
+      return;
+    }
     // Filter out messages still actively streaming with no content.
     // If message has content (from progressive save), show it even if in_progress=true
     const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress && !m.content?.trim()) && !(m.role === "assistant" && !m.in_progress && !m.content?.trim()))
@@ -358,6 +369,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       const effectiveId = convIdFromUrl || urlId;
       if (!effectiveId || effectiveId === "chat") {
+        currentConvIdRef.current = null;
         setActiveConv(null);
         setMessages([]);
         setConvLoaded(false);
@@ -386,6 +398,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         return;
       }
 
+      currentConvIdRef.current = data.id;
       setActiveConv(data);
       setConversations(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
 
@@ -405,9 +418,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     }
   }, [activeConv]);
 
-  // Realtime subscription for conversations
+  // Realtime subscription for conversations (stable — runs once per login)
   useEffect(() => {
     if (!isLoggedIn || !userId) return;
+    if (conversationsChannelRef.current) {
+      conversationsChannelRef.current.unsubscribe();
+      conversationsChannelRef.current = null;
+    }
 
     const channel = supabase
       .channel("conversations-sidebar")
@@ -426,16 +443,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         } else if (payload.eventType === "DELETE") {
           setConversations(prev => prev.filter(c => c.id !== payload.old.id));
         } else if (payload.eventType === "UPDATE") {
-          setConversations(prev => {
-            const updated = prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c);
-            // Only hide empty "Nueva conversación" if it has no messages (checked via filter in the render)
-            return updated;
-          });
+          setConversations(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
         }
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    conversationsChannelRef.current = channel;
+    return () => { supabase.removeChannel(channel); conversationsChannelRef.current = null; };
   }, [isLoggedIn, userId]);
 
   useEffect(() => {
@@ -622,6 +636,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
   async function newConversation() {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
+    currentConvIdRef.current = null;
     setActiveConv(null);
     setMessages([]);
     setConvLoaded(false);
@@ -635,6 +650,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
   async function selectConv(conv: Conversation) {
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
+    currentConvIdRef.current = conv.id;
     // Update updated_at in sidebar list so date label doesn't disappear
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
     setActiveConv({ ...conv, updated_at: new Date().toISOString() });
@@ -733,6 +749,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
       const { data } = await supabase.from("conversations").insert({ user_id: userId, title, updated_at: now, created_at: now }).select().single();
       if (data) {
+        currentConvIdRef.current = data.id;
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
