@@ -780,6 +780,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
       console.log("[VeChat] Sending userContext:", userContextPayload);
+      const historyMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-30);
+      const historyText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`).join("\n");
       const params = new URLSearchParams({
         token: vpsToken,
         message_id: msgId,
@@ -788,6 +790,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         question: s,
         attachments: JSON.stringify([]),
         user_context: JSON.stringify(userContextPayload),
+        conversation_history: historyText,
       });
 
       const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
@@ -1079,6 +1082,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
       console.log("[VeChat] Sending userContext:", userContextPayload);
+
+      // Build conversation history text for VPS
+      const historyMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-30);
+      const historyText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`).join("\n");
+
       const params = new URLSearchParams({
         token: vpsToken,
         message_id: msgId,
@@ -1087,6 +1095,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         question: userMsg,
         attachments: JSON.stringify(contentParts),
         user_context: JSON.stringify(userContextPayload),
+        conversation_history: historyText,
       });
 
       const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
