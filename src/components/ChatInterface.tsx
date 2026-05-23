@@ -205,6 +205,13 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       if (session?.user?.email) setUserEmail(session.user.email);
       if (loggedIn && session?.user?.id) {
         loadConversations(session.user.id);
+        // Also reload user_context when auth changes
+        supabase
+          .from("user_context")
+          .select("full_name, city, interests, custom_notes")
+          .eq("user_id", session.user.id)
+          .maybeSingle()
+          .then(({ data: uc }) => { if (uc) setUserContext(uc); });
       }
     });
 
@@ -324,7 +331,11 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           return { ...prev, [upd.id]: upd.content };
         });
       })
-      .subscribe();
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') {
+          console.warn(`[VeChat] Realtime channel status: ${status} for conv ${convId}`);
+        }
+      });
 
     messagesChannelRef.current = channel;
   }
@@ -426,45 +437,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
     return () => { supabase.removeChannel(channel); };
   }, [isLoggedIn, userId]);
-
-  // Realtime for new messages in active conversation
-  useEffect(() => {
-    if (!isLoggedIn || !userId || !activeConv) return;
-
-    const channel = supabase
-      .channel(`messages-${activeConv.id}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: `conversation_id=eq.${activeConv.id}`,
-      }, (payload) => {
-        const msg = payload.new as Message;
-        if (msg.role === "assistant") {
-          setMessages(prev => {
-            // Ignore if it's the message we're currently streaming
-            if (prev.find(m => m.id === streamingMsgId)) return prev;
-            if (prev.find(m => m.id === msg.id)) return prev;
-            return [...prev, { ...msg, _isDeep: msg.mode === "deep" } as Message];
-          });
-          if (document.hidden && "Notification" in window) {
-            if (Notification.permission === "granted") {
-              new Notification("VeChat", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
-            } else if (Notification.permission !== "denied") {
-              Notification.requestPermission().then(p => {
-                if (p === "granted") new Notification("VeChat", { body: msg.content?.slice(0, 100) || "Nuevo mensaje" });
-              });
-            }
-            setNotification("Nuevo mensaje de VeChat");
-            if (notifTimer.current) clearTimeout(notifTimer.current);
-            notifTimer.current = setTimeout(() => setNotification(null), 5000);
-          }
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [isLoggedIn, userId, activeConv?.id]);
 
   useEffect(() => {
     if (isLoggedIn && "Notification" in window && Notification.permission === "default") {
