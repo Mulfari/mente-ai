@@ -790,7 +790,111 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       if (convData?.summary) {
         historyText = `[Resumen de conversacion anterior]\n${convData.summary}\n\n[Mensajes recientes]\n${recentText.slice(-4000)}`;
       }
+
       const params = new URLSearchParams({
+        token: vpsToken,
+        message_id: msgId,
+        conversation_id: convId,
+        mode: responseMode,
+        question: s,
+        attachments: JSON.stringify([]),
+        user_context: JSON.stringify(userContextPayload),
+        conversation_history: historyText,
+      });
+
+      const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
+        headers: { Accept: 'text/event-stream' },
+      });
+
+      if (!streamRes.ok) {
+        const errData = await streamRes.json().catch(() => ({}));
+        const status = streamRes.status;
+        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: errData.error || `Error de conexion (${status})` }).eq('id', msgId);
+        setMessages(prev => prev.filter(m => m.id !== msgId));
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || `Error de conexion (${status})`, created_at: new Date().toISOString() }]);
+        setSending(false);
+        setStreamingMsgId(null);
+        return;
+      }
+
+      const reader = streamRes.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentEvent = '';
+      let currentData = '';
+      let isDeep = false;
+      let accumulatedText = '';
+
+      const flushEvent = () => {
+        if (!currentEvent || !currentData) return;
+        let data: any;
+        try { data = JSON.parse(currentData); } catch { currentEvent = ''; currentData = ''; return; }
+        if (currentEvent === 'chunk' && data.type === 'chunk') {
+          isDeep = data.is_deep ?? false;
+          accumulatedText += data.text;
+          setDisplayedText(prev => ({ ...prev, [msgId]: accumulatedText }));
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _isDeep: isDeep } : m));
+          supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: true });
+        } else if (currentEvent === 'done' && data.type === 'done') {
+          isDeep = data.is_deep ?? isDeep;
+        } else if (currentEvent === 'error') {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
+          setSending(false);
+          setStreamingMsgId(null);
+        }
+        currentEvent = '';
+        currentData = '';
+      };
+
+      const processVPSStream = async () => {
+        try {
+          let result = await reader.read();
+          while (!result.done) {
+            buffer += decoder.decode(result.value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines[lines.length - 1] ?? '';
+            for (const line of lines) {
+              if (line === '') { flushEvent(); continue; }
+              const eventMatch = line.match(/^event: (.+)/);
+              const dataMatch = line.match(/^data: (.+)/);
+              if (eventMatch) { flushEvent(); currentEvent = eventMatch[1]; }
+              else if (dataMatch) { currentData = dataMatch[1]; }
+            }
+            result = await reader.read();
+          }
+          flushEvent();
+          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
+          currentStreamReqRef.current = null;
+          setSending(false);
+          setStreamingMsgId(null);
+          const now = new Date().toISOString();
+          supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
+          setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
+          setActiveConv({ ...conv!, updated_at: now });
+          if (queuedMsgRef.current) {
+            const q = queuedMsgRef.current as QueuedMsg;
+            queuedMsgRef.current = null;
+            setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
+          } else {
+            textareaRef.current?.focus();
+          }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: msg.includes('fetch') ? 'Error de conexion. Intenta de nuevo.' : msg, _loading: false } : m));
+          setSending(false);
+          setStreamingMsgId(null);
+        }
+      };
+
+      processVPSStream();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: msg.includes('fetch') ? "Error de conexion. Intenta de nuevo." : msg, created_at: new Date().toISOString() }]);
+      setSending(false);
+    }
+    setTimeout(() => { autoResize(); textareaRef.current?.focus(); }, 0);
+  }
         token: vpsToken,
         message_id: msgId,
         conversation_id: convId,
