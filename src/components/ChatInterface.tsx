@@ -934,9 +934,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   }
 
   async function sendMessage() {
-    if (!input.trim() && attachments.length === 0) return;
+    const inputVal = input.trim();
+    const hasAttachments = attachments.length > 0;
+    console.log("[sendMessage] input:", inputVal.length, "attachments:", hasAttachments, "sending:", sending, "activeConv:", activeConv?.id, "block:", getBlockReason());
+    if (!inputVal && !hasAttachments) { console.log("[sendMessage] early return: empty input"); return; }
     const block = getBlockReason();
-    if (!block.canSend) return;
+    if (!block.canSend) { console.log("[sendMessage] early return: blocked", block); return; }
 
     // If AI is currently streaming, queue this message (max 1)
     if (sending) {
