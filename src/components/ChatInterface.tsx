@@ -167,6 +167,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
+  const pathnameRef = useRef<string>("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: d }) => {
@@ -364,10 +365,14 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       // Run when auth is ready (isLoggedIn) or when we have a direct URL conv ID
       if (!isLoggedIn && !convIdFromUrl) return;
 
-      const parts = window.location.pathname.split("/").filter(Boolean);
+      const currentPath = window.location.pathname;
+      if (pathnameRef.current === currentPath) return;
+      pathnameRef.current = currentPath;
+
+      const parts = currentPath.split("/").filter(Boolean);
       const urlId = parts[parts.length - 1];
 
-      const effectiveId = convIdFromUrl || urlId;
+      const effectiveId = urlId || convIdFromUrl;
       if (!effectiveId || effectiveId === "chat") {
         currentConvIdRef.current = null;
         setActiveConv(null);
@@ -401,6 +406,10 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       currentConvIdRef.current = data.id;
       setActiveConv(data);
       setConversations(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
+
+      // Skip loadMessages if we're already on this conversation
+      // (selectConv already called loadMessages — URL effect shouldn't duplicate)
+      if (activeConv?.id === data.id) return;
 
       await loadMessages(data.id);
 
