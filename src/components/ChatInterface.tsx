@@ -355,7 +355,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const urlId = parts[parts.length - 1];
       // Immediately mark that we have a conversation in the URL — suppresses hero before DB query
       // urlHasConv is derived from prop
-      console.log("[VeChat] loadFromUrl url:", window.location.pathname, "urlId:", urlId);
+      
 
       const effectiveId = convIdFromUrl || urlId;
       if (!effectiveId || effectiveId === "chat") {
@@ -377,7 +377,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         .eq("id", effectiveId)
         .eq("user_id", currentUserId)
         .single();
-      console.log("[VeChat] conv result:", data?.id, "error:", error);
+      
 
       if (!data || error) {
         // Conversation not found — reset to home
@@ -388,9 +388,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
       setActiveConv(data);
       setConversations(prev => prev.some(c => c.id === data.id) ? prev : [data, ...prev]);
-      console.log("[VeChat] calling loadMessages:", data.id);
+      
       await loadMessages(data.id);
-      console.log("[VeChat] done, messages count:", messages.length);
+      
     }
     loadFromUrl();
   }, [isLoggedIn, userId]);
@@ -779,7 +779,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
 
       const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
-      console.log("[VeChat] Sending userContext:", userContextPayload);
+      
       const historyMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-30);
       const historyText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`).join("\n");
       const params = new URLSearchParams({
@@ -1081,7 +1081,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
 
       const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
-      console.log("[VeChat] Sending userContext:", userContextPayload);
+      
 
       // Build conversation history text for VPS
       const historyMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-30);
@@ -1443,7 +1443,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
               style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 0 12px rgba(16,163,127,0.35)" }}>
               {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
             </div>
-            <div className="flex-[private model]in-w-0 text-left">
+            <div className="flex-1 text-left">
               <p className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{userEmail}</p>
               {profile && (
                 <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
@@ -1721,7 +1721,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 0 12px rgba(16,163,127,0.35)" }}>
                 {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
               </div>
-              <div className="flex-[private model]in-w-0 text-left">
+              <div className="flex-1 text-left">
                 <p className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{userEmail}</p>
                 {profile && (
                   <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
