@@ -181,6 +181,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         supabase
           .from("user_context")
           .select("full_name, city, interests, custom_notes")
+          .eq("user_id", d.session.user.id)
           .maybeSingle()
           .then(({ data: uc }) => { if (uc) setUserContext(uc); });
         setTimeout(() => {
@@ -234,6 +235,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     supabase
       .from("user_context")
       .select("full_name, city, interests, custom_notes")
+      .eq("user_id", userId)
       .maybeSingle()
       .then(({ data }) => { if (data) setUserContext(data); });
   }, [userId, isLoggedIn]);
@@ -1141,6 +1143,16 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
           setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
           setActiveConv(prev => prev ? { ...prev, updated_at: now } : prev);
+          // Update user context with notes from the AI
+          if (contextDelta?.add_notes && userContext) {
+            const existing = userContext.custom_notes || '';
+            const newNote = contextDelta.add_notes.trim();
+            if (newNote && !existing.includes(newNote)) {
+              const updated = existing ? `${existing}. ${newNote}` : newNote;
+              supabase.from('user_context').update({ custom_notes: updated }).eq('user_id', userId);
+              setUserContext(prev => prev ? { ...prev, custom_notes: updated } : prev);
+            }
+          }
           if (queuedMsgRef.current) {
             const q = queuedMsgRef.current as QueuedMsg;
             queuedMsgRef.current = null;
