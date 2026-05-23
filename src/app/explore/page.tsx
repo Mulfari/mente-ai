@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
 type Category = {
@@ -37,7 +36,6 @@ export default function ExplorePage() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const supabase = createClient();
 
   useEffect(() => {
     async function loadData() {

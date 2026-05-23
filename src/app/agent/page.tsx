@@ -4,7 +4,13 @@ import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReactMarkdown from "react-markdown";
 
-const supabase = createClient();
+export const dynamic = 'force-dynamic';
+
+let supabase: ReturnType<typeof createClient> | null = null;
+function getSupabase() {
+  if (!supabase) supabase = createClient();
+  return supabase;
+}
 
 interface Message {
   id: string;
@@ -62,7 +68,7 @@ export default function AgentPage() {
   }, [messages]);
 
   async function checkAuth() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await getSupabase().auth.getUser();
     if (user) {
       setIsLoggedIn(true);
       setUserId(user.id);
@@ -140,7 +146,7 @@ export default function AgentPage() {
       setConversationHistory(prev => [...prev, { role: "assistant", content: fullResponse }]);
 
       // Save to Supabase
-      await supabase.from("messages").insert({
+      await getSupabase().from("messages").insert({
         id: assistantMsg.id,
         conversation_id: "agent",
         role: "assistant",
