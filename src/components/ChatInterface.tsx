@@ -164,6 +164,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
   const lastErrorRef = useRef<{ message: string; conversationId: string | null; attachments: any[] } | null>(null);
+  const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: d }) => {
@@ -232,12 +233,14 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
 
-    supabase
-      .from("user_context")
-      .select("full_name, city, interests, custom_notes")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(({ data }) => { if (data) setUserContext(data); });
+    // Ensure user_context exists for this user (upsert)
+      supabase
+        .from("user_context")
+        .upsert({ user_id: userId, full_name: "", city: "", interests: "", custom_notes: "" }, { onConflict: "user_id" })
+        .select("full_name, city, interests, custom_notes")
+        .eq("user_id", userId)
+        .maybeSingle()
+        .then(({ data }) => { if (data) setUserContext(data); });
   }, [userId, isLoggedIn]);
 
   async function loadConversations(currentUserId?: string) {
@@ -281,6 +284,49 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     setConvLoaded(true);
     setLoadingConvId(null);
     setIsLoadingMsgs(false);
+
+    // Setup realtime subscription for this conversation
+    setupRealtimeSubscription(conversationId);
+  }
+
+  function setupRealtimeSubscription(convId: string) {
+    // Unsubscribe from previous channel if any
+    if (messagesChannelRef.current) {
+      messagesChannelRef.current.unsubscribe();
+      messagesChannelRef.current = null;
+    }
+    if (!convId || !isLoggedIn) return;
+
+    const channel = supabase.channel(`messages:${convId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `conversation_id=eq.${convId}`,
+      }, (payload) => {
+        const newMsg = payload.new as Message;
+        // Only add if we didn't already save it locally (our streaming upsert)
+        setMessages(prev => {
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev, { ...newMsg, _isDeep: newMsg.role === "assistant" && newMsg.mode === "deep" }];
+        });
+      })
+      .on("postgres_changes", {
+        event: "UPDATE",
+        schema: "public",
+        table: "messages",
+        filter: `conversation_id=eq.${convId}`,
+      }, (payload) => {
+        const upd = payload.new as Message;
+        setMessages(prev => prev.map(m => m.id === upd.id ? { ...m, content: upd.content, in_progress: upd.in_progress ?? m.in_progress } : m));
+        setDisplayedText(prev => {
+          if (!prev[upd.id]) return prev;
+          return { ...prev, [upd.id]: upd.content };
+        });
+      })
+      .subscribe();
+
+    messagesChannelRef.current = channel;
   }
 
   useEffect(() => {
