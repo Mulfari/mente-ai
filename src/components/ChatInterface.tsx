@@ -168,78 +168,73 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
 
-  // One effect that handles auth + conversation loading from URL
+  // Auth init — getSession returns cached session synchronously
   useEffect(() => {
-    let mounted = true;
-
-    async function init() {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        if (mounted) { setIsLoggedIn(false); setMounted(true); }
-        return;
-      }
-
-      const userId = session.user.id;
-      if (mounted) {
-        setIsLoggedIn(true);
-        setUserEmail(session.user.email || "");
-      }
-
-      // Load profile
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
-        .eq("id", userId).single();
-      if (mounted && profile) setProfile(profile);
-
-      // Load user_context
-      const { data: uc } = await supabase
-        .from("user_context").select("full_name, city, interests, custom_notes")
-        .eq("user_id", userId).maybeSingle();
-      if (mounted && uc) setUserContext(uc);
-
-      // Load conversations
-      await loadConversations(userId);
-
-      // Load conversation from URL
-      const parts = window.location.pathname.split("/").filter(Boolean);
-      const urlId = parts[parts.length - 1];
-      const effectiveId = urlId || convIdFromUrl;
-      if (effectiveId && effectiveId !== "chat") {
-        const { data: conv } = await supabase
-          .from("conversations").select("id, title, created_at, updated_at")
-          .eq("id", effectiveId).eq("user_id", userId).single();
-        if (mounted && conv) {
-          currentConvIdRef.current = conv.id;
-          setActiveConv(conv);
-          setConversations(prev => prev.some(c => c.id === conv.id) ? prev : [conv, ...prev]);
-          await loadMessages(conv.id);
-        }
-      }
-
-      if (mounted) setMounted(true);
-
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { setIsLoggedIn(false); setMounted(true); return; }
+      setIsLoggedIn(true);
+      setUserEmail(session.user.email || "");
+      loadConversations(session.user.id);
+      supabase.from("profiles").select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at").eq("id", session.user.id).single()
+        .then(({ data: p }) => { if (p) setProfile(p); });
+      supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
+        .then(({ data: uc }) => { if (uc) setUserContext(uc); });
+      setMounted(true);
       const seen = localStorage.getItem("mulfai_onboarding_seen");
       const never = localStorage.getItem("mulfai_onboarding_never");
-      if (mounted && !seen && !never) setTimeout(() => setShowOnboarding(true), 1500);
-    }
+      if (!seen && !never) setTimeout(() => setShowOnboarding(true), 1500);
+    });
 
-    init();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) { setIsLoggedIn(false); return; }
       setIsLoggedIn(true);
       setUserEmail(session.user.email || "");
-      await loadConversations(session.user.id);
-      const { data: uc } = await supabase
-        .from("user_context").select("full_name, city, interests, custom_notes")
-        .eq("user_id", session.user.id).maybeSingle();
-      if (uc) setUserContext(uc);
+      loadConversations(session.user.id);
+      supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
+        .then(({ data: uc }) => { if (uc) setUserContext(uc); });
     });
 
-    return () => { mounted = false; subscription.unsubscribe(); };
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Load conversation from URL when userId or convIdFromUrl changes
+  useEffect(() => {
+    if (!userId) return;
+    const parts = window.location.pathname.split("/").filter(Boolean);
+    const urlId = parts[parts.length - 1];
+    const effectiveId = urlId || convIdFromUrl;
+    if (!effectiveId || effectiveId === "chat") return;
+
+    supabase.from("conversations").select("id, title, created_at, updated_at")
+      .eq("id", effectiveId).eq("user_id", userId).single()
+      .then(({ data: conv }) => {
+        if (!conv) return;
+        currentConvIdRef.current = conv.id;
+        setActiveConv(conv);
+        setConversations(prev => prev.some(c => c.id === conv.id) ? prev : [conv, ...prev]);
+        loadMessages(conv.id);
+      });
+  }, [userId, convIdFromUrl]);
+
+  // Listen for popstate (browser back/forward) to reload conversation
+  useEffect(() => {
+    const onPop = () => {
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      const urlId = parts[parts.length - 1];
+      const effectiveId = urlId || convIdFromUrl;
+      if (!effectiveId || effectiveId === "chat") {
+        currentConvIdRef.current = null;
+        setActiveConv(null);
+        setMessages([]);
+        return;
+      }
+      if (effectiveId === activeConv?.id) return;
+      currentConvIdRef.current = effectiveId;
+      loadMessages(effectiveId);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [activeConv?.id, convIdFromUrl]);
 
   // Load daily suggestions
   function loadSuggestions() {
