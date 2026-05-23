@@ -664,7 +664,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     setIsLoadingMsgs(false);
     setShowSidebar(false);
     loadConversations();
-    window.history.pushState(null, "", "/chat");
+    window.history.pushState(null, "", "/");
     loadSuggestions();
   }
 
