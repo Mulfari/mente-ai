@@ -167,7 +167,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
-  const pathnameRef = useRef<string>("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: d }) => {
@@ -366,8 +365,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       if (!isLoggedIn && !convIdFromUrl) return;
 
       const currentPath = window.location.pathname;
-      if (pathnameRef.current === currentPath) return;
-      pathnameRef.current = currentPath;
 
       const parts = currentPath.split("/").filter(Boolean);
       const urlId = parts[parts.length - 1];
