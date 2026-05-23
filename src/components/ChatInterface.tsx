@@ -786,11 +786,30 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const reader = streamRes.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let currentEvent = '';
+      let currentData = '';
       let isDeep = false;
+      let accumulatedText = '';
 
-      const updateStreamText = (text: string) => {
-        setDisplayedText(prev => ({ ...prev, [msgId]: text }));
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, _isDeep: isDeep } : m));
+      const flushEvent = () => {
+        if (!currentEvent || !currentData) return;
+        let data: any;
+        try { data = JSON.parse(currentData); } catch { currentEvent = ''; currentData = ''; return; }
+        if (currentEvent === 'chunk' && data.type === 'chunk') {
+          isDeep = data.is_deep ?? false;
+          accumulatedText += data.text;
+          setDisplayedText(prev => ({ ...prev, [msgId]: accumulatedText }));
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _isDeep: isDeep } : m));
+          supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: true });
+        } else if (currentEvent === 'done' && data.type === 'done') {
+          isDeep = data.is_deep ?? isDeep;
+        } else if (currentEvent === 'error') {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
+          setSending(false);
+          setStreamingMsgId(null);
+        }
+        currentEvent = '';
+        currentData = '';
       };
 
       const processVPSStream = async () => {
@@ -801,31 +820,17 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             const lines = buffer.split('\n');
             buffer = lines[lines.length - 1] ?? '';
             for (const line of lines) {
+              if (line === '') { flushEvent(); continue; }
               const eventMatch = line.match(/^event: (.+)/);
               const dataMatch = line.match(/^data: (.+)/);
-              if (!eventMatch || !dataMatch) continue;
-              let data: any;
-              try { data = JSON.parse(dataMatch[1]); } catch { continue; }
-              if (eventMatch[1] === 'chunk' && data.type === 'chunk') {
-                isDeep = data.is_deep ?? false;
-                const currentText = displayedText[msgId] || '';
-                const newText = currentText + data.text;
-                updateStreamText(newText);
-                await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: newText, role: 'assistant', in_progress: true });
-              } else if (eventMatch[1] === 'done' && data.type === 'done') {
-                isDeep = data.is_deep ?? isDeep;
-              } else if (eventMatch[1] === 'error') {
-                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
-                setSending(false);
-                setStreamingMsgId(null);
-                return;
-              }
+              if (eventMatch) { flushEvent(); currentEvent = eventMatch[1]; }
+              else if (dataMatch) { currentData = dataMatch[1]; }
             }
             result = await reader.read();
           }
-          const finalText = displayedText[msgId] || '';
-          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: finalText, role: 'assistant', in_progress: false });
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalText, _loading: false, _isDeep: isDeep } : m));
+          flushEvent();
+          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
           currentStreamReqRef.current = null;
           setSending(false);
           setStreamingMsgId(null);
@@ -1083,12 +1088,32 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const reader = streamRes.body!.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let currentEvent = '';
+      let currentData = '';
       let isDeep = false;
+      let accumulatedText = '';
       let contextDelta: { add_notes?: string } | null = null;
 
-      const updateStreamText = (text: string) => {
-        setDisplayedText(prev => ({ ...prev, [msgId]: text }));
-        setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, _isDeep: isDeep } : m));
+      const flushEvent = () => {
+        if (!currentEvent || !currentData) return;
+        let data: any;
+        try { data = JSON.parse(currentData); } catch { currentEvent = ''; currentData = ''; return; }
+        if (currentEvent === 'chunk' && data.type === 'chunk') {
+          isDeep = data.is_deep ?? false;
+          accumulatedText += data.text;
+          setDisplayedText(prev => ({ ...prev, [msgId]: accumulatedText }));
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _isDeep: isDeep } : m));
+          supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: true });
+        } else if (currentEvent === 'done' && data.type === 'done') {
+          isDeep = data.is_deep ?? isDeep;
+          contextDelta = data.context_delta ?? null;
+        } else if (currentEvent === 'error') {
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
+          setSending(false);
+          setStreamingMsgId(null);
+        }
+        currentEvent = '';
+        currentData = '';
       };
 
       const processVPSStream = async () => {
@@ -1099,32 +1124,17 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
             const lines = buffer.split('\n');
             buffer = lines[lines.length - 1] ?? '';
             for (const line of lines) {
+              if (line === '') { flushEvent(); continue; }
               const eventMatch = line.match(/^event: (.+)/);
               const dataMatch = line.match(/^data: (.+)/);
-              if (!eventMatch || !dataMatch) continue;
-              let data: any;
-              try { data = JSON.parse(dataMatch[1]); } catch { continue; }
-              if (eventMatch[1] === 'chunk' && data.type === 'chunk') {
-                isDeep = data.is_deep ?? false;
-                const currentText = displayedText[msgId] || '';
-                const newText = currentText + data.text;
-                updateStreamText(newText);
-                await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: newText, role: 'assistant', in_progress: true });
-              } else if (eventMatch[1] === 'done' && data.type === 'done') {
-                isDeep = data.is_deep ?? isDeep;
-                contextDelta = data.context_delta ?? null;
-              } else if (eventMatch[1] === 'error') {
-                setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
-                setSending(false);
-                setStreamingMsgId(null);
-                return;
-              }
+              if (eventMatch) { flushEvent(); currentEvent = eventMatch[1]; }
+              else if (dataMatch) { currentData = dataMatch[1]; }
             }
             result = await reader.read();
           }
-          const finalText = displayedText[msgId] || '';
-          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: finalText, role: 'assistant', in_progress: false });
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalText, _loading: false, _isDeep: isDeep } : m));
+          flushEvent();
+          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
           setSending(false);
           setStreamingMsgId(null);
           const now = new Date().toISOString();
