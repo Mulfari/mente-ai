@@ -168,56 +168,77 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
 
+  // One effect that handles auth + conversation loading from URL
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: d }) => {
-      const loggedIn = !!d.session;
-      setIsLoggedIn(loggedIn);
-      if (d.session?.user?.email) setUserEmail(d.session.user.email);
-      if (d.session) loadConversations(d.session.user.id);
-      if (d.session && d.session.user.id) {
-        supabase
-          .from("profiles")
-          .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
-          .eq("id", d.session.user.id)
-          .single()
-          .then(({ data: p }) => { if (p) setProfile(p); });
-        supabase
-          .from("user_context")
-          .select("full_name, city, interests, custom_notes")
-          .eq("user_id", d.session.user.id)
-          .maybeSingle()
-          .then(({ data: uc }) => { if (uc) setUserContext(uc); });
-        setTimeout(() => {
-          const seen = localStorage.getItem("mulfai_onboarding_seen");
-          const never = localStorage.getItem("mulfai_onboarding_never");
-          if (!seen && !never) setShowOnboarding(true);
-        }, 1500);
+    let mounted = true;
+
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        if (mounted) { setIsLoggedIn(false); setMounted(true); }
+        return;
       }
-      // Only become "mounted" (show UI) after profile is loaded
-      if (loggedIn) {
-          setTimeout(() => setMounted(true), 400);
-        } else {
-          setMounted(true);
+
+      const userId = session.user.id;
+      if (mounted) {
+        setIsLoggedIn(true);
+        setUserEmail(session.user.email || "");
+      }
+
+      // Load profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
+        .eq("id", userId).single();
+      if (mounted && profile) setProfile(profile);
+
+      // Load user_context
+      const { data: uc } = await supabase
+        .from("user_context").select("full_name, city, interests, custom_notes")
+        .eq("user_id", userId).maybeSingle();
+      if (mounted && uc) setUserContext(uc);
+
+      // Load conversations
+      await loadConversations(userId);
+
+      // Load conversation from URL
+      const parts = window.location.pathname.split("/").filter(Boolean);
+      const urlId = parts[parts.length - 1];
+      const effectiveId = urlId || convIdFromUrl;
+      if (effectiveId && effectiveId !== "chat") {
+        const { data: conv } = await supabase
+          .from("conversations").select("id, title, created_at, updated_at")
+          .eq("id", effectiveId).eq("user_id", userId).single();
+        if (mounted && conv) {
+          currentConvIdRef.current = conv.id;
+          setActiveConv(conv);
+          setConversations(prev => prev.some(c => c.id === conv.id) ? prev : [conv, ...prev]);
+          await loadMessages(conv.id);
         }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      const loggedIn = !!session;
-      setIsLoggedIn(loggedIn);
-      if (session?.user?.email) setUserEmail(session.user.email);
-      if (loggedIn && session?.user?.id) {
-        loadConversations(session.user.id);
-        // Also reload user_context when auth changes
-        supabase
-          .from("user_context")
-          .select("full_name, city, interests, custom_notes")
-          .eq("user_id", session.user.id)
-          .maybeSingle()
-          .then(({ data: uc }) => { if (uc) setUserContext(uc); });
       }
+
+      if (mounted) setMounted(true);
+
+      const seen = localStorage.getItem("mulfai_onboarding_seen");
+      const never = localStorage.getItem("mulfai_onboarding_never");
+      if (mounted && !seen && !never) setTimeout(() => setShowOnboarding(true), 1500);
+    }
+
+    init();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session) { setIsLoggedIn(false); return; }
+      setIsLoggedIn(true);
+      setUserEmail(session.user.email || "");
+      await loadConversations(session.user.id);
+      const { data: uc } = await supabase
+        .from("user_context").select("full_name, city, interests, custom_notes")
+        .eq("user_id", session.user.id).maybeSingle();
+      if (uc) setUserContext(uc);
     });
 
-    return () => subscription.unsubscribe();
+    return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
   // Load daily suggestions
@@ -412,7 +433,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
 
     }
     loadFromUrl();
-  }, [isLoggedIn, userId, typeof window !== "undefined" ? window.location.pathname : ""]);
+  }, [isLoggedIn, userId]);
 
   // Sync activeConv with URL when user changes conversations
   useEffect(() => {
