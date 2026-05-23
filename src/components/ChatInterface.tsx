@@ -36,9 +36,7 @@ type Conversation = {
 
 export default function ChatInterface({ userId, convIdFromUrl }: { userId: string; convIdFromUrl?: string }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [activeConv, setActiveConv] = useState<Conversation | null>(
-    convIdFromUrl ? { id: convIdFromUrl, title: "", created_at: "", updated_at: "" } : null
-  );
+  const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
