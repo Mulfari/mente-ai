@@ -779,9 +779,17 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
 
       const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
-      
+
+      // Build conversation history text - use summary + recent messages
       const historyMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-30);
-      const historyText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`).join("\n");
+      const recentText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`).join("\n");
+      const { data: convData } = await supabase
+        .from("conversations").select("summary")
+        .eq("id", convId).single();
+      let historyText = recentText;
+      if (convData?.summary) {
+        historyText = `[Resumen de conversacion anterior]\n${convData.summary}\n\n[Mensajes recientes]\n${recentText.slice(-4000)}`;
+      }
       const params = new URLSearchParams({
         token: vpsToken,
         message_id: msgId,
@@ -1083,9 +1091,16 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
       
 
-      // Build conversation history text for VPS
+      // Build conversation history text for VPS - use summary + recent messages
       const historyMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-30);
-      const historyText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`).join("\n");
+      const recentText = historyMessages.map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`).join("\n");
+      const { data: convData } = await supabase
+        .from("conversations").select("summary")
+        .eq("id", convId).single();
+      let historyText = recentText;
+      if (convData?.summary) {
+        historyText = `[Resumen de conversacion anterior]\n${convData.summary}\n\n[Mensajes recientes]\n${recentText.slice(-4000)}`;
+      }
 
       const params = new URLSearchParams({
         token: vpsToken,
