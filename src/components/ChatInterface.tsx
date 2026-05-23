@@ -778,6 +778,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       }
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
 
+      const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
+      console.log("[VeChat] Sending userContext:", userContextPayload);
       const params = new URLSearchParams({
         token: vpsToken,
         message_id: msgId,
@@ -785,7 +787,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         mode: responseMode,
         question: s,
         attachments: JSON.stringify([]),
-        user_context: JSON.stringify(userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null),
+        user_context: JSON.stringify(userContextPayload),
       });
 
       const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
@@ -1075,6 +1077,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       }
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
 
+      const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
+      console.log("[VeChat] Sending userContext:", userContextPayload);
       const params = new URLSearchParams({
         token: vpsToken,
         message_id: msgId,
@@ -1082,7 +1086,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         mode: responseMode,
         question: userMsg,
         attachments: JSON.stringify(contentParts),
-        user_context: JSON.stringify(userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null),
+        user_context: JSON.stringify(userContextPayload),
       });
 
       const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
