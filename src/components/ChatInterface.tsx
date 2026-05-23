@@ -936,29 +936,23 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   async function sendMessage() {
     const inputVal = input.trim();
     const hasAttachments = attachments.length > 0;
-    console.log("[sendMessage] input:", inputVal.length, "attachments:", hasAttachments, "sending:", sending, "activeConv:", activeConv?.id, "block:", getBlockReason());
-    if (!inputVal && !hasAttachments) { console.log("[sendMessage] early return: empty input"); return; }
+    // Early returns before any async
+    if (!inputVal && !hasAttachments) return;
     const block = getBlockReason();
-    if (!block.canSend) { console.log("[sendMessage] early return: blocked", block); return; }
+    if (!block.canSend) return;
+    // Prevent double-submit: capture sending state BEFORE any state change
+    const sendingNow = sending;
+    if (sendingNow) return;
 
-    // If AI is currently streaming, queue this message (max 1)
-    if (sending) {
-      if (queuedMsgRef.current) return; // Already queued, ignore
-      queuedMsgRef.current = { text: input.trim(), files: [...attachments], previews: { ...previewUrls } } as QueuedMsg;
-      setInput("");
-      setAttachments([]);
-      setPreviewUrls({});
-      autoResize();
-      return;
-    }
-
-    // Set sending immediately to disable the button
+    // Now set sending — this is what disables the button
     setSending(true);
+
+    console.log("[sendMessage] input:", inputVal.length, "attachments:", hasAttachments, "activeConv:", activeConv?.id, "block:", block);
 
     let conv = activeConv;
     const queuedMsg = queuedMsgRef.current;
     queuedMsgRef.current = null;
-    const userMsg = queuedMsg ? queuedMsg.text : input.trim();
+    const userMsg = queuedMsg ? queuedMsg.text : inputVal;
 
     // Detect research command
     const researchMatch = userMsg.match(/^(?:investiga|busca|research)\s+(.+?)\s+(?:en|sobre|about)\s+(.+)$/i);
