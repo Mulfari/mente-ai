@@ -22,6 +22,14 @@ export const metadata: Metadata = {
   keywords: ["chat AI", "asistente virtual", "IA conversacional", "VeChat"],
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
+  manifest: "/manifest.json",
+  other: {
+    "og:title": "VeChat",
+    "og:description": "Tu asistente de IA personal",
+    "og:site_name": "VeChat",
+    "og:type": "website",
   },
 };
 

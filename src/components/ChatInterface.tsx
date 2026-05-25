@@ -165,6 +165,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
+  const fastPollRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fast polling when remote stream detected
 
   // Auth init — getSession returns cached session synchronously
   useEffect(() => {
@@ -248,7 +249,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   }, [isLoggedIn]);
 
   useEffect(() => {
-    if (!isLoggedIn) return;
+    if (!isLoggedIn || !userId) return;
     supabase
       .from("profiles")
       .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
@@ -306,7 +307,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     }
     // Filter out messages still actively streaming with no content.
     // If message has content (from progressive save), show it even if in_progress=true
-    const valid = (data ?? []).filter(m => !(m.role === "assistant" && m.in_progress && !m.content?.trim()) && !(m.role === "assistant" && !m.in_progress && !m.content?.trim()))
+    // Keep assistant messages with in_progress=true even if empty — they're active streaming from another device
+    const valid = (data ?? [])
+      .filter(m => !(m.role === "assistant" && !m.in_progress && !m.content?.trim()))
       .map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" })) as Message[];
     // Clear streaming state — these were saved from a previous session
     setStreamingMsgId(null);
@@ -321,48 +324,121 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
     setupRealtimeSubscription(conversationId);
   }
 
+  // Fetch new messages from DB and merge with local state
+  async function fetchNewMessages(convId: string) {
+    if (!isLoggedIn || !convId) return;
+    if (convId !== currentConvIdRef.current) return;
+    const { data } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", convId)
+      .order("created_at", { ascending: true });
+    if (!data || convId !== currentConvIdRef.current) return;
+
+    console.log(`[fetchNewMessages] conv=${convId} total=${data.length} msgs:`, data.map(m => ({ id: m.id.slice(0,8), role: m.role, in_progress: m.in_progress, content_len: (m.content || "").length })));
+
+    setMessages(prev => {
+      const existingIds = new Set(prev.map(m => m.id));
+      const newMsgs = data.filter(m => !existingIds.has(m.id));
+      if (newMsgs.length === 0) {
+        return prev.map(m => {
+          const dbMsg = data.find(d => d.id === m.id);
+          if (dbMsg && dbMsg.content !== m.content) {
+            return { ...m, content: dbMsg.content, in_progress: dbMsg.in_progress ?? m.in_progress };
+          }
+          return m;
+        });
+      }
+      return [...prev, ...newMsgs.map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" }))];
+    });
+
+    // Check if there's an in_progress assistant message from another device
+    // → start fast polling (1s) until response is done
+    const remoteStreaming = data.find(m =>
+      m.role === "assistant" &&
+      m.in_progress === true
+    );
+    if (remoteStreaming) {
+      scheduleFastPoll(convId);
+    }
+  }
+
+  // Stop fast polling
+  function stopFastPoll() {
+    if (fastPollRef.current) {
+      clearTimeout(fastPollRef.current);
+      fastPollRef.current = null;
+    }
+  }
+
+  // Recursive fast poll — stops when in_progress becomes false
+  async function fastPollOnce(convId: string) {
+    if (convId !== currentConvIdRef.current) return;
+    const { data } = await supabase
+      .from("messages")
+      .select("id, content, in_progress")
+      .eq("conversation_id", convId)
+      .eq("role", "assistant")
+      .eq("in_progress", "false")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    // Also fetch any new messages
+    const { data: allData } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("conversation_id", convId)
+      .order("created_at", { ascending: true });
+    if (!allData || convId !== currentConvIdRef.current) return;
+
+    setMessages(prev => {
+      const existingIds = new Set(prev.map(m => m.id));
+      const newMsgs = allData.filter(m => !existingIds.has(m.id));
+      if (newMsgs.length > 0) {
+        return [...prev, ...newMsgs.map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" }))];
+      }
+      // Check for content updates
+      return prev.map(m => {
+        const dbMsg = allData.find(d => d.id === m.id);
+        if (dbMsg && dbMsg.content !== m.content) {
+          return { ...m, content: dbMsg.content, in_progress: dbMsg.in_progress ?? m.in_progress };
+        }
+        return m;
+      });
+    });
+
+    // Continue fast polling if response still in progress
+    if (convId === currentConvIdRef.current && isLoggedIn) {
+      fastPollRef.current = setTimeout(() => fastPollOnce(convId), 1000);
+    }
+  }
+
+  function scheduleFastPoll(convId: string) {
+    stopFastPoll();
+    fastPollOnce(convId);
+  }
+
   function setupRealtimeSubscription(convId: string) {
-    // Unsubscribe from previous channel if any
     if (messagesChannelRef.current) {
       messagesChannelRef.current.unsubscribe();
       messagesChannelRef.current = null;
     }
     if (!convId || !isLoggedIn) return;
 
-    const channel = supabase.channel(`messages:${convId}`)
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: `conversation_id=eq.${convId}`,
-      }, (payload) => {
-        const newMsg = payload.new as Message;
-        // Only add if we didn't already save it locally (our streaming upsert)
-        setMessages(prev => {
-          if (prev.some(m => m.id === newMsg.id)) return prev;
-          return [...prev, { ...newMsg, _isDeep: newMsg.role === "assistant" && newMsg.mode === "deep" }];
-        });
-      })
-      .on("postgres_changes", {
-        event: "UPDATE",
-        schema: "public",
-        table: "messages",
-        filter: `conversation_id=eq.${convId}`,
-      }, (payload) => {
-        const upd = payload.new as Message;
-        setMessages(prev => prev.map(m => m.id === upd.id ? { ...m, content: upd.content, in_progress: upd.in_progress ?? m.in_progress } : m));
-        setDisplayedText(prev => {
-          if (!prev[upd.id]) return prev;
-          return { ...prev, [upd.id]: upd.content };
-        });
-      })
-      .subscribe((status) => {
-        if (status !== 'SUBSCRIBED') {
-          console.warn(`[VeChat] Realtime channel status: ${status} for conv ${convId}`);
-        }
-      });
+    stopFastPoll();
+    fetchNewMessages(convId);
 
-    messagesChannelRef.current = channel;
+    // Visibility change — fetch when user comes back to the tab
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        fetchNewMessages(convId);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      stopFastPoll();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }
 
   useEffect(() => {
@@ -789,24 +865,26 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       const reqParams = { message: s, conversationId: convId, contentParts: [], mode: responseMode };
       currentStreamReqRef.current = reqParams;
 
-      const { data: assistantMsg } = await supabase
+      // Create assistant message row in DB NOW — before fetching token.
+      // Other devices (same user, same conversation) see it immediately via Realtime INSERT.
+      const msgId = crypto.randomUUID();
+      await supabase
         .from("messages")
-        .insert({ conversation_id: convId, role: "assistant", content: "", in_progress: true })
-        .select().single();
+        .upsert({ id: msgId, conversation_id: convId, role: "assistant", content: "", in_progress: true })
+        .eq("id", msgId);
 
-      const msgId = assistantMsg?.id || Date.now().toString();
-      const loadingText = responseMode === "deep"
-        ? "Pensando... (modo profundo, puede tardar un poco)"
-        : "";
-      if (assistantMsg) setMessages(prev => [...prev, { ...assistantMsg, content: loadingText, _loading: true, _retryReq: reqParams }]);
-      else setMessages(prev => [...prev, { id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams }]);
+      // Add to local state immediately so the user sees it without waiting
+      setMessages(prev => [...prev, {
+        id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(),
+        conversation_id: convId, _loading: true
+      }]);
       setStreamingMsgId(msgId);
 
-      // Get VPS token and connect directly to VPS for streaming
+      // Now get VPS token — other devices already see the "AI thinking" message
       const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
       if (!tokenRes.ok) {
         const err = await tokenRes.json();
-        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
+        await supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
         setMessages(prev => prev.filter(m => m.id !== msgId));
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
         setSending(false);
@@ -846,7 +924,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       if (!streamRes.ok) {
         const errData = await streamRes.json().catch(() => ({}));
         const status = streamRes.status;
-        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: errData.error || `Error de conexion (${status})` }).eq('id', msgId);
+        await supabase.from('messages').update({ in_progress: false, content: errData.error || `Error de conexion (${status})` }).eq('id', msgId);
         setMessages(prev => prev.filter(m => m.id !== msgId));
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || `Error de conexion (${status})`, created_at: new Date().toISOString() }]);
         setSending(false);
@@ -1073,6 +1151,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       setMessages(prev => [...prev, { ...inserted, _previewUrls: savedPreviews }]);
     }
 
+    // Fetch new messages from other devices — respond after a short delay
+    setTimeout(() => fetchNewMessages(conv.id), 2000);
+
     try {
       const convId = conv.id;
       setIsLoadingMsgs(false);
@@ -1086,39 +1167,31 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         }
       }
 
-      // Create assistant message in DB (with in_progress flag so we can resume)
-      const reqParams = { message: userMsg, conversationId: convId, contentParts, mode: responseMode };
-      currentStreamReqRef.current = reqParams;
-
-      const { data: assistantMsg } = await supabase
+      // Create assistant message row in DB NOW — before fetching token.
+      // This allows other devices (same user, same conversation) to see the
+      // "AI is thinking" state immediately via Supabase Realtime INSERT.
+      const msgId = crypto.randomUUID();
+      await supabase
         .from("messages")
-        .insert({ conversation_id: convId, role: "assistant", content: "", in_progress: true })
-        .select()
-        .single();
+        .upsert({ id: msgId, conversation_id: convId, role: "assistant", content: "", in_progress: true })
+        .eq("id", msgId);
 
-      const msgId = assistantMsg?.id || Date.now().toString();
-      const loadingText = responseMode === "deep"
-        ? "Pensando... (modo profundo, puede tardar un poco)"
-        : "";
-      if (assistantMsg) {
-        setMessages(prev => [...prev, { ...assistantMsg, content: loadingText, _loading: true, _retryReq: reqParams }]);
-      } else {
-        setMessages(prev => [...prev, {
-          id: msgId, role: "assistant", content: loadingText, created_at: new Date().toISOString(), _loading: true, _retryReq: reqParams
-        }]);
-      }
+      // Add to local state immediately so the user sees it without waiting
+      setMessages(prev => [...prev, {
+        id: msgId, role: "assistant", content: "", created_at: new Date().toISOString(),
+        conversation_id: convId, _loading: true
+      }]);
       setStreamingMsgId(msgId);
 
-      // Get VPS token and connect directly to VPS for streaming
+      // Now get VPS token and stream — other devices already see the message
       const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
       if (!tokenRes.ok) {
         const err = await tokenRes.json();
-        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
+        await supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
         setMessages(prev => prev.filter(m => m.id !== msgId));
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
         setSending(false);
         setStreamingMsgId(null);
-        textareaRef.current?.focus();
         return;
       }
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
@@ -1137,24 +1210,29 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         historyText = `[Resumen de conversacion anterior]\n${convData.summary}\n\n[Mensajes recientes]\n${recentText.slice(-4000)}`;
       }
 
-      const params = new URLSearchParams({
+      const payload = {
         token: vpsToken,
         message_id: msgId,
         conversation_id: convId,
         mode: responseMode,
         question: userMsg,
-        attachments: JSON.stringify(contentParts),
-        user_context: JSON.stringify(userContextPayload),
+        attachments: contentParts,
+        user_context: userContextPayload,
         conversation_history: historyText,
-      });
+      };
 
-      const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
-        headers: { Accept: 'text/event-stream' },
+      const streamRes = await fetch(`${vpsUrl}/api/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify(payload),
       });
 
       if (!streamRes.ok) {
         const errData = await streamRes.json().catch(() => ({}));
-        if (assistantMsg) supabase.from('messages').update({ in_progress: false, content: errData.error || 'Error de conexion' }).eq('id', msgId);
+        await supabase.from('messages').update({ in_progress: false, content: errData.error || 'Error de conexion' }).eq('id', msgId);
         setMessages(prev => prev.filter(m => m.id !== msgId));
         setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || 'Error de conexion', created_at: new Date().toISOString() }]);
         setSending(false);
@@ -1822,9 +1900,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             </div>
-            <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-              <span style={{ color: "var(--primary)" }}>M</span>ulfai
-            </span>
+            <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>VeChat</span>
           </div>
           {/* Subscription indicator / Login button */}
           {mounted ? (isLoggedIn && profile ? (

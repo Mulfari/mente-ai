@@ -48,8 +48,20 @@ export default function Sidebar({ userId }: { userId: string }) {
       {/* Logo */}
       <div className="p-4 border-b shrink-0" style={{ borderColor: "var(--border)" }}>
         <div className="flex items-center gap-2">
-          <span className="text-xl font-semibold" style={{ color: "var(--accent)" }}>Mente</span>
-          <span className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>AI</span>
+          <svg className="w-6 h-6" viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="8" fill="url(#sidebarLogo)"/>
+            <path d="M16 7l8 16H8L16 7z" fill="rgba(255,255,255,0.15)" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M16 11l5 10H11L16 11z" fill="rgba(255,255,255,0.25)"/>
+            <path d="M10 18c0-3.3 2.7-6 6-6s6 2.7 6 6" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+            <circle cx="16" cy="18" r="2" fill="white"/>
+            <defs>
+              <linearGradient id="sidebarLogo" x1="0" y1="0" x2="32" y2="32">
+                <stop offset="0%" stopColor="#10A37F"/>
+                <stop offset="100%" stopColor="#0d8b6a"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span className="text-base font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
         </div>
       </div>
 

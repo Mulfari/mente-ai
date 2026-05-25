@@ -2,28 +2,28 @@ import { NextResponse } from "next/server";
 
 const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
-    const url = new URL(request.url);
+    const body = await request.json();
 
-    const vpsRes = await fetch(`${VPS_URL}/api/stream?${url.searchParams.toString()}`, {
+    const vpsRes = await fetch(`${VPS_URL}/api/stream`, {
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         Accept: "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
       },
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(300_000),
     });
 
     if (!vpsRes.ok) {
-      const body = await vpsRes.text().catch(() => "");
+      const bodyText = await vpsRes.text().catch(() => "");
       return NextResponse.json(
-        { error: `VPS error ${vpsRes.status}: ${body}` },
+        { error: `VPS error ${vpsRes.status}: ${bodyText}` },
         { status: vpsRes.status }
       );
     }
 
-    // Read the entire body as text, then stream it back
     const bodyText = await vpsRes.text();
 
     return new Response(bodyText, {
