@@ -257,14 +257,29 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
 
-    // Ensure user_context exists for this user (upsert)
-      supabase
-        .from("user_context")
-        .upsert({ user_id: userId, full_name: "", city: "", interests: "", custom_notes: "" }, { onConflict: "user_id" })
-        .select("full_name, city, interests, custom_notes")
-        .eq("user_id", userId)
-        .maybeSingle()
-        .then(({ data }) => { if (data) setUserContext(data); });
+    // Ensure user_context exists for this user (insert or update)
+    supabase
+      .from("user_context")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+      .then(({ error }) => {
+        if (error) console.error("user_context update error:", error);
+        // If no row to update, insert one
+        if (error && error.code === "PGRST116") {
+          supabase.from("user_context").insert({
+            user_id: userId, full_name: "", city: "", interests: "", custom_notes: "",
+          }).then(({ error: insertErr }) => {
+            if (insertErr) console.error("user_context insert error:", insertErr);
+          });
+        }
+        // Fetch the row
+        supabase
+          .from("user_context")
+          .select("full_name, city, interests, custom_notes")
+          .eq("user_id", userId)
+          .maybeSingle()
+          .then(({ data }) => { if (data) setUserContext(data); });
+      });
   }, [userId, isLoggedIn]);
 
   async function loadConversations(currentUserId?: string) {
