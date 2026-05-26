@@ -11,11 +11,11 @@ type Props = {
     subscription_start?: string;
     subscription_end?: string;
   } | null;
-  userContext: { full_name: string; city: string; custom_notes: string } | null;
+  userContext: { full_name: string; city: string; custom_notes: string; interests: string } | null;
   onSignOut: () => void;
   onClose: () => void;
   onProfileUpdate?: (updates: Partial<Props["profile"]>) => void;
-  onSave?: (data: { full_name: string; city: string; custom_notes: string }) => void;
+  onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
 };
 
 type Tab = "context" | "subscription" | "coupon";
@@ -164,14 +164,15 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
 // --- Context Tab ---
 function ContextTab({ userId, userContext, supabase, onSave }: {
   userId: string;
-  userContext: { full_name: string; city: string; custom_notes: string } | null;
+  userContext: { full_name: string; city: string; custom_notes: string; interests: string } | null;
   supabase: ReturnType<typeof createClient>;
-  onSave?: (data: { full_name: string; city: string; custom_notes: string }) => void;
+  onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
 }) {
   const [data, setData] = useState(() => ({
     full_name: userContext?.full_name || "",
     city: userContext?.city || "",
     custom_notes: userContext?.custom_notes || "",
+    interests: userContext?.interests || "",
   }));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -180,7 +181,7 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
   const [showConfirm, setShowConfirm] = useState(false);
   const supabase_client = supabase;
 
-  const total = data.full_name.length + data.city.length + data.custom_notes.length;
+  const total = data.full_name.length + data.city.length + data.custom_notes.length + data.interests.length;
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -192,16 +193,19 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
     if (existing) {
       const { error: e } = await supabase_client.from("user_context").update({
         full_name: data.full_name.trim(), city: data.city.trim(),
-        custom_notes: data.custom_notes.trim(), updated_at: new Date().toISOString(),
+        custom_notes: data.custom_notes.trim(), interests: data.interests.trim(),
+        updated_at: new Date().toISOString(),
       }).eq("id", existing.id);
       err = e;
+      if (e) console.error("[AccountMenu] handleSave update error:", e);
     } else {
       const { error: e } = await supabase_client.from("user_context").insert({
         user_id: userId,
         full_name: data.full_name.trim(), city: data.city.trim(),
-        custom_notes: data.custom_notes.trim(),
+        custom_notes: data.custom_notes.trim(), interests: data.interests.trim(),
       });
       err = e;
+      if (e) console.error("[AccountMenu] handleSave insert error:", e);
     }
 
     setSaving(false);
@@ -209,7 +213,7 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
     else {
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-      if (onSave) onSave({ full_name: data.full_name.trim(), city: data.city.trim(), custom_notes: data.custom_notes.trim() });
+      if (onSave) onSave({ full_name: data.full_name.trim(), city: data.city.trim(), custom_notes: data.custom_notes.trim(), interests: data.interests.trim() });
     }
   }
 
@@ -237,18 +241,21 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
             setData(d => ({ ...d, city }));
             const { data: existing } = await supabase_client.from("user_context").select("id").eq("user_id", userId).maybeSingle();
             if (existing) {
-              await supabase_client.from("user_context").update({
-                city: city.trim(), updated_at: new Date().toISOString(),
+              const { error: updErr } = await supabase_client.from("user_context").update({
+                city: city.trim(), interests: data.interests.trim(),
+                updated_at: new Date().toISOString(),
               }).eq("id", existing.id);
+              if (updErr) console.error("[AccountMenu] doDetectCity update error:", updErr);
             } else {
-              await supabase_client.from("user_context").insert({
+              const { error: insErr } = await supabase_client.from("user_context").insert({
                 user_id: userId,
-                city: city.trim(),
+                city: city.trim(), interests: data.interests.trim(),
               });
+              if (insErr) console.error("[AccountMenu] doDetectCity insert error:", insErr);
             }
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
-            if (onSave) onSave({ full_name: data.full_name, city: city.trim(), custom_notes: data.custom_notes });
+            if (onSave) onSave({ full_name: data.full_name, city: city.trim(), custom_notes: data.custom_notes, interests: data.interests });
           }
         } catch {
           // ignore
@@ -309,6 +316,17 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
               </button>
             </div>
           )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Intereses</label>
+          <input type="text" value={data.interests} onChange={e => setData(d => ({ ...d, interests: e.target.value }))}
+            placeholder="Ej: programacion, musica, viajes, idiomas"
+            className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+            onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
+            onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
+          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Lista los temas que te interesan, separados por comas.</p>
         </div>
 
         <div>
