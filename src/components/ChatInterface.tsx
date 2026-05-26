@@ -921,7 +921,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         historyText = `[Resumen de conversacion anterior]\n${convData.summary}\n\n[Mensajes recientes]\n${recentText.slice(-4000)}`;
       }
 
-      const params = new URLSearchParams({
+      const payload = {
         token: vpsToken,
         message_id: msgId,
         conversation_id: convId,
@@ -930,10 +930,15 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         attachments: JSON.stringify([]),
         user_context: JSON.stringify(userContextPayload),
         conversation_history: historyText,
-      });
+      };
 
-      const streamRes = await fetch(`${vpsUrl}/api/stream?${params.toString()}`, {
-        headers: { Accept: 'text/event-stream' },
+      const streamRes = await fetch(`${vpsUrl}/api/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
+        body: JSON.stringify(payload),
       });
 
       if (!streamRes.ok) {
