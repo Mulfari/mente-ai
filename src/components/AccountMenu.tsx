@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 type Props = {
+  userId: string;
   email: string;
   profile?: {
     subscription_weeks?: number;
@@ -14,13 +15,14 @@ type Props = {
   onSignOut: () => void;
   onClose: () => void;
   onProfileUpdate?: (updates: Partial<Props["profile"]>) => void;
+  onSave?: (data: { full_name: string; city: string; custom_notes: string }) => void;
 };
 
 type Tab = "context" | "subscription" | "coupon";
 
 const MAX_CHARS = 2000;
 
-export default function AccountMenu({ email, profile: profileProp, userContext, onSignOut, onClose }: Props) {
+export default function AccountMenu({ userId, email, profile: profileProp, userContext, onSignOut, onClose, onSave }: Props) {
   const [tab, setTab] = useState<Tab>("context");
   const [tick, setTick] = useState(0);
   const [profile, setProfile] = useState(profileProp ?? null);
@@ -149,7 +151,7 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
-            {tab === "context" ? <ContextTab userContext={userContext} supabase={supabase} /> :
+            {tab === "context" ? <ContextTab userId={userId} userContext={userContext} supabase={supabase} onSave={onSave} /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
           </div>
@@ -160,9 +162,11 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
 }
 
 // --- Context Tab ---
-function ContextTab({ userContext, supabase }: {
+function ContextTab({ userId, userContext, supabase, onSave }: {
+  userId: string;
   userContext: { full_name: string; city: string; custom_notes: string } | null;
   supabase: ReturnType<typeof createClient>;
+  onSave?: (data: { full_name: string; city: string; custom_notes: string }) => void;
 }) {
   const [data, setData] = useState(() => ({
     full_name: userContext?.full_name || "",
@@ -183,7 +187,7 @@ function ContextTab({ userContext, supabase }: {
     if (total > MAX_CHARS) { setError(`Maximo ${MAX_CHARS} caracteres`); return; }
     setSaving(true); setError(""); setSaved(false);
 
-    const { data: existing } = await supabase_client.from("user_context").select("id").maybeSingle();
+    const { data: existing } = await supabase_client.from("user_context").select("id").eq("user_id", userId).maybeSingle();
     let err: any = null;
     if (existing) {
       const { error: e } = await supabase_client.from("user_context").update({
@@ -193,6 +197,7 @@ function ContextTab({ userContext, supabase }: {
       err = e;
     } else {
       const { error: e } = await supabase_client.from("user_context").insert({
+        user_id: userId,
         full_name: data.full_name.trim(), city: data.city.trim(),
         custom_notes: data.custom_notes.trim(),
       });
@@ -201,7 +206,11 @@ function ContextTab({ userContext, supabase }: {
 
     setSaving(false);
     if (err) { setError("Error al guardar: " + (err.message || "Intenta de nuevo")); }
-    else { setSaved(true); setTimeout(() => setSaved(false), 2500); }
+    else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      if (onSave) onSave({ full_name: data.full_name.trim(), city: data.city.trim(), custom_notes: data.custom_notes.trim() });
+    }
   }
 
   function handleUpdateClick() {
@@ -226,16 +235,20 @@ function ContextTab({ userContext, supabase }: {
           const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
           if (city) {
             setData(d => ({ ...d, city }));
-            const { data: existing } = await supabase_client.from("user_context").select("id").maybeSingle();
+            const { data: existing } = await supabase_client.from("user_context").select("id").eq("user_id", userId).maybeSingle();
             if (existing) {
               await supabase_client.from("user_context").update({
                 city: city.trim(), updated_at: new Date().toISOString(),
               }).eq("id", existing.id);
             } else {
-              await supabase_client.from("user_context").insert({ city: city.trim() });
+              await supabase_client.from("user_context").insert({
+                user_id: userId,
+                city: city.trim(),
+              });
             }
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
+            if (onSave) onSave({ full_name: data.full_name, city: city.trim(), custom_notes: data.custom_notes });
           }
         } catch {
           // ignore

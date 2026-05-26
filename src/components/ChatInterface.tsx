@@ -2502,6 +2502,8 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         email={userEmail}
         profile={profile}
         userContext={userContext}
+        userId={userId}
+        onSave={(data) => { setUserContext(prev => prev ? { ...prev, ...data } : prev); }}
         onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
         onClose={() => setShowAccountMenu(false)}
       />}
