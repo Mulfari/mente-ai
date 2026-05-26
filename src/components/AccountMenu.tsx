@@ -189,34 +189,26 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
     if (total > MAX_CHARS) { setError(`Maximo ${MAX_CHARS} caracteres`); return; }
     setSaving(true); setError(""); setSaved(false);
 
-    const { data: existing } = await supabase_client.from("user_context").select("id").eq("user_id", userId).maybeSingle();
-    console.log("[AccountMenu] existing row:", JSON.stringify(existing));
-    let err: any = null;
-    if (existing) {
-      const { error: e } = await supabase_client.from("user_context").update({
-        full_name: data.full_name.trim(), city: data.city.trim(),
-        custom_notes: data.custom_notes.trim(), interests: data.interests.trim(),
-        updated_at: new Date().toISOString(),
-      }).eq("id", existing.id);
-      err = e;
-      if (e) console.error("[AccountMenu] handleSave update error:", e);
-    } else {
-      const { error: e } = await supabase_client.from("user_context").insert({
-        user_id: userId,
-        full_name: data.full_name.trim(), city: data.city.trim(),
-        custom_notes: data.custom_notes.trim(), interests: data.interests.trim(),
+    try {
+      const res = await fetch("/api/user-context/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: data.full_name, city: data.city, custom_notes: data.custom_notes, interests: data.interests }),
       });
-      err = e;
-      if (e) console.error("[AccountMenu] handleSave insert error:", e);
+      const result = await res.json();
+      if (!res.ok || result.error) {
+        setError("Error al guardar: " + (result.error || "Intenta de nuevo"));
+      } else {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2500);
+        if (onSave) onSave({ full_name: data.full_name.trim(), city: data.city.trim(), custom_notes: data.custom_notes.trim(), interests: data.interests.trim() });
+      }
+    } catch (err) {
+      setError("Error al guardar: Intenta de nuevo");
+      console.error("[AccountMenu] handleSave fetch error:", err);
     }
 
     setSaving(false);
-    if (err) { setError("Error al guardar: " + (err.message || "Intenta de nuevo")); }
-    else {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
-      if (onSave) onSave({ full_name: data.full_name.trim(), city: data.city.trim(), custom_notes: data.custom_notes.trim(), interests: data.interests.trim() });
-    }
   }
 
   function handleUpdateClick() {
@@ -241,19 +233,16 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
           const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
           if (city) {
             setData(d => ({ ...d, city }));
-            const { data: existing } = await supabase_client.from("user_context").select("id").eq("user_id", userId).maybeSingle();
-            if (existing) {
-              const { error: updErr } = await supabase_client.from("user_context").update({
-                city: city.trim(), interests: data.interests.trim(),
-                updated_at: new Date().toISOString(),
-              }).eq("id", existing.id);
-              if (updErr) console.error("[AccountMenu] doDetectCity update error:", updErr);
-            } else {
-              const { error: insErr } = await supabase_client.from("user_context").insert({
-                user_id: userId,
-                city: city.trim(), interests: data.interests.trim(),
+            try {
+              const apiRes = await fetch("/api/user-context/save", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ full_name: data.full_name, city, custom_notes: data.custom_notes, interests: data.interests }),
               });
-              if (insErr) console.error("[AccountMenu] doDetectCity insert error:", insErr);
+              const apiJson = await apiRes.json();
+              if (apiJson.error) console.error("[AccountMenu] doDetectCity API error:", apiJson.error);
+            } catch (e) {
+              console.error("[AccountMenu] doDetectCity fetch error:", e);
             }
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
