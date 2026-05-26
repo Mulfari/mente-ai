@@ -2513,15 +2513,17 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
           setShowAuthPrompt(false);
           window.location.reload();
         }} onClose={() => setShowAuthPrompt(false)} />}
-      {showAccountMenu && <AccountMenu
-        email={userEmail}
-        profile={profile}
-        userContext={userContext}
-        userId={userId}
-        onSave={(data) => { setUserContext(prev => prev ? { ...prev, ...data } : prev); }}
-        onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-        onClose={() => setShowAccountMenu(false)}
-      />}
+      {showAccountMenu && (
+        <AccountMenu
+          email={userEmail}
+          profile={profile}
+          userContext={userContext}
+          userId={userId}
+          onSave={(data) => { setUserContext(prev => prev ? { ...prev, ...data } : prev); }}
+          onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
+          onClose={() => setShowAccountMenu(false)}
+        />
+      )}
       {notification && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg flex items-center gap-2 animate-fade-in"
           style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>

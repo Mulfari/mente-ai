@@ -185,10 +185,12 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+    console.log("[AccountMenu] handleSave called, userId:", JSON.stringify(userId), "length:", userId?.length);
     if (total > MAX_CHARS) { setError(`Maximo ${MAX_CHARS} caracteres`); return; }
     setSaving(true); setError(""); setSaved(false);
 
     const { data: existing } = await supabase_client.from("user_context").select("id").eq("user_id", userId).maybeSingle();
+    console.log("[AccountMenu] existing row:", JSON.stringify(existing));
     let err: any = null;
     if (existing) {
       const { error: e } = await supabase_client.from("user_context").update({
