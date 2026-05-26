@@ -98,50 +98,18 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const revealTimers = useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
   const revealCancelled = useRef<Record<string, boolean>>({});
 
-  function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
+function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     // Cancel any pending reveal for this message
     if (revealTimers.current[msgId]) {
       clearTimeout(revealTimers.current[msgId]!);
       revealTimers.current[msgId] = null;
     }
-    revealCancelled.current[msgId] = false;
+    revealCancelled.current[msgId] = true;
 
-    const current = displayedText[msgId] || "";
-    if (current === text) return;
-
-    // If text jumped significantly (>15 chars new), show all at once then start char reveal
-    if (text.length > current.length + 15) {
-      // Flash all new content immediately so it never looks stuck
-      setDisplayedText(prev => ({ ...prev, [msgId]: text }));
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, ...(_isDeep !== undefined ? { _isDeep } : {}) } : m));
-      return;
-    }
-
-    // Reveal character by character from current position
-    let charIndex = current.length;
-    const tick = () => {
-      if (revealCancelled.current[msgId]) return;
-      charIndex++;
-      const revealed = text.slice(0, charIndex);
-      setDisplayedText(prev => ({ ...prev, [msgId]: revealed }));
-      setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: revealed, ...(_isDeep !== undefined ? { _isDeep } : {}) } : m));
-
-      if (charIndex >= text.length) return; // Done
-
-      // Natural typing rhythm
-      const prevCh = text[charIndex - 1] || "";
-      const nextCh = text[charIndex] || "";
-      let delay = 15 + Math.random() * 10;
-      if (".!?".includes(prevCh)) delay = 70 + Math.random() * 50; // Long pause after sentence end
-      else if (",;:".includes(prevCh)) delay = 45 + Math.random() * 30; // Medium pause
-      else if (nextCh === " " || nextCh === "\n") delay = 25 + Math.random() * 15; // Quick space
-      else if (nextCh === "`") delay = 5; // Fast for code
-      else if (prevCh === " ") delay = 20 + Math.random() * 10; // Word start
-
-      revealTimers.current[msgId] = setTimeout(tick, delay);
-    };
-
-    revealTimers.current[msgId] = setTimeout(tick, 40);
+    // Show immediately — no animation, no delays. Chunks arrive as fast as
+    // the model generates them and we display them instantly.
+    setDisplayedText(prev => ({ ...prev, [msgId]: text }));
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: text, ...(_isDeep !== undefined ? { _isDeep } : {}) } : m));
   }
 
   function flushReveal(msgId: string, text: string, _isDeep?: boolean) {
