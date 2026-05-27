@@ -1,34 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import * as jose from "jose";
 
+const VPS_SECRET = process.env.VPS_SECRET || "";
+const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
 const TIMEOUT_MS = 300_000;
 const HOURLY_LIMIT = 20;
 const COOLDOWN_MINUTES = 5;
-const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
-const TOKEN_ESTIMATE_CHARS = 4; // ~1 token per 4 chars in Spanish
-const TOKEN_THRESHOLD = 4000;    // summarize when history exceeds 4000 tokens
-const FRESH_MESSAGES = 10;        // keep last 10 messages alongside summary
-
-function estimateTokens(text: string): number {
-  return Math.ceil(text.length / TOKEN_ESTIMATE_CHARS);
-}
-
-function historyToText(messages: { role: string; content: any[] }[]): string {
-  return messages
-    .map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`)
-    .join("\n");
-}
-
-function validateUser(supabase: any, userId: string) {
-  return supabase
-    .from("profiles")
-    .select("status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at, weekly_reset_at")
-    .eq("id", userId)
-    .single()
-    .then(({ data: profile }: { data: any }) => profile);
-}
 
 function validateProfile(profile: any, now: Date) {
   if (profile.status !== "active") {
@@ -54,25 +34,48 @@ function validateProfile(profile: any, now: Date) {
   return null;
 }
 
+function historyToText(messages: { role: string; content: any[] }[]): string {
+  return messages
+    .map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`)
+    .join("\n");
+}
+
+// Generate VPS JWT token server-side using service role key (bypasses browser token)
+async function generateVpsToken(userId: string): Promise<string> {
+  if (!VPS_SECRET) throw new Error("VPS_SECRET no configurado");
+  const secret = new TextEncoder().encode(VPS_SECRET);
+  return await new jose.SignJWT({ userId })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("30s")
+    .sign(secret);
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Error 401.", code: 401 }, { status: 401 });
 
-    const profile = await validateUser(supabase, user.id);
+    // Validate profile
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at, weekly_reset_at")
+      .eq("id", user.id)
+      .single();
+
     if (!profile) return NextResponse.json({ error: "Error 404.", code: 404 }, { status: 404 });
 
     const now = new Date();
     const validation = validateProfile(profile, now);
     if (validation) return NextResponse.json({ error: validation.error, code: validation.code, remaining: validation.remaining }, { status: validation.code });
 
-    const { message, conversation_id, attachments, mode, resume_message_id, message_id } = await request.json();
-    if (!message?.trim() && (!attachments || attachments.length === 0)) {
+    const { message, conversation_id, mode, resume_message_id, message_id } = await request.json();
+    if (!message?.trim()) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
     }
 
-    // --- Load messages and check if summarization is needed ---
+    // Load conversation history
     const historyMessages: { role: string; content: any[] }[] = [];
     let conversationSummary: string | null = null;
 
@@ -91,134 +94,146 @@ export async function POST(request: Request) {
         }
       }
 
-      // Load existing summary if any
       const { data: conv } = await supabase
         .from("conversations").select("summary")
         .eq("id", conversation_id).single();
       if (conv?.summary) conversationSummary = conv.summary;
-
-      // Check token threshold — summarize if needed
-      const historyText = historyToText(historyMessages);
-      if (estimateTokens(historyText) > TOKEN_THRESHOLD) {
-        try {
-          const summarizeRes = await fetch(`${VPS_URL}/api/summarize`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ conversation_history: historyText }),
-            signal: AbortSignal.timeout(60000),
-          });
-
-          if (summarizeRes.ok) {
-            const { summary } = await summarizeRes.json();
-            if (summary?.trim()) {
-              conversationSummary = summary;
-              // Save summary to conversations table
-              await supabase.from("conversations").update({ summary }).eq("id", conversation_id);
-              // Trim history to last FRESH_MESSAGES
-              historyMessages.splice(0, historyMessages.length - FRESH_MESSAGES);
-            }
-          }
-        } catch {
-          // Summarization failed — continue with full history (will be truncated by model)
-        }
-      }
     }
 
     if (resume_message_id) {
       await supabase.from("messages").update({ in_progress: false }).eq("id", resume_message_id);
     }
 
-    const convId = conversation_id;
-    const assistantMsgId = message_id || crypto.randomUUID();
-
-    // Fetch user personal context
+    // Get user context
     const { data: userContext } = await supabase
       .from("user_context")
       .select("full_name, city, interests, custom_notes")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    // Build history text: [summary if exists] + [fresh messages]
-    const historyText = historyMessages.length > 0
-      ? historyToText(historyMessages)
-      : "";
+    const historyText = historyMessages.length > 0 ? historyToText(historyMessages) : "";
     const fullHistoryText = conversationSummary && historyText
       ? `[Resumen de conversacion anterior]\n${conversationSummary}\n\n[Mensajes recientes]\n${historyText}`
-      : conversationSummary
-        ? `[Resumen de conversacion anterior]\n${conversationSummary}`
-        : historyText;
+      : conversationSummary ? `[Resumen de conversacion anterior]\n${conversationSummary}` : historyText;
 
+    // Generate VPS token server-side (no browser involvement)
+    let vpsToken: string;
+    try {
+      vpsToken = await generateVpsToken(user.id);
+    } catch {
+      return NextResponse.json({ error: "Error de autenticación con el servidor." }, { status: 500 });
+    }
+
+    const assistantMsgId = message_id || crypto.randomUUID();
+
+    // Set up SSE streaming — connect directly to VPS /api/stream
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       async start(controller) {
         const sendEvent = (data: any) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+          try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`)); } catch { /* stream closed */ }
         };
 
         try {
           sendEvent({ type: "start", message_id: assistantMsgId });
 
-          // Call VPS orchestrator
-          const vpsResponse = await fetch(`${VPS_URL}/api/orchestrate`, {
+          // Call VPS streaming endpoint with server-generated token
+          const vpsRes = await fetch(`${VPS_URL}/api/stream`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              question: message,
-              user_id: user.id,
-              conversation_id: convId,
+              token: vpsToken,
+              message_id: assistantMsgId,
+              conversation_id: conversation_id || null,
               mode: mode || "normal",
-              attachments: attachments || [],
-              user_context: userContext ? {
-                name: userContext.full_name || "",
-                city: userContext.city || "",
-                interests: userContext.interests || "",
-                notes: userContext.custom_notes || "",
-              } : null,
+              question: message,
+              attachments: "[]",
+              user_context: JSON.stringify({
+                name: userContext?.full_name || "",
+                city: userContext?.city || "",
+                interests: userContext?.interests || "",
+                notes: userContext?.custom_notes || "",
+              }),
               conversation_history: fullHistoryText || undefined,
             }),
             signal: AbortSignal.timeout(TIMEOUT_MS),
           });
 
-          if (!vpsResponse.ok) {
-            sendEvent({ type: "error", error: "Error del servidor. Intenta de nuevo." });
+          if (!vpsRes.ok) {
+            const errBody = await vpsRes.json().catch(() => ({}));
+            sendEvent({ type: "error", error: errBody.error || "Error del servidor. Intenta de nuevo." });
             controller.close();
             return;
           }
 
-          const result = await vpsResponse.json();
-          const fullResponse = result.response || "";
-
-          if (fullResponse) {
-            await supabase.from("messages").upsert({
-              id: assistantMsgId,
-              conversation_id: convId,
-              role: "assistant",
-              content: fullResponse,
-              mode: mode || "normal",
-            }, { onConflict: "id" });
-            sendEvent({ type: "chunk", id: assistantMsgId, text: fullResponse, is_deep: mode === "deep" });
+          if (!vpsRes.body) {
+            sendEvent({ type: "error", error: "Error de conexión con el servidor." });
+            controller.close();
+            return;
           }
 
-          // --- Persist context_delta (notas acumulativas) ---
-          if (result.context_delta?.add_notes?.trim() && userContext) {
-            try {
-              const existingNotes = userContext.custom_notes || "";
-              const newNote = result.context_delta.add_notes.trim();
+          // Pipe VPS SSE stream directly to the browser
+          const reader = vpsRes.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let currentEvent = "";
+          let currentData = "";
+          let accumulatedText = "";
 
-              // Only add if not already present
-              if (!existingNotes.includes(newNote)) {
-                const updatedNotes = existingNotes ? `${existingNotes}. ${newNote}` : newNote;
-                await supabase.from("user_context").update({ custom_notes: updatedNotes }).eq("user_id", user.id);
+          const flushEvent = () => {
+            if (!currentEvent || !currentData) return;
+            let data: any;
+            try { data = JSON.parse(currentData); } catch { currentEvent = ""; currentData = ""; return; }
+
+            if (currentEvent === "chunk" && data.type === "chunk") {
+              accumulatedText += data.text || "";
+              sendEvent({ type: "chunk", id: assistantMsgId, text: data.text || "", is_deep: data.is_deep });
+            } else if (currentEvent === "done" && data.type === "done") {
+              sendEvent({ type: "done" });
+            } else if (currentEvent === "error") {
+              sendEvent({ type: "error", error: data.message || "Error." });
+            }
+            currentEvent = "";
+            currentData = "";
+          };
+
+          while (true) {
+            try {
+              const { done, value } = await reader.read();
+              if (done) break;
+              buffer += decoder.decode(value, { stream: true });
+              const lines = buffer.split("\n");
+              buffer = lines[lines.length - 1] ?? "";
+              for (let i = 0; i < lines.length - 1; i++) {
+                const line = lines[i];
+                if (line === "") { flushEvent(); continue; }
+                const eventMatch = line.match(/^event: (.+)/);
+                const dataMatch = line.match(/^data: (.+)/);
+                if (eventMatch) { flushEvent(); currentEvent = eventMatch[1]; }
+                else if (dataMatch) { currentData = dataMatch[1]; }
               }
             } catch {
-              // Non-critical — ignore if persistence fails
+              break;
             }
+          }
+          flushEvent();
+
+          // Save final message to DB
+          if (accumulatedText) {
+            await supabase.from("messages").upsert({
+              id: assistantMsgId,
+              conversation_id: conversation_id,
+              role: "assistant",
+              content: accumulatedText,
+              mode: mode || "normal",
+            }, { onConflict: "id" });
           }
 
           sendEvent({ type: "done" });
           controller.close();
+
         } catch (err: any) {
-          sendEvent({ type: "error", error: err.message || "Error de conexion." });
+          sendEvent({ type: "error", error: err.message || "Error de conexión." });
           controller.close();
         }
       },
