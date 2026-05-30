@@ -2019,20 +2019,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                         );
                       }
 
-                      {/* Empty chat bubble — visual anchor, centered above suggestions */}
-                      <div className="flex flex-col items-center mb-5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2"
-                          style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                        </div>
-                        <div className="px-5 py-3 rounded-2xl rounded-bl-4px text-sm text-left max-w-sm"
-                          style={{ backgroundColor: "var(--surface)", color: "rgba(255,255,255,0.5)", border: "1px solid var(--border)" }}>
-                          Escribe un mensaje para empezar...
-                        </div>
-                      </div>
-
                       if (suggestionsLoading) {
                         return (
                           <div className="flex justify-center gap-2 flex-wrap">
@@ -2043,20 +2029,25 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                         );
                       }
                       return (
-                        <div className="flex justify-center gap-2 flex-wrap">
-                          {suggestions.map((s, i) => (
-                            <button key={i} onClick={() => submitSuggestion(s)}
-                              className="text-left px-4 py-2 rounded-full text-xs transition-all flex items-center gap-2 group"
-                              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "rgba(255,255,255,0.7)" }}>
-                              <span className="w-4 h-4 rounded flex items-center justify-center shrink-0"
-                                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
-                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                </svg>
-                              </span>
-                              <span className="group-hover:text-[var(--primary)] transition-colors whitespace-nowrap">{s}</span>
-                            </button>
-                          ))}
+                        <div className="flex flex-col items-center gap-4">
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+                            Elige una pregunta o escribe tu propio mensaje
+                          </p>
+                          <div className="flex justify-center gap-2 flex-wrap">
+                            {suggestions.map((s, i) => (
+                              <button key={i} onClick={() => submitSuggestion(s)}
+                                className="text-left px-4 py-2 rounded-full text-xs transition-all flex items-center gap-2 group"
+                                style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "rgba(255,255,255,0.7)" }}>
+                                <span className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                                  style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
+                                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                                  </svg>
+                                </span>
+                                <span className="group-hover:text-[var(--primary)] transition-colors whitespace-nowrap">{s}</span>
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       );
                     })()}
