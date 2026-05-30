@@ -1962,7 +1962,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="flex flex-col items-center justify-center h-full px-4">
+            <div className="flex flex-col items-center justify-center h-full px-4" style={{ backgroundColor: "red", minHeight: "100vh" }}>
               <div className="w-full max-w-md">
                 {/* Hero */}
                 <div className="text-center mb-6">
