@@ -323,18 +323,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setMessages(prev => {
       const existingIds = new Set(prev.map(m => m.id));
       const newMsgs = data.filter(m => !existingIds.has(m.id));
-      if (newMsgs.length === 0) {
-        return prev.map(m => {
-          // Don't overwrite messages being actively streamed
-          if (m.id === streamingMsgId) return m;
-          const dbMsg = data.find(d => d.id === m.id);
-          if (dbMsg && dbMsg.content !== m.content) {
-            return { ...m, content: dbMsg.content, in_progress: dbMsg.in_progress ?? m.in_progress };
-          }
-          return m;
-        });
+      // ALWAYS preserve all existing messages — never return only new ones
+      // This prevents fetchNewMessages from wiping streaming messages
+      const merged = [...prev];
+      for (const m of newMsgs) {
+        // Don't add assistant messages that are being streamed locally
+        if (m.role === "assistant" && m.id === streamingMsgId) continue;
+        merged.push({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" });
       }
-      return [...prev, ...newMsgs.map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" }))];
+      // Update existing messages from DB only if they have more content
+      return merged.map(m => {
+        if (m.id === streamingMsgId) return m;
+        const dbMsg = data.find(d => d.id === m.id);
+        if (dbMsg && (dbMsg.content?.length ?? 0) > (m.content?.length ?? 0)) {
+          return { ...m, content: dbMsg.content, in_progress: dbMsg.in_progress ?? m.in_progress };
+        }
+        return m;
+      });
     });
 
     // Check if there's an in_progress assistant message from another device
@@ -378,14 +383,16 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setMessages(prev => {
       const existingIds = new Set(prev.map(m => m.id));
       const newMsgs = allData.filter(m => !existingIds.has(m.id));
-      if (newMsgs.length > 0) {
-        return [...prev, ...newMsgs.map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" }))];
+      // Preserve all existing messages, only add truly new ones
+      const merged = [...prev];
+      for (const m of newMsgs) {
+        if (m.role === "assistant" && m.id === streamingMsgId) continue;
+        merged.push({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" });
       }
-      // Check for content updates — don't overwrite actively streamed messages
-      return prev.map(m => {
+      return merged.map(m => {
         if (m.id === streamingMsgId) return m;
         const dbMsg = allData.find(d => d.id === m.id);
-        if (dbMsg && dbMsg.content !== m.content) {
+        if (dbMsg && (dbMsg.content?.length ?? 0) > (m.content?.length ?? 0)) {
           return { ...m, content: dbMsg.content, in_progress: dbMsg.in_progress ?? m.in_progress };
         }
         return m;
