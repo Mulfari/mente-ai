@@ -1962,19 +1962,19 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="flex flex-col items-center justify-center h-full px-4 py-8">
+            <div className="flex flex-col items-center justify-center h-full px-4">
               <div className="w-full max-w-md">
                 {/* Hero */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-6">
                   {/* Gradient logo */}
-                  <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
                     style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-                    <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>VeChat</h1>
-                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.8)" }}>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-1.5" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+                  <p className="text-sm" style={{ color: "rgba(255,255,255,0.55)" }}>
                     Tu asistente de IA personal
                   </p>
                 </div>
@@ -1991,15 +1991,15 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
                 {/* Suggestions or blocked state */}
                 {isLoggedIn && (
-                  <div className="mt-8">
+                  <div>
                     {(() => {
                       const block = getBlockReason();
                       if (!block.canWrite) {
                         return (
                           <div className="text-center py-8">
-                            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
                               style={{ backgroundColor: "rgba(245,158,11,0.1)" }}>
-                              <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                              <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                                 style={{ color: "var(--warning)" }}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                               </svg>
@@ -2007,7 +2007,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                             <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--warning)" }}>
                               {"Suscripcion bloqueada"}
                             </p>
-                            <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.8)" }}>
+                            <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.6)" }}>
                               {block.reason}
                             </p>
                             <button onClick={() => setShowAccountMenu(true)}
@@ -2028,10 +2028,11 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                           </div>
                         );
                       }
+
                       return (
-                        <div className="flex flex-col items-center gap-4">
-                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
-                            Elige una pregunta o escribe tu propio mensaje
+                        <div className="flex flex-col items-center gap-3">
+                          <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
+                            Elige una pregunta o escribe tu mensaje
                           </p>
                           <div className="flex justify-center gap-2 flex-wrap">
                             {suggestions.map((s, i) => (
