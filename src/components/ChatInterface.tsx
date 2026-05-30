@@ -1962,7 +1962,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="flex flex-col items-center justify-start h-full px-4 py-8">
+            <div className="flex flex-col items-center justify-center h-full px-4 py-8">
               <div className="w-full max-w-md">
                 {/* Hero */}
                 <div className="text-center mb-8">
@@ -1991,7 +1991,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
                 {/* Suggestions or blocked state */}
                 {isLoggedIn && (
-                  <div className="mt-6">
+                  <div className="mt-8">
                     {(() => {
                       const block = getBlockReason();
                       if (!block.canWrite) {
@@ -2019,9 +2019,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                         );
                       }
 
-                      {/* Empty chat bubble — visual anchor for the conversation */}
-                      <div className="flex flex-col items-center mb-6">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3"
+                      {/* Empty chat bubble — visual anchor, centered above suggestions */}
+                      <div className="flex flex-col items-center mb-5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-2"
                           style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
                           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
