@@ -325,6 +325,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       const newMsgs = data.filter(m => !existingIds.has(m.id));
       if (newMsgs.length === 0) {
         return prev.map(m => {
+          // Don't overwrite messages being actively streamed
+          if (m.id === streamingMsgId) return m;
           const dbMsg = data.find(d => d.id === m.id);
           if (dbMsg && dbMsg.content !== m.content) {
             return { ...m, content: dbMsg.content, in_progress: dbMsg.in_progress ?? m.in_progress };
@@ -379,8 +381,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       if (newMsgs.length > 0) {
         return [...prev, ...newMsgs.map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" }))];
       }
-      // Check for content updates
+      // Check for content updates — don't overwrite actively streamed messages
       return prev.map(m => {
+        if (m.id === streamingMsgId) return m;
         const dbMsg = allData.find(d => d.id === m.id);
         if (dbMsg && dbMsg.content !== m.content) {
           return { ...m, content: dbMsg.content, in_progress: dbMsg.in_progress ?? m.in_progress };
