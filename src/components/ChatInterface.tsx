@@ -1469,6 +1469,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </main>
 
       {/* Input area */}
+        <div className="flex-none flex items-center justify-center pb-4 pt-2">
         <ChatInput
           input={input}
           setInput={setInput}
@@ -1483,6 +1484,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
           onRemoveAttachment={removeAttachment}
         />
+        </div>
         </div>
         {showAuthPrompt && <AuthModal onSuccess={() => {
           setShowAuthPrompt(false);
