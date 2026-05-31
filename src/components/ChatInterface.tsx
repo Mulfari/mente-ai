@@ -1459,6 +1459,20 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               submitSuggestion={submitSuggestion}
               onShowAuthPrompt={() => setShowAuthPrompt(true)}
               onShowAccountMenu={() => setShowAccountMenu(true)}
+              chatInputProps={{
+                input,
+                setInput,
+                sending,
+                attachments,
+                previewUrls,
+                responseMode,
+                setResponseMode,
+                getBlockReason,
+                isLoggedIn,
+                onSend: sendMessage,
+                onFileSelect: (files) => handleFileSelect({ target: { files } } as any),
+                onRemoveAttachment: removeAttachment,
+              }}
             />
           ) : (<MessageList
               messages={messages}

@@ -1,10 +1,29 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
+
+const ChatInput = dynamic(() => import("./ChatInput"));
 
 type BlockReason = {
   canWrite: boolean;
+  canSend: boolean;
   reason: string;
+};
+
+type ChatInputProps = {
+  input: string;
+  setInput: (val: string) => void;
+  sending: boolean;
+  attachments: any[];
+  previewUrls: Record<string, string>;
+  responseMode: "normal" | "deep";
+  setResponseMode: (mode: "normal" | "deep") => void;
+  getBlockReason: () => BlockReason;
+  isLoggedIn: boolean;
+  onSend: () => void;
+  onFileSelect: (files: File[]) => void;
+  onRemoveAttachment: (name: string, size: number) => void;
 };
 
 type Props = {
@@ -15,6 +34,7 @@ type Props = {
   submitSuggestion: (s: string) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
+  chatInputProps?: ChatInputProps;
 };
 
 export default function EmptyState({
@@ -25,6 +45,7 @@ export default function EmptyState({
   submitSuggestion,
   onShowAuthPrompt,
   onShowAccountMenu,
+  chatInputProps,
 }: Props) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
@@ -55,7 +76,7 @@ export default function EmptyState({
         )}
 
         {/* Suggestions or blocked state */}
-        {isLoggedIn && (
+        {isLoggedIn && chatInputProps && (
           <div>
             {(() => {
               const block = getBlockReason();
@@ -96,24 +117,29 @@ export default function EmptyState({
 
               return (
                 <div className="flex flex-col items-center gap-3">
-                  <p className="text-xs" style={{ color: "rgba(255,255,255,0.35)" }}>
-                    Elige una pregunta o escribe tu mensaje
-                  </p>
-                  <div className="flex justify-center gap-2 flex-wrap">
-                    {suggestions.map((s, i) => (
-                      <button key={i} onClick={() => submitSuggestion(s)}
-                        className="text-left px-4 py-2 rounded-full text-xs transition-all flex items-center gap-2 group"
-                        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "rgba(255,255,255,0.7)" }}>
-                        <span className="w-4 h-4 rounded flex items-center justify-center shrink-0"
-                          style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
-                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                          </svg>
-                        </span>
-                        <span className="group-hover:text-[var(--primary)] transition-colors whitespace-nowrap">{s}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <ChatInput {...chatInputProps} />
+                  {suggestions.length > 0 && (
+                    <>
+                      <p className="text-xs mt-4" style={{ color: "rgba(255,255,255,0.35)" }}>
+                        O elige una pregunta
+                      </p>
+                      <div className="flex justify-center gap-2 flex-wrap">
+                        {suggestions.map((s, i) => (
+                          <button key={i} onClick={() => submitSuggestion(s)}
+                            className="text-left px-4 py-2 rounded-full text-xs transition-all flex items-center gap-2 group"
+                            style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "rgba(255,255,255,0.7)" }}>
+                            <span className="w-4 h-4 rounded flex items-center justify-center shrink-0"
+                              style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
+                              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                              </svg>
+                            </span>
+                            <span className="group-hover:text-[var(--primary)] transition-colors whitespace-nowrap">{s}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               );
             })()}
