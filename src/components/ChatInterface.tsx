@@ -1469,64 +1469,64 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="w-full flex flex-col items-center" style={{ minHeight: "100%" }}>
-              {/* Zone 1: Logo + title - at top */}
-              <div className="text-center pt-12 pb-8">
-                <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
-                  style={{
-                    background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
-                    boxShadow: "0 0 40px color-mix(in srgb, var(--primary) 30%, transparent)",
-                  }}>
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
+            <div className="w-full flex flex-col" style={{ minHeight: "100%" }}>
+              {/* Logo + Input - centered in available space */}
+              <div className="flex-1 flex flex-col items-center justify-center px-4">
+                {/* Logo + Title */}
+                <div className="text-center mb-6">
+                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                    style={{
+                      background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+                      boxShadow: "0 0 40px color-mix(in srgb, var(--primary) 30%, transparent)",
+                    }}>
+                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                    </svg>
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>VeChat</h1>
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>VeChat</h1>
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
-                  Tu asistente de IA personal
-                </p>
+
+                {/* Input */}
+                <div className="w-full max-w-2xl">
+                  <ChatInput
+                    input={input}
+                    setInput={setInput}
+                    sending={sending}
+                    attachments={attachments}
+                    previewUrls={previewUrls}
+                    responseMode={responseMode}
+                    setResponseMode={setResponseMode}
+                    getBlockReason={getBlockReason}
+                    isLoggedIn={isLoggedIn}
+                    onSend={sendMessage}
+                    onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+                    onRemoveAttachment={removeAttachment}
+                  />
+                </div>
               </div>
 
-              {/* Zone 2: Input - in middle */}
-              <div className="w-full max-w-2xl px-4">
-                <ChatInput
-                  input={input}
-                  setInput={setInput}
-                  sending={sending}
-                  attachments={attachments}
-                  previewUrls={previewUrls}
-                  responseMode={responseMode}
-                  setResponseMode={setResponseMode}
-                  getBlockReason={getBlockReason}
-                  isLoggedIn={isLoggedIn}
-                  onSend={sendMessage}
-                  onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
-                  onRemoveAttachment={removeAttachment}
-                />
-              </div>
-
-              {/* Zone 3: Suggestions - at bottom */}
-              <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto px-4 pt-8 pb-12">
+              {/* Suggestions - at bottom */}
+              <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto px-4 pb-10">
                 {(() => {
                   const block = getBlockReason();
                   if (!block.canWrite) {
                     return (
-                      <div className="text-center py-6">
-                        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                      <div className="text-center">
+                        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-2"
                           style={{ backgroundColor: "rgba(245,158,11,0.1)" }}>
-                          <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
                             style={{ color: "var(--warning)" }}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                           </svg>
                         </div>
-                        <p className="text-sm font-semibold mb-1.5" style={{ color: "var(--warning)" }}>
+                        <p className="text-xs font-semibold mb-1" style={{ color: "var(--warning)" }}>
                           {"Suscripcion bloqueada"}
                         </p>
-                        <p className="text-xs mb-4" style={{ color: "rgba(255,255,255,0.6)" }}>
+                        <p className="text-xs mb-3" style={{ color: "rgba(255,255,255,0.5)" }}>
                           {block.reason}
                         </p>
                         <button onClick={() => setShowAccountMenu(true)}
-                          className="px-6 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
+                          className="px-5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90"
                           style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
                           Anadir tiempo
                         </button>
@@ -1538,7 +1538,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                     return (
                       <div className="flex justify-center gap-2 flex-wrap">
                         {[0, 1, 2, 3].map(i => (
-                          <div key={i} className="h-9 w-36 rounded-full animate-pulse" style={{ backgroundColor: "var(--surface)" }} />
+                          <div key={i} className="h-8 w-32 rounded-full animate-pulse" style={{ backgroundColor: "var(--surface)" }} />
                         ))}
                       </div>
                     );
@@ -1547,7 +1547,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                   if (!isLoggedIn) {
                     return (
                       <button onClick={() => setShowAuthPrompt(true)}
-                        className="px-8 py-3.5 rounded-2xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
+                        className="px-8 py-3 rounded-2xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
                         style={{
                           background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
                           color: "white",
@@ -1559,30 +1559,25 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                   }
 
                   return (
-                    <>
-                      <p className="text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
-                        Elige una pregunta o escribe abajo
-                      </p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {suggestions.map((s, i) => (
-                          <button key={i} onClick={() => submitSuggestion(s)}
-                            className="text-left px-4 py-2 rounded-2xl text-xs transition-all flex items-center gap-2 group"
-                            style={{
-                              backgroundColor: "var(--surface)",
-                              border: "1px solid var(--border)",
-                              color: "rgba(255,255,255,0.6)",
-                            }}>
-                            <span className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0"
-                              style={{ backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)", color: "var(--primary)" }}>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                              </svg>
-                            </span>
-                            <span className="group-hover:text-[var(--primary)] transition-colors">{s}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {suggestions.map((s, i) => (
+                        <button key={i} onClick={() => submitSuggestion(s)}
+                          className="text-left px-4 py-2 rounded-2xl text-xs transition-all flex items-center gap-2 group"
+                          style={{
+                            backgroundColor: "var(--surface)",
+                            border: "1px solid var(--border)",
+                            color: "rgba(255,255,255,0.6)",
+                          }}>
+                          <span className="w-5 h-5 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)", color: "var(--primary)" }}>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                            </svg>
+                          </span>
+                          <span className="group-hover:text-[var(--primary)] transition-colors">{s}</span>
+                        </button>
+                      ))}
+                    </div>
                   );
                 })()}
               </div>
