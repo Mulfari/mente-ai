@@ -1421,7 +1421,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </header>
 
         {/* Messages */}
-        <main className="flex-1 min-h-0 overflow-y-auto">
+        <main className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center py-6">
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
