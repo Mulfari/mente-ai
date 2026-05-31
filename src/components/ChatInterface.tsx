@@ -57,6 +57,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
+  const [inputAtCenter, setInputAtCenter] = useState(true);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
     typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
   );
@@ -749,6 +750,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setLoadingConvId(null);
     setIsLoadingMsgs(false);
     setShowSidebar(false);
+    setInputAtCenter(true);
     loadConversations();
     window.history.pushState(null, "", "/");
     loadSuggestions();
@@ -1142,6 +1144,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
+        setInputAtCenter(false);
         setConvJustStarted(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
@@ -1482,8 +1485,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           )}
         </main>
 
-        {/* Input area — always visible, animates on conversation start */}
-        <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${convJustStarted ? "slide-up" : ""}`}>
+        {/* Input area — always visible at bottom, slides up from center when conversation starts */}
+        <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${inputAtCenter ? "input-bottom-to-center" : convJustStarted ? "input-center-to-bottom" : ""}`}>
           <ChatInput
               input={input}
               setInput={setInput}
