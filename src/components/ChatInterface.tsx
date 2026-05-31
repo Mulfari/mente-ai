@@ -861,6 +861,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
+        setInputAtCenter(false);
+        setConvJustStarted(true);
         setConvLoaded(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
