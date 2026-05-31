@@ -362,6 +362,7 @@ html, body {
   top: 50%;
   transform: translateY(-50%);
   animation: none;
+  z-index: 50;
 }
 
 @keyframes input-center-to-bottom {
@@ -374,6 +375,7 @@ html, body {
   left: 0;
   right: 0;
   animation: input-center-to-bottom 0.6s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  z-index: 50;
 }
 
 @keyframes input-bottom-to-center {
