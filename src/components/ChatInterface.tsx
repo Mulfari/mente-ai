@@ -57,7 +57,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
-  const [messageSent, setMessageSent] = useState(false);
+  const [inputTransitioning, setInputTransitioning] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
     typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
   );
@@ -1144,7 +1144,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         conv = data;
         setActiveConv(data);
         setConvJustStarted(true);
-        setMessageSent(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
     }
@@ -1501,7 +1500,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
         {/* Input area — only show when there's an active conversation or messages */}
         {activeConv?.id || loadingConvId || messages.length > 0 ? (
-          <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${convJustStarted ? "slide-up" : ""}`}>
+          <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${convJustStarted ? "input-center-to-bottom" : ""}`}>
             <ChatInput
                 input={input}
                 setInput={setInput}
