@@ -1471,7 +1471,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       </div>
 
       {/* Input area */}
-      <div className="flex-none flex justify-center pb-4 pt-2">
+      <div className="w-full flex-none flex justify-center pb-4 pt-2">
         <ChatInput
               input={input}
               setInput={setInput}
