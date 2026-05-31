@@ -59,7 +59,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [convJustStarted, setConvJustStarted] = useState(false);
   const [inputAtCenter, setInputAtCenter] = useState(true);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
-    typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
+    typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "unlocked") as "locked" | "unlocked") : "unlocked"
   );
   const lockRef = useRef<SVGSVGElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
@@ -1378,6 +1378,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         onShowAccountMenu={() => setShowAccountMenu(true)}
         onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
         onCloseSidebar={() => setShowSidebar(false)}
+        sidebarLock={sidebarLock}
+        setSidebarLock={setSidebarLock}
+        sidebarHovered={sidebarHovered}
+        setSidebarHovered={setSidebarHovered}
       />
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 

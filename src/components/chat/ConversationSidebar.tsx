@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import SwipeableConversation from "./SwipeableConversation";
 
 type Conversation = {
@@ -36,6 +36,10 @@ type Props = {
   onShowAccountMenu: () => void;
   onSignOut: () => void;
   onCloseSidebar: () => void;
+  sidebarLock: "locked" | "unlocked";
+  setSidebarLock: (v: "locked" | "unlocked") => void;
+  sidebarHovered: boolean;
+  setSidebarHovered: (v: boolean) => void;
 };
 
 export default function ConversationSidebar({
@@ -53,9 +57,11 @@ export default function ConversationSidebar({
   onShowAccountMenu,
   onSignOut,
   onCloseSidebar,
+  sidebarLock,
+  setSidebarLock,
+  sidebarHovered,
+  setSidebarHovered,
 }: Props) {
-  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
-  const [sidebarHovered, setSidebarHovered] = useState(false);
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => { setMounted(true); }, []);
@@ -260,7 +266,7 @@ export default function ConversationSidebar({
               <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
             </div>
             <button
-              onClick={() => setSidebarLock(s => s === "locked" ? "unlocked" : "locked")}
+              onClick={() => setSidebarLock(sidebarLock === "locked" ? "unlocked" : "locked")}
               className="p-2 rounded-xl cursor-pointer"
               style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
               title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}
