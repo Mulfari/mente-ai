@@ -27,7 +27,7 @@ export default function EmptyState({
   onShowAccountMenu,
 }: Props) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4">
+    <div className="fixed inset-0 flex flex-col items-center justify-center px-4 pointer-events-none">
       <div className="w-full max-w-md">
         {/* Hero */}
         <div className="text-center mb-6">
