@@ -1485,7 +1485,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           )}
         </main>
 
-        {/* Input area — always visible at bottom, slides up from center when conversation starts */}
+        {/* Input area */}
+        {(activeConv?.id || convJustStarted || !inputAtCenter) && (
         <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${inputAtCenter ? "input-bottom-to-center" : convJustStarted ? "input-center-to-bottom" : ""}`}>
           <ChatInput
               input={input}
@@ -1502,6 +1503,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onRemoveAttachment={removeAttachment}
             />
         </div>
+        )}
       </div>
       {showAuthPrompt && <AuthModal onSuccess={() => {
           setShowAuthPrompt(false);
