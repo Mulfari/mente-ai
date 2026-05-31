@@ -1360,7 +1360,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         onShowAccountMenu={() => setShowAccountMenu(true)}
         onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
         onCloseSidebar={() => setShowSidebar(false)}
-      />      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
+      />
+      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
@@ -1467,22 +1468,26 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             />
           )}
         </main>
+      </div>
 
       {/* Input area */}
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          sending={sending}
-          attachments={attachments}
-          previewUrls={previewUrls}
-          responseMode={responseMode}
-          setResponseMode={setResponseMode}
-          getBlockReason={getBlockReason}
-          isLoggedIn={isLoggedIn}
-          onSend={sendMessage}
-          onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
-          onRemoveAttachment={removeAttachment}
-        />
+      <div className="flex-none flex items-center justify-center pb-4 pt-2">
+        <div className="w-full max-w-4xl px-4">
+          <ChatInput
+              input={input}
+              setInput={setInput}
+              sending={sending}
+              attachments={attachments}
+              previewUrls={previewUrls}
+              responseMode={responseMode}
+              setResponseMode={setResponseMode}
+              getBlockReason={getBlockReason}
+              isLoggedIn={isLoggedIn}
+              onSend={sendMessage}
+              onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+              onRemoveAttachment={removeAttachment}
+            />
+          </div>
         </div>
         {showAuthPrompt && <AuthModal onSuccess={() => {
           setShowAuthPrompt(false);
