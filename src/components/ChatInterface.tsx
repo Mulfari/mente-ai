@@ -57,6 +57,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
+  const [messageSent, setMessageSent] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
     typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
   );
@@ -74,7 +75,9 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   // Reset convJustStarted after animation completes
   useEffect(() => {
     if (convJustStarted) {
-      const timer = setTimeout(() => setConvJustStarted(false), 400);
+      const timer = setTimeout(() => {
+        setConvJustStarted(false);
+      }, 600);
       return () => clearTimeout(timer);
     }
   }, [convJustStarted]);
@@ -1141,6 +1144,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         conv = data;
         setActiveConv(data);
         setConvJustStarted(true);
+        setMessageSent(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
     }
