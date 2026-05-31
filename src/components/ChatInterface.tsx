@@ -1483,23 +1483,25 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           )}
         </main>
 
-        {/* Input area */}
-        <div className="w-full flex-none flex justify-center pb-4 pt-2">
-          <ChatInput
-              input={input}
-              setInput={setInput}
-              sending={sending}
-              attachments={attachments}
-              previewUrls={previewUrls}
-              responseMode={responseMode}
-              setResponseMode={setResponseMode}
-              getBlockReason={getBlockReason}
-              isLoggedIn={isLoggedIn}
-              onSend={sendMessage}
-              onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
-              onRemoveAttachment={removeAttachment}
-            />
-        </div>
+        {/* Input area — only show when there's an active conversation or messages */}
+        {activeConv?.id || loadingConvId || messages.length > 0 ? (
+          <div className="w-full flex-none flex justify-center pb-4 pt-2">
+            <ChatInput
+                input={input}
+                setInput={setInput}
+                sending={sending}
+                attachments={attachments}
+                previewUrls={previewUrls}
+                responseMode={responseMode}
+                setResponseMode={setResponseMode}
+                getBlockReason={getBlockReason}
+                isLoggedIn={isLoggedIn}
+                onSend={sendMessage}
+                onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+                onRemoveAttachment={removeAttachment}
+              />
+          </div>
+        ) : null}
       </div>
       {showAuthPrompt && <AuthModal onSuccess={() => {
           setShowAuthPrompt(false);
