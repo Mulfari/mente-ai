@@ -1363,7 +1363,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       />      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden absolute inset-0">
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Top bar */}
         <header className="h-14 flex items-center justify-center px-4 shrink-0 md:hidden"
           style={{
