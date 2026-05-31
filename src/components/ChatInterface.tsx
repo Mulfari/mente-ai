@@ -1363,7 +1363,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       />      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden h-screen">
         {/* Top bar */}
         <header className="h-14 flex items-center justify-center px-4 shrink-0 md:hidden"
           style={{
@@ -1421,7 +1421,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </header>
 
         {/* Messages */}
-        <main className="flex-1 min-h-0 overflow-y-auto flex flex-col justify-center py-6">
+        <main className="flex-1 overflow-y-auto flex flex-col justify-center py-6 h-full">
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}

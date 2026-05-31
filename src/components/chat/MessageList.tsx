@@ -37,7 +37,7 @@ export default function MessageList({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full max-w-4xl px-4 flex flex-col justify-center min-h-full">
+    <div className="w-full max-w-4xl px-4 flex-1 flex flex-col justify-center">
       {messages.map((msg) => (
         <MessageBubble
           key={msg.id}
