@@ -1487,23 +1487,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           )}
         </main>
 
-        {/* Input area */}
+        {/* Input area — outside overflow-hidden so position:fixed works */}
         {(inputAtCenter || activeConv?.id) && (
         <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${inputAtCenter ? "input-centered" : convJustStarted ? "input-center-to-bottom" : ""}`}>
           <ChatInput
-              input={input}
-              setInput={setInput}
-              sending={sending}
-              attachments={attachments}
-              previewUrls={previewUrls}
-              responseMode={responseMode}
-              setResponseMode={setResponseMode}
-              getBlockReason={getBlockReason}
-              isLoggedIn={isLoggedIn}
-              onSend={sendMessage}
-              onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
-              onRemoveAttachment={removeAttachment}
-            />
+            input={input}
+            setInput={setInput}
+            sending={sending}
+            attachments={attachments}
+            previewUrls={previewUrls}
+            responseMode={responseMode}
+            setResponseMode={setResponseMode}
+            getBlockReason={getBlockReason}
+            isLoggedIn={isLoggedIn}
+            onSend={sendMessage}
+            onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+            onRemoveAttachment={removeAttachment}
+          />
         </div>
         )}
       </div>
