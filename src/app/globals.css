@@ -354,6 +354,16 @@ html, body {
   animation: slide-up 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
+/* Input permanently centered — no animation, just fixed at center */
+.input-centered {
+  position: fixed !important;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  animation: none;
+}
+
 @keyframes input-center-to-bottom {
   0% { top: 50%; transform: translateY(-50%); opacity: 0; }
   20% { opacity: 1; }
