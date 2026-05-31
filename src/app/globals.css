@@ -345,6 +345,22 @@ html, body {
 .pop-check {
   animation: pop-check 0.3s ease-out forwards;
 }
+
+@keyframes slide-up {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.slide-up {
+  animation: slide-up 0.4s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+@keyframes fade-out {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.fade-out {
+  animation: fade-out 0.3s ease-out forwards;
+}
 .prose strong {
   font-weight: 600;
 }

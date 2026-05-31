@@ -56,6 +56,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [urlHasConv] = useState(!!convIdFromUrl);
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [convJustStarted, setConvJustStarted] = useState(false);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
     typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "locked") as "locked" | "unlocked") : "locked"
   );
@@ -69,6 +70,15 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
       localStorage.setItem("vechat-sidebar-lock", sidebarLock);
     }
   }, [sidebarLock]);
+
+  // Reset convJustStarted after animation completes
+  useEffect(() => {
+    if (convJustStarted) {
+      const timer = setTimeout(() => setConvJustStarted(false), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [convJustStarted]);
+
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAnimId, setCopiedAnimId] = useState<string | null>(null);
@@ -1130,6 +1140,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
+        setConvJustStarted(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
     }
@@ -1473,6 +1484,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 onFileSelect: (files) => handleFileSelect({ target: { files } } as any),
                 onRemoveAttachment: removeAttachment,
               }}
+              className={convJustStarted ? "fade-out" : ""}
             />
           ) : (<MessageList
               messages={messages}
@@ -1485,7 +1497,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
         {/* Input area — only show when there's an active conversation or messages */}
         {activeConv?.id || loadingConvId || messages.length > 0 ? (
-          <div className="w-full flex-none flex justify-center pb-4 pt-2">
+          <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${convJustStarted ? "slide-up" : ""}`}>
             <ChatInput
                 input={input}
                 setInput={setInput}

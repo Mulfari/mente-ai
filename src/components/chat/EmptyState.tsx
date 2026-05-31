@@ -35,6 +35,7 @@ type Props = {
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
   chatInputProps?: ChatInputProps;
+  className?: string;
 };
 
 export default function EmptyState({
@@ -46,9 +47,10 @@ export default function EmptyState({
   onShowAuthPrompt,
   onShowAccountMenu,
   chatInputProps,
+  className,
 }: Props) {
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+    <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 ${className || ""}`}>
       <div className="w-full max-w-md">
         {/* Hero */}
         <div className="text-center mb-8">
