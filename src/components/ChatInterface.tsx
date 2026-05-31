@@ -1487,9 +1487,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
             />
-          </div>
         </div>
-        {showAuthPrompt && <AuthModal onSuccess={() => {
+      </div>
+      {showAuthPrompt && <AuthModal onSuccess={() => {
           setShowAuthPrompt(false);
           window.location.reload();
         }} onClose={() => setShowAuthPrompt(false)} />}
