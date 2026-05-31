@@ -63,7 +63,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   );
   const lockRef = useRef<SVGSVGElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
-  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(true);
 
   // Persist sidebar lock state
   useEffect(() => {
