@@ -1486,7 +1486,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </main>
 
         {/* Input area */}
-        {(activeConv?.id || convJustStarted || !inputAtCenter) && (
+        {(!inputAtCenter || activeConv?.id) && (
         <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${inputAtCenter ? "input-bottom-to-center" : convJustStarted ? "input-center-to-bottom" : ""}`}>
           <ChatInput
               input={input}
