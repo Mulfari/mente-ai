@@ -57,7 +57,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
-  const [inputAtCenter, setInputAtCenter] = useState(true);
   const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
     typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "unlocked") as "locked" | "unlocked") : "unlocked"
   );
@@ -750,7 +749,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setLoadingConvId(null);
     setIsLoadingMsgs(false);
     setShowSidebar(false);
-    setInputAtCenter(true);
     loadConversations();
     window.history.pushState(null, "", "/");
     loadSuggestions();
@@ -861,7 +859,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
-        setInputAtCenter(false);
         setConvJustStarted(true);
         setConvLoaded(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
@@ -1146,7 +1143,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setConversations([data, ...conversations]);
         conv = data;
         setActiveConv(data);
-        setInputAtCenter(false);
         setConvJustStarted(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
       } else { setSending(false); return; }
@@ -1444,7 +1440,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </header>
 
         {/* Messages */}
-        <main className="flex-1 overflow-y-auto py-6">
+        <main className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col items-center justify-center" : ""}`}>
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
@@ -1473,15 +1469,33 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <EmptyState
-              isLoggedIn={isLoggedIn}
-              suggestions={suggestions}
-              suggestionsLoading={suggestionsLoading}
-              getBlockReason={getBlockReason}
-              submitSuggestion={submitSuggestion}
-              onShowAuthPrompt={() => setShowAuthPrompt(true)}
-              onShowAccountMenu={() => setShowAccountMenu(true)}
-            />
+            <div className="w-full flex flex-col items-center">
+              <EmptyState
+                isLoggedIn={isLoggedIn}
+                suggestions={suggestions}
+                suggestionsLoading={suggestionsLoading}
+                getBlockReason={getBlockReason}
+                submitSuggestion={submitSuggestion}
+                onShowAuthPrompt={() => setShowAuthPrompt(true)}
+                onShowAccountMenu={() => setShowAccountMenu(true)}
+              />
+              <div className="w-full max-w-2xl px-4 mt-6">
+                <ChatInput
+                  input={input}
+                  setInput={setInput}
+                  sending={sending}
+                  attachments={attachments}
+                  previewUrls={previewUrls}
+                  responseMode={responseMode}
+                  setResponseMode={setResponseMode}
+                  getBlockReason={getBlockReason}
+                  isLoggedIn={isLoggedIn}
+                  onSend={sendMessage}
+                  onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+                  onRemoveAttachment={removeAttachment}
+                />
+              </div>
+            </div>
           ) : (<MessageList
               messages={messages}
               streamingMsgId={streamingMsgId}
@@ -1491,9 +1505,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           )}
         </main>
 
-        {/* Input area — outside overflow-hidden so position:fixed works */}
-        {(inputAtCenter || activeConv?.id) && (
-        <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${inputAtCenter ? "input-centered" : convJustStarted ? "input-center-to-bottom" : ""}`}>
+        {/* Input area — at bottom when conversation is active */}
+        {activeConv?.id && (
+        <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${convJustStarted ? "slide-up" : ""}`}>
           <ChatInput
             input={input}
             setInput={setInput}
