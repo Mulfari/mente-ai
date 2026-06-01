@@ -1488,8 +1488,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 />
               </div>
 
-              {/* Welcome - ABOVE input, render after so it's on top */}
-              <div className="absolute text-center" style={{ left: "50%", top: "calc(50% - 120px)", transform: "translateX(-50%)" }}>
+              {/* Welcome - ABOVE input */}
+              <div className="absolute text-center" style={{ left: "50%", bottom: "calc(50% + 80px)", transform: "translateX(-50%)" }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
                   style={{
                     background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
