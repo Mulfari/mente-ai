@@ -1469,24 +1469,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="w-full h-full relative">
-              {/* Logo + Input - ALWAYS centered, never moves */}
-              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4">
-                {/* Logo + Title - compact, just above input */}
-                <div className="text-center mb-3">
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
-                    style={{
-                      background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
-                      boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
-                    }}>
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                    </svg>
-                  </div>
-                  <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+            <div className="w-full h-full relative flex flex-col items-center justify-center">
+              {/* Logo + Title - compact, above input */}
+              <div className="text-center mb-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+                  style={{
+                    background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+                    boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
+                  }}>
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
                 </div>
+                <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+              </div>
 
-                {/* Input */}
+              {/* Input - centered */}
+              <div className="w-full max-w-2xl px-4">
                 <ChatInput
                   input={input}
                   setInput={setInput}
@@ -1503,7 +1502,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 />
               </div>
 
-              {/* Suggestions - at bottom, overlaid (doesn't push content) */}
+              {/* Suggestions - at bottom, overlaid */}
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center gap-2 w-full max-w-lg mx-auto px-4 pb-8">
                 {(() => {
                   const block = getBlockReason();
