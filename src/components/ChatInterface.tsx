@@ -1472,21 +1472,21 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             <div className="w-full flex flex-col" style={{ minHeight: "100%" }}>
               {/* Logo + Input - centered in available space */}
               <div className="flex-1 flex flex-col items-center justify-center px-4">
-                {/* Logo + Title */}
-                <div className="text-center mb-6">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3"
+                {/* Logo + Title - compact, just above input */}
+                <div className="text-center mb-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
                     style={{
                       background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
-                      boxShadow: "0 0 40px color-mix(in srgb, var(--primary) 30%, transparent)",
+                      boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
                     }}>
-                    <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
                   </div>
-                  <h1 className="text-2xl sm:text-3xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+                  <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>VeChat</h1>
                 </div>
 
-                {/* Input */}
+                {/* Input - truly centered below logo */}
                 <div className="w-full max-w-2xl">
                   <ChatInput
                     input={input}
@@ -1506,7 +1506,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
 
               {/* Suggestions - at bottom */}
-              <div className="flex flex-col items-center gap-3 w-full max-w-lg mx-auto px-4 pb-10">
+              <div className="flex flex-col items-center gap-2 w-full max-w-lg mx-auto px-4 pb-8">
                 {(() => {
                   const block = getBlockReason();
                   if (!block.canWrite) {
