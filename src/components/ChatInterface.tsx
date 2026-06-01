@@ -1470,22 +1470,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
             <div className="w-full h-full relative">
-              {/* Welcome - relative to input, above it */}
-              <div className="absolute text-center" style={{ left: "50%", top: "calc(50% - 60px)", transform: "translateX(-50%)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
-                  style={{
-                    background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
-                    boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
-                  }}>
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </div>
-                <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>VeChat</h1>
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Tu asistente de IA personal</p>
-              </div>
-
-              {/* Input - FIXED at center */}
+              {/* Input - FIXED at center, render first */}
               <div className="absolute w-full max-w-2xl px-4" style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>
                 <ChatInput
                   input={input}
@@ -1501,6 +1486,21 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                   onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
                   onRemoveAttachment={removeAttachment}
                 />
+              </div>
+
+              {/* Welcome - ABOVE input, render after so it's on top */}
+              <div className="absolute text-center" style={{ left: "50%", top: "calc(50% - 70px)", transform: "translateX(-50%)", zIndex: 10 }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
+                  style={{
+                    background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+                    boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
+                  }}>
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Tu asistente de IA personal</p>
               </div>
 
               {/* Suggestions - at bottom */}
