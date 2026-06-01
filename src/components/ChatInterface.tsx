@@ -1469,9 +1469,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="w-full flex flex-col" style={{ minHeight: "100%" }}>
-              {/* Logo + Input - centered in available space */}
-              <div className="flex-1 flex flex-col items-center justify-center px-4">
+            <div className="w-full h-full relative">
+              {/* Logo + Input - ALWAYS centered, never moves */}
+              <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4">
                 {/* Logo + Title - compact, just above input */}
                 <div className="text-center mb-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
@@ -1486,27 +1486,25 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                   <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>VeChat</h1>
                 </div>
 
-                {/* Input - truly centered below logo */}
-                <div className="w-full max-w-2xl">
-                  <ChatInput
-                    input={input}
-                    setInput={setInput}
-                    sending={sending}
-                    attachments={attachments}
-                    previewUrls={previewUrls}
-                    responseMode={responseMode}
-                    setResponseMode={setResponseMode}
-                    getBlockReason={getBlockReason}
-                    isLoggedIn={isLoggedIn}
-                    onSend={sendMessage}
-                    onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
-                    onRemoveAttachment={removeAttachment}
-                  />
-                </div>
+                {/* Input */}
+                <ChatInput
+                  input={input}
+                  setInput={setInput}
+                  sending={sending}
+                  attachments={attachments}
+                  previewUrls={previewUrls}
+                  responseMode={responseMode}
+                  setResponseMode={setResponseMode}
+                  getBlockReason={getBlockReason}
+                  isLoggedIn={isLoggedIn}
+                  onSend={sendMessage}
+                  onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+                  onRemoveAttachment={removeAttachment}
+                />
               </div>
 
-              {/* Suggestions - at bottom */}
-              <div className="flex flex-col items-center gap-2 w-full max-w-lg mx-auto px-4 pb-8">
+              {/* Suggestions - at bottom, overlaid (doesn't push content) */}
+              <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center gap-2 w-full max-w-lg mx-auto px-4 pb-8">
                 {(() => {
                   const block = getBlockReason();
                   if (!block.canWrite) {
