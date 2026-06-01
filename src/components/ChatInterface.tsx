@@ -1469,9 +1469,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="w-full h-full relative flex flex-col items-center justify-center">
-              {/* Logo + Title - compact, above input */}
-              <div className="text-center mb-3">
+            <div className="w-full h-full relative">
+              {/* Logo - positioned above center */}
+              <div className="absolute text-center" style={{ left: "50%", top: "calc(50% - 90px)", transform: "translateX(-50%)" }}>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
                   style={{
                     background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
@@ -1484,8 +1484,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>VeChat</h1>
               </div>
 
-              {/* Input - centered */}
-              <div className="w-full max-w-2xl px-4">
+              {/* Input - EXACTLY at center of chat area */}
+              <div className="absolute w-full max-w-2xl px-4" style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>
                 <ChatInput
                   input={input}
                   setInput={setInput}
@@ -1502,7 +1502,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 />
               </div>
 
-              {/* Suggestions - at bottom, overlaid */}
+              {/* Suggestions - at bottom */}
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center gap-2 w-full max-w-lg mx-auto px-4 pb-8">
                 {(() => {
                   const block = getBlockReason();
