@@ -1470,9 +1470,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
             <div className="w-full h-full relative">
-              {/* Logo - positioned above center */}
-              <div className="absolute text-center" style={{ left: "50%", top: "calc(50% - 90px)", transform: "translateX(-50%)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-2"
+              {/* Welcome message - above center */}
+              <div className="absolute text-center" style={{ left: "50%", top: "calc(50% - 100px)", transform: "translateX(-50%)" }}>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
                   style={{
                     background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
                     boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
@@ -1481,7 +1481,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-bold" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+                <h1 className="text-xl sm:text-2xl font-bold mb-2" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Tu asistente de IA personal</p>
               </div>
 
               {/* Input - EXACTLY at center of chat area */}
