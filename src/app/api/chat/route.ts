@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import * as jose from "jose";
 
 const VPS_SECRET = process.env.VPS_SECRET || "";
-const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
+const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://localhost:3000";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
 const TIMEOUT_MS = 300_000;

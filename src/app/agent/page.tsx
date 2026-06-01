@@ -38,7 +38,7 @@ const CITIES = [
   { label: "Ciudad Bolívar", value: "Ciudad Bolívar" },
 ];
 
-const VPS_URL = "http://177.7.46.156:3000";
+const VPS_URL = process.env.NEXT_PUBLIC_VPS_ORCHESTRATOR_URL || "http://localhost:3000";
 
 function formatTime(date: string) {
   return new Date(date).toLocaleTimeString("es-VE", { hour: "2-digit", minute: "2-digit" });
