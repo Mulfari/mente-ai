@@ -1469,9 +1469,24 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </div>
             </div>
           ) : (!activeConv?.id && !loadingConvId && messages.length === 0) ? (
-            <div className="w-full h-full relative">
-              {/* Input - FIXED at center, render first */}
-              <div className="absolute w-full max-w-2xl px-4" style={{ left: "50%", top: "50%", transform: "translate(-50%, -50%)" }}>
+            <div className="w-full h-full relative flex flex-col items-center justify-center">
+              {/* Welcome - above input, normal flow */}
+              <div className="text-center mb-6">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
+                  style={{
+                    background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+                    boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
+                  }}>
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>VeChat</h1>
+                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Tu asistente de IA personal</p>
+              </div>
+
+              {/* Input - centered */}
+              <div className="w-full max-w-2xl px-4">
                 <ChatInput
                   input={input}
                   setInput={setInput}
@@ -1488,22 +1503,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 />
               </div>
 
-              {/* Welcome - ABOVE input */}
-              <div className="absolute text-center" style={{ left: "50%", bottom: "calc(50% + 80px)", transform: "translateX(-50%)" }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3"
-                  style={{
-                    background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
-                    boxShadow: "0 0 30px color-mix(in srgb, var(--primary) 30%, transparent)",
-                  }}>
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </div>
-                <h1 className="text-xl sm:text-2xl font-bold mb-1" style={{ color: "var(--text-primary)" }}>VeChat</h1>
-                <p className="text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>Tu asistente de IA personal</p>
-              </div>
-
-              {/* Suggestions - at bottom */}
+              {/* Suggestions - at bottom absolute */}
               <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center gap-2 w-full max-w-lg mx-auto px-4 pb-8">
                 {(() => {
                   const block = getBlockReason();
