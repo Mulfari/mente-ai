@@ -33,17 +33,6 @@ type Props = ChatInputProps & {
   onShowAccountMenu: () => void;
 };
 
-// Suggestions come from /api/suggestions in this fixed order.
-// Index N = category N. Used for icon + color per card.
-const SUGGESTION_CATEGORIES = [
-  { color: "#A78BFA", label: "Crear" },
-  { color: "#60A5FA", label: "Aprender" },
-  { color: "#34D399", label: "Productividad" },
-  { color: "#F472B6", label: "Vida" },
-] as const;
-
-type Period = "morning" | "afternoon" | "evening";
-
 const OPENERS_NO_NAME = [
   "¿Qué te trae por aquí?",
   "¿En qué te ayudo?",
@@ -65,12 +54,6 @@ const OPENERS_WITH_NAME = [
 ];
 
 const FALLBACK_BRAND = "VeChat";
-
-function getPeriod(hour: number): Period {
-  if (hour < 12) return "morning";
-  if (hour < 19) return "afternoon";
-  return "evening";
-}
 
 function getFirstName(fullName?: string): string | null {
   const trimmed = fullName?.trim();
@@ -115,11 +98,11 @@ export default function EmptyState(props: Props) {
       className="flex flex-col items-center min-h-full px-4"
       style={{ animation: "fadeIn 0.5s ease-out" }}
     >
-      <div className="flex-[2] w-full" aria-hidden />
-      <div className="w-full max-w-2xl flex flex-col items-center pb-24 sm:pb-32">
+      <div className="flex-[2.5] w-full" aria-hidden />
+      <div className="w-full max-w-2xl flex flex-col items-center pb-16 sm:pb-20">
         <Hero opener={opener} />
 
-        <div className="w-full mt-6">
+        <div className="w-full mt-5">
           <ChatInput
             {...chatInputProps}
             getBlockReason={getBlockReason}
@@ -127,7 +110,7 @@ export default function EmptyState(props: Props) {
           />
         </div>
 
-        <div className="w-full mt-12 sm:mt-14">
+        <div className="w-full mt-8">
           <Footer
             isLoggedIn={isLoggedIn}
             suggestions={suggestions}
@@ -147,12 +130,12 @@ export default function EmptyState(props: Props) {
 function Hero({ opener }: { opener: string }) {
   return (
     <header className="text-center">
-      <h1
-        className="text-4xl sm:text-5xl font-medium tracking-tight"
-        style={{ color: "var(--text-primary)" }}
+      <p
+        className="text-2xl sm:text-3xl font-medium tracking-tight"
+        style={{ color: "var(--text-secondary)" }}
       >
         {opener}
-      </h1>
+      </p>
     </header>
   );
 }
@@ -248,11 +231,11 @@ function SubscriptionBlocked({ reason, onAddTime }: { reason: string; onAddTime:
 
 function SuggestionsSkeleton() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="h-20 rounded-2xl animate-pulse"
+          className="h-12 rounded-2xl animate-pulse"
           style={{ backgroundColor: "var(--surface)" }}
         />
       ))}
@@ -268,75 +251,32 @@ function SuggestionsGrid({
   onClick: (s: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
-      {suggestions.map((s, i) => {
-        const cat = SUGGESTION_CATEGORIES[i % SUGGESTION_CATEGORIES.length];
-        return (
-          <button
-            key={i}
-            onClick={() => onClick(s)}
-            className="text-left p-4 rounded-2xl transition-all group hover:-translate-y-0.5"
-            style={{
-              backgroundColor: "var(--surface)",
-              border: "1px solid var(--border)",
-              animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = cat.color;
-              e.currentTarget.style.backgroundColor = "var(--surface-hover)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = "var(--border)";
-              e.currentTarget.style.backgroundColor = "var(--surface)";
-            }}
-          >
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center mb-3"
-              style={{
-                backgroundColor: `${cat.color}1A`,
-                color: cat.color,
-              }}
-            >
-              <CategoryIcon index={i} />
-            </div>
-            <p
-              className="text-sm leading-snug"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {s}
-            </p>
-            <p
-              className="text-xs mt-1.5"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {cat.label}
-            </p>
-          </button>
-        );
-      })}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+      {suggestions.map((s, i) => (
+        <button
+          key={i}
+          onClick={() => onClick(s)}
+          className="text-left px-4 py-3 rounded-2xl text-sm leading-snug transition-colors"
+          style={{
+            color: "var(--text-secondary)",
+            backgroundColor: "transparent",
+            border: "1px solid var(--border)",
+            animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = "var(--surface-hover)";
+            e.currentTarget.style.color = "var(--text-primary)";
+            e.currentTarget.style.borderColor = "color-mix(in srgb, var(--text-tertiary) 30%, transparent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = "transparent";
+            e.currentTarget.style.color = "var(--text-secondary)";
+            e.currentTarget.style.borderColor = "var(--border)";
+          }}
+        >
+          {s}
+        </button>
+      ))}
     </div>
   );
-}
-
-function CategoryIcon({ index }: { index: number }) {
-  // One icon per category, matched by index (creativity/learning/productivity/life).
-  const icons = [
-    // creativity — sparkles
-    <svg key="c" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-    </svg>,
-    // learning — book
-    <svg key="l" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
-    </svg>,
-    // productivity — target
-    <svg key="p" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>,
-    // life — heart
-    <svg key="li" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-    </svg>,
-  ];
-  return icons[index % icons.length];
 }
