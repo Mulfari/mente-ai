@@ -44,30 +44,27 @@ const SUGGESTION_CATEGORIES = [
 
 type Period = "morning" | "afternoon" | "evening";
 
-const GREETINGS: Record<Period, string[]> = {
-  morning: [
-    "Buenos días, {name}",
-    "Buenas, {name}",
-    "Hola, {name}, ¿qué se te ofrece esta mañana?",
-  ],
-  afternoon: [
-    "Buenas tardes, {name}",
-    "Qué hay, {name}",
-    "Hey {name}, ¿qué necesitas?",
-  ],
-  evening: [
-    "Buenas noches, {name}",
-    "Hola, {name}",
-    "Aún despierto, ¿qué te cuento?",
-  ],
-};
-
-const SUBGREETINGS = [
+const OPENERS_NO_NAME = [
+  "¿Qué te trae por aquí?",
   "¿En qué te ayudo?",
-  "¿Qué quieres saber hoy?",
-  "Cuéntame qué necesitas",
-  "Dime, ¿qué se te ofrece?",
+  "Dime, ¿qué necesitas?",
+  "Pregunta lo que quieras",
+  "¿Qué quieres saber?",
+  "¿Qué se te ocurre?",
+  "Cuéntame",
+  "¿Qué tienes en mente?",
 ];
+
+const OPENERS_WITH_NAME = [
+  "Dime, {name}",
+  "{name}, ¿qué te trae por aquí?",
+  "Hola, {name}",
+  "Cuéntame, {name}",
+  "¿Qué necesitas, {name}?",
+  "{name}, ¿qué se te ofrece?",
+];
+
+const FALLBACK_BRAND = "VeChat";
 
 function getPeriod(hour: number): Period {
   if (hour < 12) return "morning";
@@ -85,18 +82,16 @@ function pickDaily<T>(arr: readonly T[], salt: number): T {
   return arr[salt % arr.length];
 }
 
-function useGreeting(firstName: string | null) {
+function useOpener(firstName: string | null, isLoggedIn: boolean) {
   return React.useMemo(() => {
     const now = new Date();
     const salt = now.getDate() + now.getMonth() * 31;
-    if (!firstName) {
-      return { greeting: "VeChat", subgreeting: "Tu asistente de IA personal" };
+    if (!isLoggedIn) return FALLBACK_BRAND;
+    if (firstName) {
+      return pickDaily(OPENERS_WITH_NAME, salt).replace("{name}", firstName);
     }
-    const period = getPeriod(now.getHours());
-    const greeting = pickDaily(GREETINGS[period], salt).replace("{name}", firstName);
-    const subgreeting = pickDaily(SUBGREETINGS, salt + 7);
-    return { greeting, subgreeting };
-  }, [firstName]);
+    return pickDaily(OPENERS_NO_NAME, salt);
+  }, [firstName, isLoggedIn]);
 }
 
 export default function EmptyState(props: Props) {
@@ -113,7 +108,7 @@ export default function EmptyState(props: Props) {
   } = props;
 
   const firstName = getFirstName(userName);
-  const { greeting, subgreeting } = useGreeting(firstName);
+  const opener = useOpener(firstName, isLoggedIn);
 
   return (
     <div
@@ -121,7 +116,7 @@ export default function EmptyState(props: Props) {
       style={{ animation: "fadeIn 0.5s ease-out" }}
     >
       <div className="w-full max-w-2xl flex flex-col items-center gap-8 sm:gap-10">
-        <Hero greeting={greeting} subgreeting={subgreeting} />
+        <Hero opener={opener} />
 
         <div className="w-full">
           <ChatInput
@@ -145,7 +140,7 @@ export default function EmptyState(props: Props) {
   );
 }
 
-function Hero({ greeting, subgreeting }: { greeting: string; subgreeting: string }) {
+function Hero({ opener }: { opener: string }) {
   return (
     <header className="text-center">
       <div
@@ -163,14 +158,8 @@ function Hero({ greeting, subgreeting }: { greeting: string; subgreeting: string
         className="text-3xl sm:text-4xl font-medium tracking-tight"
         style={{ color: "var(--text-primary)" }}
       >
-        {greeting}
+        {opener}
       </h1>
-      <p
-        className="mt-2 text-sm sm:text-base"
-        style={{ color: "var(--text-secondary)" }}
-      >
-        {subgreeting}
-      </p>
     </header>
   );
 }
