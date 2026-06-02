@@ -42,17 +42,61 @@ const SUGGESTION_CATEGORIES = [
   { color: "#F472B6", label: "Vida" },
 ] as const;
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return "Buenos días";
-  if (h < 19) return "Buenas tardes";
-  return "Buenas noches";
+type Period = "morning" | "afternoon" | "evening";
+
+const GREETINGS: Record<Period, string[]> = {
+  morning: [
+    "Buenos días, {name}",
+    "Buenas, {name}",
+    "Hola, {name}, ¿qué se te ofrece esta mañana?",
+  ],
+  afternoon: [
+    "Buenas tardes, {name}",
+    "Qué hay, {name}",
+    "Hey {name}, ¿qué necesitas?",
+  ],
+  evening: [
+    "Buenas noches, {name}",
+    "Hola, {name}",
+    "Aún despierto, ¿qué te cuento?",
+  ],
+};
+
+const SUBGREETINGS = [
+  "¿En qué te ayudo?",
+  "¿Qué quieres saber hoy?",
+  "Cuéntame qué necesitas",
+  "Dime, ¿qué se te ofrece?",
+];
+
+function getPeriod(hour: number): Period {
+  if (hour < 12) return "morning";
+  if (hour < 19) return "afternoon";
+  return "evening";
 }
 
 function getFirstName(fullName?: string): string | null {
   const trimmed = fullName?.trim();
   if (!trimmed) return null;
   return trimmed.split(/\s+/)[0];
+}
+
+function pickDaily<T>(arr: readonly T[], salt: number): T {
+  return arr[salt % arr.length];
+}
+
+function useGreeting(firstName: string | null) {
+  return React.useMemo(() => {
+    const now = new Date();
+    const salt = now.getDate() + now.getMonth() * 31;
+    if (!firstName) {
+      return { greeting: "VeChat", subgreeting: "Tu asistente de IA personal" };
+    }
+    const period = getPeriod(now.getHours());
+    const greeting = pickDaily(GREETINGS[period], salt).replace("{name}", firstName);
+    const subgreeting = pickDaily(SUBGREETINGS, salt + 7);
+    return { greeting, subgreeting };
+  }, [firstName]);
 }
 
 export default function EmptyState(props: Props) {
@@ -68,8 +112,8 @@ export default function EmptyState(props: Props) {
     ...chatInputProps
   } = props;
 
-  const greeting = getGreeting();
   const firstName = getFirstName(userName);
+  const { greeting, subgreeting } = useGreeting(firstName);
 
   return (
     <div
@@ -77,7 +121,7 @@ export default function EmptyState(props: Props) {
       style={{ animation: "fadeIn 0.5s ease-out" }}
     >
       <div className="w-full max-w-2xl flex flex-col items-center gap-8 sm:gap-10">
-        <Hero firstName={firstName} greeting={greeting} />
+        <Hero greeting={greeting} subgreeting={subgreeting} />
 
         <div className="w-full">
           <ChatInput
@@ -101,7 +145,7 @@ export default function EmptyState(props: Props) {
   );
 }
 
-function Hero({ firstName, greeting }: { firstName: string | null; greeting: string }) {
+function Hero({ greeting, subgreeting }: { greeting: string; subgreeting: string }) {
   return (
     <header className="text-center">
       <div
@@ -119,13 +163,13 @@ function Hero({ firstName, greeting }: { firstName: string | null; greeting: str
         className="text-3xl sm:text-4xl font-medium tracking-tight"
         style={{ color: "var(--text-primary)" }}
       >
-        {firstName ? `${greeting}, ${firstName}` : "VeChat"}
+        {greeting}
       </h1>
       <p
         className="mt-2 text-sm sm:text-base"
         style={{ color: "var(--text-secondary)" }}
       >
-        {firstName ? "Listo para ayudarte cuando quieras" : "Tu asistente de IA personal"}
+        {subgreeting}
       </p>
     </header>
   );
