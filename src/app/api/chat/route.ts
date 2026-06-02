@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
 
-const VPS_SECRET = process.env.VPS_SECRET || "";
+const VPS_SECRET = process.env.VPS_SECRET || process.env.VPS_SHARED_SECRET || "";
 const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://localhost:3000";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
@@ -143,6 +143,7 @@ export async function POST(request: Request) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               token: vpsToken,
+              user_id: user.id,
               message_id: assistantMsgId,
               conversation_id: conversation_id || null,
               mode: mode || "normal",
