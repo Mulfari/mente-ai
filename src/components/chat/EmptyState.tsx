@@ -112,10 +112,11 @@ export default function EmptyState(props: Props) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center min-h-full px-4"
+      className="flex flex-col items-center min-h-full px-4"
       style={{ animation: "fadeIn 0.5s ease-out" }}
     >
-      <div className="w-full max-w-2xl flex flex-col items-center pt-16 pb-24 sm:pt-24 sm:pb-32">
+      <div className="flex-[2] w-full" aria-hidden />
+      <div className="w-full max-w-2xl flex flex-col items-center pb-24 sm:pb-32">
         <Hero opener={opener} />
 
         <div className="w-full mt-6">
@@ -138,6 +139,7 @@ export default function EmptyState(props: Props) {
           />
         </div>
       </div>
+      <div className="flex-1 w-full" aria-hidden />
     </div>
   );
 }
