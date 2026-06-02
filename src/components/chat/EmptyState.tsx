@@ -142,20 +142,9 @@ export default function EmptyState(props: Props) {
 
 function Hero({ opener }: { opener: string }) {
   return (
-    <header className="text-center">
-      <div
-        className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-        style={{
-          background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
-          boxShadow: "0 0 40px color-mix(in srgb, var(--primary) 30%, transparent)",
-        }}
-      >
-        <svg className="w-7 h-7 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-        </svg>
-      </div>
+    <header className="text-center pt-2">
       <h1
-        className="text-3xl sm:text-4xl font-medium tracking-tight"
+        className="text-4xl sm:text-5xl font-medium tracking-tight"
         style={{ color: "var(--text-primary)" }}
       >
         {opener}
