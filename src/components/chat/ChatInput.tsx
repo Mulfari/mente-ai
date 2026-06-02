@@ -97,13 +97,13 @@ export default function ChatInput({
 
         {/* Single-line input pill */}
         <div
-          className="relative flex items-center gap-1 rounded-full pl-4 pr-1.5 py-1.5 transition-all duration-200"
+          className="relative flex items-center gap-1.5 rounded-full pl-5 pr-2 py-3 transition-all duration-200"
           style={{
             backgroundColor: "rgba(30,30,34,0.9)",
             border: `1px solid ${isFocused ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)"}`,
             boxShadow: isFocused
-              ? "0 0 0 3px color-mix(in srgb, var(--primary) 12%, transparent), 0 8px 32px rgba(0,0,0,0.4)"
-              : "0 4px 16px rgba(0,0,0,0.25)",
+              ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent), 0 12px 40px rgba(0,0,0,0.4)"
+              : "0 6px 24px rgba(0,0,0,0.3)",
           }}
           onFocus={() => setIsFocused(true)}
           onBlur={(e) => {
@@ -116,11 +116,11 @@ export default function ChatInput({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={attachments.length >= 3 || !block.canWrite || sending}
-            className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:bg-white/10 disabled:opacity-30"
+            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-colors hover:bg-white/10 disabled:opacity-30"
             style={{ color: "var(--text-tertiary)" }}
             title="Adjuntar archivo"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
             </svg>
           </button>
@@ -144,7 +144,7 @@ export default function ChatInput({
               return "Pregúntale algo a VeChat...";
             })()}
             disabled={sending || !block.canWrite}
-            className="flex-1 min-w-0 bg-transparent text-sm outline-none h-8 placeholder:text-[var(--text-tertiary)]"
+            className="flex-1 min-w-0 bg-transparent text-base outline-none h-12 placeholder:text-[var(--text-tertiary)]"
             style={{ color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)" }}
           />
 
@@ -152,7 +152,7 @@ export default function ChatInput({
           <button
             onClick={() => setResponseMode(responseMode === "normal" ? "deep" : "normal")}
             disabled={!block.canWrite}
-            className="shrink-0 flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium transition-all"
+            className="shrink-0 flex items-center gap-1.5 h-12 px-4 rounded-full text-sm font-medium transition-all"
             style={{
               color: responseMode === "deep" ? "#a78bfa" : "var(--text-tertiary)",
               backgroundColor: responseMode === "deep" ? "rgba(167,139,250,0.12)" : "transparent",
@@ -176,11 +176,11 @@ export default function ChatInput({
             }}
           >
             {responseMode === "normal" ? (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             ) : (
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             )}
@@ -191,7 +191,7 @@ export default function ChatInput({
           <button
             onClick={onSend}
             disabled={!canSend}
-            className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200"
+            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200"
             style={{
               background: canSend
                 ? "linear-gradient(135deg, var(--primary), var(--primary-hover))"
@@ -210,7 +210,7 @@ export default function ChatInput({
               if (canSend) e.currentTarget.style.transform = "scale(1)";
             }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
             </svg>
           </button>
