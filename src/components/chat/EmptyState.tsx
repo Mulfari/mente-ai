@@ -112,13 +112,13 @@ export default function EmptyState(props: Props) {
 
   return (
     <div
-      className="flex flex-col items-center justify-center min-h-full px-4 py-12 sm:py-20"
+      className="flex flex-col items-center justify-center min-h-full px-4"
       style={{ animation: "fadeIn 0.5s ease-out" }}
     >
-      <div className="w-full max-w-2xl flex flex-col items-center gap-8 sm:gap-10">
+      <div className="w-full max-w-2xl flex flex-col items-center pt-16 pb-24 sm:pt-24 sm:pb-32">
         <Hero opener={opener} />
 
-        <div className="w-full">
+        <div className="w-full mt-6">
           <ChatInput
             {...chatInputProps}
             getBlockReason={getBlockReason}
@@ -126,15 +126,17 @@ export default function EmptyState(props: Props) {
           />
         </div>
 
-        <Footer
-          isLoggedIn={isLoggedIn}
-          suggestions={suggestions}
-          suggestionsLoading={suggestionsLoading}
-          getBlockReason={getBlockReason}
-          submitSuggestion={submitSuggestion}
-          onShowAuthPrompt={onShowAuthPrompt}
-          onShowAccountMenu={onShowAccountMenu}
-        />
+        <div className="w-full mt-12 sm:mt-14">
+          <Footer
+            isLoggedIn={isLoggedIn}
+            suggestions={suggestions}
+            suggestionsLoading={suggestionsLoading}
+            getBlockReason={getBlockReason}
+            submitSuggestion={submitSuggestion}
+            onShowAuthPrompt={onShowAuthPrompt}
+            onShowAccountMenu={onShowAccountMenu}
+          />
+        </div>
       </div>
     </div>
   );
@@ -142,7 +144,7 @@ export default function EmptyState(props: Props) {
 
 function Hero({ opener }: { opener: string }) {
   return (
-    <header className="text-center pt-2">
+    <header className="text-center">
       <h1
         className="text-4xl sm:text-5xl font-medium tracking-tight"
         style={{ color: "var(--text-primary)" }}
