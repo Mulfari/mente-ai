@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 
 type BlockReason = {
   canWrite: boolean;
@@ -23,6 +23,7 @@ type Props = {
   onSend: () => void;
   onFileSelect: (files: File[]) => void;
   onRemoveAttachment: (name: string, size: number) => void;
+  autoFocus?: boolean;
 };
 
 export default function ChatInput({
@@ -38,9 +39,20 @@ export default function ChatInput({
   onSend,
   onFileSelect,
   onRemoveAttachment,
+  autoFocus,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (autoFocus) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [autoFocus]);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -129,6 +141,7 @@ export default function ChatInput({
 
           {/* Single-line text input */}
           <input
+            ref={inputRef}
             type="text"
             value={input}
             onChange={e => setInput(e.target.value)}
@@ -148,70 +161,59 @@ export default function ChatInput({
             style={{ color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)" }}
           />
 
-          {/* Mode pill */}
+          {/* Mode toggle — icon only, no pill border */}
           <button
             onClick={() => setResponseMode(responseMode === "normal" ? "deep" : "normal")}
             disabled={!block.canWrite}
-            className="shrink-0 flex items-center gap-1.5 h-12 px-4 rounded-full text-sm font-medium transition-all"
+            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all"
             style={{
               color: responseMode === "deep" ? "#a78bfa" : "var(--text-tertiary)",
               backgroundColor: responseMode === "deep" ? "rgba(167,139,250,0.12)" : "transparent",
-              border: "1px solid",
-              borderColor: responseMode === "deep" ? "rgba(167,139,250,0.3)" : "rgba(255,255,255,0.08)",
             }}
-            title="Cambiar modo de respuesta"
+            title={responseMode === "normal" ? "Activar modo Pensar" : "Desactivar modo Pensar"}
             onMouseEnter={(e) => {
               if (responseMode !== "deep") {
                 e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.14)";
                 e.currentTarget.style.color = "var(--text-secondary)";
               }
             }}
             onMouseLeave={(e) => {
               if (responseMode !== "deep") {
                 e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)";
                 e.currentTarget.style.color = "var(--text-tertiary)";
               }
             }}
           >
             {responseMode === "normal" ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
             )}
-            <span className="hidden sm:inline">{responseMode === "normal" ? "Normal" : "Pensar"}</span>
           </button>
 
-          {/* Send */}
+          {/* Send — solid color, filled paper plane */}
           <button
             onClick={onSend}
             disabled={!canSend}
             className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200"
             style={{
-              background: canSend
-                ? "linear-gradient(135deg, var(--primary), var(--primary-hover))"
-                : "rgba(255,255,255,0.06)",
+              backgroundColor: canSend ? "var(--primary)" : "rgba(255,255,255,0.05)",
               color: canSend ? "white" : "var(--text-tertiary)",
-              boxShadow: canSend
-                ? "0 2px 10px color-mix(in srgb, var(--primary) 40%, transparent), inset 0 1px 0 rgba(255,255,255,0.2)"
-                : "none",
-              transform: canSend ? "scale(1)" : "scale(0.94)",
             }}
             title="Enviar"
             onMouseEnter={(e) => {
-              if (canSend) e.currentTarget.style.transform = "scale(1.06)";
+              if (canSend) e.currentTarget.style.backgroundColor = "var(--primary-hover)";
             }}
             onMouseLeave={(e) => {
-              if (canSend) e.currentTarget.style.transform = "scale(1)";
+              if (canSend) e.currentTarget.style.backgroundColor = "var(--primary)";
             }}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
             </svg>
           </button>
         </div>

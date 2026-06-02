@@ -22,6 +22,7 @@ type ChatInputProps = {
   onSend: () => void;
   onFileSelect: (files: File[]) => void;
   onRemoveAttachment: (name: string, size: number) => void;
+  autoFocus?: boolean;
 };
 
 type Props = ChatInputProps & {
@@ -105,6 +106,7 @@ export default function EmptyState(props: Props) {
         <div className="w-full mt-5">
           <ChatInput
             {...chatInputProps}
+            autoFocus
             getBlockReason={getBlockReason}
             isLoggedIn={isLoggedIn}
           />
