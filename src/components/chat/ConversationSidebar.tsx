@@ -227,7 +227,7 @@ export default function ConversationSidebar({
   // Desktop sidebar - collapsible
   function DesktopSidebar() {
     return (
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
+      <div className="relative shrink-0 hidden md:block animate-slide-in" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
           <div
             className="absolute inset-y-0 left-0 z-[51] flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
@@ -260,7 +260,7 @@ export default function ConversationSidebar({
           onMouseEnter={() => { if (sidebarLock === "unlocked") setSidebarHovered(true); }}
           onMouseLeave={() => { if (sidebarLock === "unlocked") setSidebarHovered(false); }}
         >
-          <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0 fade-in-up" style={{ animationDelay: "100ms" }}>
+          <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                 style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
@@ -295,7 +295,7 @@ export default function ConversationSidebar({
             </button>
           </div>
 
-          <div className="px-4 shrink-0 pb-2 space-y-2 fade-in-up" style={{ animationDelay: "180ms" }}>
+          <div className="px-4 shrink-0 pb-2 space-y-2">
             <button onClick={onNewConversation}
               className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
               style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
@@ -334,9 +334,9 @@ export default function ConversationSidebar({
             </div>
           </div>
 
-          <div className="px-4 pb-1 shrink-0 fade-in-up" style={{ animationDelay: "260ms", height: "1px", backgroundColor: "var(--border)" }} />
+          <div className="px-4 pb-1 shrink-0" style={{ height: "1px", backgroundColor: "var(--border)" }} />
 
-          <div className="flex-1 overflow-y-auto px-2 fade-in-up" style={{ animationDelay: "320ms", touchAction: "pan-y" }}>
+          <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
             {conversations.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{searchQuery ? "Sin resultados" : "Sin conversaciones"}</p>
@@ -398,7 +398,7 @@ export default function ConversationSidebar({
             )}
           </div>
 
-          <div className="px-3 pb-4 pt-3 shrink-0 fade-in-up" style={{ animationDelay: "400ms", borderTop: "1px solid var(--border)" }}>
+          <div className="px-3 pb-4 pt-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
             <button onClick={onShowAccountMenu}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
               style={{ backgroundColor: "transparent" }}
