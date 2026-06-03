@@ -158,7 +158,7 @@ function Hero({ opener }: { opener: string }) {
   return (
     <header className="text-center">
       <h1
-        className="text-4xl sm:text-5xl font-semibold tracking-tighter min-h-[2.5rem] sm:min-h-[3rem] flex items-end justify-center"
+        className="text-4xl sm:text-5xl font-semibold tracking-tighter min-h-[5rem] sm:min-h-[6rem] flex items-center justify-center"
         style={{ color: "var(--text-primary)" }}
       >
         <span>{displayed}</span>
