@@ -32,6 +32,31 @@ type Props = ChatInputProps & {
   onShowAccountMenu: () => void;
 };
 
+const OPENERS_NO_NAME = [
+  "¿Qué te cuenta?",
+  "Dime, ¿qué se te ofrece?",
+  "A la orden",
+  "¿En qué te ayudo?",
+  "Cuéntame",
+  "Mándame",
+  "¿Qué tocamos hoy?",
+];
+
+const OPENERS_WITH_NAME = [
+  "A ver, {name}, ¿qué hay?",
+  "Dime, {name}, ¿qué se te ofrece?",
+  "¿Qué te cuenta, {name}?",
+  "Cuéntame, {name}",
+  "A la orden, {name}",
+  "¿Cómo te puedo ayudar, {name}?",
+  "Aquí estoy, {name}, ¿qué toca?",
+  "Mándame, {name}",
+  "Hola, {name}, ¿qué vamos a hacer?",
+  "Buenas, {name}, ¿qué necesitas?",
+  "{name}, ¿qué se te ocurre?",
+  "¿Qué hay de nuevo, {name}?",
+];
+
 const FALLBACK_BRAND = "VeChat";
 
 function getFirstName(fullName?: string): string | null {
@@ -40,13 +65,20 @@ function getFirstName(fullName?: string): string | null {
   return trimmed.split(/\s+/)[0];
 }
 
-function getGreeting(firstName: string | null, isLoggedIn: boolean): string {
-  if (!isLoggedIn) return FALLBACK_BRAND;
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Buenos días" :
-    hour < 19 ? "Buenas tardes" : "Buenas noches";
-  return firstName ? `${greeting}, ${firstName}` : greeting;
+function pickDaily<T>(arr: readonly T[], salt: number): T {
+  return arr[salt % arr.length];
+}
+
+function useOpener(firstName: string | null, isLoggedIn: boolean) {
+  return React.useMemo(() => {
+    const now = new Date();
+    const salt = now.getDate() + now.getMonth() * 31;
+    if (!isLoggedIn) return FALLBACK_BRAND;
+    if (firstName) {
+      return pickDaily(OPENERS_WITH_NAME, salt).replace("{name}", firstName);
+    }
+    return pickDaily(OPENERS_NO_NAME, salt);
+  }, [firstName, isLoggedIn]);
 }
 
 export default function EmptyState(props: Props) {
@@ -63,7 +95,7 @@ export default function EmptyState(props: Props) {
   } = props;
 
   const firstName = getFirstName(userName);
-  const opener = getGreeting(firstName, isLoggedIn);
+  const opener = useOpener(firstName, isLoggedIn);
 
   return (
     <div
