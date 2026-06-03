@@ -15,8 +15,6 @@ type ChatInputProps = {
   sending: boolean;
   attachments: File[];
   previewUrls: Record<string, string>;
-  responseMode: "normal" | "deep";
-  setResponseMode: (mode: "normal" | "deep") => void;
   getBlockReason: () => BlockReason;
   isLoggedIn: boolean;
   onSend: () => void;

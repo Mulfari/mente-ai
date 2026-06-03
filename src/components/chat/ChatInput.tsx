@@ -16,8 +16,6 @@ type Props = {
   sending: boolean;
   attachments: File[];
   previewUrls: Record<string, string>;
-  responseMode: "normal" | "deep";
-  setResponseMode: (mode: "normal" | "deep") => void;
   getBlockReason: () => BlockReason;
   isLoggedIn: boolean;
   onSend: () => void;
@@ -32,8 +30,6 @@ export default function ChatInput({
   sending,
   attachments,
   previewUrls,
-  responseMode,
-  setResponseMode,
   getBlockReason,
   isLoggedIn,
   onSend,
@@ -161,38 +157,16 @@ export default function ChatInput({
             style={{ color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)" }}
           />
 
-          {/* Mode toggle — icon only, no pill border */}
+          {/* Microphone — placeholder for future voice input */}
           <button
-            onClick={() => setResponseMode(responseMode === "normal" ? "deep" : "normal")}
-            disabled={!block.canWrite}
-            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all"
-            style={{
-              color: responseMode === "deep" ? "#a78bfa" : "var(--text-tertiary)",
-              backgroundColor: responseMode === "deep" ? "rgba(167,139,250,0.12)" : "transparent",
-            }}
-            title={responseMode === "normal" ? "Activar modo Pensar" : "Desactivar modo Pensar"}
-            onMouseEnter={(e) => {
-              if (responseMode !== "deep") {
-                e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.05)";
-                e.currentTarget.style.color = "var(--text-secondary)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (responseMode !== "deep") {
-                e.currentTarget.style.backgroundColor = "transparent";
-                e.currentTarget.style.color = "var(--text-tertiary)";
-              }
-            }}
+            disabled
+            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center cursor-not-allowed"
+            style={{ color: "var(--text-tertiary)", opacity: 0.5 }}
+            title="Próximamente: entrada por voz"
           >
-            {responseMode === "normal" ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            )}
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+            </svg>
           </button>
 
           {/* Send — solid color, filled paper plane */}

@@ -103,7 +103,6 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
   const [retryMode, setRetryMode] = useState<string | null>(null);
   const [isSendDisabled, setIsSendDisabled] = useState(false);
-  const [responseMode, setResponseMode] = useState<"normal" | "deep">("normal");
   const [streamError, setStreamError] = useState<string | null>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   // Theme disabled - only dark mode
@@ -873,7 +872,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (inserted) setMessages(prev => [...prev, inserted]);
 
     try {
-      const reqParams = { message: s, conversationId: convId, contentParts: [], mode: responseMode };
+      const reqParams = { message: s, conversationId: convId, contentParts: [], mode: "deep" };
       currentStreamReqRef.current = reqParams;
 
       // Create assistant message row in DB NOW — before fetching token.
@@ -921,7 +920,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         token: vpsToken,
         message_id: msgId,
         conversation_id: convId,
-        mode: responseMode,
+        mode: "deep",
         question: s,
         attachments: JSON.stringify([]),
         user_context: JSON.stringify(userContextPayload),
@@ -1231,7 +1230,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         token: vpsToken,
         message_id: msgId,
         conversation_id: convId,
-        mode: responseMode,
+        mode: "deep",
         question: userMsg,
         attachments: contentParts,
         user_context: userContextPayload,
@@ -1483,8 +1482,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               sending={sending}
               attachments={attachments}
               previewUrls={previewUrls}
-              responseMode={responseMode}
-              setResponseMode={setResponseMode}
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
@@ -1507,8 +1504,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             sending={sending}
             attachments={attachments}
             previewUrls={previewUrls}
-            responseMode={responseMode}
-            setResponseMode={setResponseMode}
             getBlockReason={getBlockReason}
             isLoggedIn={isLoggedIn}
             onSend={sendMessage}
