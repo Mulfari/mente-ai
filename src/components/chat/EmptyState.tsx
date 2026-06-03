@@ -32,26 +32,6 @@ type Props = ChatInputProps & {
   onShowAccountMenu: () => void;
 };
 
-const OPENERS_NO_NAME = [
-  "¿Qué te trae por aquí?",
-  "¿En qué te ayudo?",
-  "Dime, ¿qué necesitas?",
-  "Pregunta lo que quieras",
-  "¿Qué quieres saber?",
-  "¿Qué se te ocurre?",
-  "Cuéntame",
-  "¿Qué tienes en mente?",
-];
-
-const OPENERS_WITH_NAME = [
-  "Dime, {name}",
-  "{name}, ¿qué te trae por aquí?",
-  "Hola, {name}",
-  "Cuéntame, {name}",
-  "¿Qué necesitas, {name}?",
-  "{name}, ¿qué se te ofrece?",
-];
-
 const FALLBACK_BRAND = "VeChat";
 
 function getFirstName(fullName?: string): string | null {
@@ -60,20 +40,13 @@ function getFirstName(fullName?: string): string | null {
   return trimmed.split(/\s+/)[0];
 }
 
-function pickDaily<T>(arr: readonly T[], salt: number): T {
-  return arr[salt % arr.length];
-}
-
-function useOpener(firstName: string | null, isLoggedIn: boolean) {
-  return React.useMemo(() => {
-    const now = new Date();
-    const salt = now.getDate() + now.getMonth() * 31;
-    if (!isLoggedIn) return FALLBACK_BRAND;
-    if (firstName) {
-      return pickDaily(OPENERS_WITH_NAME, salt).replace("{name}", firstName);
-    }
-    return pickDaily(OPENERS_NO_NAME, salt);
-  }, [firstName, isLoggedIn]);
+function getGreeting(firstName: string | null, isLoggedIn: boolean): string {
+  if (!isLoggedIn) return FALLBACK_BRAND;
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Buenos días" :
+    hour < 19 ? "Buenas tardes" : "Buenas noches";
+  return firstName ? `${greeting}, ${firstName}` : greeting;
 }
 
 export default function EmptyState(props: Props) {
@@ -90,7 +63,7 @@ export default function EmptyState(props: Props) {
   } = props;
 
   const firstName = getFirstName(userName);
-  const opener = useOpener(firstName, isLoggedIn);
+  const opener = getGreeting(firstName, isLoggedIn);
 
   return (
     <div
