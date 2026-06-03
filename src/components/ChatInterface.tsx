@@ -57,27 +57,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
-  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
+  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
+    typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "unlocked") as "locked" | "unlocked") : "unlocked"
+  );
   const lockRef = useRef<SVGSVGElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
   const [sidebarHovered, setSidebarHovered] = useState(true);
-  const [sidebarTransitionEnabled, setSidebarTransitionEnabled] = useState(false);
-
-  // Hydrate sidebar lock from localStorage AFTER first paint (avoids SSR/hydration mismatch)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("vechat-sidebar-lock");
-      if (stored === "locked" || stored === "unlocked") {
-        setSidebarLock(stored);
-      }
-    }
-  }, []);
-
-  // Arm the sidebar width transition only after the first paint settles,
-  // so the first hover-out after refresh doesn't animate 320 -> 48.
-  useEffect(() => {
-    setSidebarTransitionEnabled(true);
-  }, []);
 
   // Persist sidebar lock state
   useEffect(() => {
@@ -1371,7 +1356,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="fixed inset-0 flex">
+    <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)", backgroundImage: "radial-gradient(ellipse 120% 60% at 15% 85%, rgba(16,163,127,0.35) 0%, transparent 55%), radial-gradient(ellipse 90% 50% at 85% 15%, rgba(16,163,127,0.22) 0%, transparent 50%), radial-gradient(ellipse 70% 35% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 55%)" }}>
       {/* Sidebar */}
       <ConversationSidebar
         showSidebar={showSidebar}
@@ -1392,7 +1377,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setSidebarLock={setSidebarLock}
         sidebarHovered={sidebarHovered}
         setSidebarHovered={setSidebarHovered}
-        transitionEnabled={sidebarTransitionEnabled}
       />
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
