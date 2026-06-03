@@ -113,7 +113,7 @@ export default function EmptyState(props: Props) {
           />
         </div>
 
-        <div className="w-full mt-8 gentle-fade-up-soft" style={{ animationDelay: "420ms" }}>
+        <div className="w-full mt-8 lm-fade-up" style={{ animationDelay: "240ms" }}>
           <Footer
             isLoggedIn={isLoggedIn}
             suggestions={suggestions}
@@ -132,7 +132,7 @@ export default function EmptyState(props: Props) {
 
 function Hero({ opener }: { opener: string }) {
   return (
-    <header className="text-center gentle-fade-up-soft" style={{ animationDelay: "220ms" }}>
+    <header className="text-center lm-fade-up" style={{ animationDelay: "80ms" }}>
       <h1
         className="text-3xl sm:text-4xl font-semibold tracking-tighter"
         style={{ color: "var(--text-primary)" }}

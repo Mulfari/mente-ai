@@ -230,7 +230,7 @@ export default function ConversationSidebar({
   // Desktop sidebar - collapsible
   function DesktopSidebar() {
     return (
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, opacity: entered ? 1 : 0, transform: entered ? "translateX(0)" : "translateX(-6px)", transition: transitionEnabled ? "width 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.6s cubic-bezier(0.32, 0.72, 0, 1), transform 0.6s cubic-bezier(0.32, 0.72, 0, 1)" : "none" }}>
+      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, opacity: entered ? 1 : 0, transform: entered ? "translateX(0)" : "translateX(-6px)", transition: transitionEnabled ? "width 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s var(--motion-standard), transform 0.25s var(--motion-standard)" : "none" }}>
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
           <div
             className="absolute inset-y-0 left-0 z-[51] flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"

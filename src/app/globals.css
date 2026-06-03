@@ -18,6 +18,8 @@
   --code-bg: rgba(255,255,255,0.06);
   --code-block-bg: rgba(255,255,255,0.04);
   --table-row-hover: rgba(255,255,255,0.03);
+  --motion-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
 
 /* Aurora — layered teal gradients like northern lights */
@@ -384,6 +386,14 @@ html, body {
 }
 .gentle-fade-up-soft {
   animation: gentleFadeUpSoft 0.7s ease-out backwards;
+}
+
+@keyframes lmFadeUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.lm-fade-up {
+  animation: lmFadeUp 0.4s var(--motion-standard) backwards;
 }
 
 /* Input centered in chat area — normal flow, centered with flex parent */
