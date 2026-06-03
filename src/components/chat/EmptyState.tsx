@@ -100,11 +100,7 @@ export default function EmptyState(props: Props) {
     <div className="flex flex-col items-center min-h-full px-4">
       <div className="flex-[2.5] w-full" aria-hidden />
       <div className="w-full max-w-2xl flex flex-col items-center pb-16 sm:pb-20">
-        <div className="fade-in-up" style={{ animationDelay: "0ms" }}>
-          <Hero opener={opener} />
-        </div>
-
-        <div className="w-full mt-5 fade-in-up" style={{ animationDelay: "120ms" }}>
+        <div className="w-full fade-in-up" style={{ animationDelay: "0ms" }}>
           <ChatInput
             {...chatInputProps}
             autoFocus
@@ -113,7 +109,7 @@ export default function EmptyState(props: Props) {
           />
         </div>
 
-        <div className="w-full mt-8 fade-in-up" style={{ animationDelay: "240ms" }}>
+        <div className="w-full mt-8 fade-in-up" style={{ animationDelay: "120ms" }}>
           <Footer
             isLoggedIn={isLoggedIn}
             suggestions={suggestions}
@@ -124,6 +120,10 @@ export default function EmptyState(props: Props) {
             onShowAccountMenu={onShowAccountMenu}
           />
         </div>
+
+        <div className="w-full mt-8">
+          <Hero opener={opener} />
+        </div>
       </div>
       <div className="flex-1 w-full" aria-hidden />
     </div>
@@ -131,13 +131,41 @@ export default function EmptyState(props: Props) {
 }
 
 function Hero({ opener }: { opener: string }) {
+  const [displayed, setDisplayed] = React.useState("");
+
+  React.useEffect(() => {
+    setDisplayed("");
+    if (!opener) return;
+
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const startTimer = setTimeout(() => {
+      let i = 0;
+      intervalId = setInterval(() => {
+        i++;
+        setDisplayed(opener.slice(0, i));
+        if (i >= opener.length && intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }, 30);
+    }, 600);
+
+    return () => {
+      clearTimeout(startTimer);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [opener]);
+
+  const isTyping = displayed.length < opener.length;
+
   return (
     <header className="text-center">
       <h1
-        className="text-4xl sm:text-5xl font-semibold tracking-tighter"
+        className="text-4xl sm:text-5xl font-semibold tracking-tighter min-h-[2.5rem] sm:min-h-[3rem] flex items-end justify-center"
         style={{ color: "var(--text-primary)" }}
       >
-        {opener}
+        <span>{displayed}</span>
+        {isTyping && <span className="typing-cursor" aria-hidden />}
       </h1>
     </header>
   );
