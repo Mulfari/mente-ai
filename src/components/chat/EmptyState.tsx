@@ -131,41 +131,13 @@ export default function EmptyState(props: Props) {
 }
 
 function Hero({ opener }: { opener: string }) {
-  const [displayed, setDisplayed] = React.useState("");
-
-  React.useEffect(() => {
-    setDisplayed("");
-    if (!opener) return;
-
-    let intervalId: ReturnType<typeof setInterval> | null = null;
-    const startTimer = setTimeout(() => {
-      let i = 0;
-      intervalId = setInterval(() => {
-        i++;
-        setDisplayed(opener.slice(0, i));
-        if (i >= opener.length && intervalId) {
-          clearInterval(intervalId);
-          intervalId = null;
-        }
-      }, 30);
-    }, 600);
-
-    return () => {
-      clearTimeout(startTimer);
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [opener]);
-
   return (
-    <header className="text-center">
+    <header className="text-center fade-in-up" style={{ animationDelay: "100ms" }}>
       <h1
-        className="text-3xl sm:text-4xl font-semibold tracking-tighter relative"
+        className="text-3xl sm:text-4xl font-semibold tracking-tighter"
         style={{ color: "var(--text-primary)" }}
       >
-        <span aria-hidden style={{ visibility: "hidden" }}>{opener}</span>
-        <span className="absolute inset-0 flex items-center justify-center px-2">
-          {displayed}
-        </span>
+        {opener}
       </h1>
     </header>
   );
