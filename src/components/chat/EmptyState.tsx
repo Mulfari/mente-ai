@@ -97,7 +97,7 @@ export default function EmptyState(props: Props) {
 
   return (
     <div className="flex flex-col items-center min-h-full px-4">
-      <div className="flex-[2.5] w-full" aria-hidden />
+      <div className="flex-[1.5] w-full" aria-hidden />
       <div className="w-full max-w-2xl flex flex-col items-center pb-16 sm:pb-20">
         <div className="w-full">
           <Hero opener={opener} />
@@ -158,7 +158,7 @@ function Hero({ opener }: { opener: string }) {
   return (
     <header className="text-center">
       <h1
-        className="text-4xl sm:text-5xl font-semibold tracking-tighter relative"
+        className="text-3xl sm:text-4xl font-serif font-normal tracking-tight relative"
         style={{ color: "var(--text-primary)" }}
       >
         <span aria-hidden style={{ visibility: "hidden" }}>{opener}</span>
