@@ -57,22 +57,12 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
-  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
+  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
+    typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "unlocked") as "locked" | "unlocked") : "unlocked"
+  );
   const lockRef = useRef<SVGSVGElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
   const [sidebarHovered, setSidebarHovered] = useState(true);
-  const [sidebarTransitionEnabled, setSidebarTransitionEnabled] = useState(false);
-
-  // Hydrate sidebar lock from localStorage after first paint (avoids SSR mismatch)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("vechat-sidebar-lock");
-      if (stored === "locked" || stored === "unlocked") {
-        setSidebarLock(stored);
-      }
-      setSidebarTransitionEnabled(true);
-    }
-  }, []);
 
   // Persist sidebar lock state
   useEffect(() => {
@@ -1387,7 +1377,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setSidebarLock={setSidebarLock}
         sidebarHovered={sidebarHovered}
         setSidebarHovered={setSidebarHovered}
-        transitionEnabled={sidebarTransitionEnabled}
       />
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
