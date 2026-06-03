@@ -32,13 +32,6 @@ body::before {
     radial-gradient(ellipse 70% 35% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 55%);
   pointer-events: none;
   z-index: 0;
-  will-change: transform;
-  animation: aurora-breathe 60s ease-in-out infinite;
-}
-
-@keyframes aurora-breathe {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(1.5%, -0.8%) scale(1.01); }
 }
 
 @theme inline {
@@ -367,11 +360,6 @@ html, body {
 }
 .fade-in-up {
   animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-}
-
-@keyframes scaleIn {
-  0% { opacity: 0; transform: scale(0.96); }
-  100% { opacity: 1; transform: scale(1); }
 }
 
 @keyframes gentleFade {
