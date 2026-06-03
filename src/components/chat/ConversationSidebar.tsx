@@ -229,6 +229,19 @@ export default function ConversationSidebar({
 
   // Desktop sidebar - collapsible
   function DesktopSidebar() {
+    // Staggered entrance for inner sections (Gemini-style cascade).
+    // Driven by the same `entered` state as the wrapper, so the cascade
+    // only fires on first mount and never replays on tab return.
+    // The wrapper itself fades in over 0.25s; the children wait for the
+    // wrapper to be visible, then settle in from translateY(20px).
+    const sectionStyle = (delayMs: number): React.CSSProperties => ({
+      opacity: entered ? 1 : 0,
+      transform: entered ? "translateY(0)" : "translateY(20px)",
+      transition: transitionEnabled
+        ? `opacity 0.4s var(--motion-standard) ${delayMs}ms, transform 0.4s var(--motion-standard) ${delayMs}ms`
+        : "none",
+    });
+
     return (
       <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, opacity: entered ? 1 : 0, transform: entered ? "translateX(0)" : "translateX(-6px)", transition: transitionEnabled ? "width 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s var(--motion-standard), transform 0.25s var(--motion-standard)" : "none" }}>
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
@@ -263,7 +276,7 @@ export default function ConversationSidebar({
           onMouseEnter={() => { if (sidebarLock === "unlocked") setSidebarHovered(true); }}
           onMouseLeave={() => { if (sidebarLock === "unlocked") setSidebarHovered(false); }}
         >
-          <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
+          <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0" style={sectionStyle(0)}>
             <div className="flex items-center gap-3">
               <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
                 style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
@@ -298,7 +311,7 @@ export default function ConversationSidebar({
             </button>
           </div>
 
-          <div className="px-4 shrink-0 pb-2 space-y-2">
+          <div className="px-4 shrink-0 pb-2 space-y-2" style={sectionStyle(80)}>
             <button onClick={onNewConversation}
               className="group w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
               style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
@@ -337,9 +350,9 @@ export default function ConversationSidebar({
             </div>
           </div>
 
-          <div className="px-4 pb-1 shrink-0" style={{ height: "1px", backgroundColor: "var(--border)" }} />
+          <div className="px-4 pb-1 shrink-0" style={{ ...sectionStyle(160), height: "1px", backgroundColor: "var(--border)" }} />
 
-          <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
+          <div className="flex-1 overflow-y-auto px-2" style={{ ...sectionStyle(240), touchAction: "pan-y" }}>
             {conversations.length === 0 ? (
               <div className="py-8 text-center">
                 <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{searchQuery ? "Sin resultados" : "Sin conversaciones"}</p>
@@ -401,7 +414,7 @@ export default function ConversationSidebar({
             )}
           </div>
 
-          <div className="px-3 pb-4 pt-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
+          <div className="px-3 pb-4 pt-3 shrink-0" style={{ ...sectionStyle(320), borderTop: "1px solid var(--border)" }}>
             <button onClick={onShowAccountMenu}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
               style={{ backgroundColor: "transparent" }}
