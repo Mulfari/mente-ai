@@ -57,12 +57,26 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
-  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">(
-    typeof window !== "undefined" ? ((localStorage.getItem("vechat-sidebar-lock") || "unlocked") as "locked" | "unlocked") : "unlocked"
-  );
+  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
   const lockRef = useRef<SVGSVGElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
   const [sidebarHovered, setSidebarHovered] = useState(true);
+  const [sidebarTransitionEnabled, setSidebarTransitionEnabled] = useState(false);
+
+  // Hydrate sidebar lock from localStorage and arm the width transition after first paint.
+  // Reading localStorage in a useEffect (not in the useState initializer) avoids the
+  // SSR/CSR mismatch; setting the transition flag here silences the first mouseLeave
+  // that would otherwise animate width right after the page settles (also covers
+  // tab-return scenarios where the first paint replays).
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("vechat-sidebar-lock");
+      if (stored === "locked" || stored === "unlocked") {
+        setSidebarLock(stored);
+      }
+      setSidebarTransitionEnabled(true);
+    }
+  }, []);
 
   // Persist sidebar lock state
   useEffect(() => {
@@ -1377,6 +1391,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setSidebarLock={setSidebarLock}
         sidebarHovered={sidebarHovered}
         setSidebarHovered={setSidebarHovered}
+        transitionEnabled={sidebarTransitionEnabled}
       />
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
