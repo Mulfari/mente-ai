@@ -90,6 +90,7 @@ export default function EmptyState(props: Props) {
     ...chatInputProps
   } = props;
 
+  const firstName = getFirstName(userName);
   const [opener, setOpener] = React.useState(() => pickOpener(firstName, isLoggedIn));
   React.useEffect(() => {
     setOpener(pickOpener(firstName, isLoggedIn));
