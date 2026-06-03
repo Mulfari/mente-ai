@@ -103,12 +103,12 @@ export default function EmptyState(props: Props) {
 function Hero({ opener }: { opener: string }) {
   return (
     <header className="text-center">
-      <p
-        className="text-2xl sm:text-3xl font-medium tracking-tight"
-        style={{ color: "var(--text-secondary)" }}
+      <h1
+        className="text-4xl sm:text-5xl font-semibold tracking-tighter"
+        style={{ color: "var(--text-primary)" }}
       >
         {opener}
-      </p>
+      </h1>
     </header>
   );
 }
