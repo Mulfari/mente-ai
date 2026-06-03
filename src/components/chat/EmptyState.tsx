@@ -65,20 +65,16 @@ function getFirstName(fullName?: string): string | null {
   return trimmed.split(/\s+/)[0];
 }
 
-function pickDaily<T>(arr: readonly T[], salt: number): T {
-  return arr[salt % arr.length];
+function pickRandom<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function useOpener(firstName: string | null, isLoggedIn: boolean) {
-  return React.useMemo(() => {
-    const now = new Date();
-    const salt = now.getDate() + now.getMonth() * 31;
-    if (!isLoggedIn) return FALLBACK_BRAND;
-    if (firstName) {
-      return pickDaily(OPENERS_WITH_NAME, salt).replace("{name}", firstName);
-    }
-    return pickDaily(OPENERS_NO_NAME, salt);
-  }, [firstName, isLoggedIn]);
+function pickOpener(firstName: string | null, isLoggedIn: boolean): string {
+  if (!isLoggedIn) return FALLBACK_BRAND;
+  if (firstName) {
+    return pickRandom(OPENERS_WITH_NAME).replace("{name}", firstName);
+  }
+  return pickRandom(OPENERS_NO_NAME);
 }
 
 export default function EmptyState(props: Props) {
@@ -94,8 +90,10 @@ export default function EmptyState(props: Props) {
     ...chatInputProps
   } = props;
 
-  const firstName = getFirstName(userName);
-  const opener = useOpener(firstName, isLoggedIn);
+  const [opener, setOpener] = React.useState(() => pickOpener(firstName, isLoggedIn));
+  React.useEffect(() => {
+    setOpener(pickOpener(firstName, isLoggedIn));
+  }, [firstName, isLoggedIn]);
 
   return (
     <div
