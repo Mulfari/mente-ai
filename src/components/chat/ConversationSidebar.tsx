@@ -64,6 +64,11 @@ export default function ConversationSidebar({
   setSidebarHovered,
   transitionEnabled,
 }: Props) {
+  // Drive the soft entrance inline (not via a CSS keyframe) so it only fires
+  // once on first mount and never replays on tab return / bfcache restore.
+  const [entered, setEntered] = React.useState(false);
+  React.useEffect(() => { setEntered(true); }, []);
+
   function formatDateLabel(conv: Conversation) {
     const dateStr = conv.updated_at && conv.updated_at !== conv.created_at ? conv.updated_at : conv.created_at;
     const d = new Date(dateStr || "");
@@ -225,7 +230,7 @@ export default function ConversationSidebar({
   // Desktop sidebar - collapsible
   function DesktopSidebar() {
     return (
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, transition: transitionEnabled ? "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" : "none" }}>
+      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, opacity: entered ? 1 : 0, transform: entered ? "translateX(0)" : "translateX(-6px)", transition: transitionEnabled ? "width 0.35s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.6s cubic-bezier(0.32, 0.72, 0, 1), transform 0.6s cubic-bezier(0.32, 0.72, 0, 1)" : "none" }}>
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
           <div
             className="absolute inset-y-0 left-0 z-[51] flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"

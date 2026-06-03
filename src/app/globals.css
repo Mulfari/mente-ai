@@ -378,6 +378,14 @@ html, body {
   animation: gentleFadeUp 0.9s ease-out backwards;
 }
 
+@keyframes gentleFadeUpSoft {
+  0% { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.gentle-fade-up-soft {
+  animation: gentleFadeUpSoft 0.7s ease-out backwards;
+}
+
 /* Input centered in chat area — normal flow, centered with flex parent */
 .input-centered {
   animation: none;

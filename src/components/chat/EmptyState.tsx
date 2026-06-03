@@ -104,7 +104,7 @@ export default function EmptyState(props: Props) {
           <Hero opener={opener} />
         </div>
 
-        <div className="w-full mt-5 gentle-fade" style={{ animationDelay: "0ms" }}>
+        <div className="w-full mt-5">
           <ChatInput
             {...chatInputProps}
             autoFocus
@@ -113,7 +113,7 @@ export default function EmptyState(props: Props) {
           />
         </div>
 
-        <div className="w-full mt-8 gentle-fade-up" style={{ animationDelay: "500ms" }}>
+        <div className="w-full mt-8 gentle-fade-up-soft" style={{ animationDelay: "420ms" }}>
           <Footer
             isLoggedIn={isLoggedIn}
             suggestions={suggestions}
@@ -132,7 +132,7 @@ export default function EmptyState(props: Props) {
 
 function Hero({ opener }: { opener: string }) {
   return (
-    <header className="text-center gentle-fade-up" style={{ animationDelay: "250ms" }}>
+    <header className="text-center gentle-fade-up-soft" style={{ animationDelay: "220ms" }}>
       <h1
         className="text-3xl sm:text-4xl font-semibold tracking-tighter"
         style={{ color: "var(--text-primary)" }}
