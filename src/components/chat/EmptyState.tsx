@@ -50,7 +50,6 @@ const OPENERS_WITH_NAME = [
   "A la orden, {name}",
   "¿Cómo te puedo ayudar, {name}?",
   "Aquí estoy, {name}, ¿qué toca?",
-  "Mándame, {name}",
   "Hola, {name}, ¿qué vamos a hacer?",
   "Buenas, {name}, ¿qué necesitas?",
   "{name}, ¿qué se te ocurre?",
@@ -156,8 +155,6 @@ function Hero({ opener }: { opener: string }) {
     };
   }, [opener]);
 
-  const isTyping = displayed.length < opener.length;
-
   return (
     <header className="text-center">
       <h1
@@ -165,7 +162,6 @@ function Hero({ opener }: { opener: string }) {
         style={{ color: "var(--text-primary)" }}
       >
         <span>{displayed}</span>
-        {isTyping && <span className="typing-cursor" aria-hidden />}
       </h1>
     </header>
   );
