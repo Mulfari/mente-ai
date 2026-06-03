@@ -40,7 +40,6 @@ type Props = {
   setSidebarLock: (v: "locked" | "unlocked") => void;
   sidebarHovered: boolean;
   setSidebarHovered: (v: boolean) => void;
-  transitionEnabled: boolean;
 };
 
 export default function ConversationSidebar({
@@ -62,8 +61,10 @@ export default function ConversationSidebar({
   setSidebarLock,
   sidebarHovered,
   setSidebarHovered,
-  transitionEnabled,
 }: Props) {
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => { setMounted(true); }, []);
 
   function formatDateLabel(conv: Conversation) {
     const dateStr = conv.updated_at && conv.updated_at !== conv.created_at ? conv.updated_at : conv.created_at;
@@ -89,7 +90,7 @@ export default function ConversationSidebar({
     if (!showSidebar) return null;
     return (
       <div
-        className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!userEmail ? "opacity-50 pointer-events-none select-none" : ""}`}
+        className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!mounted || !userEmail ? "opacity-50 pointer-events-none select-none" : ""}`}
         style={{
           backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
           borderRight: "1px solid var(--border)",
@@ -226,7 +227,7 @@ export default function ConversationSidebar({
   // Desktop sidebar - collapsible
   function DesktopSidebar() {
     return (
-      <div className="relative shrink-0 hidden md:block" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, transition: transitionEnabled ? "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" : "none" }}>
+      <div className="relative shrink-0 hidden md:block animate-slide-in" style={{ width: sidebarLock === "locked" || sidebarHovered ? 320 : 48, transition: "width 0.35s cubic-bezier(0.32, 0.72, 0, 1)" }}>
         {(sidebarLock === "unlocked" && !sidebarHovered) && (
           <div
             className="absolute inset-y-0 left-0 z-[51] flex flex-col items-center justify-center pt-6 gap-4 cursor-pointer group"
@@ -249,7 +250,7 @@ export default function ConversationSidebar({
           </div>
         )}
         <div
-          className={`h-full flex flex-col ${!userEmail ? "opacity-50 pointer-events-none select-none" : ""}`}
+          className={`h-full flex flex-col ${!mounted || !userEmail ? "opacity-50 pointer-events-none select-none" : ""}`}
           style={{
             backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
             backdropFilter: "blur(40px)",
