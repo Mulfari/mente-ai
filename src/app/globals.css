@@ -3,7 +3,7 @@
 :root {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #000000;
+  --background: #0B1418;
   --surface: #1a1a1a;
   --surface-hover: #242424;
   --border: #383838;
@@ -25,7 +25,7 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-color: #000000;
+  background-color: #0B1418;
   background-image:
     radial-gradient(ellipse 120% 60% at 15% 85%, rgba(16,163,127,0.35) 0%, transparent 55%),
     radial-gradient(ellipse 90% 50% at 85% 15%, rgba(16,163,127,0.22) 0%, transparent 50%),

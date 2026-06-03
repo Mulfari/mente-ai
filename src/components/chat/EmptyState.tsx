@@ -104,7 +104,7 @@ export default function EmptyState(props: Props) {
           <Hero opener={opener} />
         </div>
 
-        <div className="w-full mt-5">
+        <div className="w-full mt-5 gentle-fade" style={{ animationDelay: "0ms" }}>
           <ChatInput
             {...chatInputProps}
             autoFocus
