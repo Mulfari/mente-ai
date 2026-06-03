@@ -162,7 +162,15 @@ function Hero({ opener }: { opener: string }) {
         style={{ color: "var(--text-primary)" }}
       >
         <span aria-hidden style={{ visibility: "hidden" }}>{opener}</span>
-        <span className="absolute inset-0 flex items-center justify-center px-2">
+        <span
+          className="absolute inset-0 flex items-center justify-center px-2"
+          style={{
+            backgroundImage: "linear-gradient(135deg, var(--text-primary) 0%, var(--primary) 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}
+        >
           {displayed}
         </span>
       </h1>
@@ -299,7 +307,7 @@ function SuggestionsGrid({
             color: "var(--text-secondary)",
             backgroundColor: "transparent",
             border: "1px solid var(--border)",
-            animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
+            animation: `scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) ${i * 60}ms backwards`,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.backgroundColor = "var(--surface-hover)";
