@@ -354,6 +354,14 @@ html, body {
   animation: slide-up 0.5s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
+@keyframes fadeInUp {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
 /* Input centered in chat area — normal flow, centered with flex parent */
 .input-centered {
   animation: none;

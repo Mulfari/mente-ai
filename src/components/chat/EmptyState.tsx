@@ -97,15 +97,14 @@ export default function EmptyState(props: Props) {
   }, [firstName, isLoggedIn]);
 
   return (
-    <div
-      className="flex flex-col items-center min-h-full px-4"
-      style={{ animation: "fadeIn 0.5s ease-out" }}
-    >
+    <div className="flex flex-col items-center min-h-full px-4">
       <div className="flex-[2.5] w-full" aria-hidden />
       <div className="w-full max-w-2xl flex flex-col items-center pb-16 sm:pb-20">
-        <Hero opener={opener} />
+        <div className="fade-in-up" style={{ animationDelay: "0ms" }}>
+          <Hero opener={opener} />
+        </div>
 
-        <div className="w-full mt-5">
+        <div className="w-full mt-5 fade-in-up" style={{ animationDelay: "120ms" }}>
           <ChatInput
             {...chatInputProps}
             autoFocus
@@ -114,7 +113,7 @@ export default function EmptyState(props: Props) {
           />
         </div>
 
-        <div className="w-full mt-8">
+        <div className="w-full mt-8 fade-in-up" style={{ animationDelay: "240ms" }}>
           <Footer
             isLoggedIn={isLoggedIn}
             suggestions={suggestions}
