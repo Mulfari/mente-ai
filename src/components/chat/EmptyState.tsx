@@ -158,7 +158,7 @@ function Hero({ opener }: { opener: string }) {
   return (
     <header className="text-center">
       <h1
-        className="text-3xl sm:text-4xl font-serif font-normal tracking-tight relative"
+        className="text-3xl sm:text-4xl font-semibold tracking-tighter relative"
         style={{ color: "var(--text-primary)" }}
       >
         <span aria-hidden style={{ visibility: "hidden" }}>{opener}</span>

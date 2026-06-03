@@ -47,7 +47,6 @@ body::before {
   --color-danger: var(--danger);
   --color-warning: var(--warning);
   --font-sans: var(--font-inter);
-  --font-serif: var(--font-display);
 }
 
 html, body {
