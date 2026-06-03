@@ -158,10 +158,13 @@ function Hero({ opener }: { opener: string }) {
   return (
     <header className="text-center">
       <h1
-        className="text-4xl sm:text-5xl font-semibold tracking-tighter min-h-[5rem] sm:min-h-[6rem] flex items-center justify-center"
+        className="text-4xl sm:text-5xl font-semibold tracking-tighter relative"
         style={{ color: "var(--text-primary)" }}
       >
-        <span>{displayed}</span>
+        <span aria-hidden style={{ visibility: "hidden" }}>{opener}</span>
+        <span className="absolute inset-0 flex items-center justify-center px-2">
+          {displayed}
+        </span>
       </h1>
     </header>
   );
@@ -196,10 +199,18 @@ function Footer({
   }
 
   if (suggestionsLoading) {
-    return <SuggestionsSkeleton />;
+    return (
+      <div className="min-h-[15rem] sm:min-h-[8.5rem]">
+        <SuggestionsSkeleton />
+      </div>
+    );
   }
 
-  return <SuggestionsGrid suggestions={suggestions} onClick={submitSuggestion} />;
+  return (
+    <div className="min-h-[15rem] sm:min-h-[8.5rem]">
+      <SuggestionsGrid suggestions={suggestions} onClick={submitSuggestion} />
+    </div>
+  );
 }
 
 function AuthPrompt({ onClick }: { onClick: () => void }) {
