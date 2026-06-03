@@ -362,6 +362,14 @@ html, body {
   animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
+@keyframes gentleFade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.gentle-fade {
+  animation: gentleFade 0.5s ease-out backwards;
+}
+
 /* Input centered in chat area — normal flow, centered with flex parent */
 .input-centered {
   animation: none;
