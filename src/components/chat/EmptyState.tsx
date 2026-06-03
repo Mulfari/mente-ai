@@ -100,7 +100,11 @@ export default function EmptyState(props: Props) {
     <div className="flex flex-col items-center min-h-full px-4">
       <div className="flex-[2.5] w-full" aria-hidden />
       <div className="w-full max-w-2xl flex flex-col items-center pb-16 sm:pb-20">
-        <div className="w-full fade-in-up" style={{ animationDelay: "0ms" }}>
+        <div className="w-full">
+          <Hero opener={opener} />
+        </div>
+
+        <div className="w-full mt-5 fade-in-up" style={{ animationDelay: "0ms" }}>
           <ChatInput
             {...chatInputProps}
             autoFocus
@@ -119,10 +123,6 @@ export default function EmptyState(props: Props) {
             onShowAuthPrompt={onShowAuthPrompt}
             onShowAccountMenu={onShowAccountMenu}
           />
-        </div>
-
-        <div className="w-full mt-8">
-          <Hero opener={opener} />
         </div>
       </div>
       <div className="flex-1 w-full" aria-hidden />
