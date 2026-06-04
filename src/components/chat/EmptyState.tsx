@@ -97,36 +97,38 @@ export default function EmptyState(props: Props) {
   }, [firstName, isLoggedIn]);
 
   return (
-    <div className="relative min-h-full">
-      {/* Hero + Input grouped and centered together — Hero sits just above
-          the Input as a label, the Input is the visual focal point. */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div className="w-full max-w-2xl px-4 flex flex-col items-center gap-5 pointer-events-auto">
-          <Hero opener={opener} />
-          <ChatInput
-            {...chatInputProps}
-            autoFocus
-            getBlockReason={getBlockReason}
+    <div className="relative min-h-full flex flex-col">
+      {/* Top spacer — pushes the centered stack to vertical middle */}
+      <div className="flex-1" />
+
+      {/* Centered stack: Hero → Input → Footer. Normal flex flow so the
+          three regions never overlap, regardless of viewport height. */}
+      <div className="w-full max-w-2xl mx-auto px-4 pb-16 sm:pb-20 flex flex-col items-center gap-5">
+        <Hero opener={opener} />
+        <ChatInput
+          {...chatInputProps}
+          autoFocus
+          getBlockReason={getBlockReason}
+          isLoggedIn={isLoggedIn}
+        />
+        <div
+          className="w-full lm-fade-up"
+          style={{ animationDelay: "240ms" }}
+        >
+          <Footer
             isLoggedIn={isLoggedIn}
+            suggestions={suggestions}
+            suggestionsLoading={suggestionsLoading}
+            getBlockReason={getBlockReason}
+            submitSuggestion={submitSuggestion}
+            onShowAuthPrompt={onShowAuthPrompt}
+            onShowAccountMenu={onShowAccountMenu}
           />
         </div>
       </div>
 
-      {/* Footer — anchored to the bottom edge */}
-      <div
-        className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto px-4 pb-16 sm:pb-20 lm-fade-up"
-        style={{ animationDelay: "240ms" }}
-      >
-        <Footer
-          isLoggedIn={isLoggedIn}
-          suggestions={suggestions}
-          suggestionsLoading={suggestionsLoading}
-          getBlockReason={getBlockReason}
-          submitSuggestion={submitSuggestion}
-          onShowAuthPrompt={onShowAuthPrompt}
-          onShowAccountMenu={onShowAccountMenu}
-        />
-      </div>
+      {/* Bottom spacer — mirrors the top so the stack stays centered */}
+      <div className="flex-1" />
     </div>
   );
 }
