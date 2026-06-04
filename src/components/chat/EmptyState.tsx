@@ -98,23 +98,21 @@ export default function EmptyState(props: Props) {
 
   return (
     <div className="relative min-h-full">
-      {/* Hero — anchored to the top edge (no layout effect on Input) */}
-      <div className="absolute top-0 left-0 right-0 w-full max-w-2xl mx-auto px-4 pt-10 sm:pt-14">
-        <Hero opener={opener} />
+      {/* Hero + Input grouped and centered together — Hero sits just above
+          the Input as a label, the Input is the visual focal point. */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        <div className="w-full max-w-2xl px-4 flex flex-col items-center gap-5 pointer-events-auto">
+          <Hero opener={opener} />
+          <ChatInput
+            {...chatInputProps}
+            autoFocus
+            getBlockReason={getBlockReason}
+            isLoggedIn={isLoggedIn}
+          />
+        </div>
       </div>
 
-      {/* Input — locked at the exact vertical center.
-          Absolute positioning means dynamic Footer content can't push it. */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4">
-        <ChatInput
-          {...chatInputProps}
-          autoFocus
-          getBlockReason={getBlockReason}
-          isLoggedIn={isLoggedIn}
-        />
-      </div>
-
-      {/* Footer — anchored to the bottom edge (no layout effect on Input) */}
+      {/* Footer — anchored to the bottom edge */}
       <div
         className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto px-4 pb-16 sm:pb-20 lm-fade-up"
         style={{ animationDelay: "240ms" }}
