@@ -98,36 +98,48 @@ export default function EmptyState(props: Props) {
 
   return (
     <>
-      {/* Scrollable container: two flex-1 regions split the available
-          space so the Input (fixed at 50vh) sits exactly between the
-          Hero (top region) and the Footer (bottom region). */}
-      <div className="relative min-h-full flex flex-col">
-        {/* Top region — Hero sits at the bottom of this region
-            (justify-end), so it ends up just above the Input. */}
-        <div className="flex-1 flex flex-col justify-end items-center w-full px-4 gap-5">
-          <Hero opener={opener} />
+      {/* Scrollable container: Hero and Footer are absolutely positioned
+          around the fixed Input so the layout is symmetric regardless of
+          the Footer's content height.
+
+          The Input wrapper is 98px and is fixed at 50vh. We want:
+            Hero bottom at 50vh - 49 - 7 = 50vh - 56 (7px above the Input)
+            Footer top  at 50vh + 49 + 7 = 50vh + 56 (7px below the Input)
+
+          The parent <main> has py-6 (24px) which shifts the EmptyState's
+          coordinate system by 24px from the viewport. We subtract 24px
+          from the calc to compensate, ending at calc(50vh + 32px) for
+          both Hero's bottom and Footer's top. */}
+      <div className="relative min-h-full">
+        {/* Hero — absolute bottom = calc(50vh + 32px), so its bottom edge
+            sits 7px above the Input's top edge. */}
+        <div
+          className="absolute left-0 right-0 px-4 flex justify-center pointer-events-none"
+          style={{ bottom: "calc(50vh + 32px)" }}
+        >
+          <div className="w-full max-w-2xl pointer-events-auto">
+            <Hero opener={opener} />
+          </div>
         </div>
 
-        {/* Spacer matching the Input's wrapper height (~98px) plus a
-            small ~7px gap on each side. The two flex-1 regions share
-            the remaining space equally. */}
-        <div className="h-28" />
-
-        {/* Bottom region — Footer sits at the top of this region
-            (justify-start), so it begins just below the Input. */}
+        {/* Footer — absolute top = calc(50vh + 32px), so its top edge
+            sits 7px below the Input's bottom edge. pb-16/20 keeps it
+            off the viewport bottom when it does fit. */}
         <div
-          className="flex-1 flex flex-col justify-start items-center w-full px-4 pb-16 sm:pb-20 lm-fade-up"
-          style={{ animationDelay: "240ms" }}
+          className="absolute left-0 right-0 px-4 flex justify-center pb-16 sm:pb-20 lm-fade-up pointer-events-none"
+          style={{ top: "calc(50vh + 32px)" }}
         >
-          <Footer
-            isLoggedIn={isLoggedIn}
-            suggestions={suggestions}
-            suggestionsLoading={suggestionsLoading}
-            getBlockReason={getBlockReason}
-            submitSuggestion={submitSuggestion}
-            onShowAuthPrompt={onShowAuthPrompt}
-            onShowAccountMenu={onShowAccountMenu}
-          />
+          <div className="w-full max-w-2xl pointer-events-auto">
+            <Footer
+              isLoggedIn={isLoggedIn}
+              suggestions={suggestions}
+              suggestionsLoading={suggestionsLoading}
+              getBlockReason={getBlockReason}
+              submitSuggestion={submitSuggestion}
+              onShowAuthPrompt={onShowAuthPrompt}
+              onShowAccountMenu={onShowAccountMenu}
+            />
+          </div>
         </div>
       </div>
 
