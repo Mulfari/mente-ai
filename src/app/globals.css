@@ -91,6 +91,10 @@ html, body {
 .sidebar-no-scroll::-webkit-scrollbar { display: none; }
 .sidebar-no-scroll { scrollbar-width: none; -ms-overflow-style: none; }
 
+/* Horizontal scrollers in the empty state (Continúa / Para ti / Hoy rows) */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

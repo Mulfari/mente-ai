@@ -31,6 +31,10 @@ type Props = ChatInputProps & {
   submitSuggestion: (s: string) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
+  recentConvs?: { id: string; title: string; created_at: string; updated_at: string }[];
+  onSelectConv?: (conv: { id: string; title: string; created_at: string; updated_at: string }) => void;
+  interests?: string;
+  onFillInput?: (text: string) => void;
 };
 
 const OPENERS_NO_NAME = [
@@ -87,6 +91,10 @@ export default function EmptyState(props: Props) {
     submitSuggestion,
     onShowAuthPrompt,
     onShowAccountMenu,
+    recentConvs,
+    onSelectConv,
+    interests,
+    onFillInput,
     ...chatInputProps
   } = props;
 
@@ -122,6 +130,10 @@ export default function EmptyState(props: Props) {
             submitSuggestion={submitSuggestion}
             onShowAuthPrompt={onShowAuthPrompt}
             onShowAccountMenu={onShowAccountMenu}
+            recentConvs={recentConvs}
+            onSelectConv={onSelectConv}
+            interests={interests}
+            onFillInput={onFillInput}
           />
         </div>
       </div>
@@ -151,6 +163,10 @@ type FooterProps = {
   submitSuggestion: (s: string) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
+  recentConvs?: { id: string; title: string; created_at: string; updated_at: string }[];
+  onSelectConv?: (conv: { id: string; title: string; created_at: string; updated_at: string }) => void;
+  interests?: string;
+  onFillInput?: (text: string) => void;
 };
 
 function Footer({
@@ -161,6 +177,10 @@ function Footer({
   submitSuggestion,
   onShowAuthPrompt,
   onShowAccountMenu,
+  recentConvs,
+  onSelectConv,
+  interests,
+  onFillInput,
 }: FooterProps) {
   if (!isLoggedIn) {
     return <AuthPrompt onClick={onShowAuthPrompt} />;
@@ -176,6 +196,10 @@ function Footer({
       suggestions={suggestions}
       loading={suggestionsLoading}
       onSelect={submitSuggestion}
+      recentConvs={recentConvs}
+      onSelectConv={onSelectConv}
+      interests={interests}
+      onFillInput={onFillInput}
     />
   );
 }

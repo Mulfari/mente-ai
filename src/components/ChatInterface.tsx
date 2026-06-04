@@ -1508,6 +1508,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
+              recentConvs={conversations}
+              onSelectConv={selectConv}
+              interests={userContext?.interests}
+              onFillInput={setInput}
             />
           ) : (<MessageList
               messages={messages}
