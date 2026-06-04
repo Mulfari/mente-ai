@@ -21,8 +21,8 @@ type ProfileData = {
   weekly_reset_at?: string;
 } | null;
 
-const SIDEBAR_TRANSITION = "width 0.22s cubic-bezier(0.2, 0, 0, 1)";
-const LABEL_TRANSITION = "max-width 0.22s cubic-bezier(0.2, 0, 0, 1), opacity 0.18s cubic-bezier(0.2, 0, 0, 1)";
+const SIDEBAR_TRANSITION = "width 0.3s cubic-bezier(0.2, 0, 0, 1)";
+const LABEL_TRANSITION = "max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.15s cubic-bezier(0.2, 0, 0, 1) 100ms";
 
 function formatDateLabel(conv: Conversation) {
   const dateStr = conv.updated_at && conv.updated_at !== conv.created_at ? conv.updated_at : conv.created_at;
