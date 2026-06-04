@@ -42,12 +42,25 @@ export default function ChatInterface({
   userId,
   convIdFromUrl,
   initialIsLoggedIn = false,
+  initialUserEmail = "",
   initialFullName = null,
+  initialProfile = null,
 }: {
   userId: string;
   convIdFromUrl?: string;
   initialIsLoggedIn?: boolean;
+  initialUserEmail?: string;
   initialFullName?: string | null;
+  initialProfile?: {
+    status?: string;
+    subscription_weeks?: number;
+    subscription_start?: string;
+    subscription_end?: string;
+    used_coupon_label?: string;
+    used_coupon_color?: string;
+    last_message_at?: string;
+    weekly_reset_at?: string;
+  } | null;
 }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
@@ -118,9 +131,9 @@ export default function ChatInterface({
   const [mounted, setMounted] = useState(initialIsLoggedIn);
   const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  const [userEmail, setUserEmail] = useState("");
+  const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(null);
+  const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(initialProfile);
   const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(
     initialFullName ? { full_name: initialFullName, city: "", interests: "", custom_notes: "" } : null
   );
