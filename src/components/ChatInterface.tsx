@@ -38,7 +38,17 @@ type Conversation = {
 };
 
 
-export default function ChatInterface({ userId, convIdFromUrl }: { userId: string; convIdFromUrl?: string }) {
+export default function ChatInterface({
+  userId,
+  convIdFromUrl,
+  initialIsLoggedIn = false,
+  initialFullName = null,
+}: {
+  userId: string;
+  convIdFromUrl?: string;
+  initialIsLoggedIn?: boolean;
+  initialFullName?: string | null;
+}) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -105,13 +115,15 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copiedAnimId, setCopiedAnimId] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [mounted, setMounted] = useState(initialIsLoggedIn);
+  const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState("");
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(null);
-  const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(null);
+  const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(
+    initialFullName ? { full_name: initialFullName, city: "", interests: "", custom_notes: "" } : null
+  );
   const [attachments, setAttachments] = useState<File[]>([]);
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
