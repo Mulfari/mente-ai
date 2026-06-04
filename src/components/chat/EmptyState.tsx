@@ -98,27 +98,24 @@ export default function EmptyState(props: Props) {
 
   return (
     <>
-      {/* Scrollable layer: Hero above and Footer below, in normal flow.
-          Spacers position them around the input. If the page content is
-          taller than the viewport, the user scrolls; the input is
-          position: fixed so it stays at 50vh regardless of scroll. */}
-      <div className="relative min-h-full">
-        {/* Top spacer: 50vh minus half the input height, so the Hero sits
-            just above the input's top edge. */}
-        <div className="h-[calc(50vh-2rem)]" />
-
-        {/* Hero — just above the input */}
-        <div className="w-full max-w-2xl mx-auto px-4">
+      {/* Scrollable container: two flex-1 regions split the available
+          space so the Input (fixed at 50vh) sits exactly between the
+          Hero (top region) and the Footer (bottom region). */}
+      <div className="relative min-h-full flex flex-col">
+        {/* Top region — Hero sits at the bottom of this region
+            (justify-end), so it ends up just above the Input. */}
+        <div className="flex-1 flex flex-col justify-end items-center w-full px-4 gap-5">
           <Hero opener={opener} />
         </div>
 
-        {/* Spacer matching the input's height */}
-        <div className="h-16" />
+        {/* Spacer matching the Input's height. The two flex-1 regions
+            share the remaining space equally. */}
+        <div className="h-20" />
 
-        {/* Footer — just below the input. If it doesn't fit, the user
-            scrolls; pb-16/20 keeps it off the bottom edge when it does. */}
+        {/* Bottom region — Footer sits at the top of this region
+            (justify-start), so it begins just below the Input. */}
         <div
-          className="w-full max-w-2xl mx-auto px-4 pb-16 sm:pb-20 lm-fade-up"
+          className="flex-1 flex flex-col justify-start items-center w-full px-4 pb-16 sm:pb-20 lm-fade-up"
           style={{ animationDelay: "240ms" }}
         >
           <Footer
@@ -133,8 +130,9 @@ export default function EmptyState(props: Props) {
         </div>
       </div>
 
-      {/* Input — fixed at viewport center, always at 50vh. Sits on top of
-          the scrollable layer so the user always sees it. */}
+      {/* Input — fixed at viewport center. Sits on top of the scrollable
+          layer so the user always sees it; pointer-events on the wrapper
+          is none so clicks on the hero/footer underneath still work. */}
       <div className="fixed inset-x-0 top-1/2 -translate-y-1/2 max-w-2xl mx-auto px-4 z-10 pointer-events-none">
         <div className="pointer-events-auto">
           <ChatInput
