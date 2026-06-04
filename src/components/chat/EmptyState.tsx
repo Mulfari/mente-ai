@@ -98,21 +98,23 @@ export default function EmptyState(props: Props) {
 
   return (
     <div className="flex flex-col items-center min-h-full px-4">
-      <div className="flex-[1.5] w-full" aria-hidden />
+      {/* Hero — top portion */}
+      <div className="w-full max-w-2xl flex flex-col items-center pt-10 sm:pt-14">
+        <Hero opener={opener} />
+      </div>
+
+      {/* Input — centered vertically in the remaining space */}
+      <div className="w-full max-w-2xl flex-1 flex flex-col items-center justify-center mt-5">
+        <ChatInput
+          {...chatInputProps}
+          autoFocus
+          getBlockReason={getBlockReason}
+          isLoggedIn={isLoggedIn}
+        />
+      </div>
+
+      {/* Footer — anchored to the bottom */}
       <div className="w-full max-w-2xl flex flex-col items-center pb-16 sm:pb-20">
-        <div className="w-full">
-          <Hero opener={opener} />
-        </div>
-
-        <div className="w-full mt-5">
-          <ChatInput
-            {...chatInputProps}
-            autoFocus
-            getBlockReason={getBlockReason}
-            isLoggedIn={isLoggedIn}
-          />
-        </div>
-
         <div className="w-full mt-8 lm-fade-up" style={{ animationDelay: "240ms" }}>
           <Footer
             isLoggedIn={isLoggedIn}
@@ -125,7 +127,6 @@ export default function EmptyState(props: Props) {
           />
         </div>
       </div>
-      <div className="flex-1 w-full" aria-hidden />
     </div>
   );
 }
