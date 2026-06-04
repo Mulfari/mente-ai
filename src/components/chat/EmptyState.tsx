@@ -97,22 +97,28 @@ export default function EmptyState(props: Props) {
   }, [firstName, isLoggedIn]);
 
   return (
-    <div className="relative min-h-full flex flex-col">
-      {/* Top spacer — pushes the centered stack to vertical middle */}
-      <div className="flex-1" />
+    <>
+      {/* Scrollable layer: Hero above and Footer below, in normal flow.
+          Spacers position them around the input. If the page content is
+          taller than the viewport, the user scrolls; the input is
+          position: fixed so it stays at 50vh regardless of scroll. */}
+      <div className="relative min-h-full">
+        {/* Top spacer: 50vh minus half the input height, so the Hero sits
+            just above the input's top edge. */}
+        <div className="h-[calc(50vh-2rem)]" />
 
-      {/* Centered stack: Hero → Input → Footer. Normal flex flow so the
-          three regions never overlap, regardless of viewport height. */}
-      <div className="w-full max-w-2xl mx-auto px-4 pb-16 sm:pb-20 flex flex-col items-center gap-5">
-        <Hero opener={opener} />
-        <ChatInput
-          {...chatInputProps}
-          autoFocus
-          getBlockReason={getBlockReason}
-          isLoggedIn={isLoggedIn}
-        />
+        {/* Hero — just above the input */}
+        <div className="w-full max-w-2xl mx-auto px-4">
+          <Hero opener={opener} />
+        </div>
+
+        {/* Spacer matching the input's height */}
+        <div className="h-16" />
+
+        {/* Footer — just below the input. If it doesn't fit, the user
+            scrolls; pb-16/20 keeps it off the bottom edge when it does. */}
         <div
-          className="w-full lm-fade-up"
+          className="w-full max-w-2xl mx-auto px-4 pb-16 sm:pb-20 lm-fade-up"
           style={{ animationDelay: "240ms" }}
         >
           <Footer
@@ -127,9 +133,19 @@ export default function EmptyState(props: Props) {
         </div>
       </div>
 
-      {/* Bottom spacer — mirrors the top so the stack stays centered */}
-      <div className="flex-1" />
-    </div>
+      {/* Input — fixed at viewport center, always at 50vh. Sits on top of
+          the scrollable layer so the user always sees it. */}
+      <div className="fixed inset-x-0 top-1/2 -translate-y-1/2 max-w-2xl mx-auto px-4 z-10 pointer-events-none">
+        <div className="pointer-events-auto">
+          <ChatInput
+            {...chatInputProps}
+            autoFocus
+            getBlockReason={getBlockReason}
+            isLoggedIn={isLoggedIn}
+          />
+        </div>
+      </div>
+    </>
   );
 }
 
