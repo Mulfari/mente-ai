@@ -6,14 +6,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import dynamic from "next/dynamic";
-const AuthModal = dynamic(() => import("./AuthModal"));
-const AccountMenu = dynamic(() => import("./AccountMenu"));
-const MessageList = dynamic(() => import("./chat/MessageList"));
-const EmptyState = dynamic(() => import("./chat/EmptyState"));
-const SwipeableConversation = dynamic(() => import("./chat/SwipeableConversation"));
-const ConversationSidebar = dynamic(() => import("./chat/ConversationSidebar"));
-const ChatInput = dynamic(() => import("./chat/ChatInput"));
+import AuthModal from "./AuthModal";
+import AccountMenu from "./AccountMenu";
+import MessageList from "./chat/MessageList";
+import EmptyState from "./chat/EmptyState";
+import SwipeableConversation from "./chat/SwipeableConversation";
+import ConversationSidebar from "./chat/ConversationSidebar";
+import ChatInput from "./chat/ChatInput";
 
 type Message = {
   id: string;
