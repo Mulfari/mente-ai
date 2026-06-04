@@ -396,6 +396,22 @@ html, body {
   animation: lmFadeUp 0.4s var(--motion-standard) backwards;
 }
 
+@keyframes sidebarListIn {
+  0% { opacity: 0; transform: translateY(3px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.sidebar-list-in {
+  animation: sidebarListIn 0.22s cubic-bezier(0.2, 0, 0, 1) backwards;
+}
+
+@keyframes sidebarLabelIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.sidebar-label-in {
+  animation: sidebarLabelIn 0.18s cubic-bezier(0.2, 0, 0, 1) backwards;
+}
+
 /* Input centered in chat area — normal flow, centered with flex parent */
 .input-centered {
   animation: none;
