@@ -97,14 +97,15 @@ export default function EmptyState(props: Props) {
   }, [firstName, isLoggedIn]);
 
   return (
-    <div className="flex flex-col items-center min-h-full px-4">
-      {/* Hero — top portion */}
-      <div className="w-full max-w-2xl flex flex-col items-center pt-10 sm:pt-14">
+    <div className="relative min-h-full">
+      {/* Hero — anchored to the top edge (no layout effect on Input) */}
+      <div className="absolute top-0 left-0 right-0 w-full max-w-2xl mx-auto px-4 pt-10 sm:pt-14">
         <Hero opener={opener} />
       </div>
 
-      {/* Input — centered vertically in the remaining space */}
-      <div className="w-full max-w-2xl flex-1 flex flex-col items-center justify-center mt-5">
+      {/* Input — locked at the exact vertical center.
+          Absolute positioning means dynamic Footer content can't push it. */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl px-4">
         <ChatInput
           {...chatInputProps}
           autoFocus
@@ -113,19 +114,20 @@ export default function EmptyState(props: Props) {
         />
       </div>
 
-      {/* Footer — anchored to the bottom */}
-      <div className="w-full max-w-2xl flex flex-col items-center pb-16 sm:pb-20">
-        <div className="w-full mt-8 lm-fade-up" style={{ animationDelay: "240ms" }}>
-          <Footer
-            isLoggedIn={isLoggedIn}
-            suggestions={suggestions}
-            suggestionsLoading={suggestionsLoading}
-            getBlockReason={getBlockReason}
-            submitSuggestion={submitSuggestion}
-            onShowAuthPrompt={onShowAuthPrompt}
-            onShowAccountMenu={onShowAccountMenu}
-          />
-        </div>
+      {/* Footer — anchored to the bottom edge (no layout effect on Input) */}
+      <div
+        className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto px-4 pb-16 sm:pb-20 lm-fade-up"
+        style={{ animationDelay: "240ms" }}
+      >
+        <Footer
+          isLoggedIn={isLoggedIn}
+          suggestions={suggestions}
+          suggestionsLoading={suggestionsLoading}
+          getBlockReason={getBlockReason}
+          submitSuggestion={submitSuggestion}
+          onShowAuthPrompt={onShowAuthPrompt}
+          onShowAccountMenu={onShowAccountMenu}
+        />
       </div>
     </div>
   );
