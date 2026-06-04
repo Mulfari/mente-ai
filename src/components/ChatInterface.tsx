@@ -61,12 +61,19 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
   const retryRef = useRef<SVGSVGElement>(null);
   const [sidebarHovered, setSidebarHovered] = useState(true);
   const [sidebarTransitionEnabled, setSidebarTransitionEnabled] = useState(false);
+  // Gates the sidebar's expanded state during the initial mount so the sidebar
+  // starts collapsed (56px) and animates open (320px) on every page load.
+  // Without this flag, sidebarHovered defaults to true and the sidebar is
+  // already at 320px on first render — no left-to-right entrance.
+  const [sidebarInitialized, setSidebarInitialized] = useState(false);
 
-  // Hydrate sidebar lock from localStorage and arm the width transition after first paint.
-  // Reading localStorage in a useEffect (not in the useState initializer) avoids the
-  // SSR/CSR mismatch; setting the transition flag here silences the first mouseLeave
-  // that would otherwise animate width right after the page settles (also covers
-  // tab-return scenarios where the first paint replays).
+  // Hydrate sidebar lock from localStorage, arm the width transition, and flip
+  // sidebarInitialized to true — all after first paint. Reading localStorage in
+  // a useEffect (not in the useState initializer) avoids the SSR/CSR mismatch;
+  // setting the transition flag here silences the first mouseLeave that would
+  // otherwise animate width right after the page settles (also covers tab-return
+  // scenarios where the first paint replays). Flipping sidebarInitialized in the
+  // same tick is what causes the initial 56→320 load animation.
   useEffect(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("vechat-sidebar-lock");
@@ -74,6 +81,7 @@ export default function ChatInterface({ userId, convIdFromUrl }: { userId: strin
         setSidebarLock(stored);
       }
       setSidebarTransitionEnabled(true);
+      setSidebarInitialized(true);
     }
   }, []);
 
@@ -1391,6 +1399,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         sidebarHovered={sidebarHovered}
         setSidebarHovered={setSidebarHovered}
         transitionEnabled={sidebarTransitionEnabled}
+        sidebarInitialized={sidebarInitialized}
       />
       <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
