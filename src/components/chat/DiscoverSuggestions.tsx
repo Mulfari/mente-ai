@@ -159,7 +159,7 @@ function QuickQuestions({
               <button
                 key={i}
                 onClick={() => onSelect(s)}
-                className="text-left px-3.5 py-2.5 rounded-xl text-[0.8rem] leading-snug transition-all"
+                className="flex items-center text-left px-3.5 py-2.5 rounded-xl text-[0.8rem] leading-snug transition-all"
                 style={{
                   color: "var(--text-secondary)",
                   backgroundColor: "transparent",
@@ -177,12 +177,28 @@ function QuickQuestions({
                   e.currentTarget.style.borderColor = "var(--border)";
                 }}
               >
-                {s}
+                <span
+                  className="shrink-0 mr-2 inline-flex items-center transition-colors"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  {iconForChip(i)}
+                </span>
+                <span className="flex-1">{s}</span>
               </button>
             ))}
       </div>
     </div>
   );
+}
+
+function iconForChip(i: number): React.ReactNode {
+  const icons = [
+    <LightbulbIcon key="lb" />,
+    <ChatBubbleIcon key="cb" />,
+    <SparklesIcon key="sp" />,
+    <TargetIcon key="tg" />,
+  ];
+  return icons[i % icons.length];
 }
 
 function MapPinIcon() {
@@ -288,6 +304,33 @@ function ChatBubbleIcon() {
         strokeLinejoin="round"
         d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 21l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
       />
+    </svg>
+  );
+}
+
+function LightbulbIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.4 1 1.1 1 1.8V18h6v-1.5c0-.7.4-1.4 1-1.8A7 7 0 0012 2z" />
+    </svg>
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z" />
+    </svg>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   );
 }
