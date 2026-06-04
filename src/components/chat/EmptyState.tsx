@@ -108,9 +108,10 @@ export default function EmptyState(props: Props) {
           <Hero opener={opener} />
         </div>
 
-        {/* Spacer matching the Input's height. The two flex-1 regions
-            share the remaining space equally. */}
-        <div className="h-20" />
+        {/* Spacer matching the Input's wrapper height (~98px) plus a
+            small ~7px gap on each side. The two flex-1 regions share
+            the remaining space equally. */}
+        <div className="h-28" />
 
         {/* Bottom region — Footer sits at the top of this region
             (justify-start), so it begins just below the Input. */}
