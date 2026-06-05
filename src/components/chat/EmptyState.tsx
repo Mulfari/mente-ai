@@ -177,8 +177,9 @@ export default function EmptyState(props: Props) {
 
       {/* Input — absolute, centered in the chat area. pointer-events-none
           on the wrapper so clicks on the hero/footer underneath still
-          work; pointer-events-auto on the input itself. */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 max-w-2xl mx-auto px-4 z-10 pointer-events-none">
+          work; pointer-events-auto on the input itself. max-w-xl keeps
+          the input visually lighter so the footer cards get more weight. */}
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 max-w-xl mx-auto px-4 z-10 pointer-events-none">
         <div className="pointer-events-auto">
           <ChatInput
             {...chatInputProps}
@@ -196,7 +197,7 @@ function Hero({ opener, className }: { opener: string; className?: string }) {
   return (
     <header className={`text-center ${className ?? ""}`} style={{ animationDelay: "80ms" }}>
       <h1
-        className="text-4xl sm:text-5xl font-semibold tracking-tighter"
+        className="text-2xl sm:text-3xl font-semibold tracking-tighter"
         style={{ color: "var(--text-primary)" }}
       >
         {opener}

@@ -148,7 +148,7 @@ function CategoryCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-start text-left p-2.5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+      className="group flex flex-col items-start text-left p-3.5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
       style={{
         backgroundColor: selected
           ? "color-mix(in srgb, var(--primary) 12%, var(--surface))"
@@ -170,7 +170,7 @@ function CategoryCard({
       }}
     >
       <div
-        className="w-8 h-8 rounded-xl flex items-center justify-center mb-2 transition-transform group-hover:scale-105"
+        className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 transition-transform group-hover:scale-105"
         style={{
           backgroundColor: selected
             ? "color-mix(in srgb, var(--primary) 22%, transparent)"
@@ -181,13 +181,13 @@ function CategoryCard({
         {category.icon}
       </div>
       <div
-        className="text-[0.82rem] font-semibold leading-tight"
+        className="text-[0.88rem] font-semibold leading-tight"
         style={{ color: "var(--text-primary)" }}
       >
         {category.title}
       </div>
       <div
-        className="text-[0.68rem] mt-0.5 leading-snug"
+        className="text-[0.72rem] mt-0.5 leading-snug"
         style={{ color: "var(--text-tertiary)" }}
       >
         {category.subtitle}
@@ -208,7 +208,7 @@ function SubOptionCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-start text-left p-3 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+      className="group flex flex-col items-start text-left p-3.5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
       style={{
         background:
           "linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, var(--surface)) 0%, var(--surface) 70%)",
@@ -225,7 +225,7 @@ function SubOptionCard({
       }}
     >
       <div
-        className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105"
+        className="w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-transform group-hover:scale-105"
         style={{
           backgroundColor: "color-mix(in srgb, var(--primary) 18%, transparent)",
           color: "var(--primary)",
@@ -234,13 +234,13 @@ function SubOptionCard({
         {option.icon}
       </div>
       <div
-        className="text-[0.8rem] font-semibold leading-tight"
+        className="text-[0.85rem] font-semibold leading-tight"
         style={{ color: "var(--text-primary)" }}
       >
         {option.title}
       </div>
       <div
-        className="text-[0.66rem] mt-0.5 leading-snug line-clamp-1"
+        className="text-[0.7rem] mt-0.5 leading-snug line-clamp-1"
         style={{ color: "var(--text-tertiary)" }}
       >
         {option.subtitle}
@@ -278,12 +278,12 @@ function QuickQuestions({
   return (
     <div className="w-full">
       <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full mt-2.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
         {showSkeleton
           ? [0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-9 rounded-xl animate-pulse"
+                className="h-11 rounded-xl animate-pulse"
                 style={{ backgroundColor: "var(--surface)" }}
               />
             ))
@@ -291,7 +291,7 @@ function QuickQuestions({
               <button
                 key={i}
                 onClick={() => onSelect(s)}
-                className="flex items-center text-left px-3.5 py-2.5 rounded-xl text-[0.82rem] leading-snug transition-all"
+                className="flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
                 style={{
                   color: "var(--text-secondary)",
                   backgroundColor: "transparent",
@@ -310,7 +310,7 @@ function QuickQuestions({
                 }}
               >
                 <span
-                  className="shrink-0 mr-2 inline-flex items-center transition-colors"
+                  className="shrink-0 mr-2.5 inline-flex items-center transition-colors"
                   style={{ color: "var(--text-tertiary)" }}
                 >
                   {iconForChip(i)}
