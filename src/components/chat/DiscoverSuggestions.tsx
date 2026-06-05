@@ -2,33 +2,43 @@
 
 import React from "react";
 
-type SubOption = {
+type TrendingSubOption = {
   id: string;
   title: string;
   subtitle: string;
-  prompt: string;
-  icon: React.ReactNode;
-  trending?: boolean;
-  eventCount?: number;
+  iconKey: string;
+  eventCount: number;
+  prompts: string[];
+  categoryId: string;
 };
 
-type Category = {
+type StaticSubOption = {
   id: string;
   title: string;
   subtitle: string;
   prompt: string;
   icon: React.ReactNode;
-  subOptions: SubOption[];
+};
+
+type StaticCategory = {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon: React.ReactNode;
+  subOptions: StaticSubOption[];
 };
 
 type Props = {
-  onSelect: (s: string, meta: { categoryId: string; subOptionId?: string }) => void;
-  trendingByCategory?: Record<string, SubOption[]>;
+  onSelect: (
+    s: string,
+    meta: { categoryId: string; subOptionId?: string; source?: "discover" | "typed" }
+  ) => void;
+  trendingTopSubOptions?: TrendingSubOption[];
 };
 
-// Static sub-option metadata — used as the cold-start fallback when the
-// trending API has no data. Icons are keyed by sub-option id so the same
-// `subOptionIcon` helper resolves icons for both static and trending items.
+// Cold-start fallback: three fixed categories with curated sub-options. Used
+// when the trending API returns nothing (zero events, or down). Kept
+// permanently — the static list is the floor, trending is the ceiling.
 const SUBOPTION_ICONS: Record<string, React.ReactNode> = {
   pizza: <PizzaIcon />,
   sushi: <SushiIcon />,
@@ -54,12 +64,11 @@ function subOptionIcon(id: string): React.ReactNode {
   return SUBOPTION_ICONS[id] ?? <ChatBubbleIcon />;
 }
 
-const CATEGORIES: Category[] = [
+const STATIC_CATEGORIES: StaticCategory[] = [
   {
     id: "comida",
     title: "Comida",
     subtitle: "Restaurantes y delivery",
-    prompt: "¿Qué opciones para comer hay cerca de mí?",
     icon: <UtensilsIcon />,
     subOptions: [
       { id: "pizza", title: "Pizza", subtitle: "Cerca de mí, hoy", prompt: "¿Qué pizzerías hay cerca de mí abiertas ahora?", icon: subOptionIcon("pizza") },
@@ -74,7 +83,6 @@ const CATEGORIES: Category[] = [
     id: "servicios",
     title: "Servicios",
     subtitle: "Profesionales y técnicos",
-    prompt: "¿Qué servicios hay disponibles cerca de mí?",
     icon: <HomeIcon />,
     subOptions: [
       { id: "plomero", title: "Plomero", subtitle: "Urgencias 24h", prompt: "Necesito un plomero urgente, ¿a quién puedo llamar?", icon: subOptionIcon("plomero") },
@@ -89,7 +97,6 @@ const CATEGORIES: Category[] = [
     id: "ofertas",
     title: "Ofertas",
     subtitle: "Promociones del día",
-    prompt: "¿Qué ofertas hay hoy cerca de mí?",
     icon: <TagIcon />,
     subOptions: [
       { id: "hoy", title: "Hoy", subtitle: "Las mejores del día", prompt: "¿Qué ofertas hay hoy cerca de mí?", icon: subOptionIcon("hoy") },
@@ -102,68 +109,75 @@ const CATEGORIES: Category[] = [
   },
 ];
 
-export default function DiscoverSuggestions({ onSelect, trendingByCategory }: Props) {
-  const [selectedId, setSelectedId] = React.useState<string>(CATEGORIES[0].id);
-  const activeCategory = CATEGORIES.find((c) => c.id === selectedId) ?? CATEGORIES[0];
+type FilterEntry =
+  | { kind: "trending"; sub: TrendingSubOption }
+  | { kind: "static"; category: StaticCategory };
 
-  // Merge trending data on top of the static fallback. The trending sub-
-  // options go first (sorted by the API's eventCount desc), then any static
-  // sub-options that aren't already in the trending set fill out the rest in
-  // their original order. This way we never lose chips the user is used to —
-  // trending is additive, not a replacement. Cold start (no trending data)
-  // → all three categories show their static chips unchanged.
-  const activeSubOptions: SubOption[] = React.useMemo(() => {
-    const trending = trendingByCategory?.[activeCategory.id];
-    if (!trending || trending.length === 0) return activeCategory.subOptions;
+export default function DiscoverSuggestions({ onSelect, trendingTopSubOptions }: Props) {
+  // Cold start: no trending → show the 3 static categories as filters.
+  // Hot path: trending list → each top sub-option becomes its own filter.
+  const hasTrending = (trendingTopSubOptions?.length ?? 0) > 0;
 
-    const trendingWithIcons: SubOption[] = trending.map((s) => ({
-      ...s,
-      icon: subOptionIcon(s.id),
-      trending: true,
-    }));
-    const trendingIds = new Set(trendingWithIcons.map((s) => s.id));
-    const staticFiller = activeCategory.subOptions.filter((s) => !trendingIds.has(s.id));
-    return [...trendingWithIcons, ...staticFiller];
-  }, [trendingByCategory, activeCategory]);
+  const filters: FilterEntry[] = React.useMemo(() => {
+    if (hasTrending) {
+      return trendingTopSubOptions!.map((s) => ({ kind: "trending" as const, sub: s }));
+    }
+    return STATIC_CATEGORIES.map((c) => ({ kind: "static" as const, category: c }));
+  }, [hasTrending, trendingTopSubOptions]);
+
+  const [selectedIdx, setSelectedIdx] = React.useState(0);
+
+  // If the filter list shrinks (e.g. trending API returns fewer items than
+  // the previous render) keep `selectedIdx` in range.
+  React.useEffect(() => {
+    if (selectedIdx >= filters.length) setSelectedIdx(0);
+  }, [filters.length, selectedIdx]);
+
+  const active = filters[selectedIdx] ?? filters[0];
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <DiscoverSection
-        categories={CATEGORIES}
-        selectedId={selectedId}
-        onSelectCategory={setSelectedId}
+      <FiltersRow
+        filters={filters}
+        selectedIdx={selectedIdx}
+        onSelect={setSelectedIdx}
       />
       <Divider />
-      <QuickQuestions
-        key={activeCategory.id}
-        subOptions={activeSubOptions}
-        categoryId={activeCategory.id}
+      <Cards
+        key={activeFilterKey(active)}
+        active={active}
         onSelect={onSelect}
       />
     </div>
   );
 }
 
-function DiscoverSection({
-  categories,
-  selectedId,
-  onSelectCategory,
+function activeFilterKey(active: FilterEntry | undefined): string {
+  if (!active) return "empty";
+  if (active.kind === "trending") return `t:${active.sub.id}`;
+  return `s:${active.category.id}`;
+}
+
+function FiltersRow({
+  filters,
+  selectedIdx,
+  onSelect,
 }: {
-  categories: Category[];
-  selectedId: string | null;
-  onSelectCategory: (id: string) => void;
+  filters: FilterEntry[];
+  selectedIdx: number;
+  onSelect: (i: number) => void;
 }) {
   return (
     <div className="w-full">
       <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
       <div className="flex flex-wrap gap-2 w-full mt-2.5">
-        {categories.map((cat, i) => (
-          <CategoryChip
-            key={cat.id}
-            category={cat}
+        {filters.map((f, i) => (
+          <FilterChip
+            key={filterKey(f)}
+            entry={f}
             index={i}
-            selected={selectedId === cat.id}
-            onClick={() => onSelectCategory(cat.id)}
+            selected={selectedIdx === i}
+            onClick={() => onSelect(i)}
           />
         ))}
       </div>
@@ -171,17 +185,27 @@ function DiscoverSection({
   );
 }
 
-function CategoryChip({
-  category,
+function filterKey(f: FilterEntry): string {
+  if (f.kind === "trending") return `t:${f.sub.id}`;
+  return `s:${f.category.id}`;
+}
+
+function FilterChip({
+  entry,
   index,
   selected,
   onClick,
 }: {
-  category: Category;
+  entry: FilterEntry;
   index: number;
   selected: boolean;
   onClick: () => void;
 }) {
+  const isTrending = entry.kind === "trending";
+  const title = isTrending ? entry.sub.title : entry.category.title;
+  const subtitle = isTrending ? entry.sub.subtitle : entry.category.subtitle;
+  const icon = isTrending ? subOptionIcon(entry.sub.id) : entry.category.icon;
+
   return (
     <button
       onClick={onClick}
@@ -208,14 +232,146 @@ function CategoryChip({
         e.currentTarget.style.borderColor = "var(--border)";
         e.currentTarget.style.color = "var(--text-secondary)";
       }}
+      title={subtitle}
     >
       <span
         className="w-3.5 h-3.5 inline-flex items-center justify-center transition-transform group-hover:scale-110"
         style={{ color: "var(--primary)" }}
       >
-        {category.icon}
+        {icon}
       </span>
-      <span>{category.title}</span>
+      <span>{title}</span>
+    </button>
+  );
+}
+
+function Cards({
+  active,
+  onSelect,
+}: {
+  active: FilterEntry | undefined;
+  onSelect: Props["onSelect"];
+}) {
+  if (!active) {
+    return (
+      <div className="w-full">
+        <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
+      </div>
+    );
+  }
+
+  if (active.kind === "trending") {
+    const prompts = active.sub.prompts ?? [];
+    return (
+      <div className="w-full">
+        <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
+          {prompts.map((p, i) => (
+            <PromptCard
+              key={`${active.sub.id}-${i}-${p}`}
+              prompt={p}
+              icon={subOptionIcon(active.sub.id)}
+              trending={i === 0}
+              index={i}
+              onClick={() =>
+                onSelect(p, {
+                  categoryId: active.sub.categoryId,
+                  subOptionId: active.sub.id,
+                  source: "discover",
+                })
+              }
+            />
+          ))}
+          {prompts.length === 0 && (
+            <div
+              className="col-span-full text-[0.82rem] py-3 text-center"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              Sin sugerencias por ahora
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Static fallback — render the category's curated sub-options.
+  return (
+    <div className="w-full">
+      <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
+        {active.category.subOptions.map((s, i) => (
+          <PromptCard
+            key={s.id}
+            prompt={s.prompt}
+            icon={s.icon}
+            title={s.title}
+            trending={false}
+            index={i}
+            onClick={() => onSelect(s.prompt, { categoryId: active.category.id, subOptionId: s.id, source: "discover" })}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PromptCard({
+  prompt,
+  icon,
+  title,
+  trending,
+  index,
+  onClick,
+}: {
+  prompt: string;
+  icon: React.ReactNode;
+  title?: string;
+  trending: boolean;
+  index: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
+      style={{
+        color: "var(--text-secondary)",
+        backgroundColor: "transparent",
+        border: "1px solid var(--border)",
+        animation: `fadeIn 0.4s ease-out ${index * 50}ms backwards`,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "var(--surface-hover)";
+        e.currentTarget.style.color = "var(--text-primary)";
+        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--text-tertiary) 30%, transparent)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "transparent";
+        e.currentTarget.style.color = "var(--text-secondary)";
+        e.currentTarget.style.borderColor = "var(--border)";
+      }}
+    >
+      <span
+        className="shrink-0 mr-2.5 inline-flex items-center transition-colors"
+        style={{ color: "var(--text-tertiary)" }}
+      >
+        {icon}
+      </span>
+      <span className="flex-1 line-clamp-2">{title ?? prompt}</span>
+      {trending && (
+        <span
+          className="ml-2 shrink-0 inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+          style={{
+            color: "var(--primary)",
+            backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
+          }}
+          title="Tendencia reciente"
+        >
+          <span aria-hidden>●</span>
+          <span>tendencia</span>
+        </span>
+      )}
     </button>
   );
 }
@@ -234,68 +390,6 @@ function SectionLabel({ icon, children }: { icon?: React.ReactNode; children: Re
 
 function Divider() {
   return <div className="w-full h-px" style={{ backgroundColor: "var(--border)" }} />;
-}
-
-function QuickQuestions({
-  subOptions,
-  categoryId,
-  onSelect,
-}: {
-  subOptions: SubOption[];
-  categoryId: string;
-  onSelect: (s: string, meta: { categoryId: string; subOptionId?: string }) => void;
-}) {
-  return (
-    <div className="w-full">
-      <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
-        {subOptions.map((s, i) => (
-          <button
-            key={s.id}
-            onClick={() => onSelect(s.prompt, { categoryId, subOptionId: s.id })}
-            className="relative flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
-            style={{
-              color: "var(--text-secondary)",
-              backgroundColor: "transparent",
-              border: "1px solid var(--border)",
-              animation: `fadeIn 0.4s ease-out ${i * 50}ms backwards`,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "var(--surface-hover)";
-              e.currentTarget.style.color = "var(--text-primary)";
-              e.currentTarget.style.borderColor = "color-mix(in srgb, var(--text-tertiary) 30%, transparent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "transparent";
-              e.currentTarget.style.color = "var(--text-secondary)";
-              e.currentTarget.style.borderColor = "var(--border)";
-            }}
-          >
-            <span
-              className="shrink-0 mr-2.5 inline-flex items-center transition-colors"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              {s.icon}
-            </span>
-            <span className="flex-1">{s.title}</span>
-            {s.trending && (
-              <span
-                className="ml-2 shrink-0 inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-                style={{
-                  color: "var(--primary)",
-                  backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
-                }}
-                title="Tendencia reciente"
-              >
-                <span aria-hidden>●</span>
-                <span>tendencia</span>
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
 }
 
 function MapPinIcon() {

@@ -41,11 +41,10 @@ type TrendingSubOption = {
   id: string;
   title: string;
   subtitle: string;
-  prompt: string;
   iconKey: string;
   eventCount: number;
-  icon: React.ReactNode;
-  trending?: boolean;
+  prompts: string[];
+  categoryId: string;
 };
 
 
@@ -155,7 +154,7 @@ export default function ChatInterface({
     const [onboardingStep, setOnboardingStep] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  const [trendingByCategory, setTrendingByCategory] = useState<Record<string, TrendingSubOption[]>>({});
+  const [trendingTopSubOptions, setTrendingTopSubOptions] = useState<TrendingSubOption[]>([]);
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -314,14 +313,18 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     loadSuggestions();
   }, [isLoggedIn]);
 
-  // Load trending sub-options per category. Silent on failure — the empty
-  // state falls back to static CATEGORIES sub-options when this returns {}
-  // or errors. Re-fetched on conversation change so the chips reflect the
+  // Load trending top sub-options. Silent on failure — the empty state
+  // falls back to static categories when the list is empty or the request
+  // errors. Re-fetched on conversation change so the chips reflect the
   // latest aggregate when the user lands on a fresh empty state.
   function loadTrending() {
     fetch("/api/trending")
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && d.trending) setTrendingByCategory(d.trending); })
+      .then(d => {
+        if (d && d.trending && Array.isArray(d.trending.topSubOptions)) {
+          setTrendingTopSubOptions(d.trending.topSubOptions);
+        }
+      })
       .catch(() => {});
   }
   useEffect(() => {
@@ -1683,7 +1686,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
-              trendingByCategory={trendingByCategory}
+              trendingTopSubOptions={trendingTopSubOptions}
             />
           ) : (<MessageList
               messages={messages}

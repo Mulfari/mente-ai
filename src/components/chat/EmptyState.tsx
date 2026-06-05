@@ -10,14 +10,14 @@ type BlockReason = {
   reason: string;
 };
 
-type SubOption = {
+type TrendingSubOption = {
   id: string;
   title: string;
   subtitle: string;
-  prompt: string;
-  icon: React.ReactNode;
-  trending?: boolean;
-  eventCount?: number;
+  iconKey: string;
+  eventCount: number;
+  prompts: string[];
+  categoryId: string;
 };
 
 type ChatInputProps = {
@@ -44,7 +44,7 @@ type Props = ChatInputProps & {
   ) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
-  trendingByCategory?: Record<string, SubOption[]>;
+  trendingTopSubOptions?: TrendingSubOption[];
 };
 
 const OPENERS_NO_NAME = [
@@ -117,7 +117,7 @@ export default function EmptyState(props: Props) {
     submitSuggestion,
     onShowAuthPrompt,
     onShowAccountMenu,
-    trendingByCategory,
+    trendingTopSubOptions,
     ...chatInputProps
   } = props;
 
@@ -186,7 +186,7 @@ export default function EmptyState(props: Props) {
             submitSuggestion={submitSuggestion}
             onShowAuthPrompt={onShowAuthPrompt}
             onShowAccountMenu={onShowAccountMenu}
-            trendingByCategory={trendingByCategory}
+            trendingTopSubOptions={trendingTopSubOptions}
           />
         </div>
       </div>
@@ -233,7 +233,7 @@ type FooterProps = {
   ) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
-  trendingByCategory?: Record<string, SubOption[]>;
+  trendingTopSubOptions?: TrendingSubOption[];
 };
 
 function Footer({
@@ -244,7 +244,7 @@ function Footer({
   submitSuggestion,
   onShowAuthPrompt,
   onShowAccountMenu,
-  trendingByCategory,
+  trendingTopSubOptions,
 }: FooterProps) {
   if (!isLoggedIn) {
     return <AuthPrompt onClick={onShowAuthPrompt} />;
@@ -258,7 +258,7 @@ function Footer({
   return (
     <DiscoverSuggestions
       onSelect={(s, meta) => submitSuggestion(s, meta)}
-      trendingByCategory={trendingByCategory}
+      trendingTopSubOptions={trendingTopSubOptions}
     />
   );
 }
