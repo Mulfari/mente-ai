@@ -65,7 +65,9 @@ html, body {
   padding: 0;
 }
 
-/* === SCROLLBAR — floating teal pill, tied to the page's primary color === */
+/* === SCROLLBAR — auto-hide floating teal pill ===
+   Invisible by default; fades in when the scrollable area is hovered
+   or when the thumb is being dragged. macOS-style behavior. */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -74,14 +76,19 @@ html, body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 45%, transparent);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
-  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  opacity: 0;
+  transition: opacity 0.25s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+/* Reveal the thumb on hover of any scrollable area */
+*:hover::-webkit-scrollbar-thumb {
+  opacity: 1;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--primary) 60%, transparent);
+  background: color-mix(in srgb, var(--primary) 65%, transparent);
   background-clip: padding-box;
   box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 35%, transparent);
 }
@@ -93,10 +100,10 @@ html, body {
   background: transparent;
 }
 
-/* Firefox */
+/* Firefox — no native auto-hide, so we keep a thin always-visible bar */
 html {
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--primary) 35%, transparent) transparent;
+  scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
 }
 
 @keyframes modal-in {
