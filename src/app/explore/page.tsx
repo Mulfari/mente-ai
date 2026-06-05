@@ -73,7 +73,7 @@ export default function ExplorePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex items-center gap-3" style={{ color: "var(--text-secondary)" }}>
           <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
           <span className="text-sm">Cargando directorio...</span>
@@ -83,7 +83,7 @@ export default function ExplorePage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen">
       {/* Header */}
       <header className="sticky top-0 z-10 px-4 py-4 border-b shrink-0"
         style={{ backgroundColor: "var(--surface)", borderColor: "var(--border)" }}>

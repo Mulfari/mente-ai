@@ -391,7 +391,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   });
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen">
       {/* Toast notifications */}
       <div className="fixed top-5 right-5 z-50 space-y-2">
         {toasts.map(toast => (

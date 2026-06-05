@@ -11,7 +11,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center p-8 rounded-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
           style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
@@ -38,7 +38,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
     .single();
 
   if (!profile || profile.role !== "admin") return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen flex items-center justify-center">
       <div className="text-center p-8 rounded-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
         <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4" style={{ background: "rgba(239,68,68,0.1)" }}>
           <svg className="w-8 h-8" style={{ color: "var(--danger)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">

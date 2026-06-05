@@ -59,7 +59,7 @@ export default function ConfirmEmailClient() {
 
   if (confirmed) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--background)" }}>
+      <main className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-sm rounded-2xl p-8 shadow-2xl text-center animate-fade-in"
           style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
           <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-6"
@@ -100,7 +100,7 @@ export default function ConfirmEmailClient() {
 
   if (error) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--background)" }}>
+      <main className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-sm rounded-2xl p-8 shadow-2xl text-center animate-fade-in"
           style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
           <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-6"
@@ -133,7 +133,7 @@ export default function ConfirmEmailClient() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: "var(--background)" }}>
+    <main className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-2xl p-8 shadow-2xl text-center animate-fade-in"
         style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
         <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-6"

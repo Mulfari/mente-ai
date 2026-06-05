@@ -120,7 +120,7 @@ export default function ContextEditor() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "var(--background)" }}>
+      <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 rounded-full animate-spin" style={{ border: "2px solid var(--border)", borderTopColor: "var(--primary)" }} />
           <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Cargando...</p>
@@ -130,7 +130,7 @@ export default function ContextEditor() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+    <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-10 flex items-center gap-3 px-4 h-14 shrink-0"
         style={{ backgroundColor: "var(--surface)", borderBottom: "1px solid var(--border)" }}>

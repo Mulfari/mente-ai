@@ -174,7 +174,7 @@ export default function AgentPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen" style={{ backgroundColor: "var(--background)" }}>
+      <div className="flex items-center justify-center h-screen">
         <div className="animate-spin w-8 h-8 rounded-full border-2" style={{ borderColor: "var(--primary)", borderTopColor: "transparent" }} />
       </div>
     );
@@ -182,7 +182,7 @@ export default function AgentPage() {
 
   if (showCityPrompt && isLoggedIn) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen px-4" style={{ backgroundColor: "var(--background)" }}>
+      <div className="flex flex-col items-center justify-center min-h-screen px-4">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <div className="text-5xl mb-4">🧠</div>
@@ -211,7 +211,7 @@ export default function AgentPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen" style={{ backgroundColor: "var(--background)" }}>
+    <div className="flex flex-col h-screen">
       {/* Header */}
       <header className="flex-none px-4 py-3 flex items-center justify-between" style={{ backgroundColor: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
         <div className="flex items-center gap-2">
