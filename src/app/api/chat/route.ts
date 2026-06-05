@@ -19,17 +19,21 @@ function validateProfile(profile: any, now: Date) {
     const weeks = profile.subscription_weeks ?? 0;
     if (weeks <= 0) return { error: "Error 403. Por favor intente nuevamente.", code: 403 };
   }
-  const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-  if (hourlyResetAt && now >= hourlyResetAt) profile.hourly_msg_count = 0;
-  if (profile.hourly_msg_count >= HOURLY_LIMIT) {
-    const remainingSecs = hourlyResetAt
-      ? Math.ceil((hourlyResetAt.getTime() - now.getTime()) / 1000)
-      : COOLDOWN_MINUTES * 60;
-    return {
-      error: `Demasiados mensajes. Espera ${Math.ceil(remainingSecs / 60)}min para continuar.`,
-      code: 429,
-      remaining: remainingSecs,
-    };
+  // Paid users (any nonzero subscription_weeks, including -1) skip hourly throttle.
+  const isPaid = (profile.subscription_weeks ?? 0) !== 0;
+  if (!isPaid) {
+    const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
+    if (hourlyResetAt && now >= hourlyResetAt) profile.hourly_msg_count = 0;
+    if (profile.hourly_msg_count >= HOURLY_LIMIT) {
+      const remainingSecs = hourlyResetAt
+        ? Math.ceil((hourlyResetAt.getTime() - now.getTime()) / 1000)
+        : COOLDOWN_MINUTES * 60;
+      return {
+        error: `Demasiados mensajes. Espera ${Math.ceil(remainingSecs / 60)}min para continuar.`,
+        code: 429,
+        remaining: remainingSecs,
+      };
+    }
   }
   return null;
 }
