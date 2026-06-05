@@ -77,7 +77,7 @@ export default function DiscoverSuggestions({ suggestions, loading, onSelect }: 
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
   const activeCategory = CATEGORIES.find((c) => c.id === selectedCategory) ?? null;
   return (
-    <div className="min-h-[16rem] sm:min-h-[14rem] w-full flex flex-col gap-5">
+    <div className="w-full flex flex-col gap-3">
       <DiscoverSection
         categories={CATEGORIES}
         selectedId={selectedCategory}
@@ -107,7 +107,7 @@ function DiscoverSection({
   return (
     <div className="w-full">
       <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
-      <div className="grid grid-cols-3 gap-2 w-full mt-3">
+      <div className="grid grid-cols-3 gap-2 w-full mt-2">
         {categories.map((cat, i) => (
           <CategoryCard
             key={cat.id}
@@ -119,7 +119,7 @@ function DiscoverSection({
         ))}
       </div>
       {selectedId && activeSubOptions.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full mt-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full mt-2">
           {activeSubOptions.map((sub, i) => (
             <SubOptionCard
               key={sub.id}
@@ -148,7 +148,7 @@ function CategoryCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-start text-left p-2.5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+      className="group flex flex-col items-start text-left p-2 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
       style={{
         backgroundColor: selected
           ? "color-mix(in srgb, var(--primary) 12%, var(--surface))"
@@ -170,7 +170,7 @@ function CategoryCard({
       }}
     >
       <div
-        className="w-8 h-8 rounded-xl flex items-center justify-center mb-2 transition-transform group-hover:scale-105"
+        className="w-7 h-7 rounded-xl flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105"
         style={{
           backgroundColor: selected
             ? "color-mix(in srgb, var(--primary) 22%, transparent)"
@@ -181,7 +181,7 @@ function CategoryCard({
         {category.icon}
       </div>
       <div
-        className="text-[0.8rem] font-semibold leading-tight"
+        className="text-[0.78rem] font-semibold leading-tight"
         style={{ color: "var(--text-primary)" }}
       >
         {category.title}
@@ -208,7 +208,7 @@ function SubOptionCard({
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-start text-left p-3 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+      className="group flex flex-col items-start text-left p-2.5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
       style={{
         background:
           "linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, var(--surface)) 0%, var(--surface) 70%)",
@@ -225,7 +225,7 @@ function SubOptionCard({
       }}
     >
       <div
-        className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition-transform group-hover:scale-105"
+        className="w-6 h-6 rounded-lg flex items-center justify-center mb-1 transition-transform group-hover:scale-105"
         style={{
           backgroundColor: "color-mix(in srgb, var(--primary) 18%, transparent)",
           color: "var(--primary)",
@@ -234,13 +234,13 @@ function SubOptionCard({
         {option.icon}
       </div>
       <div
-        className="text-[0.78rem] font-semibold leading-tight"
+        className="text-[0.75rem] font-semibold leading-tight"
         style={{ color: "var(--text-primary)" }}
       >
         {option.title}
       </div>
       <div
-        className="text-[0.65rem] mt-0.5 leading-snug line-clamp-1"
+        className="text-[0.62rem] mt-0.5 leading-snug line-clamp-1"
         style={{ color: "var(--text-tertiary)" }}
       >
         {option.subtitle}
@@ -278,12 +278,12 @@ function QuickQuestions({
   return (
     <div className="w-full">
       <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full mt-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full mt-2">
         {showSkeleton
           ? [0, 1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-9 rounded-xl animate-pulse"
+                className="h-8 rounded-xl animate-pulse"
                 style={{ backgroundColor: "var(--surface)" }}
               />
             ))
@@ -291,7 +291,7 @@ function QuickQuestions({
               <button
                 key={i}
                 onClick={() => onSelect(s)}
-                className="flex items-center text-left px-3.5 py-2.5 rounded-xl text-[0.8rem] leading-snug transition-all"
+                className="flex items-center text-left px-3 py-2 rounded-xl text-[0.78rem] leading-snug transition-all"
                 style={{
                   color: "var(--text-secondary)",
                   backgroundColor: "transparent",
