@@ -37,6 +37,17 @@ type Conversation = {
   updated_at: string;
 };
 
+type TrendingSubOption = {
+  id: string;
+  title: string;
+  subtitle: string;
+  prompt: string;
+  iconKey: string;
+  eventCount: number;
+  icon: React.ReactNode;
+  trending?: boolean;
+};
+
 
 export default function ChatInterface({
   userId,
@@ -144,6 +155,7 @@ export default function ChatInterface({
     const [onboardingStep, setOnboardingStep] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [trendingByCategory, setTrendingByCategory] = useState<Record<string, TrendingSubOption[]>>({});
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -295,6 +307,20 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   useEffect(() => {
     loadSuggestions();
   }, [isLoggedIn]);
+
+  // Load trending sub-options per category. Silent on failure — the empty
+  // state falls back to static CATEGORIES sub-options when this returns {}
+  // or errors. Re-fetched on conversation change so the chips reflect the
+  // latest aggregate when the user lands on a fresh empty state.
+  function loadTrending() {
+    fetch("/api/trending")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && d.trending) setTrendingByCategory(d.trending); })
+      .catch(() => {});
+  }
+  useEffect(() => {
+    loadTrending();
+  }, [activeConv?.id, isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn || !userId) return;
@@ -905,12 +931,28 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     });
   }
 
-  async function submitSuggestion(s: string) {
+  async function submitSuggestion(
+    s: string,
+    meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
+  ) {
     if (sending) return;
     if (!isLoggedIn) { setShowAuthPrompt(true); return; }
     setSending(true);
     setSuggestions([]);
     if (!activeConv) setConvLoaded(true);
+
+    // Fire-and-forget trending tracking. Silent on failure — never block the
+    // user flow on the tracking request.
+    fetch("/api/track-query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        categoryId: meta?.categoryId ?? null,
+        subOptionId: meta?.subOptionId ?? null,
+        source: meta?.source ?? "discover",
+        prompt: s,
+      }),
+    }).catch(() => {});
 
     let conv = activeConv;
     if (!conv) {
@@ -1110,6 +1152,20 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     const queuedMsg = queuedMsgRef.current;
     queuedMsgRef.current = null;
     const userMsg = queuedMsg ? queuedMsg.text : inputVal;
+
+    // Fire-and-forget trending tracking for typed/free-form prompts. The
+    // trending API filters these out (no sub_option_id), but we keep the
+    // rows for future personalization and analytics.
+    fetch("/api/track-query", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        categoryId: null,
+        subOptionId: null,
+        source: "typed",
+        prompt: userMsg,
+      }),
+    }).catch(() => {});
 
     // Detect research command
     const researchMatch = userMsg.match(/^(?:investiga|busca|research)\s+(.+?)\s+(?:en|sobre|about)\s+(.+)$/i);
@@ -1551,6 +1607,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
+              trendingByCategory={trendingByCategory}
             />
           ) : (<MessageList
               messages={messages}

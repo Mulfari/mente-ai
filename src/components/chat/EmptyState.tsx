@@ -10,6 +10,16 @@ type BlockReason = {
   reason: string;
 };
 
+type SubOption = {
+  id: string;
+  title: string;
+  subtitle: string;
+  prompt: string;
+  icon: React.ReactNode;
+  trending?: boolean;
+  eventCount?: number;
+};
+
 type ChatInputProps = {
   input: string;
   setInput: (val: string) => void;
@@ -28,9 +38,13 @@ type Props = ChatInputProps & {
   userName?: string;
   suggestions: string[];
   suggestionsLoading: boolean;
-  submitSuggestion: (s: string) => void;
+  submitSuggestion: (
+    s: string,
+    meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
+  ) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
+  trendingByCategory?: Record<string, SubOption[]>;
 };
 
 const OPENERS_NO_NAME = [
@@ -103,6 +117,7 @@ export default function EmptyState(props: Props) {
     submitSuggestion,
     onShowAuthPrompt,
     onShowAccountMenu,
+    trendingByCategory,
     ...chatInputProps
   } = props;
 
@@ -171,6 +186,7 @@ export default function EmptyState(props: Props) {
             submitSuggestion={submitSuggestion}
             onShowAuthPrompt={onShowAuthPrompt}
             onShowAccountMenu={onShowAccountMenu}
+            trendingByCategory={trendingByCategory}
           />
         </div>
       </div>
@@ -211,9 +227,13 @@ type FooterProps = {
   suggestions: string[];
   suggestionsLoading: boolean;
   getBlockReason: () => BlockReason;
-  submitSuggestion: (s: string) => void;
+  submitSuggestion: (
+    s: string,
+    meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
+  ) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
+  trendingByCategory?: Record<string, SubOption[]>;
 };
 
 function Footer({
@@ -224,6 +244,7 @@ function Footer({
   submitSuggestion,
   onShowAuthPrompt,
   onShowAccountMenu,
+  trendingByCategory,
 }: FooterProps) {
   if (!isLoggedIn) {
     return <AuthPrompt onClick={onShowAuthPrompt} />;
@@ -236,9 +257,8 @@ function Footer({
 
   return (
     <DiscoverSuggestions
-      suggestions={suggestions}
-      loading={suggestionsLoading}
-      onSelect={submitSuggestion}
+      onSelect={(s, meta) => submitSuggestion(s, meta)}
+      trendingByCategory={trendingByCategory}
     />
   );
 }

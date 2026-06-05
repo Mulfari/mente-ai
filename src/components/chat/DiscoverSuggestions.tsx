@@ -8,6 +8,8 @@ type SubOption = {
   subtitle: string;
   prompt: string;
   icon: React.ReactNode;
+  trending?: boolean;
+  eventCount?: number;
 };
 
 type Category = {
@@ -20,10 +22,37 @@ type Category = {
 };
 
 type Props = {
-  suggestions: string[];
-  loading: boolean;
-  onSelect: (s: string) => void;
+  onSelect: (s: string, meta: { categoryId: string; subOptionId?: string }) => void;
+  trendingByCategory?: Record<string, SubOption[]>;
 };
+
+// Static sub-option metadata — used as the cold-start fallback when the
+// trending API has no data. Icons are keyed by sub-option id so the same
+// `subOptionIcon` helper resolves icons for both static and trending items.
+const SUBOPTION_ICONS: Record<string, React.ReactNode> = {
+  pizza: <PizzaIcon />,
+  sushi: <SushiIcon />,
+  veggie: <LeafIcon />,
+  desayuno: <CoffeeIcon />,
+  postres: <CakeIcon />,
+  cafes: <CoffeeIcon />,
+  plomero: <WrenchIcon />,
+  electricista: <BoltIcon />,
+  limpieza: <BroomIcon />,
+  mudanza: <BoxIcon />,
+  tecnico: <MonitorIcon />,
+  clases: <BookIcon />,
+  hoy: <FireIcon />,
+  "2x1": <TagIcon />,
+  ropa: <ShirtIcon />,
+  super: <BasketIcon />,
+  electronica: <DeviceIcon />,
+  cupones: <TicketIcon />,
+};
+
+function subOptionIcon(id: string): React.ReactNode {
+  return SUBOPTION_ICONS[id] ?? <ChatBubbleIcon />;
+}
 
 const CATEGORIES: Category[] = [
   {
@@ -33,12 +62,12 @@ const CATEGORIES: Category[] = [
     prompt: "¿Qué opciones para comer hay cerca de mí?",
     icon: <UtensilsIcon />,
     subOptions: [
-      { id: "pizza", title: "Pizza", subtitle: "Cerca de mí, hoy", prompt: "¿Qué pizzerías hay cerca de mí abiertas ahora?", icon: <PizzaIcon /> },
-      { id: "sushi", title: "Sushi", subtitle: "Delivery y para llevar", prompt: "¿Dónde pedir sushi con delivery?", icon: <SushiIcon /> },
-      { id: "veggie", title: "Vegetariana", subtitle: "Opciones saludables", prompt: "¿Qué restaurantes vegetarianos hay cerca de mí?", icon: <LeafIcon /> },
-      { id: "desayuno", title: "Desayunos", subtitle: "Brunch y cafeterías", prompt: "¿Dónde puedo desayunar o brunchear cerca de mí?", icon: <CoffeeIcon /> },
-      { id: "postres", title: "Postres", subtitle: "Pastelerías y heladerías", prompt: "¿Dónde conseguir buenos postres cerca de mí?", icon: <CakeIcon /> },
-      { id: "cafes", title: "Cafés", subtitle: "Para trabajar o estudiar", prompt: "¿Qué cafés tranquilos hay cerca de mí para trabajar?", icon: <CoffeeIcon /> },
+      { id: "pizza", title: "Pizza", subtitle: "Cerca de mí, hoy", prompt: "¿Qué pizzerías hay cerca de mí abiertas ahora?", icon: subOptionIcon("pizza") },
+      { id: "sushi", title: "Sushi", subtitle: "Delivery y para llevar", prompt: "¿Dónde pedir sushi con delivery?", icon: subOptionIcon("sushi") },
+      { id: "veggie", title: "Vegetariana", subtitle: "Opciones saludables", prompt: "¿Qué restaurantes vegetarianos hay cerca de mí?", icon: subOptionIcon("veggie") },
+      { id: "desayuno", title: "Desayunos", subtitle: "Brunch y cafeterías", prompt: "¿Dónde puedo desayunar o brunchear cerca de mí?", icon: subOptionIcon("desayuno") },
+      { id: "postres", title: "Postres", subtitle: "Pastelerías y heladerías", prompt: "¿Dónde conseguir buenos postres cerca de mí?", icon: subOptionIcon("postres") },
+      { id: "cafes", title: "Cafés", subtitle: "Para trabajar o estudiar", prompt: "¿Qué cafés tranquilos hay cerca de mí para trabajar?", icon: subOptionIcon("cafes") },
     ],
   },
   {
@@ -48,12 +77,12 @@ const CATEGORIES: Category[] = [
     prompt: "¿Qué servicios hay disponibles cerca de mí?",
     icon: <HomeIcon />,
     subOptions: [
-      { id: "plomero", title: "Plomero", subtitle: "Urgencias 24h", prompt: "Necesito un plomero urgente, ¿a quién puedo llamar?", icon: <WrenchIcon /> },
-      { id: "electricista", title: "Electricista", subtitle: "Reparaciones rápidas", prompt: "¿Hay electricistas disponibles ahora en mi zona?", icon: <BoltIcon /> },
-      { id: "limpieza", title: "Limpieza", subtitle: "Servicio a domicilio", prompt: "¿Cuánto cuesta un servicio de limpieza de hogar?", icon: <BroomIcon /> },
-      { id: "mudanza", title: "Mudanza", subtitle: "Económicas y confiables", prompt: "¿Qué empresas de mudanza económicas hay cerca de mí?", icon: <BoxIcon /> },
-      { id: "tecnico", title: "Técnico PC", subtitle: "Soporte y reparación", prompt: "Mi computadora está fallando, ¿dónde la pueden revisar?", icon: <MonitorIcon /> },
-      { id: "clases", title: "Clases", subtitle: "Particulares y online", prompt: "Busco clases particulares de inglés en mi zona", icon: <BookIcon /> },
+      { id: "plomero", title: "Plomero", subtitle: "Urgencias 24h", prompt: "Necesito un plomero urgente, ¿a quién puedo llamar?", icon: subOptionIcon("plomero") },
+      { id: "electricista", title: "Electricista", subtitle: "Reparaciones rápidas", prompt: "¿Hay electricistas disponibles ahora en mi zona?", icon: subOptionIcon("electricista") },
+      { id: "limpieza", title: "Limpieza", subtitle: "Servicio a domicilio", prompt: "¿Cuánto cuesta un servicio de limpieza de hogar?", icon: subOptionIcon("limpieza") },
+      { id: "mudanza", title: "Mudanza", subtitle: "Económicas y confiables", prompt: "¿Qué empresas de mudanza económicas hay cerca de mí?", icon: subOptionIcon("mudanza") },
+      { id: "tecnico", title: "Técnico PC", subtitle: "Soporte y reparación", prompt: "Mi computadora está fallando, ¿dónde la pueden revisar?", icon: subOptionIcon("tecnico") },
+      { id: "clases", title: "Clases", subtitle: "Particulares y online", prompt: "Busco clases particulares de inglés en mi zona", icon: subOptionIcon("clases") },
     ],
   },
   {
@@ -63,19 +92,35 @@ const CATEGORIES: Category[] = [
     prompt: "¿Qué ofertas hay hoy cerca de mí?",
     icon: <TagIcon />,
     subOptions: [
-      { id: "hoy", title: "Hoy", subtitle: "Las mejores del día", prompt: "¿Qué ofertas hay hoy cerca de mí?", icon: <FireIcon /> },
-      { id: "2x1", title: "2x1", subtitle: "En comida y delivery", prompt: "¿Dónde hay promociones 2x1 en comida?", icon: <TagIcon /> },
-      { id: "ropa", title: "Ropa", subtitle: "Descuentos en tiendas", prompt: "¿Qué tiendas de ropa tienen descuentos ahora?", icon: <ShirtIcon /> },
-      { id: "super", title: "Súper", subtitle: "Promos en mercados", prompt: "¿Cuáles son las promos del supermercado esta semana?", icon: <BasketIcon /> },
-      { id: "electronica", title: "Electrónica", subtitle: "Ofertas en gadgets", prompt: "¿Qué ofertas hay en electrónica y gadgets?", icon: <DeviceIcon /> },
-      { id: "cupones", title: "Cupones", subtitle: "Descuentos activos", prompt: "¿Qué cupones están activos ahora?", icon: <TicketIcon /> },
+      { id: "hoy", title: "Hoy", subtitle: "Las mejores del día", prompt: "¿Qué ofertas hay hoy cerca de mí?", icon: subOptionIcon("hoy") },
+      { id: "2x1", title: "2x1", subtitle: "En comida y delivery", prompt: "¿Dónde hay promociones 2x1 en comida?", icon: subOptionIcon("2x1") },
+      { id: "ropa", title: "Ropa", subtitle: "Descuentos en tiendas", prompt: "¿Qué tiendas de ropa tienen descuentos ahora?", icon: subOptionIcon("ropa") },
+      { id: "super", title: "Súper", subtitle: "Promos en mercados", prompt: "¿Cuáles son las promos del supermercado esta semana?", icon: subOptionIcon("super") },
+      { id: "electronica", title: "Electrónica", subtitle: "Ofertas en gadgets", prompt: "¿Qué ofertas hay en electrónica y gadgets?", icon: subOptionIcon("electronica") },
+      { id: "cupones", title: "Cupones", subtitle: "Descuentos activos", prompt: "¿Qué cupones están activos ahora?", icon: subOptionIcon("cupones") },
     ],
   },
 ];
 
-export default function DiscoverSuggestions({ suggestions: _suggestions, loading: _loading, onSelect }: Props) {
+export default function DiscoverSuggestions({ onSelect, trendingByCategory }: Props) {
   const [selectedId, setSelectedId] = React.useState<string>(CATEGORIES[0].id);
   const activeCategory = CATEGORIES.find((c) => c.id === selectedId) ?? CATEGORIES[0];
+
+  // If the trending API has data for the active category, use it. Otherwise
+  // fall back to the static CATEGORIES sub-options. Cold start (no data at
+  // all) → all three categories show their static chips.
+  const activeSubOptions: SubOption[] = React.useMemo(() => {
+    const trending = trendingByCategory?.[activeCategory.id];
+    if (trending && trending.length > 0) {
+      return trending.map((s) => ({
+        ...s,
+        icon: subOptionIcon(s.id),
+        trending: true,
+      }));
+    }
+    return activeCategory.subOptions;
+  }, [trendingByCategory, activeCategory]);
+
   return (
     <div className="w-full flex flex-col gap-4">
       <DiscoverSection
@@ -86,7 +131,8 @@ export default function DiscoverSuggestions({ suggestions: _suggestions, loading
       <Divider />
       <QuickQuestions
         key={activeCategory.id}
-        subOptions={activeCategory.subOptions}
+        subOptions={activeSubOptions}
+        categoryId={activeCategory.id}
         onSelect={onSelect}
       />
     </div>
@@ -187,10 +233,12 @@ function Divider() {
 
 function QuickQuestions({
   subOptions,
+  categoryId,
   onSelect,
 }: {
   subOptions: SubOption[];
-  onSelect: (prompt: string) => void;
+  categoryId: string;
+  onSelect: (s: string, meta: { categoryId: string; subOptionId?: string }) => void;
 }) {
   return (
     <div className="w-full">
@@ -199,8 +247,8 @@ function QuickQuestions({
         {subOptions.map((s, i) => (
           <button
             key={s.id}
-            onClick={() => onSelect(s.prompt)}
-            className="flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
+            onClick={() => onSelect(s.prompt, { categoryId, subOptionId: s.id })}
+            className="relative flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
             style={{
               color: "var(--text-secondary)",
               backgroundColor: "transparent",
@@ -225,6 +273,19 @@ function QuickQuestions({
               {s.icon}
             </span>
             <span className="flex-1">{s.title}</span>
+            {s.trending && (
+              <span
+                className="ml-2 shrink-0 inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+                style={{
+                  color: "var(--primary)",
+                  backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
+                }}
+                title="Tendencia reciente"
+              >
+                <span aria-hidden>●</span>
+                <span>tendencia</span>
+              </span>
+            )}
           </button>
         ))}
       </div>
