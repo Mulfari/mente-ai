@@ -42,7 +42,7 @@ body::before {
     /* Faint white core — adds depth without becoming a focal point */
     radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%);
   pointer-events: none;
-  z-index: 0;
+  z-index: -1;
 }
 
 @theme inline {
@@ -67,12 +67,13 @@ html, body {
   touch-action: manipulation;
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
-  background: var(--background);
   color: var(--text-primary);
   font-family: var(--font-inter), system-ui, sans-serif;
   margin: 0;
   padding: 0;
 }
+html { background: var(--background); }
+body { background: transparent; }
 
 /* === SCROLLBAR — hidden, scroll still works via wheel/touchpad/keyboard === */
 * {
