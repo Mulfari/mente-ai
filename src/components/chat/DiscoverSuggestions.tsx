@@ -106,19 +106,24 @@ export default function DiscoverSuggestions({ onSelect, trendingByCategory }: Pr
   const [selectedId, setSelectedId] = React.useState<string>(CATEGORIES[0].id);
   const activeCategory = CATEGORIES.find((c) => c.id === selectedId) ?? CATEGORIES[0];
 
-  // If the trending API has data for the active category, use it. Otherwise
-  // fall back to the static CATEGORIES sub-options. Cold start (no data at
-  // all) → all three categories show their static chips.
+  // Merge trending data on top of the static fallback. The trending sub-
+  // options go first (sorted by the API's eventCount desc), then any static
+  // sub-options that aren't already in the trending set fill out the rest in
+  // their original order. This way we never lose chips the user is used to —
+  // trending is additive, not a replacement. Cold start (no trending data)
+  // → all three categories show their static chips unchanged.
   const activeSubOptions: SubOption[] = React.useMemo(() => {
     const trending = trendingByCategory?.[activeCategory.id];
-    if (trending && trending.length > 0) {
-      return trending.map((s) => ({
-        ...s,
-        icon: subOptionIcon(s.id),
-        trending: true,
-      }));
-    }
-    return activeCategory.subOptions;
+    if (!trending || trending.length === 0) return activeCategory.subOptions;
+
+    const trendingWithIcons: SubOption[] = trending.map((s) => ({
+      ...s,
+      icon: subOptionIcon(s.id),
+      trending: true,
+    }));
+    const trendingIds = new Set(trendingWithIcons.map((s) => s.id));
+    const staticFiller = activeCategory.subOptions.filter((s) => !trendingIds.has(s.id));
+    return [...trendingWithIcons, ...staticFiller];
   }, [trendingByCategory, activeCategory]);
 
   return (
