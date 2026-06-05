@@ -229,6 +229,16 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     window.location.href = `/admin?action=update-profile&userId=${userId}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
   }
 
+  async function setUnlimitedUser(userId: string) {
+    setActionLoading(userId + "-unlimited");
+    const updates: Record<string, unknown> = {
+      status: "active",
+      subscription_weeks: -1,
+      subscription_start: new Date().toISOString(),
+    };
+    window.location.href = `/admin?action=update-profile&userId=${userId}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
+  }
+
   async function deactivateUser(userId: string) {
     setActionLoading(userId + "-deactivate");
     const updates = { status: "inactive", subscription_weeks: 0, subscription_start: null, subscription_end: null };
@@ -766,6 +776,16 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                               </svg>
                               Desactivar
+                            </button>
+                          )}
+                          {user.status === "active" && user.subscription_weeks !== -1 && (
+                            <button
+                              onClick={() => setUnlimitedUser(user.id)}
+                              disabled={actionLoading === user.id + "-unlimited"}
+                              className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-90 disabled:opacity-40"
+                              style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.15)" }}>
+                              <span className="text-base font-bold leading-none">∞</span>
+                              Hacer ilimitado
                             </button>
                           )}
                           <div className="ml-auto flex items-center gap-2">
