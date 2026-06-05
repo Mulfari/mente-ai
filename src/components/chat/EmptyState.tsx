@@ -112,6 +112,29 @@ export default function EmptyState(props: Props) {
     [firstName, isLoggedIn]
   );
 
+  // Gemini-style load cascade: the input commits on the first paint, then
+  // the hero fades in ~1 frame later, then the footer fades in ~220ms after
+  // that. Matches Gemini's measured gap (313ms input→hero, 151ms hero→next).
+  // Visual only — does not block on data. Suggestions still render their
+  // existing loading skeleton if the API is still in flight.
+  const [heroShown, setHeroShown] = React.useState(false);
+  const [footerShown, setFooterShown] = React.useState(false);
+  React.useEffect(() => {
+    let r1 = 0;
+    let r2 = 0;
+    let t1: ReturnType<typeof setTimeout> | null = null;
+    r1 = requestAnimationFrame(() => {
+      // Two rAFs: first commits the input, second flips the hero.
+      r2 = requestAnimationFrame(() => setHeroShown(true));
+    });
+    t1 = setTimeout(() => setFooterShown(true), 220);
+    return () => {
+      if (r1) cancelAnimationFrame(r1);
+      if (r2) cancelAnimationFrame(r2);
+      if (t1) clearTimeout(t1);
+    };
+  }, []);
+
   return (
     <div className="relative min-h-full">
       {/* Hero — absolute, just above the Input's center.
@@ -123,13 +146,13 @@ export default function EmptyState(props: Props) {
         style={{ bottom: "calc(50% + 56px)" }}
       >
         <div className="w-full max-w-2xl pointer-events-auto">
-          <Hero opener={opener} />
+          <Hero opener={opener} className={heroShown ? "lm-fade-up" : "opacity-0"} />
         </div>
       </div>
 
       {/* Footer — absolute, just below the Input's center. */}
       <div
-        className="absolute left-0 right-0 px-4 flex justify-center pb-16 sm:pb-20 lm-fade-up pointer-events-none"
+        className={`absolute left-0 right-0 px-4 flex justify-center pb-16 sm:pb-20 pointer-events-none ${footerShown ? "lm-fade-up" : "opacity-0"}`}
         style={{ top: "calc(50% + 56px)" }}
       >
         <div className="w-full max-w-2xl pointer-events-auto">
@@ -162,9 +185,9 @@ export default function EmptyState(props: Props) {
   );
 }
 
-function Hero({ opener }: { opener: string }) {
+function Hero({ opener, className }: { opener: string; className?: string }) {
   return (
-    <header className="text-center lm-fade-up" style={{ animationDelay: "80ms" }}>
+    <header className={`text-center ${className ?? ""}`} style={{ animationDelay: "80ms" }}>
       <h1
         className="text-3xl sm:text-4xl font-semibold tracking-tighter"
         style={{ color: "var(--text-primary)" }}
