@@ -150,10 +150,13 @@ export default function EmptyState(props: Props) {
         </div>
       </div>
 
-      {/* Footer — absolute, just below the Input's center. */}
+      {/* Footer — fills the bottom half of the chat area (from just below the
+          input down to the bottom edge), with internal scroll when its content
+          overflows. On a tall viewport everything fits; on a short viewport
+          the user scrolls the footer. */}
       <div
-        className={`absolute left-0 right-0 px-4 flex justify-center pb-16 sm:pb-20 pointer-events-none ${footerShown ? "lm-fade-up" : "opacity-0"}`}
-        style={{ top: "calc(50% + 56px)" }}
+        className={`absolute left-0 right-0 px-4 flex justify-center pointer-events-none ${footerShown ? "lm-fade-up" : "opacity-0"}`}
+        style={{ top: "calc(50% + 56px)", bottom: 0, overflowY: "auto" }}
       >
         <div className="w-full max-w-2xl pointer-events-auto">
           <Footer
@@ -166,6 +169,15 @@ export default function EmptyState(props: Props) {
             onShowAccountMenu={onShowAccountMenu}
           />
         </div>
+        {/* Bottom fade — subtle gradient that hints at scrollability and softens
+            the footer edge. Always rendered; works whether or not content overflows. */}
+        <div
+          className="absolute left-0 right-0 bottom-0 h-8 pointer-events-none"
+          style={{
+            background: "linear-gradient(to bottom, transparent 0%, var(--background) 100%)",
+          }}
+          aria-hidden
+        />
       </div>
 
       {/* Input — absolute, centered in the chat area. pointer-events-none
