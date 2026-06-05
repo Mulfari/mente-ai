@@ -257,6 +257,13 @@ function DesktopSidebar({
   // stays true forever, so subsequent renders behave normally.
   const expanded = sidebarInitialized && (sidebarLock === "locked" || sidebarHovered);
 
+  // The mouse is almost never on the sidebar at the moment it mounts, so the
+  // browser fires onMouseLeave on the very first paint and would collapse the
+  // sidebar back to 56px right after the entrance animation. We gate the
+  // collapse on whether the user has actually entered the sidebar at least
+  // once — before that, the sidebar stays expanded regardless of mouse events.
+  const hasEnteredRef = React.useRef(false);
+
   return (
     <div
       className="relative shrink-0 hidden md:flex flex-col"
@@ -272,8 +279,13 @@ function DesktopSidebar({
           backdropFilter: "blur(40px)",
           borderRight: "1px solid var(--border)",
         }}
-        onMouseEnter={() => { if (sidebarLock === "unlocked") setSidebarHovered(true); }}
-        onMouseLeave={() => { if (sidebarLock === "unlocked") setSidebarHovered(false); }}
+        onMouseEnter={() => {
+          hasEnteredRef.current = true;
+          if (sidebarLock === "unlocked") setSidebarHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (hasEnteredRef.current && sidebarLock === "unlocked") setSidebarHovered(false);
+        }}
       >
         {/* Brand row */}
         <div className="h-14 flex items-center shrink-0">
