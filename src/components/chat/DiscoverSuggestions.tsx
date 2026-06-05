@@ -74,17 +74,9 @@ const CATEGORIES: Category[] = [
 ];
 
 export default function DiscoverSuggestions({ suggestions, loading, onSelect }: Props) {
-  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
-  const activeCategory = CATEGORIES.find((c) => c.id === selectedCategory) ?? null;
   return (
     <div className="w-full flex flex-col gap-4">
-      <DiscoverSection
-        categories={CATEGORIES}
-        selectedId={selectedCategory}
-        onSelectCategory={(id) => setSelectedCategory((prev) => (prev === id ? null : id))}
-        activeSubOptions={activeCategory?.subOptions ?? []}
-        onSelectSubOption={onSelect}
-      />
+      <DiscoverSection categories={CATEGORIES} onSelectCategory={onSelect} />
       <Divider />
       <QuickQuestions suggestions={suggestions} loading={loading} onSelect={onSelect} />
     </div>
@@ -93,105 +85,65 @@ export default function DiscoverSuggestions({ suggestions, loading, onSelect }: 
 
 function DiscoverSection({
   categories,
-  selectedId,
   onSelectCategory,
-  activeSubOptions,
-  onSelectSubOption,
 }: {
   categories: Category[];
-  selectedId: string | null;
-  onSelectCategory: (id: string) => void;
-  activeSubOptions: SubOption[];
-  onSelectSubOption: (prompt: string) => void;
+  onSelectCategory: (prompt: string) => void;
 }) {
   return (
     <div className="w-full">
       <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
-      <div className="grid grid-cols-3 gap-2.5 w-full mt-2.5">
+      <div className="flex flex-wrap gap-2 w-full mt-2.5">
         {categories.map((cat, i) => (
-          <CategoryCard
+          <CategoryChip
             key={cat.id}
             category={cat}
             index={i}
-            selected={selectedId === cat.id}
-            onClick={() => onSelectCategory(cat.id)}
+            onClick={() => onSelectCategory(cat.prompt)}
           />
         ))}
       </div>
-      {selectedId && activeSubOptions.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 w-full mt-2.5">
-          {activeSubOptions.map((sub, i) => (
-            <SubOptionCard
-              key={sub.id}
-              option={sub}
-              index={i}
-              onClick={() => onSelectSubOption(sub.prompt)}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
 
-function CategoryCard({
+function CategoryChip({
   category,
   index,
-  selected,
   onClick,
 }: {
   category: Category;
   index: number;
-  selected: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      className="group flex flex-col items-start text-left p-3.5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
+      className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
       style={{
-        backgroundColor: selected
-          ? "color-mix(in srgb, var(--primary) 12%, var(--surface))"
-          : "var(--surface)",
-        border: selected
-          ? "1px solid color-mix(in srgb, var(--primary) 60%, transparent)"
-          : "1px solid var(--border)",
-        animation: `fadeIn 0.4s ease-out ${index * 70}ms backwards`,
+        backgroundColor: "color-mix(in srgb, var(--text-primary) 4%, transparent)",
+        border: "1px solid var(--border)",
+        color: "var(--text-secondary)",
+        animation: `fadeIn 0.4s ease-out ${index * 60}ms backwards`,
       }}
       onMouseEnter={(e) => {
-        if (selected) return;
-        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 40%, transparent)";
-        e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.3)";
+        e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, var(--surface))";
+        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 50%, transparent)";
+        e.currentTarget.style.color = "var(--text-primary)";
       }}
       onMouseLeave={(e) => {
-        if (selected) return;
+        e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--text-primary) 4%, transparent)";
         e.currentTarget.style.borderColor = "var(--border)";
-        e.currentTarget.style.boxShadow = "none";
+        e.currentTarget.style.color = "var(--text-secondary)";
       }}
     >
-      <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center mb-2.5 transition-transform group-hover:scale-105"
-        style={{
-          backgroundColor: selected
-            ? "color-mix(in srgb, var(--primary) 22%, transparent)"
-            : "rgba(16,163,127,0.1)",
-          color: "var(--primary)",
-        }}
+      <span
+        className="w-3.5 h-3.5 inline-flex items-center justify-center transition-transform group-hover:scale-110"
+        style={{ color: "var(--primary)" }}
       >
         {category.icon}
-      </div>
-      <div
-        className="text-[0.88rem] font-semibold leading-tight"
-        style={{ color: "var(--text-primary)" }}
-      >
-        {category.title}
-      </div>
-      <div
-        className="text-[0.72rem] mt-0.5 leading-snug"
-        style={{ color: "var(--text-tertiary)" }}
-      >
-        {category.subtitle}
-      </div>
+      </span>
+      <span>{category.title}</span>
     </button>
   );
 }
