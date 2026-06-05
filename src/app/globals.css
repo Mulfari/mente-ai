@@ -22,16 +22,23 @@
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
 
-/* Aurora — layered teal gradients like northern lights */
+/* Gemini-style ambient mesh: low-opacity teal blobs + soft top vignette.
+   The colors sit well under 15% opacity so the background feels alive
+   without competing with the content. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-color: #0B1418;
   background-image:
-    radial-gradient(ellipse 120% 60% at 15% 85%, rgba(16,163,127,0.35) 0%, transparent 55%),
-    radial-gradient(ellipse 90% 50% at 85% 15%, rgba(16,163,127,0.22) 0%, transparent 50%),
-    radial-gradient(ellipse 70% 35% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 55%);
+    /* Top ambient — gentle light from above, the Gemini "vignette" cue */
+    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(255,255,255,0.05) 0%, transparent 65%),
+    /* Primary teal blob — bottom-left, large and diffuse */
+    radial-gradient(ellipse 110% 75% at 18% 90%, rgba(16,163,127,0.12) 0%, transparent 60%),
+    /* Secondary teal blob — top-right, smaller and softer */
+    radial-gradient(ellipse 85% 55% at 88% 12%, rgba(16,163,127,0.08) 0%, transparent 60%),
+    /* Faint white core — adds depth without becoming a focal point */
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
