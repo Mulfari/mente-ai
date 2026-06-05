@@ -196,7 +196,7 @@ function Hero({ opener, className }: { opener: string; className?: string }) {
   return (
     <header className={`text-center ${className ?? ""}`} style={{ animationDelay: "80ms" }}>
       <h1
-        className="text-3xl sm:text-4xl font-semibold tracking-tighter"
+        className="text-4xl sm:text-5xl font-semibold tracking-tighter"
         style={{ color: "var(--text-primary)" }}
       >
         {opener}
