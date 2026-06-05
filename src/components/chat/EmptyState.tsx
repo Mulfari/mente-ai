@@ -170,16 +170,6 @@ export default function EmptyState(props: Props) {
             onShowAccountMenu={onShowAccountMenu}
           />
         </div>
-        {/* Bottom fade — subtle gradient that hints at scrollability and softens
-            the footer edge. Ends at ~80% opacity (not 100%) so the body aurora
-            shows through and there's no hard color edge at the viewport bottom. */}
-        <div
-          className="absolute left-0 right-0 bottom-0 h-8 pointer-events-none"
-          style={{
-            background: "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--background) 80%, transparent) 100%)",
-          }}
-          aria-hidden
-        />
       </div>
 
       {/* Input — absolute, centered in the chat area. pointer-events-none
