@@ -217,7 +217,6 @@ type DesktopSidebarProps = {
   sidebarHovered: boolean;
   setSidebarHovered: (v: boolean) => void;
   transitionEnabled: boolean;
-  sidebarInitialized: boolean;
   userEmail: string;
   onNewConversation: () => void;
   searchQuery: string;
@@ -237,7 +236,6 @@ function DesktopSidebar({
   sidebarHovered,
   setSidebarHovered,
   transitionEnabled,
-  sidebarInitialized,
   userEmail,
   onNewConversation,
   searchQuery,
@@ -250,12 +248,10 @@ function DesktopSidebar({
   profile,
   onSignOut,
 }: DesktopSidebarProps) {
-  // During the first render sidebarInitialized is false, so the sidebar starts
-  // collapsed (56px). Once the parent flips the flag in its mount effect, the
-  // expanded state goes true and the width transition fires 56→320 — the
-  // left-to-right entrance the user wanted. After the first mount, the flag
-  // stays true forever, so subsequent renders behave normally.
-  const expanded = sidebarInitialized && (sidebarLock === "locked" || sidebarHovered);
+  // The sidebar starts at 320px from the very first render (sidebarHovered
+  // defaults to true in the parent) — no 56→320 entrance animation, no flash.
+  // Hover/leave still toggles the state normally; locked overrides hover.
+  const expanded = sidebarLock === "locked" || sidebarHovered;
 
   // The mouse is almost never on the sidebar at the moment it mounts, so the
   // browser fires onMouseLeave on the very first paint and would collapse the
@@ -540,7 +536,6 @@ type Props = {
   sidebarHovered: boolean;
   setSidebarHovered: (v: boolean) => void;
   transitionEnabled: boolean;
-  sidebarInitialized: boolean;
 };
 
 export default function ConversationSidebar({
@@ -563,7 +558,6 @@ export default function ConversationSidebar({
   sidebarHovered,
   setSidebarHovered,
   transitionEnabled,
-  sidebarInitialized,
 }: Props) {
   void supabase;
   return (
@@ -589,7 +583,6 @@ export default function ConversationSidebar({
         sidebarHovered={sidebarHovered}
         setSidebarHovered={setSidebarHovered}
         transitionEnabled={transitionEnabled}
-        sidebarInitialized={sidebarInitialized}
         userEmail={userEmail}
         onNewConversation={onNewConversation}
         searchQuery={searchQuery}
