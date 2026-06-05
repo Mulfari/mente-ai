@@ -197,22 +197,40 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
   const fastPollRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fast polling when remote stream detected
 
-  // Auth init — getSession returns cached session synchronously
+  // Auth init — if the server already provided the auth state (via initial
+  // props), trust it and skip the getSession() round-trip. Calling
+  // getSession() unconditionally caused a brief "isLoggedIn → false" flash
+  // when the client-side Supabase client hadn't finished restoring the
+  // session from cookies yet (common on first paint after a hard reload).
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) { setIsLoggedIn(false); setMounted(true); return; }
-      setIsLoggedIn(true);
-      setUserEmail(session.user.email || "");
-      loadConversations(session.user.id);
-      supabase.from("profiles").select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at").eq("id", session.user.id).single()
+    if (initialIsLoggedIn && userId) {
+      // Server says we're logged in. Re-fetch profile + userContext to
+      // pick up any changes since SSR, but do NOT touch isLoggedIn /
+      // userEmail — they were already seeded from the server.
+      loadConversations(userId);
+      supabase.from("profiles").select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at").eq("id", userId).maybeSingle()
         .then(({ data: p }) => { if (p) setProfile(p); });
-      supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
+      supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", userId).maybeSingle()
         .then(({ data: uc }) => { if (uc) setUserContext(uc); });
-      setMounted(true);
       const seen = localStorage.getItem("mulfai_onboarding_seen");
       const never = localStorage.getItem("mulfai_onboarding_never");
       if (!seen && !never) setTimeout(() => setShowOnboarding(true), 1500);
-    });
+    } else if (!initialIsLoggedIn) {
+      // Server says we're logged out. Re-check on the client in case the
+      // user just signed in (e.g. auth callback returned) — this is the
+      // only path that needs getSession().
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session) { setMounted(true); return; }
+        setIsLoggedIn(true);
+        setUserEmail(session.user.email || "");
+        loadConversations(session.user.id);
+        supabase.from("profiles").select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at").eq("id", session.user.id).single()
+          .then(({ data: p }) => { if (p) setProfile(p); });
+        supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
+          .then(({ data: uc }) => { if (uc) setUserContext(uc); });
+        setMounted(true);
+      });
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) { setIsLoggedIn(false); return; }
