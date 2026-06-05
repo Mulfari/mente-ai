@@ -90,6 +90,9 @@ function DiscoverSection({
   categories: Category[];
   onSelectCategory: (prompt: string) => void;
 }) {
+  const [selectedId, setSelectedId] = React.useState<string | null>(null);
+  const activeCategory = categories.find((c) => c.id === selectedId) ?? null;
+
   return (
     <div className="w-full">
       <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
@@ -99,10 +102,27 @@ function DiscoverSection({
             key={cat.id}
             category={cat}
             index={i}
-            onClick={() => onSelectCategory(cat.prompt)}
+            selected={selectedId === cat.id}
+            onClick={() => setSelectedId((prev) => (prev === cat.id ? null : cat.id))}
           />
         ))}
       </div>
+      {activeCategory && (
+        <div
+          key={activeCategory.id}
+          className="flex flex-wrap gap-1.5 w-full mt-2.5 pl-3 border-l-2"
+          style={{ borderColor: "color-mix(in srgb, var(--primary) 30%, transparent)" }}
+        >
+          {activeCategory.subOptions.map((sub, i) => (
+            <SubOptionChip
+              key={sub.id}
+              option={sub}
+              index={i}
+              onClick={() => onSelectCategory(sub.prompt)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -110,10 +130,12 @@ function DiscoverSection({
 function CategoryChip({
   category,
   index,
+  selected,
   onClick,
 }: {
   category: Category;
   index: number;
+  selected: boolean;
   onClick: () => void;
 }) {
   return (
@@ -121,17 +143,23 @@ function CategoryChip({
       onClick={onClick}
       className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
       style={{
-        backgroundColor: "color-mix(in srgb, var(--text-primary) 4%, transparent)",
-        border: "1px solid var(--border)",
-        color: "var(--text-secondary)",
+        backgroundColor: selected
+          ? "color-mix(in srgb, var(--primary) 15%, var(--surface))"
+          : "color-mix(in srgb, var(--text-primary) 4%, transparent)",
+        border: selected
+          ? "1px solid color-mix(in srgb, var(--primary) 60%, transparent)"
+          : "1px solid var(--border)",
+        color: selected ? "var(--text-primary)" : "var(--text-secondary)",
         animation: `fadeIn 0.4s ease-out ${index * 60}ms backwards`,
       }}
       onMouseEnter={(e) => {
+        if (selected) return;
         e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, var(--surface))";
         e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 50%, transparent)";
         e.currentTarget.style.color = "var(--text-primary)";
       }}
       onMouseLeave={(e) => {
+        if (selected) return;
         e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--text-primary) 4%, transparent)";
         e.currentTarget.style.borderColor = "var(--border)";
         e.currentTarget.style.color = "var(--text-secondary)";
@@ -144,6 +172,47 @@ function CategoryChip({
         {category.icon}
       </span>
       <span>{category.title}</span>
+    </button>
+  );
+}
+
+function SubOptionChip({
+  option,
+  index,
+  onClick,
+}: {
+  option: SubOption;
+  index: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.76rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
+      style={{
+        backgroundColor: "transparent",
+        border: "1px solid var(--border)",
+        color: "var(--text-tertiary)",
+        animation: `fadeIn 0.3s ease-out ${index * 35}ms backwards`,
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, transparent)";
+        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 50%, transparent)";
+        e.currentTarget.style.color = "var(--text-primary)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = "transparent";
+        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.color = "var(--text-tertiary)";
+      }}
+    >
+      <span
+        className="w-3 h-3 inline-flex items-center justify-center transition-transform group-hover:scale-110"
+        style={{ color: "var(--primary)" }}
+      >
+        {option.icon}
+      </span>
+      <span>{option.title}</span>
     </button>
   );
 }
