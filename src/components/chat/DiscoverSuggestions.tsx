@@ -73,26 +73,35 @@ const CATEGORIES: Category[] = [
   },
 ];
 
-export default function DiscoverSuggestions({ suggestions, loading, onSelect }: Props) {
+export default function DiscoverSuggestions({ suggestions: _suggestions, loading: _loading, onSelect }: Props) {
+  const [selectedId, setSelectedId] = React.useState<string>(CATEGORIES[0].id);
+  const activeCategory = CATEGORIES.find((c) => c.id === selectedId) ?? CATEGORIES[0];
   return (
     <div className="w-full flex flex-col gap-4">
-      <DiscoverSection categories={CATEGORIES} onSelectCategory={onSelect} />
+      <DiscoverSection
+        categories={CATEGORIES}
+        selectedId={selectedId}
+        onSelectCategory={setSelectedId}
+      />
       <Divider />
-      <QuickQuestions suggestions={suggestions} loading={loading} onSelect={onSelect} />
+      <QuickQuestions
+        key={activeCategory.id}
+        subOptions={activeCategory.subOptions}
+        onSelect={onSelect}
+      />
     </div>
   );
 }
 
 function DiscoverSection({
   categories,
+  selectedId,
   onSelectCategory,
 }: {
   categories: Category[];
-  onSelectCategory: (prompt: string) => void;
+  selectedId: string | null;
+  onSelectCategory: (id: string) => void;
 }) {
-  const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const activeCategory = categories.find((c) => c.id === selectedId) ?? null;
-
   return (
     <div className="w-full">
       <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
@@ -103,26 +112,10 @@ function DiscoverSection({
             category={cat}
             index={i}
             selected={selectedId === cat.id}
-            onClick={() => setSelectedId((prev) => (prev === cat.id ? null : cat.id))}
+            onClick={() => onSelectCategory(cat.id)}
           />
         ))}
       </div>
-      {activeCategory && (
-        <div
-          key={activeCategory.id}
-          className="flex flex-wrap gap-1.5 w-full mt-2.5 pl-3 border-l-2"
-          style={{ borderColor: "color-mix(in srgb, var(--primary) 30%, transparent)" }}
-        >
-          {activeCategory.subOptions.map((sub, i) => (
-            <SubOptionChip
-              key={sub.id}
-              option={sub}
-              index={i}
-              onClick={() => onSelectCategory(sub.prompt)}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -176,100 +169,6 @@ function CategoryChip({
   );
 }
 
-function SubOptionChip({
-  option,
-  index,
-  onClick,
-}: {
-  option: SubOption;
-  index: number;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="group flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[0.76rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
-      style={{
-        backgroundColor: "transparent",
-        border: "1px solid var(--border)",
-        color: "var(--text-tertiary)",
-        animation: `fadeIn 0.3s ease-out ${index * 35}ms backwards`,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, transparent)";
-        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 50%, transparent)";
-        e.currentTarget.style.color = "var(--text-primary)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "transparent";
-        e.currentTarget.style.borderColor = "var(--border)";
-        e.currentTarget.style.color = "var(--text-tertiary)";
-      }}
-    >
-      <span
-        className="w-3 h-3 inline-flex items-center justify-center transition-transform group-hover:scale-110"
-        style={{ color: "var(--primary)" }}
-      >
-        {option.icon}
-      </span>
-      <span>{option.title}</span>
-    </button>
-  );
-}
-
-function SubOptionCard({
-  option,
-  index,
-  onClick,
-}: {
-  option: SubOption;
-  index: number;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="group flex flex-col items-start text-left p-3.5 rounded-2xl transition-all duration-200 hover:-translate-y-0.5"
-      style={{
-        background:
-          "linear-gradient(180deg, color-mix(in srgb, var(--primary) 10%, var(--surface)) 0%, var(--surface) 70%)",
-        border: "1px solid var(--border)",
-        animation: `fadeIn 0.35s ease-out ${index * 45}ms backwards`,
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 40%, transparent)";
-        e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.3)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--border)";
-        e.currentTarget.style.boxShadow = "none";
-      }}
-    >
-      <div
-        className="w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-transform group-hover:scale-105"
-        style={{
-          backgroundColor: "color-mix(in srgb, var(--primary) 18%, transparent)",
-          color: "var(--primary)",
-        }}
-      >
-        {option.icon}
-      </div>
-      <div
-        className="text-[0.85rem] font-semibold leading-tight"
-        style={{ color: "var(--text-primary)" }}
-      >
-        {option.title}
-      </div>
-      <div
-        className="text-[0.7rem] mt-0.5 leading-snug line-clamp-1"
-        style={{ color: "var(--text-tertiary)" }}
-      >
-        {option.subtitle}
-      </div>
-    </button>
-  );
-}
-
 function SectionLabel({ icon, children }: { icon?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div
@@ -287,71 +186,50 @@ function Divider() {
 }
 
 function QuickQuestions({
-  suggestions,
-  loading,
+  subOptions,
   onSelect,
 }: {
-  suggestions: string[];
-  loading: boolean;
-  onSelect: (s: string) => void;
+  subOptions: SubOption[];
+  onSelect: (prompt: string) => void;
 }) {
-  const showSkeleton = loading || suggestions.length === 0;
   return (
     <div className="w-full">
       <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
-        {showSkeleton
-          ? [0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-11 rounded-xl animate-pulse"
-                style={{ backgroundColor: "var(--surface)" }}
-              />
-            ))
-          : suggestions.map((s, i) => (
-              <button
-                key={i}
-                onClick={() => onSelect(s)}
-                className="flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
-                style={{
-                  color: "var(--text-secondary)",
-                  backgroundColor: "transparent",
-                  border: "1px solid var(--border)",
-                  animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = "var(--surface-hover)";
-                  e.currentTarget.style.color = "var(--text-primary)";
-                  e.currentTarget.style.borderColor = "color-mix(in srgb, var(--text-tertiary) 30%, transparent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = "transparent";
-                  e.currentTarget.style.color = "var(--text-secondary)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              >
-                <span
-                  className="shrink-0 mr-2.5 inline-flex items-center transition-colors"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  {iconForChip(i)}
-                </span>
-                <span className="flex-1">{s}</span>
-              </button>
-            ))}
+        {subOptions.map((s, i) => (
+          <button
+            key={s.id}
+            onClick={() => onSelect(s.prompt)}
+            className="flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
+            style={{
+              color: "var(--text-secondary)",
+              backgroundColor: "transparent",
+              border: "1px solid var(--border)",
+              animation: `fadeIn 0.4s ease-out ${i * 50}ms backwards`,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "var(--surface-hover)";
+              e.currentTarget.style.color = "var(--text-primary)";
+              e.currentTarget.style.borderColor = "color-mix(in srgb, var(--text-tertiary) 30%, transparent)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "transparent";
+              e.currentTarget.style.color = "var(--text-secondary)";
+              e.currentTarget.style.borderColor = "var(--border)";
+            }}
+          >
+            <span
+              className="shrink-0 mr-2.5 inline-flex items-center transition-colors"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              {s.icon}
+            </span>
+            <span className="flex-1">{s.title}</span>
+          </button>
+        ))}
       </div>
     </div>
   );
-}
-
-function iconForChip(i: number): React.ReactNode {
-  const icons = [
-    <LightbulbIcon key="lb" />,
-    <ChatBubbleIcon key="cb" />,
-    <SparklesIcon key="sp" />,
-    <TargetIcon key="tg" />,
-  ];
-  return icons[i % icons.length];
 }
 
 function MapPinIcon() {
@@ -457,33 +335,6 @@ function ChatBubbleIcon() {
         strokeLinejoin="round"
         d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 21l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
       />
-    </svg>
-  );
-}
-
-function LightbulbIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 18h6M10 22h4M12 2a7 7 0 00-4 12.7c.6.4 1 1.1 1 1.8V18h6v-1.5c0-.7.4-1.4 1-1.8A7 7 0 0012 2z" />
-    </svg>
-  );
-}
-
-function SparklesIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 14l.75 2.25L22 17l-2.25.75L19 20l-.75-2.25L16 17l2.25-.75L19 14z" />
-    </svg>
-  );
-}
-
-function TargetIcon() {
-  return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="5" />
-      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
     </svg>
   );
 }
