@@ -1555,7 +1555,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="fixed inset-0 flex" style={{ backgroundColor: "var(--background)", backgroundImage: "radial-gradient(ellipse 120% 60% at 15% 85%, rgba(16,163,127,0.35) 0%, transparent 55%), radial-gradient(ellipse 90% 50% at 85% 15%, rgba(16,163,127,0.22) 0%, transparent 50%), radial-gradient(ellipse 70% 35% at 50% 50%, rgba(255,255,255,0.07) 0%, transparent 55%)" }}>
+    <div className="fixed inset-0 flex bg-transparent">
       {/* Sidebar */}
       <ConversationSidebar
         showSidebar={showSidebar}
