@@ -153,11 +153,12 @@ export default function EmptyState(props: Props) {
       {/* Footer — fills the bottom half of the chat area (from just below the
           input down to the bottom edge), with internal scroll when its content
           overflows. On a tall viewport everything fits; on a short viewport
-          the user scrolls the footer. The negative bottom extends past the
-          main's py-6 padding so there's no gap showing the body aurora. */}
+          the user scrolls the footer. bottom:0 keeps the footer inside the
+          chat area so the main's scrollHeight never exceeds its clientHeight
+          (which would flash a scrollbar during the sidebar entrance). */}
       <div
         className={`absolute left-0 right-0 px-4 flex justify-center pointer-events-none ${footerShown ? "lm-fade-up" : "opacity-0"}`}
-        style={{ top: "calc(50% + 56px)", bottom: "-1.5rem", overflowY: "auto" }}
+        style={{ top: "calc(50% + 56px)", bottom: 0, overflowY: "auto" }}
       >
         <div className="w-full max-w-2xl pointer-events-auto">
           <Footer
