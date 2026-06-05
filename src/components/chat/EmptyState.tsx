@@ -153,10 +153,11 @@ export default function EmptyState(props: Props) {
       {/* Footer — fills the bottom half of the chat area (from just below the
           input down to the bottom edge), with internal scroll when its content
           overflows. On a tall viewport everything fits; on a short viewport
-          the user scrolls the footer. */}
+          the user scrolls the footer. The negative bottom extends past the
+          main's py-6 padding so there's no gap showing the body aurora. */}
       <div
         className={`absolute left-0 right-0 px-4 flex justify-center pointer-events-none ${footerShown ? "lm-fade-up" : "opacity-0"}`}
-        style={{ top: "calc(50% + 56px)", bottom: 0, overflowY: "auto" }}
+        style={{ top: "calc(50% + 56px)", bottom: "-1.5rem", overflowY: "auto" }}
       >
         <div className="w-full max-w-2xl pointer-events-auto">
           <Footer
@@ -170,11 +171,12 @@ export default function EmptyState(props: Props) {
           />
         </div>
         {/* Bottom fade — subtle gradient that hints at scrollability and softens
-            the footer edge. Always rendered; works whether or not content overflows. */}
+            the footer edge. Ends at ~80% opacity (not 100%) so the body aurora
+            shows through and there's no hard color edge at the viewport bottom. */}
         <div
           className="absolute left-0 right-0 bottom-0 h-8 pointer-events-none"
           style={{
-            background: "linear-gradient(to bottom, transparent 0%, var(--background) 100%)",
+            background: "linear-gradient(to bottom, transparent 0%, color-mix(in srgb, var(--background) 80%, transparent) 100%)",
           }}
           aria-hidden
         />
