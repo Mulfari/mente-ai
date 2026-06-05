@@ -13,7 +13,7 @@
 // same text in one session. Dies on process restart — that's fine.
 
 const COHERE_URL = "https://api.cohere.ai/v1/embed";
-const MODEL = "embed-multilingual-v3";
+const MODEL = "embed-multilingual-v3.0";
 const CACHE_MAX = 512;
 const TIMEOUT_MS = 5_000;
 

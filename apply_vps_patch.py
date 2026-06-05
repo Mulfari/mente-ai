@@ -107,10 +107,35 @@ def main():
         print(f"  current line: {out.strip()}...\n")
 
         # 3. Run the SQL migration
-        print("=== 3/6 Applying SQL migration ===")
+        # Two pre-conditions on the VPS:
+        #   a) pgvector must be installed at the OS level (apt package)
+        #   b) the migration must run as a superuser, since the 3 tables are
+        #      owned by different roles (qa_pairs/knowledge=postgres,
+        #      response_feedback=vechat_app). The orchestrator's DATABASE_URL
+        #      user (vechat_app) can't ALTER them. Running as `postgres` (sudo)
+        #      bypasses ownership checks because postgres is a superuser.
+        # Also: .env is loaded by Node's dotenv, not the shell, so $DATABASE_URL
+        # is empty in non-Node contexts.
+        print("=== 3/6 Installing pgvector + applying migration ===")
+
+        # 3a. Install pgvector (idempotent — `apt install` skips if present)
         out, err, rc = ssh_exec(
             client,
-            f"cd {REMOTE} && psql \"$DATABASE_URL\" -f 20260605_pgvector_embeddings.sql 2>&1",
+            "DEBIAN_FRONTEND=noninteractive apt-get install -y postgresql-16-pgvector 2>&1 | tail -10",
+            timeout=180,
+        )
+        print(out + err)
+        if rc != 0:
+            print(f"!!! apt install pgvector failed (rc={rc}). Aborting.")
+            sys.exit(1)
+
+        # 3b. Apply the migration as the `postgres` superuser against the `vechat` db.
+        # /root is mode 700, so postgres can't read the SQL directly. Copy to /tmp.
+        out, err, rc = ssh_exec(
+            client,
+            f"cp {REMOTE}/20260605_pgvector_embeddings.sql /tmp/wave1_migration.sql && "
+            f"chmod 644 /tmp/wave1_migration.sql && "
+            f"sudo -u postgres psql -d vechat -f /tmp/wave1_migration.sql 2>&1",
             timeout=120,
         )
         print(out + err)
@@ -120,10 +145,10 @@ def main():
         # Verify the column exists
         out, _, rc = ssh_exec(
             client,
-            f"cd {REMOTE} && psql \"$DATABASE_URL\" -c \"SELECT column_name, data_type FROM information_schema.columns WHERE table_name IN ('qa_pairs','response_feedback','knowledge') AND column_name = 'embedding' ORDER BY table_name;\"",
+            "sudo -u postgres psql -d vechat -c \"SELECT table_name, data_type FROM information_schema.columns WHERE table_name IN ('qa_pairs','response_feedback','knowledge') AND column_name = 'embedding' ORDER BY table_name;\"",
         )
         print(out)
-        if "vector" not in out:
+        if "USER-DEFINED" not in out and "vector" not in out:
             print("!!! embedding column not found on at least one table. Aborting.")
             sys.exit(1)
         print("  migration applied successfully.\n")
