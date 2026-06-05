@@ -69,12 +69,28 @@ function pickRandom<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// FNV-1a 32-bit hash — stable across SSR and client, so the same firstName
+// always renders the same opener. Avoids the SSR/CSR hydration mismatch and
+// the "brinco" hop from Math.random() in a post-mount useEffect.
+function hashString(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function pickStable<T>(arr: readonly T[], seed: string): T {
+  return arr[hashString(seed) % arr.length];
+}
+
 function pickOpener(firstName: string | null, isLoggedIn: boolean): string {
   if (!isLoggedIn) return FALLBACK_BRAND;
   if (firstName) {
-    return pickRandom(OPENERS_WITH_NAME).replace("{name}", firstName);
+    return pickStable(OPENERS_WITH_NAME, firstName).replace("{name}", firstName);
   }
-  return pickRandom(OPENERS_NO_NAME);
+  return OPENERS_NO_NAME[0];
 }
 
 export default function EmptyState(props: Props) {
@@ -91,10 +107,10 @@ export default function EmptyState(props: Props) {
   } = props;
 
   const firstName = getFirstName(userName);
-  const [opener, setOpener] = React.useState(() => pickOpener(firstName, isLoggedIn));
-  React.useEffect(() => {
-    setOpener(pickOpener(firstName, isLoggedIn));
-  }, [firstName, isLoggedIn]);
+  const opener = React.useMemo(
+    () => pickOpener(firstName, isLoggedIn),
+    [firstName, isLoggedIn]
+  );
 
   return (
     <div className="relative min-h-full">
