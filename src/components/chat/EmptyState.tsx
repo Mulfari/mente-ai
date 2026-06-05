@@ -113,25 +113,23 @@ export default function EmptyState(props: Props) {
   );
 
   // Gemini-style load cascade: the input commits on the first paint, then
-  // the hero fades in ~1 frame later, then the footer fades in ~220ms after
-  // that. Matches Gemini's measured gap (313ms input→hero, 151ms hero→next).
-  // Visual only — does not block on data. Suggestions still render their
-  // existing loading skeleton if the API is still in flight.
+  // the hero fades in after a brief beat (so the input reads as the
+  // "loading state" for a moment), then the footer fades in after the
+  // hero lands. Visual only — does not block on data. Suggestions still
+  // render their existing loading skeleton if the API is still in flight.
   const [heroShown, setHeroShown] = React.useState(false);
   const [footerShown, setFooterShown] = React.useState(false);
   React.useEffect(() => {
-    let r1 = 0;
-    let r2 = 0;
     let t1: ReturnType<typeof setTimeout> | null = null;
-    r1 = requestAnimationFrame(() => {
-      // Two rAFs: first commits the input, second flips the hero.
-      r2 = requestAnimationFrame(() => setHeroShown(true));
-    });
-    t1 = setTimeout(() => setFooterShown(true), 220);
+    let t2: ReturnType<typeof setTimeout> | null = null;
+    // ~180ms lets the input register as "the first thing" before its
+    // neighbors start animating in.
+    t1 = setTimeout(() => setHeroShown(true), 180);
+    // ~380ms after that, the footer lands. Total cascade ≈ 560ms.
+    t2 = setTimeout(() => setFooterShown(true), 560);
     return () => {
-      if (r1) cancelAnimationFrame(r1);
-      if (r2) cancelAnimationFrame(r2);
       if (t1) clearTimeout(t1);
+      if (t2) clearTimeout(t2);
     };
   }, []);
 
