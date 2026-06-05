@@ -22,23 +22,25 @@
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
 
-/* Gemini-style ambient mesh: low-opacity teal blobs + soft top vignette.
-   The colors sit well under 15% opacity so the background feels alive
-   without competing with the content. */
+/* Gemini-style ambient mesh: vibrant teal + blue blobs, soft top vignette.
+   Opacities are pushed up so the background reads as "alive" without
+   competing with the chat content (which sits on a darker surface). */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-color: #0B1418;
   background-image:
-    /* Top ambient — gentle light from above, the Gemini "vignette" cue */
-    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(255,255,255,0.05) 0%, transparent 65%),
+    /* Top ambient — gentle light from above */
+    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(255,255,255,0.10) 0%, transparent 65%),
     /* Primary teal blob — bottom-left, large and diffuse */
-    radial-gradient(ellipse 110% 75% at 18% 90%, rgba(16,163,127,0.12) 0%, transparent 60%),
-    /* Secondary teal blob — top-right, smaller and softer */
-    radial-gradient(ellipse 85% 55% at 88% 12%, rgba(16,163,127,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 110% 75% at 15% 95%, rgba(16,163,127,0.32) 0%, transparent 60%),
+    /* Secondary blue blob — top-right, adds Gemini's signature dual-tone */
+    radial-gradient(ellipse 90% 60% at 90% 8%, rgba(56,139,253,0.22) 0%, transparent 60%),
+    /* Mid teal — center-left, smaller, breaks up the dark middle */
+    radial-gradient(ellipse 70% 50% at 35% 45%, rgba(16,163,127,0.14) 0%, transparent 65%),
     /* Faint white core — adds depth without becoming a focal point */
-    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 70%);
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
