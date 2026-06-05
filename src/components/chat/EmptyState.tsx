@@ -112,21 +112,23 @@ export default function EmptyState(props: Props) {
     [firstName, isLoggedIn]
   );
 
-  // Gemini-style load cascade: the input commits on the first paint, then
-  // the hero fades in after a brief beat (so the input reads as the
-  // "loading state" for a moment), then the footer fades in after the
-  // hero lands. Visual only — does not block on data. Suggestions still
-  // render their existing loading skeleton if the API is still in flight.
+  // Gemini-style load cascade: the input commits on the first paint and
+  // stays alone for a beat (so the user registers it as the "loading
+  // state" of the page), then the hero fades in, then a short pause,
+  // then the footer fades in. Visual only — does not block on data.
+  // Suggestions still render their existing loading skeleton if the API
+  // is still in flight.
   const [heroShown, setHeroShown] = React.useState(false);
   const [footerShown, setFooterShown] = React.useState(false);
   React.useEffect(() => {
     let t1: ReturnType<typeof setTimeout> | null = null;
     let t2: ReturnType<typeof setTimeout> | null = null;
-    // ~180ms lets the input register as "the first thing" before its
-    // neighbors start animating in.
-    t1 = setTimeout(() => setHeroShown(true), 180);
-    // ~380ms after that, the footer lands. Total cascade ≈ 560ms.
-    t2 = setTimeout(() => setFooterShown(true), 560);
+    // Input alone for ~320ms before the hero starts.
+    t1 = setTimeout(() => setHeroShown(true), 320);
+    // Hero animation lasts 400ms (80ms delay + 400ms keyframe). Footer
+    // starts ~50ms after the hero lands, so the two fades don't overlap
+    // and each step reads as a distinct beat. Total cascade ≈ 1170ms.
+    t2 = setTimeout(() => setFooterShown(true), 770);
     return () => {
       if (t1) clearTimeout(t1);
       if (t2) clearTimeout(t2);
