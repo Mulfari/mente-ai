@@ -200,6 +200,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const queuedMsgRef = useRef<QueuedMsg | null>(null);
   const currentStreamReqRef = useRef<{ message: string; conversationId: string; contentParts: any[]; mode: string } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Throttle the per-chunk Supabase upsert — a long stream fires hundreds of
+  // upserts otherwise. We coalesce to at most one per UPSERT_THROTTLE_MS.
+  const UPSERT_THROTTLE_MS = 300;
+  const lastUpsertAtRef = useRef(0);
+  const pendingUpsertRef = useRef<{ id: string; conversation_id: string; content: string; in_progress: boolean } | null>(null);
+  const upsertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
@@ -1061,6 +1067,40 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       let isDeep = false;
       let accumulatedText = '';
 
+      // Throttled per-chunk upsert: at most one Supabase write per UPSERT_THROTTLE_MS.
+      // The pending row always reflects the most recent state, so a delayed write
+      // never overwrites a newer one.
+      const scheduleChunkUpsert = (content: string) => {
+        pendingUpsertRef.current = { id: msgId, conversation_id: convId, content, in_progress: true };
+        const now = Date.now();
+        const elapsed = now - lastUpsertAtRef.current;
+        if (elapsed >= UPSERT_THROTTLE_MS) {
+          lastUpsertAtRef.current = now;
+          const p = pendingUpsertRef.current;
+          pendingUpsertRef.current = null;
+          if (upsertTimerRef.current) { clearTimeout(upsertTimerRef.current); upsertTimerRef.current = null; }
+          supabase.from('messages').upsert({ id: p.id, conversation_id: p.conversation_id, content: p.content, role: 'assistant', in_progress: true });
+        } else if (!upsertTimerRef.current) {
+          upsertTimerRef.current = setTimeout(() => {
+            upsertTimerRef.current = null;
+            const p = pendingUpsertRef.current;
+            if (!p) return;
+            pendingUpsertRef.current = null;
+            lastUpsertAtRef.current = Date.now();
+            supabase.from('messages').upsert({ id: p.id, conversation_id: p.conversation_id, content: p.content, role: 'assistant', in_progress: true });
+          }, UPSERT_THROTTLE_MS - elapsed);
+        }
+      };
+
+      const flushChunkUpsert = () => {
+        if (upsertTimerRef.current) { clearTimeout(upsertTimerRef.current); upsertTimerRef.current = null; }
+        const p = pendingUpsertRef.current;
+        if (!p) return;
+        pendingUpsertRef.current = null;
+        lastUpsertAtRef.current = Date.now();
+        supabase.from('messages').upsert({ id: p.id, conversation_id: p.conversation_id, content: p.content, role: 'assistant', in_progress: p.content.length > 0 });
+      };
+
       const flushEvent = () => {
         if (!currentEvent || !currentData) return;
         let data: any;
@@ -1070,7 +1110,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           accumulatedText += data.text;
           setDisplayedText(prev => ({ ...prev, [msgId]: accumulatedText }));
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _isDeep: isDeep } : m));
-          supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: true });
+          scheduleChunkUpsert(accumulatedText);
         } else if (currentEvent === 'done' && data.type === 'done') {
           isDeep = data.is_deep ?? isDeep;
         } else if (currentEvent === 'error') {
@@ -1099,6 +1139,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             result = await reader.read();
           }
           flushEvent();
+          flushChunkUpsert();
           await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
           currentStreamReqRef.current = null;
@@ -1391,6 +1432,40 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       let accumulatedText = '';
       let contextDelta: { add_notes?: string } | null = null;
 
+      // Throttled per-chunk upsert: at most one Supabase write per UPSERT_THROTTLE_MS.
+      // The pending row always reflects the most recent state, so a delayed write
+      // never overwrites a newer one.
+      const scheduleChunkUpsert = (content: string) => {
+        pendingUpsertRef.current = { id: msgId, conversation_id: convId, content, in_progress: true };
+        const now = Date.now();
+        const elapsed = now - lastUpsertAtRef.current;
+        if (elapsed >= UPSERT_THROTTLE_MS) {
+          lastUpsertAtRef.current = now;
+          const p = pendingUpsertRef.current;
+          pendingUpsertRef.current = null;
+          if (upsertTimerRef.current) { clearTimeout(upsertTimerRef.current); upsertTimerRef.current = null; }
+          supabase.from('messages').upsert({ id: p.id, conversation_id: p.conversation_id, content: p.content, role: 'assistant', in_progress: true });
+        } else if (!upsertTimerRef.current) {
+          upsertTimerRef.current = setTimeout(() => {
+            upsertTimerRef.current = null;
+            const p = pendingUpsertRef.current;
+            if (!p) return;
+            pendingUpsertRef.current = null;
+            lastUpsertAtRef.current = Date.now();
+            supabase.from('messages').upsert({ id: p.id, conversation_id: p.conversation_id, content: p.content, role: 'assistant', in_progress: true });
+          }, UPSERT_THROTTLE_MS - elapsed);
+        }
+      };
+
+      const flushChunkUpsert = () => {
+        if (upsertTimerRef.current) { clearTimeout(upsertTimerRef.current); upsertTimerRef.current = null; }
+        const p = pendingUpsertRef.current;
+        if (!p) return;
+        pendingUpsertRef.current = null;
+        lastUpsertAtRef.current = Date.now();
+        supabase.from('messages').upsert({ id: p.id, conversation_id: p.conversation_id, content: p.content, role: 'assistant', in_progress: p.content.length > 0 });
+      };
+
       const flushEvent = () => {
         if (!currentEvent || !currentData) return;
         let data: any;
@@ -1400,7 +1475,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           accumulatedText += data.text;
           setDisplayedText(prev => ({ ...prev, [msgId]: accumulatedText }));
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _isDeep: isDeep } : m));
-          supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: true });
+          scheduleChunkUpsert(accumulatedText);
         } else if (currentEvent === 'done' && data.type === 'done') {
           isDeep = data.is_deep ?? isDeep;
           contextDelta = data.context_delta ?? null;
@@ -1430,6 +1505,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             result = await reader.read();
           }
           flushEvent();
+          flushChunkUpsert();
           await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
           setSending(false);
