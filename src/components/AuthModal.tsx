@@ -17,8 +17,8 @@ function translateError(msg: string): string {
   return msg;
 }
 
-export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => void; onClose?: () => void }) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+export default function AuthModal({ onSuccess, onClose, initialMode = "login" }: { onSuccess?: () => void; onClose?: () => void; initialMode?: "login" | "register" }) {
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -278,13 +278,6 @@ export default function AuthModal({ onSuccess, onClose }: { onSuccess?: () => vo
             )}
           </button>
         </form>
-
-        {/* Register hint */}
-        {mode === "register" && (
-          <p className="text-xs text-center mt-4" style={{ color: "var(--text-tertiary)" }}>
-            Solicita un código de cupón para activar tu cuenta.
-          </p>
-        )}
       </div>
     </div>
   );

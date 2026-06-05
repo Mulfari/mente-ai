@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       await supabase.from("profiles").upsert({
         id: signUpData.user.id,
         email: signUpData.user.email,
-        status: "pending",
+        status: "active",
         subscription_weeks: 0,
         weekly_limit: 0,
       });
