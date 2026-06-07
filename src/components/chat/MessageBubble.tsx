@@ -38,24 +38,20 @@ export default function MessageBubble({
   formatTime,
 }: Props) {
   const isStreaming = message._loading || message.id === streamingMsgId || retryMode === message.id;
+  const isUser = message.role === "user";
 
   return (
-    <div className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} mb-4 animate-fade-in group`}>
-      {message.role === "assistant" && (
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center mr-2.5 mt-0.5 shrink-0"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-        </div>
-      )}
-      <div className="relative max-w-[90%] lg:max-w-[78%]">
+    <div
+      className={`flex mb-6 animate-fade-in group ${isUser ? "justify-end" : "justify-start"}`}
+      style={{ paddingLeft: isUser ? "12%" : 0, paddingRight: isUser ? 0 : "12%" }}
+    >
+      <div className={`flex flex-col min-w-0 ${isUser ? "max-w-[78%] items-end" : "w-full"}`}>
         {/* Sender label */}
         <div className="flex items-center gap-1.5 mb-1.5">
           <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-            {message.role === "user" ? "Tú" : "VeChat"}
+            {isUser ? "Tú" : "VeChat"}
           </span>
-          {message.role === "assistant" && message._isDeep && (
+          {!isUser && message._isDeep && (
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a78bfa" }}>
               <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
               <path d="M9 18h6"/>
@@ -63,19 +59,20 @@ export default function MessageBubble({
             </svg>
           )}
         </div>
+
+        {/* Body — Gemini-style: assistant is full width, user is text-only right-aligned */}
         <div
-          className="px-4 py-2.5 rounded-2xl text-sm leading-relaxed"
+          className="text-sm leading-relaxed"
           style={{
-            backgroundColor: message.role === "user" ? "var(--user-bubble)" : "var(--surface)",
-            color: message.role === "user" ? "white" : "var(--text-primary)",
-            borderRadius: message.role === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-            border: message.role === "assistant" && message._isDeep ? "1px solid #a78bfa" : "1px solid transparent",
-            borderLeft: message.role === "assistant" && message._isDeep ? "3px solid #7c3aed" : "none",
-          }}>
-          {message.role === "user" ? (
+            color: "var(--text-primary)",
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
+          }}
+        >
+          {isUser ? (
             <>
               {message._previewUrls && (
-                <div className="flex flex-wrap gap-1.5 mb-2">
+                <div className="flex flex-wrap gap-1.5 mb-2 justify-end">
                   {Object.values(message._previewUrls).map((url, i) => (
                     <img key={i} src={url} alt="adjunto"
                       className="rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
@@ -88,7 +85,7 @@ export default function MessageBubble({
           ) : isStreaming ? (
             <div className="flex items-center gap-2 py-1 min-h-[24px]">
               {message.content ? (
-                <span className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.8)", wordBreak: "break-word" }}>
+                <span className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", wordBreak: "break-word" }}>
                   {message.content}
                   <span className="typing-cursor ml-0.5" />
                 </span>
@@ -150,8 +147,9 @@ export default function MessageBubble({
             </div>
           )}
         </div>
+
         {/* Timestamp */}
-        <div className={`flex items-center gap-1.5 mt-1.5 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+        <div className="flex items-center gap-1.5 mt-1.5">
           <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             {formatTime(message.created_at)}
           </span>

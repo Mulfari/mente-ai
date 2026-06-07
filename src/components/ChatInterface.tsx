@@ -206,6 +206,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const pendingUpsertRef = useRef<{ id: string; conversation_id: string; content: string; in_progress: boolean } | null>(null);
   const upsertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const mainScrollRef = useRef<HTMLElement>(null);
+  const initialScrollPendingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
   const lastErrorRef = useRef<{ message: string; conversationId: string | null; attachments: any[] } | null>(null);
@@ -411,6 +413,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       .map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" })) as Message[];
     // Clear streaming state — these were saved from a previous session
     setStreamingMsgId(null);
+    // If this conversation has enough history, force-scroll to bottom on
+    // first render. Short conversations look better vertically centered
+    // (handled by MessageList's justify-end on a small content block).
+    if (valid.length > 4) initialScrollPendingRef.current = true;
     setMessages(valid);
     lastErrorRef.current = null;
     setLoadingMessages(false);
@@ -783,8 +789,31 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     );
   }
 
+  // Smart auto-scroll: only scroll if the user is near the bottom of the
+  // conversation. If they've scrolled up to read something, we don't yank
+  // them back down when a new response arrives. Uses rAF so the DOM has
+  // already committed before we measure the new height. On initial load of
+  // a conversation, force the scroll to bottom (initialScrollPendingRef).
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = mainScrollRef.current;
+    if (!el) return;
+    const force = initialScrollPendingRef.current;
+    if (force) initialScrollPendingRef.current = false;
+    if (!force) {
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      const NEAR_BOTTOM_PX = 120;
+      if (distanceFromBottom > NEAR_BOTTOM_PX) return;
+    }
+    const raf = requestAnimationFrame(() => {
+      // Two passes: one for the first paint, one for any images/late layouts.
+      el.scrollTo({ top: el.scrollHeight, behavior: force ? "auto" : "smooth" });
+      if (force) {
+        requestAnimationFrame(() => {
+          el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
+        });
+      }
+    });
+    return () => cancelAnimationFrame(raf);
   }, [messages, sending]);
 
   // Keep textarea focused after sending + prevent zoom on mobile
@@ -1640,7 +1669,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </header>
 
         {/* Messages */}
-        <main className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}>
+        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}>
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
