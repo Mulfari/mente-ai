@@ -22,9 +22,10 @@
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
 
-/* Gemini-style ambient mesh: vibrant teal + blue blobs, soft top vignette.
-   Opacities are pushed up so the background reads as "alive" without
-   competing with the chat content (which sits on a darker surface). */
+/* Aurora background (2026): four soft, slowly drifting color blobs plus a
+   top vignette. Opacities are low so the background reads as "atmosphere"
+   rather than competing with chat content. Frosted bubble panels on top of
+   this do the heavy lifting for legibility. */
 body::before {
   content: "";
   position: fixed;
@@ -32,17 +33,32 @@ body::before {
   background-color: #0B1418;
   background-image:
     /* Top ambient — gentle light from above */
-    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(255,255,255,0.10) 0%, transparent 65%),
-    /* Primary teal blob — bottom-left, large and diffuse */
-    radial-gradient(ellipse 110% 75% at 15% 95%, rgba(16,163,127,0.32) 0%, transparent 60%),
-    /* Secondary blue blob — top-right, adds Gemini's signature dual-tone */
-    radial-gradient(ellipse 90% 60% at 90% 8%, rgba(56,139,253,0.22) 0%, transparent 60%),
-    /* Mid teal — center-left, smaller, breaks up the dark middle */
-    radial-gradient(ellipse 70% 50% at 35% 45%, rgba(16,163,127,0.14) 0%, transparent 65%),
-    /* Faint white core — adds depth without becoming a focal point */
-    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255,255,255,0.04) 0%, transparent 70%);
+    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(255,255,255,0.08) 0%, transparent 65%),
+    /* Aurora blob 1 — violet, drifts up-right */
+    radial-gradient(ellipse 60% 50% at 20% 80%, rgba(139,92,246,0.18) 0%, transparent 60%),
+    /* Aurora blob 2 — teal (brand), drifts down-left */
+    radial-gradient(ellipse 55% 45% at 80% 20%, rgba(16,163,127,0.16) 0%, transparent 60%),
+    /* Aurora blob 3 — pink, drifts center */
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(236,72,153,0.10) 0%, transparent 60%),
+    /* Aurora blob 4 — cyan, bottom-right */
+    radial-gradient(ellipse 50% 45% at 85% 90%, rgba(56,189,248,0.12) 0%, transparent 60%);
   pointer-events: none;
   z-index: -1;
+  animation: aurora-drift 42s ease-in-out infinite alternate;
+  will-change: background-position, transform;
+}
+
+/* Slow, large-amplitude drift so the aurora never feels static. Each blob's
+   position shifts in opposing phases to keep the center from going too dark. */
+@keyframes aurora-drift {
+  0%   { transform: translate3d(0, 0, 0)         scale(1);    }
+  50%  { transform: translate3d(-3%, 2%, 0)      scale(1.05); }
+  100% { transform: translate3d(3%, -2%, 0)       scale(1.02); }
+}
+
+/* Respect users who don't want motion. */
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
 }
 
 @theme inline {
