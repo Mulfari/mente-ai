@@ -22,17 +22,16 @@
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
 
-/* Option 1: solid + top vignette (Claude/ChatGPT style).
-   The body is a single dark color, with one soft light from above. No
-   blobs, no mesh, no animation — the content (frosted bubbles, cards,
-   chips) is the design. */
+/* Option 2: solid + brand teal ambient in the bottom-left corner.
+   The body is dark, with one subtle teal glow (VeChat brand color) in one
+   corner. Subtle enough to read as "atmosphere" not "decoration". */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-color: #0B1418;
   background-image:
-    radial-gradient(ellipse 100% 60% at 50% -10%, rgba(255,255,255,0.05) 0%, transparent 65%);
+    radial-gradient(ellipse 80% 60% at 0% 100%, rgba(16,163,127,0.10) 0%, transparent 60%);
   pointer-events: none;
   z-index: -1;
 }
