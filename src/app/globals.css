@@ -22,16 +22,16 @@
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
 
-/* Option 2: solid + brand teal ambient in the bottom-left corner.
-   The body is dark, with one subtle teal glow (VeChat brand color) in one
-   corner. Subtle enough to read as "atmosphere" not "decoration". */
+/* Option 3: solid + subtle dot grid (v0 / Linear style).
+   1px white dots on a 24px grid at 6% opacity. Reads as technical,
+   structured, modern — never competes with the chat content. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background-color: #0B1418;
-  background-image:
-    radial-gradient(ellipse 80% 60% at 0% 100%, rgba(16,163,127,0.10) 0%, transparent 60%);
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.06) 1px, transparent 0);
+  background-size: 24px 24px;
   pointer-events: none;
   z-index: -1;
 }
