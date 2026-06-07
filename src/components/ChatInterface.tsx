@@ -13,6 +13,7 @@ import EmptyState from "./chat/EmptyState";
 import SwipeableConversation from "./chat/SwipeableConversation";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
+import { OnboardingTour } from "./OnboardingTour";
 
 type Message = {
   id: string;
@@ -151,7 +152,6 @@ export default function ChatInterface({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-    const [onboardingStep, setOnboardingStep] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [trendingTopSubOptions, setTrendingTopSubOptions] = useState<TrendingSubOption[]>([]);
@@ -231,9 +231,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         .then(({ data: p }) => { if (p) setProfile(p); });
       supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", userId).maybeSingle()
         .then(({ data: uc }) => { if (uc) setUserContext(uc); });
-      const seen = localStorage.getItem("mulfai_onboarding_seen");
-      const never = localStorage.getItem("mulfai_onboarding_never");
-      if (!seen && !never) setTimeout(() => setShowOnboarding(true), 1500);
+      const seenV2 = localStorage.getItem("mulfai_tour_v2_seen");
+      if (!seenV2) setTimeout(() => setShowOnboarding(true), 300);
     } else if (!initialIsLoggedIn) {
       // Server says we're logged out. Re-check on the client in case the
       // user just signed in (e.g. auth callback returned) — this is the
@@ -248,6 +247,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
           .then(({ data: uc }) => { if (uc) setUserContext(uc); });
         setMounted(true);
+        const seenV2 = localStorage.getItem("mulfai_tour_v2_seen");
+        if (!seenV2) setTimeout(() => setShowOnboarding(true), 300);
       });
     }
 
@@ -670,124 +671,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
   
   function dismissOnboarding() {
-    const noMostrar = (document.getElementById("no-mostrar") as HTMLInputElement)?.checked;
-    if (noMostrar) localStorage.setItem("mulfai_onboarding_never", "1");
-    localStorage.setItem("mulfai_onboarding_seen", "1");
     setShowOnboarding(false);
   }
 
-  const steps = [
-    {
-      title: "Escribe lo que necesites",
-      sub: "Puedes chatear con VeChat como si hablaras con una persona. Pregunta lo que quieras, en cualquier tema.",
-      icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
-      preview: (
-        <div className="space-y-2 mt-4">
-          <div className="flex justify-end">
-            <div className="px-3 py-2 rounded-2xl rounded-br-md text-xs font-medium"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
-              Explícame qué es el machine learning
-            </div>
-          </div>
-          <div className="flex justify-start">
-            <div className="px-3 py-2 rounded-2xl rounded-bl-md text-xs"
-              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }}>
-              Machine learning es una rama de la IA donde...
-            </div>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Adjunta imágenes",
-      sub: "Envía fotos y la IA las analiza. Perfecto para diagramas, código en pantallas, o cualquier cosa visual.",
-      icon: "M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z",
-      preview: (
-        <div className="flex items-center gap-2 mt-4 px-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-            <svg className="w-4 h-4" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div className="flex-1 text-xs px-3 py-2.5 rounded-xl" style={{ backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)", color: "var(--text-tertiary)", border: "1px solid var(--border)" }}>
-            Adjunta una imagen...
-          </div>
-          <div className="w-8 h-8 rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      ),
-    },
-    {
-      title: "Modo Pensar",
-      sub: "Para preguntas complejas, activa el modo 'Pensar'. La IA analiza más a fondo antes de responder.",
-      icon: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z",
-      preview: (
-        <div className="flex items-center gap-2 mt-4">
-          <div className="flex-1 h-8 rounded-xl overflow-hidden" style={{ backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)", border: "1px solid var(--border)" }}>
-            <div className="h-full rounded-xl flex items-center gap-1.5 px-3" style={{ background: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
-              <svg className="w-3 h-3 shrink-0" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-              <div className="h-2 flex-1 rounded-full" style={{ backgroundColor: "var(--primary)", width: "60%" }} />
-            </div>
-          </div>
-          <span className="text-[10px] font-semibold px-2 py-1 rounded-full"
-            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 15%, transparent)", color: "var(--primary)" }}>
-            Pensar
-          </span>
-        </div>
-      ),
-    },
-    {
-      title: "Tu suscripción",
-      sub: "Tienes un límite de mensajes semanal. Agrega tiempo desde 'Mi cuenta' cuando lo necesites.",
-      icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
-      preview: (
-        <div className="flex items-center gap-3 mt-4 px-3 py-3 rounded-xl" style={{ backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)", border: "1px solid var(--border)" }}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 20%, transparent), color-mix(in srgb, var(--primary) 5%, transparent))" }}>
-            <svg className="w-4 h-4" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="text-[11px] font-semibold" style={{ color: "var(--text-primary)" }}>1 semana restante</p>
-            <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Restablece cada lunes</p>
-          </div>
-          <button className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
-            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
-            Añadir
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  function OnboardingStep({ step }: { step: number }) {
-    const s = steps[step];
-    return (
-      <div>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 15%, transparent), color-mix(in srgb, var(--primary) 5%, transparent))" }}>
-            <svg className="w-5 h-5" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
-            </svg>
-          </div>
-          <div>
-            <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>{s.title}</h3>
-            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.8)" }}>{s.sub}</p>
-          </div>
-        </div>
-        {s.preview}
-      </div>
-    );
-  }
+  // Onboarding tour steps are now defined in <OnboardingTour /> component.
 
   // Smart auto-scroll: only scroll if the user is near the bottom of the
   // conversation. If they've scrolled up to read something, we don't yank
@@ -1796,85 +1683,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </div>
       )}
 
-      {/* Onboarding overlay */}
-      {showOnboarding && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4"
-          style={{ backgroundColor: "rgba(0,0,0,0.85)", backdropFilter: "blur(16px)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) dismissOnboarding(); }}>
-          <div className="w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl animate-fade-in"
-            style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 50px rgba(0,0,0,0.6)" }}>
-            {/* Header bar */}
-            <div className="flex items-center justify-between px-5 py-4"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-white/20">
-                  <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                  </svg>
-                </div>
-                <span className="text-white font-semibold text-sm">Tour rápido de VeChat</span>
-              </div>
-              <button onClick={dismissOnboarding}
-                className="w-7 h-7 rounded-full flex items-center justify-center bg-white/20 hover:bg-white/30 transition-colors">
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Step content */}
-            <div id="onboarding-step" className="px-5 py-5">
-              <OnboardingStep step={onboardingStep} />
-            </div>
-
-            {/* Navigation */}
-            <div className="px-5 pb-5 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                {[0, 1, 2, 3].map(i => (
-                  <div key={i} className="w-2 h-2 rounded-full transition-all"
-                    style={{ backgroundColor: i === onboardingStep ? "var(--primary)" : "var(--border)" }} />
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                {onboardingStep > 0 ? (
-                  <button onClick={() => setOnboardingStep(s => s - 1)}
-                    className="px-4 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-80"
-                    style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "var(--background)" }}>
-                    ← Anterior
-                  </button>
-                ) : (
-                  <span />
-                )}
-                {onboardingStep < 3 ? (
-                  <button onClick={() => setOnboardingStep(s => s + 1)}
-                    className="px-5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
-                    Siguiente →
-                  </button>
-                ) : (
-                  <button onClick={dismissOnboarding}
-                    className="px-5 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 active:scale-95"
-                    style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
-                    ¡Empezar! →
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Skip + no mostrar */}
-            <div className="px-5 pb-4 flex items-center justify-between">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" id="no-mostrar"
-                  className="w-4 h-4 rounded accent-[var(--primary)]" />
-                <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>No mostrar de nuevo</span>
-              </label>
-              <button onClick={dismissOnboarding} className="text-[11px] hover:underline" style={{ color: "var(--text-tertiary)" }}>
-                Saltar tour
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Onboarding tour — self-contained, see ./OnboardingTour.tsx */}
+      <OnboardingTour open={showOnboarding} onClose={dismissOnboarding} />
     </div>
   );
 }
