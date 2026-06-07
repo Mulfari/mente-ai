@@ -60,8 +60,9 @@ export default function MessageBubble({
           )}
         </div>
 
-        {/* Body — user is text-only (Gemini), assistant has a frosted panel
-            so the response stays legible over the aurora background. */}
+        {/* Body — both roles use a frosted glass panel (Apple / Vision Pro style).
+            Assistant: light white frost, reads airy. User: brand teal at 15%,
+            feels personal. Both use backdrop-blur so the mesh still shows through. */}
         {isUser ? (
           <div
             className="text-sm leading-relaxed"
@@ -69,6 +70,12 @@ export default function MessageBubble({
               color: "var(--text-primary)",
               wordBreak: "break-word",
               overflowWrap: "anywhere",
+              backgroundColor: "rgba(16, 163, 127, 0.15)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
+              borderRadius: "16px",
+              padding: "12px 16px",
             }}
           >
             {message._previewUrls && (
@@ -89,9 +96,9 @@ export default function MessageBubble({
               color: "var(--text-primary)",
               wordBreak: "break-word",
               overflowWrap: "anywhere",
-              backgroundColor: "rgba(24, 24, 27, 0.55)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
+              backgroundColor: "rgba(255, 255, 255, 0.04)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
               border: "1px solid rgba(255, 255, 255, 0.10)",
               borderRadius: "16px",
               padding: "14px 18px",
