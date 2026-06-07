@@ -14,6 +14,7 @@ import SwipeableConversation from "./chat/SwipeableConversation";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import { OnboardingTour } from "./OnboardingTour";
+import { type TrendingSections } from "./chat/DiscoverSuggestions";
 
 type Message = {
   id: string;
@@ -37,17 +38,6 @@ type Conversation = {
   created_at: string;
   updated_at: string;
 };
-
-type TrendingSubOption = {
-  id: string;
-  title: string;
-  subtitle: string;
-  iconKey: string;
-  eventCount: number;
-  prompts: string[];
-  categoryId: string;
-};
-
 
 export default function ChatInterface({
   userId,
@@ -154,7 +144,12 @@ export default function ChatInterface({
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  const [trendingTopSubOptions, setTrendingTopSubOptions] = useState<TrendingSubOption[]>([]);
+  const [trendingTopSubOptions, setTrendingTopSubOptions] = useState<TrendingSections>({
+    trending: [],
+    nearYou: [],
+    forYou: [],
+    recent: [],
+  });
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -324,8 +319,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     fetch("/api/trending")
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (d && d.trending && Array.isArray(d.trending.topSubOptions)) {
-          setTrendingTopSubOptions(d.trending.topSubOptions);
+        if (d && d.sections) {
+          setTrendingTopSubOptions(d.sections);
         }
       })
       .catch(() => {});

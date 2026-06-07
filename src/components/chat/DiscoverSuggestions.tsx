@@ -12,6 +12,13 @@ type TrendingSubOption = {
   categoryId: string;
 };
 
+export type TrendingSections = {
+  trending: TrendingSubOption[];
+  nearYou: TrendingSubOption[];
+  forYou: TrendingSubOption[];
+  recent: TrendingSubOption[];
+};
+
 type StaticSubOption = {
   id: string;
   title: string;
@@ -33,12 +40,12 @@ type Props = {
     s: string,
     meta: { categoryId: string; subOptionId?: string; source?: "discover" | "typed" }
   ) => void;
-  trendingTopSubOptions?: TrendingSubOption[];
+  sections: TrendingSections;
 };
 
 // Cold-start fallback: three fixed categories with curated sub-options. Used
-// when the trending API returns nothing (zero events, or down). Kept
-// permanently — the static list is the floor, trending is the ceiling.
+// when ALL sections are empty (zero events, or down). Kept permanently —
+// the static list is the floor, the trending sections are the ceiling.
 const SUBOPTION_ICONS: Record<string, React.ReactNode> = {
   pizza: <PizzaIcon />,
   sushi: <SushiIcon />,
@@ -109,75 +116,108 @@ const STATIC_CATEGORIES: StaticCategory[] = [
   },
 ];
 
-type FilterEntry =
-  | { kind: "trending"; sub: TrendingSubOption }
-  | { kind: "static"; category: StaticCategory };
+type SectionDef = {
+  key: keyof TrendingSections;
+  title: string;
+  icon: React.ReactNode;
+};
 
-export default function DiscoverSuggestions({ onSelect, trendingTopSubOptions }: Props) {
-  // Cold start: no trending → show the 3 static categories as filters.
-  // Hot path: trending list → each top sub-option becomes its own filter.
-  const hasTrending = (trendingTopSubOptions?.length ?? 0) > 0;
+const SECTION_DEFS: SectionDef[] = [
+  { key: "trending", title: "Tendencia",     icon: <FireIcon /> },
+  { key: "nearYou",  title: "Cerca de ti",   icon: <MapPinIcon /> },
+  { key: "forYou",   title: "Para vos",      icon: <SparklesIcon /> },
+  { key: "recent",   title: "Recién",        icon: <ClockIcon /> },
+];
 
-  const filters: FilterEntry[] = React.useMemo(() => {
-    if (hasTrending) {
-      return trendingTopSubOptions!.map((s) => ({ kind: "trending" as const, sub: s }));
-    }
-    return STATIC_CATEGORIES.map((c) => ({ kind: "static" as const, category: c }));
-  }, [hasTrending, trendingTopSubOptions]);
+function allEmpty(s: TrendingSections): boolean {
+  return s.trending.length === 0 && s.nearYou.length === 0 && s.forYou.length === 0 && s.recent.length === 0;
+}
 
-  const [selectedIdx, setSelectedIdx] = React.useState(0);
+function findSubInSections(id: string, s: TrendingSections): TrendingSubOption | null {
+  for (const arr of [s.trending, s.nearYou, s.forYou, s.recent]) {
+    const found = arr.find((x) => x.id === id);
+    if (found) return found;
+  }
+  return null;
+}
 
-  // If the filter list shrinks (e.g. trending API returns fewer items than
-  // the previous render) keep `selectedIdx` in range.
+export default function DiscoverSuggestions({ onSelect, sections }: Props) {
+  // Cold start: every section is empty → fall back to the 3 static categories.
+  if (allEmpty(sections)) {
+    return <StaticFallback onSelect={onSelect} />;
+  }
+
+  // Default selection: first item of the first non-empty section.
+  const defaultSub = sections.trending[0]
+    ?? sections.nearYou[0]
+    ?? sections.forYou[0]
+    ?? sections.recent[0]
+    ?? null;
+
+  const [selectedId, setSelectedId] = React.useState<string | null>(defaultSub?.id ?? null);
+
+  // If sections change and our current selection disappears, fall back.
   React.useEffect(() => {
-    if (selectedIdx >= filters.length) setSelectedIdx(0);
-  }, [filters.length, selectedIdx]);
+    if (selectedId && !findSubInSections(selectedId, sections)) {
+      setSelectedId(defaultSub?.id ?? null);
+    } else if (!selectedId && defaultSub) {
+      setSelectedId(defaultSub.id);
+    }
+  }, [sections, selectedId, defaultSub]);
 
-  const active = filters[selectedIdx] ?? filters[0];
+  const selected = selectedId ? findSubInSections(selectedId, sections) : defaultSub;
 
   return (
     <div className="w-full flex flex-col gap-4">
-      <FiltersRow
-        filters={filters}
-        selectedIdx={selectedIdx}
-        onSelect={setSelectedIdx}
-      />
+      {SECTION_DEFS.map((def) => {
+        const items = sections[def.key];
+        if (items.length === 0) return null;
+        return (
+          <Section
+            key={def.key}
+            title={def.title}
+            icon={def.icon}
+            items={items}
+            selectedId={selected?.id ?? null}
+            onPick={(s) => setSelectedId(s.id)}
+          />
+        );
+      })}
+
       <Divider />
       <Cards
-        key={activeFilterKey(active)}
-        active={active}
+        key={selected?.id ?? "empty"}
+        sub={selected}
         onSelect={onSelect}
       />
     </div>
   );
 }
 
-function activeFilterKey(active: FilterEntry | undefined): string {
-  if (!active) return "empty";
-  if (active.kind === "trending") return `t:${active.sub.id}`;
-  return `s:${active.category.id}`;
-}
-
-function FiltersRow({
-  filters,
-  selectedIdx,
-  onSelect,
+function Section({
+  title,
+  icon,
+  items,
+  selectedId,
+  onPick,
 }: {
-  filters: FilterEntry[];
-  selectedIdx: number;
-  onSelect: (i: number) => void;
+  title: string;
+  icon: React.ReactNode;
+  items: TrendingSubOption[];
+  selectedId: string | null;
+  onPick: (s: TrendingSubOption) => void;
 }) {
   return (
     <div className="w-full">
-      <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
-      <div className="flex flex-wrap gap-2 w-full mt-2.5">
-        {filters.map((f, i) => (
+      <SectionLabel icon={icon}>{title}</SectionLabel>
+      <div className="flex gap-2 w-full mt-2.5 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth snap-x snap-mandatory">
+        {items.map((s, i) => (
           <FilterChip
-            key={filterKey(f)}
-            entry={f}
+            key={`${title}-${s.id}`}
+            sub={s}
             index={i}
-            selected={selectedIdx === i}
-            onClick={() => onSelect(i)}
+            selected={selectedId === s.id}
+            onClick={() => onPick(s)}
           />
         ))}
       </div>
@@ -185,31 +225,21 @@ function FiltersRow({
   );
 }
 
-function filterKey(f: FilterEntry): string {
-  if (f.kind === "trending") return `t:${f.sub.id}`;
-  return `s:${f.category.id}`;
-}
-
 function FilterChip({
-  entry,
+  sub,
   index,
   selected,
   onClick,
 }: {
-  entry: FilterEntry;
+  sub: TrendingSubOption;
   index: number;
   selected: boolean;
   onClick: () => void;
 }) {
-  const isTrending = entry.kind === "trending";
-  const title = isTrending ? entry.sub.title : entry.category.title;
-  const subtitle = isTrending ? entry.sub.subtitle : entry.category.subtitle;
-  const icon = isTrending ? subOptionIcon(entry.sub.id) : entry.category.icon;
-
   return (
     <button
       onClick={onClick}
-      className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
+      className="group shrink-0 snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
       style={{
         backgroundColor: selected
           ? "color-mix(in srgb, var(--primary) 15%, var(--surface))"
@@ -232,85 +262,137 @@ function FilterChip({
         e.currentTarget.style.borderColor = "var(--border)";
         e.currentTarget.style.color = "var(--text-secondary)";
       }}
-      title={subtitle}
+      title={sub.subtitle}
     >
       <span
         className="w-3.5 h-3.5 inline-flex items-center justify-center transition-transform group-hover:scale-110"
         style={{ color: "var(--primary)" }}
       >
-        {icon}
+        {subOptionIcon(sub.id)}
       </span>
-      <span>{title}</span>
+      <span className="whitespace-nowrap">{sub.title}</span>
     </button>
   );
 }
 
 function Cards({
-  active,
+  sub,
   onSelect,
 }: {
-  active: FilterEntry | undefined;
+  sub: TrendingSubOption | null;
   onSelect: Props["onSelect"];
 }) {
-  if (!active) {
+  if (!sub) {
     return (
       <div className="w-full">
         <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
-      </div>
-    );
-  }
-
-  if (active.kind === "trending") {
-    const prompts = active.sub.prompts ?? [];
-    return (
-      <div className="w-full">
-        <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
-          {prompts.map((p, i) => (
-            <PromptCard
-              key={`${active.sub.id}-${i}-${p}`}
-              prompt={p}
-              icon={subOptionIcon(active.sub.id)}
-              trending={i === 0}
-              index={i}
-              onClick={() =>
-                onSelect(p, {
-                  categoryId: active.sub.categoryId,
-                  subOptionId: active.sub.id,
-                  source: "discover",
-                })
-              }
-            />
-          ))}
-          {prompts.length === 0 && (
-            <div
-              className="col-span-full text-[0.82rem] py-3 text-center"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              Sin sugerencias por ahora
-            </div>
-          )}
+        <div
+          className="text-[0.82rem] py-3 text-center"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          Selecciona una opción para ver preguntas sugeridas.
         </div>
       </div>
     );
   }
 
-  // Static fallback — render the category's curated sub-options.
+  const prompts = sub.prompts ?? [];
   return (
     <div className="w-full">
       <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
-        {active.category.subOptions.map((s, i) => (
+        {prompts.map((p, i) => (
           <PromptCard
-            key={s.id}
-            prompt={s.prompt}
-            icon={s.icon}
-            title={s.title}
-            trending={false}
+            key={`${sub.id}-${i}-${p}`}
+            prompt={p}
+            icon={subOptionIcon(sub.id)}
+            trending={i === 0}
             index={i}
-            onClick={() => onSelect(s.prompt, { categoryId: active.category.id, subOptionId: s.id, source: "discover" })}
+            onClick={() =>
+              onSelect(p, {
+                categoryId: sub.categoryId,
+                subOptionId: sub.id,
+                source: "discover",
+              })
+            }
           />
         ))}
+        {prompts.length === 0 && (
+          <div
+            className="col-span-full text-[0.82rem] py-3 text-center"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Sin sugerencias por ahora
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {
+  const [active, setActive] = React.useState<StaticCategory>(STATIC_CATEGORIES[0]);
+  return (
+    <div className="w-full flex flex-col gap-4">
+      <div className="w-full">
+        <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
+        <div className="flex flex-wrap gap-2 w-full mt-2.5">
+          {STATIC_CATEGORIES.map((c, i) => (
+            <button
+              key={c.id}
+              onClick={() => setActive(c)}
+              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                backgroundColor: active.id === c.id
+                  ? "color-mix(in srgb, var(--primary) 15%, var(--surface))"
+                  : "color-mix(in srgb, var(--text-primary) 4%, transparent)",
+                border: active.id === c.id
+                  ? "1px solid color-mix(in srgb, var(--primary) 60%, transparent)"
+                  : "1px solid var(--border)",
+                color: active.id === c.id ? "var(--text-primary)" : "var(--text-secondary)",
+                animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
+              }}
+              onMouseEnter={(e) => {
+                if (active.id === c.id) return;
+                e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, var(--surface))";
+                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 50%, transparent)";
+                e.currentTarget.style.color = "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                if (active.id === c.id) return;
+                e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--text-primary) 4%, transparent)";
+                e.currentTarget.style.borderColor = "var(--border)";
+                e.currentTarget.style.color = "var(--text-secondary)";
+              }}
+              title={c.subtitle}
+            >
+              <span
+                className="w-3.5 h-3.5 inline-flex items-center justify-center transition-transform group-hover:scale-110"
+                style={{ color: "var(--primary)" }}
+              >
+                {c.icon}
+              </span>
+              <span>{c.title}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <Divider />
+      <div className="w-full">
+        <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
+          {active.subOptions.map((s, i) => (
+            <PromptCard
+              key={s.id}
+              prompt={s.prompt}
+              icon={s.icon}
+              title={s.title}
+              trending={false}
+              index={i}
+              onClick={() => onSelect(s.prompt, { categoryId: active.id, subOptionId: s.id, source: "discover" })}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -394,87 +476,51 @@ function Divider() {
 
 function MapPinIcon() {
   return (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      viewBox="0 0 24 24"
-      aria-hidden
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-      />
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+    </svg>
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.894 20.567 16.5 21.75l-.394-1.183a2.25 2.25 0 0 0-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 0 0 1.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 0 0 1.423 1.423l1.183.394-1.183.394a2.25 2.25 0 0 0-1.423 1.423Z" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
     </svg>
   );
 }
 
 function UtensilsIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      viewBox="0 0 24 24"
-      aria-hidden
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 002-2V2"
-      />
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 2v7c0 1.1.9 2 2 2h0a2 2 0 002-2V2" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 2v20" />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M19 2v8a3 3 0 01-3 3v9"
-      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 2v8a3 3 0 01-3 3v9" />
     </svg>
   );
 }
 
 function HomeIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      viewBox="0 0 24 24"
-      aria-hidden
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M3 12L12 3l9 9v9a1 1 0 01-1 1h-5v-7h-4v7H4a1 1 0 01-1-1v-9z"
-      />
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12L12 3l9 9v9a1 1 0 01-1 1h-5v-7h-4v7H4a1 1 0 01-1-1v-9z" />
     </svg>
   );
 }
 
 function TagIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      viewBox="0 0 24 24"
-      aria-hidden
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z"
-      />
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
       <circle cx="7" cy="7" r="1.4" fill="currentColor" stroke="none" />
     </svg>
   );
@@ -482,19 +528,8 @@ function TagIcon() {
 
 function ChatBubbleIcon() {
   return (
-    <svg
-      className="w-3.5 h-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      viewBox="0 0 24 24"
-      aria-hidden
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 21l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-      />
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 21l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
     </svg>
   );
 }

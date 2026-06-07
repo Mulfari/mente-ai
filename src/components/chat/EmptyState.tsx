@@ -2,22 +2,12 @@
 
 import React from "react";
 import ChatInput from "./ChatInput";
-import DiscoverSuggestions from "./DiscoverSuggestions";
+import DiscoverSuggestions, { type TrendingSections } from "./DiscoverSuggestions";
 
 type BlockReason = {
   canWrite: boolean;
   canSend: boolean;
   reason: string;
-};
-
-type TrendingSubOption = {
-  id: string;
-  title: string;
-  subtitle: string;
-  iconKey: string;
-  eventCount: number;
-  prompts: string[];
-  categoryId: string;
 };
 
 type ChatInputProps = {
@@ -44,7 +34,7 @@ type Props = ChatInputProps & {
   ) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
-  trendingTopSubOptions?: TrendingSubOption[];
+  trendingTopSubOptions?: TrendingSections;
 };
 
 const OPENERS_NO_NAME = [
@@ -233,7 +223,7 @@ type FooterProps = {
   ) => void;
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
-  trendingTopSubOptions?: TrendingSubOption[];
+  trendingTopSubOptions?: TrendingSections;
 };
 
 function Footer({
@@ -258,7 +248,7 @@ function Footer({
   return (
     <DiscoverSuggestions
       onSelect={(s, meta) => submitSuggestion(s, meta)}
-      trendingTopSubOptions={trendingTopSubOptions}
+      sections={trendingTopSubOptions ?? { trending: [], nearYou: [], forYou: [], recent: [] }}
     />
   );
 }
