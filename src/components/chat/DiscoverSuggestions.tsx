@@ -381,7 +381,7 @@ function PromptCard({
   return (
     <button
       onClick={onClick}
-      className="relative flex items-center text-left p-3 rounded-xl transition-colors"
+      className="relative flex items-center text-left p-3 rounded-xl transition-colors min-h-[58px]"
       style={{
         backgroundColor: "transparent",
         // Thin (2px) category-colored left border + 1px neutral outline.
@@ -403,12 +403,14 @@ function PromptCard({
         {bigIcon}
       </span>
 
-      {/* Question only — the icon (emoji) is the topic identifier, no
-          label needed. The question becomes the visual hero of the card. */}
+      {/* Question — single line with ellipsis. Long text just truncates
+          with "..." instead of wrapping to a second line so every card
+          in the row has the same height. */}
       <span className="flex-1 min-w-0">
         <span
-          className="block text-[0.88rem] leading-snug line-clamp-2"
+          className="block truncate text-[0.88rem] leading-snug"
           style={{ color: "var(--text-secondary)" }}
+          title={subtitle ?? prompt}
         >
           {subtitle ?? prompt}
         </span>
@@ -416,7 +418,7 @@ function PromptCard({
 
       {top && (
         <span
-          className="ml-2 shrink-0 self-start text-[0.62rem] font-semibold uppercase tracking-wider"
+          className="ml-2 shrink-0 self-center text-[0.62rem] font-semibold uppercase tracking-wider"
           style={{ color: "#FF9F0A" }}
           title="Lo más preguntado ahora"
         >
