@@ -101,7 +101,7 @@ export default function ChatInput({
   const canSend = (input.trim() || attachments.length > 0) && !sending && block.canWrite;
 
   return (
-    <div className="px-4 pb-4 pt-2 flex-none">
+    <div className="chat-input-area px-4 pb-4 pt-2 flex-none">
       <div className="max-w-4xl mx-auto">
         {/* Attachment previews */}
         {attachments.length > 0 && (
