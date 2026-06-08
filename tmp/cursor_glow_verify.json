@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "url": "https://mulfai.com.ve/chat",
+  "initial": {
+    "opacity": "0",
+    "transform": "matrix(1, 0, 0, 1, -2320, -2320)",
+    "display": "block"
+  },
+  "pos1_at_400_300": {
+    "opacity": "1",
+    "transform": "matrix(1, 0, 0, 1, 80, -20)"
+  },
+  "pos2_at_900_500": {
+    "opacity": "1",
+    "transform": "matrix(1, 0, 0, 1, 579.699, 179.879)"
+  },
+  "pos3_at_1100_700": {
+    "opacity": "1",
+    "transform": "matrix(1, 0, 0, 1, 779.879, 379.879)"
+  }
+}

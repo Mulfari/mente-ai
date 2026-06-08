@@ -484,28 +484,54 @@ body { background: transparent; }
 
 /* (Cursor-following effect was removed — no media query needed.) */
 
-/* Bottom fade for the conversation. The last 96px of the message list
-   softly fades to transparent so the latest message blends into the
-   input area instead of getting cut with a hard edge. Uses a CSS
-   mask so the topographic background stays fully visible behind
-   the messages — only the message content fades. */
+/* Bottom fade for the conversation. Two layers:
+   1. A `::after` overlay with a gradient from transparent to the
+      background color (with some transparency so the topographic
+      pattern stays faintly visible through the fade). This is the
+      visible "fade to background" effect.
+   2. A mask-image on the container itself, so the message TEXT
+      fades in lockstep with the overlay. Without this, the text
+      would stay fully opaque while the background gets darker —
+      visually inconsistent.
+   Together: the bottom ~180px of the message list blends into the
+   input area instead of getting cut with a hard edge. */
 .chat-fade-bottom {
+  position: relative;
   -webkit-mask-image: linear-gradient(
     to bottom,
     black 0%,
-    black calc(100% - 96px),
+    black calc(100% - 180px),
     transparent 100%
   );
   mask-image: linear-gradient(
     to bottom,
     black 0%,
-    black calc(100% - 96px),
+    black calc(100% - 180px),
     transparent 100%
   );
+}
+.chat-fade-bottom::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 180px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--background) 35%, transparent) 45%,
+    color-mix(in srgb, var(--background) 75%, transparent) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-fade-bottom {
     -webkit-mask-image: none;
     mask-image: none;
+  }
+  .chat-fade-bottom::after {
+    display: none;
   }
 }

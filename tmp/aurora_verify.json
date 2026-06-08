@@ -1,0 +1,11 @@
+{
+  "ok": true,
+  "url": "https://mulfai.com.ve/chat",
+  "bgInfo": {
+    "bgColor": "rgb(11, 20, 24)",
+    "bgImage": "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/>",
+    "animation": "none"
+  },
+  "shot1": "tmp/aurora_verify_empty.png",
+  "shot2": "tmp/aurora_verify_empty_t2.png"
+}

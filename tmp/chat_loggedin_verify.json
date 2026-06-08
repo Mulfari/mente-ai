@@ -1,0 +1,12 @@
+{
+  "ok": true,
+  "url": "https://mulfai.com.ve/chat",
+  "emptyState": {
+    "scrollHeight": 800,
+    "clientHeight": 800,
+    "scrollTop": 0
+  },
+  "firstConv": null,
+  "longConvData": null,
+  "shot": "tmp/chat_loggedin_empty.png"
+}

@@ -1,0 +1,13 @@
+{
+  "ok": true,
+  "url": "https://mulfai.com.ve/chat",
+  "emptyState": {
+    "box": {
+      "scrollHeight": 800,
+      "clientHeight": 800,
+      "scrollTop": 0
+    },
+    "shot": "tmp/chat_gemini_verify.png"
+  },
+  "longConversation": "no existing conversation found"
+}
