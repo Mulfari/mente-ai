@@ -60,9 +60,11 @@ export default function MessageBubble({
           )}
         </div>
 
-        {/* Body — both roles use a frosted glass panel (Apple / Vision Pro style).
-            Assistant: light white frost, reads airy. User: brand teal at 15%,
-            feels personal. Both use backdrop-blur so the mesh still shows through. */}
+        {/* Body — left/right accented card style. Each bubble has a 3px
+            colored stripe on the side facing the screen edge (teal for
+            assistant on the left, white for user on the right) + a thin
+            neutral outline. No fill, no blur — the topographic background
+            stays fully visible through the message. */}
         {isUser ? (
           <div
             className="text-sm leading-relaxed"
@@ -70,11 +72,9 @@ export default function MessageBubble({
               color: "var(--text-primary)",
               wordBreak: "break-word",
               overflowWrap: "anywhere",
-              backgroundColor: "rgba(16, 163, 127, 0.15)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              borderRadius: "16px",
+              backgroundColor: "transparent",
+              boxShadow: "inset -3px 0 0 0 rgba(255, 255, 255, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.08)",
+              borderRadius: "12px",
               padding: "12px 16px",
             }}
           >
@@ -96,11 +96,9 @@ export default function MessageBubble({
               color: "var(--text-primary)",
               wordBreak: "break-word",
               overflowWrap: "anywhere",
-              backgroundColor: "rgba(255, 255, 255, 0.04)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              border: "1px solid rgba(255, 255, 255, 0.10)",
-              borderRadius: "16px",
+              backgroundColor: "transparent",
+              boxShadow: "inset 3px 0 0 0 var(--primary), inset 0 0 0 1px rgba(255, 255, 255, 0.10)",
+              borderRadius: "12px",
               padding: "14px 18px",
             }}
           >
