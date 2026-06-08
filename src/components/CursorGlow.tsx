@@ -22,8 +22,6 @@ export default function CursorGlow() {
     let currentX = -2000;
     let currentY = -2000;
     let initialized = false;
-    let visible = false;
-    let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
     const onMove = (e: MouseEvent) => {
       targetX = e.clientX;
@@ -33,25 +31,16 @@ export default function CursorGlow() {
         currentX = targetX;
         currentY = targetY;
         initialized = true;
-      }
-      if (!visible) {
-        visible = true;
         el.style.opacity = "1";
       }
-      if (idleTimer) clearTimeout(idleTimer);
-      idleTimer = setTimeout(() => {
-        visible = false;
-        el.style.opacity = "0";
-      }, 4000);
     };
 
     const onLeave = () => {
-      visible = false;
       el.style.opacity = "0";
-      if (idleTimer) {
-        clearTimeout(idleTimer);
-        idleTimer = null;
-      }
+    };
+
+    const onEnter = () => {
+      if (initialized) el.style.opacity = "1";
     };
 
     const tick = () => {
@@ -65,13 +54,14 @@ export default function CursorGlow() {
 
     window.addEventListener("mousemove", onMove);
     document.addEventListener("mouseleave", onLeave);
+    document.addEventListener("mouseenter", onEnter);
     raf = requestAnimationFrame(tick);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseleave", onLeave);
-      if (idleTimer) clearTimeout(idleTimer);
+      document.removeEventListener("mouseenter", onEnter);
     };
   }, []);
 
