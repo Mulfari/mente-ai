@@ -37,7 +37,7 @@ export default function MessageList({
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="w-full max-w-3xl mx-auto px-4 flex-1 flex flex-col justify-end">
+    <div className="chat-fade-bottom w-full max-w-3xl mx-auto px-4 flex-1 flex flex-col justify-end">
       {messages.map((msg) => (
         <MessageBubble
           key={msg.id}

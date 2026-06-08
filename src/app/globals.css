@@ -483,3 +483,29 @@ body { background: transparent; }
 }
 
 /* (Cursor-following effect was removed — no media query needed.) */
+
+/* Bottom fade for the conversation. The last 96px of the message list
+   softly fades to transparent so the latest message blends into the
+   input area instead of getting cut with a hard edge. Uses a CSS
+   mask so the topographic background stays fully visible behind
+   the messages — only the message content fades. */
+.chat-fade-bottom {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black calc(100% - 96px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    black 0%,
+    black calc(100% - 96px),
+    transparent 100%
+  );
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-fade-bottom {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
