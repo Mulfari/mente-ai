@@ -122,6 +122,88 @@ type SectionDef = {
   icon: React.ReactNode;
 };
 
+// Clean underline tab row (Twitter / YouTube style). One component for both
+// the live trending view and the static cold-start fallback, so they stay
+// visually consistent. `position: relative` is the anchor for the indicator.
+function TabRow<T extends string>({
+  tabs,
+  activeKey,
+  onChange,
+}: {
+  tabs: { key: T; title: string; icon: React.ReactNode }[];
+  activeKey: T;
+  onChange: (key: T) => void;
+}) {
+  const rowRef = React.useRef<HTMLDivElement | null>(null);
+  const tabRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+
+  useEffect(() => {
+    const update = () => {
+      const row = rowRef.current;
+      const btn = tabRefs.current[activeKey];
+      if (!row || !btn) return;
+      const rowRect = row.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      setIndicator({ left: btnRect.left - rowRect.left, width: btnRect.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [activeKey, tabs]);
+
+  return (
+    <div ref={rowRef} className="relative flex gap-5 flex-wrap" role="tablist">
+      {tabs.map((def, i) => {
+        const selected = def.key === activeKey;
+        return (
+          <button
+            key={def.key}
+            ref={(el) => {
+              tabRefs.current[def.key] = el;
+            }}
+            role="tab"
+            aria-selected={selected}
+            onClick={() => onChange(def.key)}
+            className="group flex items-center gap-1.5 py-2 text-[0.92rem] font-semibold transition-colors duration-200"
+            style={{
+              color: selected ? "var(--text-primary)" : "var(--text-tertiary)",
+              animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
+            }}
+            onMouseEnter={(e) => {
+              if (!selected) e.currentTarget.style.color = "var(--text-primary)";
+            }}
+            onMouseLeave={(e) => {
+              if (!selected) e.currentTarget.style.color = "var(--text-tertiary)";
+            }}
+          >
+            <span
+              className="w-4 h-4 inline-flex items-center justify-center transition-transform group-hover:scale-110"
+              style={{ color: selected ? "var(--primary)" : "var(--text-tertiary)" }}
+            >
+              {def.icon}
+            </span>
+            <span className="whitespace-nowrap">{def.title}</span>
+          </button>
+        );
+      })}
+      {indicator.width > 0 && (
+        <span
+          aria-hidden
+          className="absolute -bottom-[1px] h-[3px] rounded-full pointer-events-none"
+          style={{
+            left: indicator.left,
+            width: indicator.width,
+            background: "linear-gradient(90deg, #FF9F0A 0%, #10A37F 100%)",
+            transition: "left 0.35s cubic-bezier(0.2, 0, 0, 1), width 0.35s cubic-bezier(0.2, 0, 0, 1)",
+            boxShadow: "0 0 14px rgba(16, 163, 127, 0.55)",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 const TAB_DEFS: SectionDef[] = [
   { key: "trending", title: "Tendencia",     icon: <FireIcon /> },
   { key: "forYou",   title: "Para vos",      icon: <SparklesIcon /> },
@@ -157,89 +239,16 @@ export default function DiscoverSuggestions({ onSelect, sections }: Props) {
     }
   }, [visibleTabs, activeKey]);
 
-  // Measure the active tab's left/width so the sliding underline can
-  // animate to the right spot on click. Defaults to 0,0 before the
-  // first render — the indicator only becomes visible after a ref is
-  // captured, so the first frame is hidden via opacity.
-  const tabRowRef = React.useRef<HTMLDivElement | null>(null);
-  const tabRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
-  const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
-  useEffect(() => {
-    const update = () => {
-      const row = tabRowRef.current;
-      const btn = tabRefs.current[activeKey];
-      if (!row || !btn) return;
-      const rowRect = row.getBoundingClientRect();
-      const btnRect = btn.getBoundingClientRect();
-      setIndicator({ left: btnRect.left - rowRect.left, width: btnRect.width });
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [activeKey, visibleTabs]);
-
   const activeItems = sections[activeKey];
   const cards = flattenToCards(activeItems);
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* Tab row — pill style with a sliding underline (Material Design).
-          `position: relative` is the anchor for the absolutely-positioned
-          indicator that translates to the active tab on click. */}
-      <div
-        ref={tabRowRef}
-        className="relative flex gap-2 flex-wrap"
-        role="tablist"
-      >
-        {visibleTabs.map((def, i) => {
-          const selected = def.key === activeKey;
-          return (
-            <button
-              key={def.key}
-              ref={(el) => {
-                tabRefs.current[def.key] = el;
-              }}
-              role="tab"
-              aria-selected={selected}
-              onClick={() => setActiveKey(def.key)}
-              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
-              style={{
-                backgroundColor: selected
-                  ? "color-mix(in srgb, var(--primary) 15%, var(--surface))"
-                  : "color-mix(in srgb, var(--text-primary) 4%, transparent)",
-                border: selected
-                  ? "1px solid color-mix(in srgb, var(--primary) 60%, transparent)"
-                  : "1px solid var(--border)",
-                color: selected ? "var(--text-primary)" : "var(--text-secondary)",
-                animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
-              }}
-            >
-              <span
-                className="w-3.5 h-3.5 inline-flex items-center justify-center"
-                style={{ color: "var(--primary)" }}
-              >
-                {def.icon}
-              </span>
-              <span className="whitespace-nowrap">{def.title}</span>
-            </button>
-          );
-        })}
-        {/* Sliding indicator — the orange→green gradient under the active
-            tab is the "social network" fingerprint (Material, YouTube). */}
-        {indicator.width > 0 && (
-          <span
-            aria-hidden
-            className="absolute -bottom-1.5 h-[2px] rounded-full pointer-events-none"
-            style={{
-              left: indicator.left,
-              width: indicator.width,
-              background: "linear-gradient(90deg, #FF9F0A, #10A37F)",
-              transition: "left 0.35s cubic-bezier(0.2, 0, 0, 1), width 0.35s cubic-bezier(0.2, 0, 0, 1)",
-              boxShadow: "0 0 12px rgba(16, 163, 127, 0.45)",
-            }}
-          />
-        )}
-      </div>
+      <TabRow
+        tabs={visibleTabs}
+        activeKey={activeKey}
+        onChange={(k) => setActiveKey(k)}
+      />
 
       {/* Cards below — the `key` on the grid re-mounts the cards on tab switch,
           which re-fires the staggered fadeIn animation. Small but feels alive. */}
@@ -302,49 +311,23 @@ function flattenToCards(items: TrendingSubOption[]): {
 
 function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {
   const [active, setActive] = React.useState<StaticCategory>(STATIC_CATEGORIES[0]);
+  const staticTabs = React.useMemo(
+    () => STATIC_CATEGORIES.map((c) => ({ key: c.id, title: c.title, icon: c.icon })),
+    []
+  );
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="w-full">
         <SectionLabel icon={<MapPinIcon />}>Cerca de ti</SectionLabel>
-        <div className="flex flex-wrap gap-2 w-full mt-2.5">
-          {STATIC_CATEGORIES.map((c, i) => (
-            <button
-              key={c.id}
-              onClick={() => setActive(c)}
-              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
-              style={{
-                backgroundColor: active.id === c.id
-                  ? "color-mix(in srgb, var(--primary) 15%, var(--surface))"
-                  : "color-mix(in srgb, var(--text-primary) 4%, transparent)",
-                border: active.id === c.id
-                  ? "1px solid color-mix(in srgb, var(--primary) 60%, transparent)"
-                  : "1px solid var(--border)",
-                color: active.id === c.id ? "var(--text-primary)" : "var(--text-secondary)",
-                animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
-              }}
-              onMouseEnter={(e) => {
-                if (active.id === c.id) return;
-                e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, var(--surface))";
-                e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 50%, transparent)";
-                e.currentTarget.style.color = "var(--text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                if (active.id === c.id) return;
-                e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--text-primary) 4%, transparent)";
-                e.currentTarget.style.borderColor = "var(--border)";
-                e.currentTarget.style.color = "var(--text-secondary)";
-              }}
-              title={c.subtitle}
-            >
-              <span
-                className="w-3.5 h-3.5 inline-flex items-center justify-center transition-transform group-hover:scale-110"
-                style={{ color: "var(--primary)" }}
-              >
-                {c.icon}
-              </span>
-              <span>{c.title}</span>
-            </button>
-          ))}
+        <div className="mt-2.5">
+          <TabRow
+            tabs={staticTabs}
+            activeKey={active.id}
+            onChange={(id) => {
+              const next = STATIC_CATEGORIES.find((c) => c.id === id);
+              if (next) setActive(next);
+            }}
+          />
         </div>
       </div>
       <Divider />
