@@ -460,3 +460,9 @@ body { background: transparent; }
   color: var(--text-secondary);
   margin: 0.6em 0;
 }
+
+/* Cursor glow: hidden on touch devices (no cursor to follow) and for
+   users who prefer reduced motion. */
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .cursor-glow { display: none !important; }
+}
