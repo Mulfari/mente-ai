@@ -35,6 +35,7 @@ type Props = ChatInputProps & {
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
   trendingTopSubOptions?: TrendingSections;
+  trendingLoading?: boolean;
 };
 
 const OPENERS_NO_NAME = [
@@ -108,6 +109,7 @@ export default function EmptyState(props: Props) {
     onShowAuthPrompt,
     onShowAccountMenu,
     trendingTopSubOptions,
+    trendingLoading,
     ...chatInputProps
   } = props;
 
@@ -177,6 +179,7 @@ export default function EmptyState(props: Props) {
             onShowAuthPrompt={onShowAuthPrompt}
             onShowAccountMenu={onShowAccountMenu}
             trendingTopSubOptions={trendingTopSubOptions}
+            trendingLoading={trendingLoading}
           />
         </div>
       </div>
@@ -224,6 +227,7 @@ type FooterProps = {
   onShowAuthPrompt: () => void;
   onShowAccountMenu: () => void;
   trendingTopSubOptions?: TrendingSections;
+  trendingLoading?: boolean;
 };
 
 function Footer({
@@ -235,6 +239,7 @@ function Footer({
   onShowAuthPrompt,
   onShowAccountMenu,
   trendingTopSubOptions,
+  trendingLoading,
 }: FooterProps) {
   if (!isLoggedIn) {
     return <AuthPrompt onClick={onShowAuthPrompt} />;
@@ -249,6 +254,7 @@ function Footer({
     <DiscoverSuggestions
       onSelect={(s, meta) => submitSuggestion(s, meta)}
       sections={trendingTopSubOptions ?? { trending: [], nearYou: [], forYou: [], recent: [] }}
+      loading={trendingLoading}
     />
   );
 }

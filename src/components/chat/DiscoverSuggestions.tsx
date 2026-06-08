@@ -41,6 +41,7 @@ type Props = {
     meta: { categoryId: string; subOptionId?: string; source?: "discover" | "typed" }
   ) => void;
   sections: TrendingSections;
+  loading?: boolean;
 };
 
 // Cold-start fallback: three fixed categories with curated sub-options. Used
@@ -221,11 +222,14 @@ const CATEGORY_ACCENT: Record<string, { color: string; label: string }> = {
 };
 const FALLBACK_ACCENT = { color: "#9ca3af", label: "" };
 
-export default function DiscoverSuggestions({ onSelect, sections }: Props) {
+export default function DiscoverSuggestions({ onSelect, sections, loading }: Props) {
   // Only show tabs that have at least one sub-option. If none have data, fall
-  // back to the static curated list (cold start).
+  // back to the static curated list (cold start) — but only AFTER the initial
+  // fetch has resolved. While the first /api/trending call is in flight, we
+  // render a skeleton of the same card size so there's no 6→4 card flash.
   const visibleTabs = TAB_DEFS.filter((def) => sections[def.key].length > 0);
   if (visibleTabs.length === 0) {
+    if (loading) return <SkeletonGrid />;
     return <StaticFallback onSelect={onSelect} />;
   }
 
@@ -305,6 +309,36 @@ function flattenToCards(items: TrendingSubOption[]): {
     if (cards.length >= 4) break;
   }
   return cards;
+}
+
+// Skeleton placeholder for the first load. Same card dimensions and grid
+// layout as the real cards, so when /api/trending resolves there's no
+// layout shift. The user sees a calm 4-card placeholder pulse instead
+// of the 6-card StaticFallback flashing in then out.
+function SkeletonGrid() {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full animate-pulse">
+      {[0, 1, 2, 3].map((i) => (
+        <div
+          key={i}
+          className="flex items-center p-3 rounded-xl min-h-[58px]"
+          style={{
+            backgroundColor: "transparent",
+            boxShadow: "inset 0 0 0 1px var(--border)",
+          }}
+        >
+          <span
+            className="shrink-0 mr-3 rounded-md"
+            style={{ width: 20, height: 20, backgroundColor: "var(--border)" }}
+          />
+          <span
+            className="flex-1 h-3 rounded"
+            style={{ backgroundColor: "var(--border)" }}
+          />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {

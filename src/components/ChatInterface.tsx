@@ -150,6 +150,10 @@ export default function ChatInterface({
     forYou: [],
     recent: [],
   });
+  // True until the first /api/trending fetch resolves. Lets the empty state
+  // show a skeleton of the same size as the real cards instead of flashing
+  // from the static fallback (6 cards) to the trending UI (4 cards) on mount.
+  const [trendingLoading, setTrendingLoading] = useState(true);
   // Sub-option ids the user has already clicked in this conversation. Filtered
   // out of the trending sections below so the same card doesn't reappear after
   // the user sends a message. Reset on conversation change.
@@ -320,6 +324,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   // errors. Re-fetched on conversation change so the chips reflect the
   // latest aggregate when the user lands on a fresh empty state.
   function loadTrending() {
+    setTrendingLoading(true);
     fetch("/api/trending")
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -327,7 +332,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           setTrendingTopSubOptions(d.sections);
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setTrendingLoading(false));
   }
   useEffect(() => {
     loadTrending();
@@ -1629,6 +1635,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
               trendingTopSubOptions={visibleTrendingSections}
+              trendingLoading={trendingLoading}
             />
           ) : (<MessageList
               messages={messages}
