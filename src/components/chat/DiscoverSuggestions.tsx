@@ -259,7 +259,8 @@ export default function DiscoverSuggestions({ onSelect, sections }: Props) {
               key={`${activeKey}-${c.subOptionId}-${i}`}
               prompt={c.prompt}
               icon={subOptionIcon(c.subOptionId)}
-              eventCount={c.eventCount}
+              title={c.title}
+              subtitle={c.prompt}
               categoryId={c.categoryId}
               top={i === 0}
               index={i}
@@ -291,16 +292,16 @@ function flattenToCards(items: TrendingSubOption[]): {
   prompt: string;
   subOptionId: string;
   categoryId: string;
-  eventCount: number;
+  title: string;
 }[] {
-  const cards: { prompt: string; subOptionId: string; categoryId: string; eventCount: number }[] = [];
+  const cards: { prompt: string; subOptionId: string; categoryId: string; title: string }[] = [];
   for (const sub of items.slice(0, 3)) {
     for (const prompt of (sub.prompts ?? []).slice(0, 2)) {
       cards.push({
         prompt,
         subOptionId: sub.id,
         categoryId: sub.categoryId,
-        eventCount: sub.eventCount,
+        title: sub.title,
       });
       if (cards.length >= 4) break;
     }
@@ -340,6 +341,7 @@ function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {
               prompt={s.prompt}
               icon={s.icon}
               title={s.title}
+              subtitle={s.prompt}
               categoryId={active.id}
               top={i === 0}
               index={i}
@@ -356,8 +358,7 @@ function PromptCard({
   prompt,
   icon,
   title,
-  trending,
-  eventCount,
+  subtitle,
   categoryId,
   top,
   index,
@@ -366,8 +367,7 @@ function PromptCard({
   prompt: string;
   icon: React.ReactNode;
   title?: string;
-  trending?: boolean;
-  eventCount?: number;
+  subtitle?: string;
   categoryId?: string;
   top?: boolean;
   index: number;
@@ -377,52 +377,68 @@ function PromptCard({
   // Fallback to neutral gray for unknown / static categories.
   const accent = (categoryId && CATEGORY_ACCENT[categoryId]) || FALLBACK_ACCENT;
 
+  // Enlarge the icon from 14px (w-3.5) to 20px (w-5) for the hero chip.
+  // The icon components hard-code their className, so we clone and override.
+  const bigIcon = React.isValidElement(icon)
+    ? React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-5 h-5" })
+    : icon;
+
   return (
     <button
       onClick={onClick}
-      className="relative flex items-center text-left px-4 py-3 rounded-xl text-[0.88rem] leading-snug transition-all"
+      className="relative flex items-center text-left p-3 rounded-xl transition-all"
       style={{
-        color: "var(--text-secondary)",
-        backgroundColor: "transparent",
-        // Two-layer border trick: 1px outline + 3px inner accent on the left
-        // via box-shadow inset. Avoids layout shift vs. a border-left.
+        // Subtle category tint on the whole card. Strong on the left border
+        // so the eye can group cards by color.
+        backgroundColor: `color-mix(in srgb, ${accent.color} 5%, var(--surface))`,
         boxShadow: `inset 3px 0 0 0 ${accent.color}, inset 0 0 0 1px var(--border)`,
         animation: `fadeIn 0.4s ease-out ${index * 50}ms backwards`,
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${accent.color} 8%, var(--surface))`;
-        e.currentTarget.style.color = "var(--text-primary)";
+        e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${accent.color} 12%, var(--surface))`;
         e.currentTarget.style.boxShadow =
-          `inset 3px 0 0 0 ${accent.color}, inset 0 0 0 1px ${accent.color}, 0 6px 18px -8px ${accent.color}`;
+          `inset 3px 0 0 0 ${accent.color}, inset 0 0 0 1px ${accent.color}, 0 6px 20px -8px ${accent.color}`;
         e.currentTarget.style.transform = "translateY(-1px)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor = "transparent";
-        e.currentTarget.style.color = "var(--text-secondary)";
+        e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${accent.color} 5%, var(--surface))`;
         e.currentTarget.style.boxShadow = `inset 3px 0 0 0 ${accent.color}, inset 0 0 0 1px var(--border)`;
         e.currentTarget.style.transform = "translateY(0)";
       }}
     >
+      {/* Hero icon — colored chip in the top-left, with the icon enlarged
+          and tinted with the category color. */}
       <span
-        className="shrink-0 mr-2.5 inline-flex items-center transition-colors"
-        style={{ color: "var(--text-tertiary)" }}
+        className="shrink-0 mr-3 w-9 h-9 rounded-lg inline-flex items-center justify-center"
+        style={{
+          backgroundColor: `color-mix(in srgb, ${accent.color} 22%, transparent)`,
+          color: accent.color,
+        }}
       >
-        {icon}
+        {bigIcon}
       </span>
+
+      {/* Title + question — what will be asked if you click. */}
       <span className="flex-1 min-w-0">
-        <span className="line-clamp-2 block">{title ?? prompt}</span>
-        {eventCount !== undefined && eventCount > 1 && (
+        {title && (
           <span
-            className="block mt-0.5 text-[0.65rem] font-medium"
-            style={{ color: "var(--text-tertiary)" }}
+            className="block font-semibold text-[0.95rem] leading-tight truncate"
+            style={{ color: "var(--text-primary)" }}
           >
-            {eventCount} lo preguntaron
+            {title}
           </span>
         )}
+        <span
+          className="block text-[0.78rem] mt-0.5 leading-snug line-clamp-2"
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          {subtitle ?? prompt}
+        </span>
       </span>
+
       {top && (
         <span
-          className="ml-2 shrink-0 top-pulse inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+          className="ml-2 shrink-0 self-start top-pulse inline-flex items-center gap-1 text-[0.6rem] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
           style={{
             color: "#FF9F0A",
             backgroundColor: "rgba(255, 159, 10, 0.16)",
@@ -432,19 +448,6 @@ function PromptCard({
         >
           <span aria-hidden>🔥</span>
           <span>TOP</span>
-        </span>
-      )}
-      {!top && trending && (
-        <span
-          className="ml-2 shrink-0 inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
-          style={{
-            color: "var(--primary)",
-            backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)",
-          }}
-          title="Tendencia reciente"
-        >
-          <span aria-hidden>●</span>
-          <span>tendencia</span>
         </span>
       )}
     </button>
