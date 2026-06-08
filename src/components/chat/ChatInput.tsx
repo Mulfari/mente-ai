@@ -39,7 +39,7 @@ export default function ChatInput({
   autoFocus,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = useState(false);
 
   // Voice input (STT). The mic button is hidden if the browser doesn't
@@ -77,11 +77,23 @@ export default function ChatInput({
   useEffect(() => {
     if (autoFocus) {
       const timer = setTimeout(() => {
-        inputRef.current?.focus();
+        textareaRef.current?.focus();
       }, 100);
       return () => clearTimeout(timer);
     }
   }, [autoFocus]);
+
+  // Auto-resize the textarea to fit its content. Reset to "auto" first so
+  // scrollHeight reflects the natural content height, then cap at 160px
+  // (~6 lines at 24px line-height) so the field never takes over the
+  // viewport. When the cap is hit, the textarea scrolls internally; the
+  // project hides scrollbars globally so the overflow is invisible.
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+  }, [input]);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -136,9 +148,12 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Single-line input pill */}
+        {/* Input pill — items-end anchors the 48px buttons to the bottom
+            of the container when the textarea grows, so they stay at the
+            user's thumb on mobile. The textarea uses self-center to keep
+            the text visually centered in 1-line mode. */}
         <div
-          className="relative flex items-center gap-1.5 rounded-full pl-5 pr-2 py-3 transition-all duration-200"
+          className="relative flex items-end gap-1.5 rounded-full pl-5 pr-2 py-2 transition-all duration-200"
           style={{
             backgroundColor: "rgba(30,30,34,0.9)",
             border: `1px solid ${isFocused ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)"}`,
@@ -168,10 +183,13 @@ export default function ChatInput({
           <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple
             onChange={handleFileSelect} className="hidden" />
 
-          {/* Single-line text input */}
-          <input
-            ref={inputRef}
-            type="text"
+          {/* Multi-line text area with auto-resize. Enter sends, Shift+Enter
+              inserts a newline (default textarea behavior — our onKeyDown
+              only intercepts plain Enter). Height is set dynamically by the
+              useEffect above, capped at 160px via maxHeight. */}
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => {
@@ -186,8 +204,12 @@ export default function ChatInput({
               return "Pregúntale algo a VeChat...";
             })()}
             disabled={sending || !block.canWrite}
-            className="flex-1 min-w-0 bg-transparent text-base outline-none h-12 placeholder:text-[var(--text-tertiary)]"
-            style={{ color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)" }}
+            className="flex-1 min-w-0 bg-transparent text-base outline-none resize-none self-center px-1 placeholder:text-[var(--text-tertiary)] overflow-hidden"
+            style={{
+              color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)",
+              maxHeight: "160px",
+              lineHeight: "24px",
+            }}
           />
 
           {/* Microphone — Web Speech API STT. Hidden on unsupported browsers. */}
