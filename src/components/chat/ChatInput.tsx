@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import { useSpeechRecognition } from "@/lib/voice";
 
 type BlockReason = {
   canWrite: boolean;
@@ -40,6 +41,38 @@ export default function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+
+  // Voice input (STT). The mic button is hidden if the browser doesn't
+  // support Web Speech API. While listening, the transcript replaces the
+  // input value (with the user's previously-typed text as a prefix).
+  const prefixRef = useRef("");
+  const { isListening, transcript, error, isSupported, start, stop, reset } = useSpeechRecognition({
+    lang: "es-ES",
+  });
+
+  useEffect(() => {
+    if (isListening) {
+      const prefix = prefixRef.current;
+      const t = transcript;
+      const next = prefix && t ? `${prefix} ${t}` : t || prefix;
+      if (next !== input) setInput(next);
+    }
+  }, [isListening, transcript]);
+
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => reset(), 4000);
+    return () => clearTimeout(timer);
+  }, [error, reset]);
+
+  const handleMicClick = () => {
+    if (isListening) {
+      stop();
+    } else {
+      prefixRef.current = input;
+      start();
+    }
+  };
 
   useEffect(() => {
     if (autoFocus) {
@@ -157,17 +190,31 @@ export default function ChatInput({
             style={{ color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)" }}
           />
 
-          {/* Microphone — placeholder for future voice input */}
-          <button
-            disabled
-            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center cursor-not-allowed"
-            style={{ color: "var(--text-tertiary)", opacity: 0.5 }}
-            title="Próximamente: entrada por voz"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-            </svg>
-          </button>
+          {/* Microphone — Web Speech API STT. Hidden on unsupported browsers. */}
+          {isSupported && (
+            <button
+              onClick={handleMicClick}
+              disabled={!block.canWrite || sending}
+              className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                isListening ? "recording-pulse" : "hover:bg-white/10"
+              }`}
+              style={{
+                color: isListening ? "white" : "var(--text-tertiary)",
+                backgroundColor: isListening ? "var(--danger)" : "transparent",
+              }}
+              title={isListening ? "Detener grabación" : "Dictar mensaje"}
+            >
+              {isListening ? (
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                </svg>
+              )}
+            </button>
+          )}
 
           {/* Send — solid color, filled paper plane */}
           <button
@@ -191,6 +238,13 @@ export default function ChatInput({
             </svg>
           </button>
         </div>
+
+        {/* Voice error message — auto-clears after 4s */}
+        {error && (
+          <p className="text-[0.7rem] mt-1.5 text-center" style={{ color: "var(--danger)" }}>
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -138,6 +138,20 @@ body { background: transparent; }
 .typing-dot:nth-child(2) { animation: typingDot 1.4s ease-in-out infinite 0.2s; }
 .typing-dot:nth-child(3) { animation: typingDot 1.4s ease-in-out infinite 0.4s; }
 
+/* Mic recording pulse — used on the voice-input button in ChatInput
+   while SpeechRecognition is active. Red glow that breathes to make
+   it obvious audio is being captured. */
+@keyframes recordingPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--danger) 70%, transparent); }
+  50%      { box-shadow: 0 0 0 10px color-mix(in srgb, var(--danger) 0%, transparent); }
+}
+.recording-pulse {
+  animation: recordingPulse 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .recording-pulse { animation: none; }
+}
+
 /* Typing cursor for streaming */
 .typing-cursor {
   display: inline-block;

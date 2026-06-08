@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useSpeechSynthesis } from "@/lib/voice";
 
 type Message = {
   id: string;
@@ -39,6 +40,12 @@ export default function MessageBubble({
 }: Props) {
   const isStreaming = message._loading || message.id === streamingMsgId || retryMode === message.id;
   const isUser = message.role === "user";
+
+  // Voice output (TTS). Hook is shared across all bubbles — clicking the
+  // speaker on a different message auto-stops the previous one (handled
+  // inside the hook via speechSynthesis.cancel before each new speak).
+  const { speak, stop, isSpeaking, currentText, isSupported } = useSpeechSynthesis();
+  const isThisSpeaking = isSpeaking && currentText === message.content;
 
   return (
     <div
@@ -169,11 +176,32 @@ export default function MessageBubble({
           </div>
         )}
 
-        {/* Timestamp */}
+        {/* Timestamp + speaker button (TTS). The speaker only shows on
+            assistant messages that have finished streaming, on browsers
+            that support speechSynthesis. */}
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             {formatTime(message.created_at)}
           </span>
+          {!isUser && !isStreaming && isSupported && message.content && (
+            <button
+              onClick={() => (isThisSpeaking ? stop() : speak(message.content))}
+              className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-white/10"
+              style={{ color: isThisSpeaking ? "var(--primary)" : "var(--text-tertiary)" }}
+              title={isThisSpeaking ? "Detener lectura" : "Leer en voz alta"}
+              aria-label={isThisSpeaking ? "Detener lectura" : "Leer en voz alta"}
+            >
+              {isThisSpeaking ? (
+                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="6" y="6" width="12" height="12" rx="2" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.506-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                </svg>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </div>
