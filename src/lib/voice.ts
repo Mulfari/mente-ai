@@ -80,6 +80,12 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
 
     recognition.onerror = (e: any) => {
       const code = e?.error || "unknown";
+      // Log to console so DevTools shows the raw code for debugging
+      // (network / service-not-allowed / aborted are the common
+      // non-obvious ones — they usually mean the STT backend is
+      // unreachable from this network, not a code bug).
+      // eslint-disable-next-line no-console
+      console.warn("[voice] SpeechRecognition error:", code, e);
       const message =
         code === "not-allowed" || code === "service-not-allowed"
           ? "Permiso de micrófono denegado"
@@ -87,9 +93,15 @@ export function useSpeechRecognition(options: UseSpeechRecognitionOptions = {}) 
           ? "No se detectó voz"
           : code === "audio-capture"
           ? "No se encontró micrófono"
-          : "Error de reconocimiento de voz";
-      setError(message);
-      if (onErrorRef.current) onErrorRef.current(message);
+          : code === "network"
+          ? "Sin conexión al servicio de voz. Reintentá."
+          : code === "aborted"
+          ? "" // silent — happens on manual stop or remount
+          : `Error de voz (${code})`;
+      if (message) {
+        setError(message);
+        if (onErrorRef.current) onErrorRef.current(message);
+      }
       setIsListening(false);
     };
 
