@@ -128,6 +128,17 @@ const TAB_DEFS: SectionDef[] = [
   { key: "nearYou",  title: "Cerca de ti",   icon: <MapPinIcon /> },
 ];
 
+// Category accent colors. Each card gets a left border and a subtle
+// hover glow tinted with its category. The dark-theme tokens are
+// intentionally muted so cards stay readable but the eye can group
+// them by color (comida = green, servicios = blue, ofertas = yellow).
+const CATEGORY_ACCENT: Record<string, { color: string; label: string }> = {
+  comida:    { color: "#22c55e", label: "Comida"    },
+  servicios: { color: "#3b82f6", label: "Servicios" },
+  ofertas:   { color: "#eab308", label: "Ofertas"   },
+};
+const FALLBACK_ACCENT = { color: "#9ca3af", label: "" };
+
 export default function DiscoverSuggestions({ onSelect, sections }: Props) {
   // Only show tabs that have at least one sub-option. If none have data, fall
   // back to the static curated list (cold start).
@@ -146,18 +157,48 @@ export default function DiscoverSuggestions({ onSelect, sections }: Props) {
     }
   }, [visibleTabs, activeKey]);
 
+  // Measure the active tab's left/width so the sliding underline can
+  // animate to the right spot on click. Defaults to 0,0 before the
+  // first render — the indicator only becomes visible after a ref is
+  // captured, so the first frame is hidden via opacity.
+  const tabRowRef = React.useRef<HTMLDivElement | null>(null);
+  const tabRefs = React.useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ left: number; width: number }>({ left: 0, width: 0 });
+  useEffect(() => {
+    const update = () => {
+      const row = tabRowRef.current;
+      const btn = tabRefs.current[activeKey];
+      if (!row || !btn) return;
+      const rowRect = row.getBoundingClientRect();
+      const btnRect = btn.getBoundingClientRect();
+      setIndicator({ left: btnRect.left - rowRect.left, width: btnRect.width });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [activeKey, visibleTabs]);
+
   const activeItems = sections[activeKey];
   const cards = flattenToCards(activeItems);
 
   return (
     <div className="w-full flex flex-col gap-4">
-      {/* Tab row — pill style, consistent with the rest of the design */}
-      <div className="flex gap-2 flex-wrap" role="tablist">
+      {/* Tab row — pill style with a sliding underline (Material Design).
+          `position: relative` is the anchor for the absolutely-positioned
+          indicator that translates to the active tab on click. */}
+      <div
+        ref={tabRowRef}
+        className="relative flex gap-2 flex-wrap"
+        role="tablist"
+      >
         {visibleTabs.map((def, i) => {
           const selected = def.key === activeKey;
           return (
             <button
               key={def.key}
+              ref={(el) => {
+                tabRefs.current[def.key] = el;
+              }}
               role="tab"
               aria-selected={selected}
               onClick={() => setActiveKey(def.key)}
@@ -183,6 +224,21 @@ export default function DiscoverSuggestions({ onSelect, sections }: Props) {
             </button>
           );
         })}
+        {/* Sliding indicator — the orange→green gradient under the active
+            tab is the "social network" fingerprint (Material, YouTube). */}
+        {indicator.width > 0 && (
+          <span
+            aria-hidden
+            className="absolute -bottom-1.5 h-[2px] rounded-full pointer-events-none"
+            style={{
+              left: indicator.left,
+              width: indicator.width,
+              background: "linear-gradient(90deg, #FF9F0A, #10A37F)",
+              transition: "left 0.35s cubic-bezier(0.2, 0, 0, 1), width 0.35s cubic-bezier(0.2, 0, 0, 1)",
+              boxShadow: "0 0 12px rgba(16, 163, 127, 0.45)",
+            }}
+          />
+        )}
       </div>
 
       {/* Cards below — the `key` on the grid re-mounts the cards on tab switch,
@@ -195,6 +251,8 @@ export default function DiscoverSuggestions({ onSelect, sections }: Props) {
               prompt={c.prompt}
               icon={subOptionIcon(c.subOptionId)}
               eventCount={c.eventCount}
+              categoryId={c.categoryId}
+              top={i === 0}
               index={i}
               onClick={() =>
                 onSelect(c.prompt, {
@@ -299,7 +357,8 @@ function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {
               prompt={s.prompt}
               icon={s.icon}
               title={s.title}
-              trending={false}
+              categoryId={active.id}
+              top={i === 0}
               index={i}
               onClick={() => onSelect(s.prompt, { categoryId: active.id, subOptionId: s.id, source: "discover" })}
             />
@@ -316,6 +375,8 @@ function PromptCard({
   title,
   trending,
   eventCount,
+  categoryId,
+  top,
   index,
   onClick,
 }: {
@@ -324,9 +385,15 @@ function PromptCard({
   title?: string;
   trending?: boolean;
   eventCount?: number;
+  categoryId?: string;
+  top?: boolean;
   index: number;
   onClick: () => void;
 }) {
+  // Tint cards by category so the eye can group them at a glance.
+  // Fallback to neutral gray for unknown / static categories.
+  const accent = (categoryId && CATEGORY_ACCENT[categoryId]) || FALLBACK_ACCENT;
+
   return (
     <button
       onClick={onClick}
@@ -334,18 +401,23 @@ function PromptCard({
       style={{
         color: "var(--text-secondary)",
         backgroundColor: "transparent",
-        border: "1px solid var(--border)",
+        // Two-layer border trick: 1px outline + 3px inner accent on the left
+        // via box-shadow inset. Avoids layout shift vs. a border-left.
+        boxShadow: `inset 3px 0 0 0 ${accent.color}, inset 0 0 0 1px var(--border)`,
         animation: `fadeIn 0.4s ease-out ${index * 50}ms backwards`,
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = "var(--surface-hover)";
+        e.currentTarget.style.backgroundColor = `color-mix(in srgb, ${accent.color} 8%, var(--surface))`;
         e.currentTarget.style.color = "var(--text-primary)";
-        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--text-tertiary) 30%, transparent)";
+        e.currentTarget.style.boxShadow =
+          `inset 3px 0 0 0 ${accent.color}, inset 0 0 0 1px ${accent.color}, 0 6px 18px -8px ${accent.color}`;
+        e.currentTarget.style.transform = "translateY(-1px)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.backgroundColor = "transparent";
         e.currentTarget.style.color = "var(--text-secondary)";
-        e.currentTarget.style.borderColor = "var(--border)";
+        e.currentTarget.style.boxShadow = `inset 3px 0 0 0 ${accent.color}, inset 0 0 0 1px var(--border)`;
+        e.currentTarget.style.transform = "translateY(0)";
       }}
     >
       <span
@@ -365,7 +437,21 @@ function PromptCard({
           </span>
         )}
       </span>
-      {trending && (
+      {top && (
+        <span
+          className="ml-2 shrink-0 top-pulse inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
+          style={{
+            color: "#FF9F0A",
+            backgroundColor: "rgba(255, 159, 10, 0.16)",
+            border: "1px solid rgba(255, 159, 10, 0.45)",
+          }}
+          title="Lo más preguntado ahora"
+        >
+          <span aria-hidden>🔥</span>
+          <span>TOP</span>
+        </span>
+      )}
+      {!top && trending && (
         <span
           className="ml-2 shrink-0 inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"
           style={{
