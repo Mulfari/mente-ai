@@ -74,14 +74,16 @@ export default function CursorGlow() {
         position: "fixed",
         left: 0,
         top: 0,
-        width: 800,
-        height: 800,
+        width: 18,
+        height: 18,
+        borderRadius: "50%",
         pointerEvents: "none",
         zIndex: 50,
         opacity: 0,
-        transition: "opacity 600ms ease",
-        background:
-          "radial-gradient(circle, rgba(16,163,127,0.65) 0%, rgba(16,163,127,0.30) 20%, rgba(16,163,127,0.12) 45%, transparent 70%)",
+        transition: "opacity 200ms ease",
+        border: "1.5px solid rgba(16, 163, 127, 0.85)",
+        boxShadow:
+          "0 0 12px rgba(16, 163, 127, 0.35), 0 0 4px rgba(16, 163, 127, 0.6)",
         willChange: "transform",
       }}
     />
