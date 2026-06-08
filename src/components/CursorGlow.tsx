@@ -31,8 +31,8 @@ export default function CursorGlow() {
         currentX = targetX;
         currentY = targetY;
         initialized = true;
-        el.style.opacity = "1";
       }
+      el.style.opacity = "1";
     };
 
     const onLeave = () => {
