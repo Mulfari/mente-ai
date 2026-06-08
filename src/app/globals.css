@@ -498,34 +498,44 @@ body { background: transparent; }
 
 /* (Cursor-following effect was removed — no media query needed.) */
 
-/* Subtle "platform" gradient above the chat input. A `::before`
-   extends ~50px above the input wrapper with a very gentle
-   gradient from transparent to a faint background tint. This
-   gives the input a soft "platform" feel — the visual transition
-   that Gemini does at the bottom of the conversation — WITHOUT
-   fading the messages themselves. The messages stay 100%
-   readable; the platform sits behind them at the bottom edge.
+/* === CHAT INPUT PLATFORM (Gemini-style) ===
+   The input sits in a "tray" with a slightly tinted background,
+   so the pill contrasts against it instead of floating naked
+   over the page. Two layers:
 
-   Why `::before` on the input wrapper, not the message list:
-   the input wrapper is the natural "platform" element, and
-   anchoring the gradient there means the effect follows the
-   input wherever it is (centered on empty state, docked on
-   conversation) without any layout coupling to the message list. */
+   1. A solid platform background on `.chat-input-area` — the
+      same color across the full bottom strip, ~70% background
+      + 30% surface so it's just barely lighter than the page.
+   2. A short `::before` at the very top of the platform that
+      fades the platform color up to transparent over 18px. This
+      softens the boundary where the messages above meet the
+      platform — same idea as Gemini's solid tray, but with a
+      gentle top edge instead of a hard line.
+
+   z-index discipline: the `::before` sits at z-index 0 (behind
+   the pill), and the pill's wrapper gets z-index 1 so the fade
+   never tints the pill itself. The messages above are not
+   affected at all — the fade is contained inside the wrapper. */
 .chat-input-area {
   position: relative;
+  background: color-mix(in srgb, var(--background) 70%, var(--surface) 30%);
 }
 .chat-input-area::before {
   content: "";
   position: absolute;
-  top: -50px;
+  top: 0;
   left: 0;
   right: 0;
-  height: 50px;
+  height: 18px;
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    color-mix(in srgb, var(--background) 22%, transparent) 100%
+    color-mix(in srgb, var(--background) 70%, var(--surface) 30%) 100%
   );
   pointer-events: none;
   z-index: 0;
+}
+.chat-input-area > div {
+  position: relative;
+  z-index: 1;
 }
