@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import ChatInterface from "@/components/ChatInterface";
-import CursorGlow from "@/components/CursorGlow";
 
 type InitialProfile = {
   status?: string;
@@ -43,7 +42,6 @@ export default async function ChatPage() {
 
   return (
     <>
-      <CursorGlow />
       <ChatInterface
         userId={user?.id ?? ""}
         initialIsLoggedIn={!!user}
