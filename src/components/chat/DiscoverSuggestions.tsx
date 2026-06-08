@@ -259,7 +259,6 @@ export default function DiscoverSuggestions({ onSelect, sections }: Props) {
               key={`${activeKey}-${c.subOptionId}-${i}`}
               prompt={c.prompt}
               icon={subOptionIcon(c.subOptionId)}
-              title={c.title}
               subtitle={c.prompt}
               categoryId={c.categoryId}
               top={i === 0}
@@ -292,16 +291,14 @@ function flattenToCards(items: TrendingSubOption[]): {
   prompt: string;
   subOptionId: string;
   categoryId: string;
-  title: string;
 }[] {
-  const cards: { prompt: string; subOptionId: string; categoryId: string; title: string }[] = [];
+  const cards: { prompt: string; subOptionId: string; categoryId: string }[] = [];
   for (const sub of items.slice(0, 3)) {
     for (const prompt of (sub.prompts ?? []).slice(0, 2)) {
       cards.push({
         prompt,
         subOptionId: sub.id,
         categoryId: sub.categoryId,
-        title: sub.title,
       });
       if (cards.length >= 4) break;
     }
@@ -340,7 +337,6 @@ function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {
               key={s.id}
               prompt={s.prompt}
               icon={s.icon}
-              title={s.title}
               subtitle={s.prompt}
               categoryId={active.id}
               top={i === 0}
@@ -357,7 +353,6 @@ function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {
 function PromptCard({
   prompt,
   icon,
-  title,
   subtitle,
   categoryId,
   top,
@@ -366,7 +361,6 @@ function PromptCard({
 }: {
   prompt: string;
   icon: React.ReactNode;
-  title?: string;
   subtitle?: string;
   categoryId?: string;
   top?: boolean;
@@ -409,19 +403,12 @@ function PromptCard({
         {bigIcon}
       </span>
 
-      {/* Title + question — what will be asked if you click. */}
+      {/* Question only — the icon (emoji) is the topic identifier, no
+          label needed. The question becomes the visual hero of the card. */}
       <span className="flex-1 min-w-0">
-        {title && (
-          <span
-            className="block font-medium text-[0.92rem] leading-tight truncate"
-            style={{ color: "var(--text-primary)" }}
-          >
-            {title}
-          </span>
-        )}
         <span
-          className="block text-[0.78rem] mt-0.5 leading-snug line-clamp-2"
-          style={{ color: "var(--text-tertiary)" }}
+          className="block text-[0.88rem] leading-snug line-clamp-2"
+          style={{ color: "var(--text-secondary)" }}
         >
           {subtitle ?? prompt}
         </span>
