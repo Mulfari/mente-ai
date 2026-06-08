@@ -307,6 +307,7 @@ function Cards({
             prompt={p}
             icon={subOptionIcon(sub.id)}
             trending={i === 0}
+            eventCount={sub.eventCount}
             index={i}
             onClick={() =>
               onSelect(p, {
@@ -403,6 +404,7 @@ function PromptCard({
   icon,
   title,
   trending,
+  eventCount,
   index,
   onClick,
 }: {
@@ -410,6 +412,7 @@ function PromptCard({
   icon: React.ReactNode;
   title?: string;
   trending: boolean;
+  eventCount?: number;
   index: number;
   onClick: () => void;
 }) {
@@ -440,7 +443,17 @@ function PromptCard({
       >
         {icon}
       </span>
-      <span className="flex-1 line-clamp-2">{title ?? prompt}</span>
+      <span className="flex-1 min-w-0">
+        <span className="line-clamp-2 block">{title ?? prompt}</span>
+        {eventCount !== undefined && eventCount > 1 && (
+          <span
+            className="block mt-0.5 text-[0.65rem] font-medium"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            {eventCount} lo preguntaron
+          </span>
+        )}
+      </span>
       {trending && (
         <span
           className="ml-2 shrink-0 inline-flex items-center gap-1 text-[0.62rem] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full"

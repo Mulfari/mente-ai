@@ -24,6 +24,13 @@ type SubOptionOut = {
   prompts: string[];
 };
 
+type TrendingSections = {
+  trending: SubOptionOut[];
+  nearYou: SubOptionOut[];
+  forYou: SubOptionOut[];
+  recent: SubOptionOut[];
+};
+
 const VALID_CATEGORIES = ["comida", "servicios", "ofertas"] as const;
 const TOP_N = 8;
 const PROMPTS_PER_SUBOPTION = 3;
@@ -200,13 +207,26 @@ export async function GET(_request: NextRequest) {
   if (forYouRes.error)   return NextResponse.json({ error: forYouRes.error.message   }, { status: 500 });
   if (recentRes.error)   return NextResponse.json({ error: recentRes.error.message   }, { status: 500 });
 
-  return NextResponse.json({
-    sections: {
-      trending: topFromAgg(aggregate(trendingRes.data ?? []), TOP_N),
-      nearYou:  topFromAgg(aggregate(nearYouRes.data  ?? []), TOP_N),
-      forYou:   topFromAgg(aggregate(forYouRes.data   ?? []), TOP_N),
-      recent:   topFromAgg(aggregate(recentRes.data   ?? []), TOP_N),
-    },
-    meta: { userCity, topCategory },
-  });
+  const sections: TrendingSections = {
+    trending: topFromAgg(aggregate(trendingRes.data ?? []), TOP_N),
+    nearYou:  topFromAgg(aggregate(nearYouRes.data  ?? []), TOP_N),
+    forYou:   topFromAgg(aggregate(forYouRes.data   ?? []), TOP_N),
+    recent:   topFromAgg(aggregate(recentRes.data   ?? []), TOP_N),
+  };
+
+  // Dedupe: each sub_option_id appears in at most one section. Higher-priority
+  // sections keep the id; lower-priority ones drop it. Fixes the "all 3
+  // sections show the same items" bug when data is concentrated in one
+  // category. Priority order chosen to surface freshest signal first.
+  const seen = new Set<string>();
+  const PRIORITY: (keyof TrendingSections)[] = ["trending", "nearYou", "forYou", "recent"];
+  for (const key of PRIORITY) {
+    sections[key] = sections[key].filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+  }
+
+  return NextResponse.json({ sections, meta: { userCity, topCategory } });
 }

@@ -150,6 +150,10 @@ export default function ChatInterface({
     forYou: [],
     recent: [],
   });
+  // Sub-option ids the user has already clicked in this conversation. Filtered
+  // out of the trending sections below so the same card doesn't reappear after
+  // the user sends a message. Reset on conversation change.
+  const [seenSubOptionIds, setSeenSubOptionIds] = useState<Set<string>>(new Set());
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -327,7 +331,24 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   }
   useEffect(() => {
     loadTrending();
+    setSeenSubOptionIds(new Set());
   }, [activeConv?.id, isLoggedIn]);
+
+  // Drop sub-options the user has already clicked in this conversation so the
+  // empty state feels fresh. Server-side dedup (in /api/trending) handles
+  // overlap between sections; this handles overlap with the user's own
+  // session.
+  const visibleTrendingSections = React.useMemo<TrendingSections>(() => {
+    if (seenSubOptionIds.size === 0) return trendingTopSubOptions;
+    const filter = (items: TrendingSections["trending"]) =>
+      items.filter((it) => !seenSubOptionIds.has(it.id));
+    return {
+      trending: filter(trendingTopSubOptions.trending),
+      nearYou: filter(trendingTopSubOptions.nearYou),
+      forYou: filter(trendingTopSubOptions.forYou),
+      recent: filter(trendingTopSubOptions.recent),
+    };
+  }, [trendingTopSubOptions, seenSubOptionIds]);
 
   useEffect(() => {
     if (!isLoggedIn || !userId) return;
@@ -860,6 +881,16 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setSending(true);
     setSuggestions([]);
     if (!activeConv) setConvLoaded(true);
+
+    // Mark this sub-option as seen so the empty state doesn't show it again
+    // for the rest of this conversation.
+    if (meta?.subOptionId) {
+      setSeenSubOptionIds((prev) => {
+        const next = new Set(prev);
+        next.add(meta.subOptionId!);
+        return next;
+      });
+    }
 
     // Fire-and-forget trending tracking. Silent on failure — never block the
     // user flow on the tracking request.
@@ -1597,7 +1628,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
-              trendingTopSubOptions={trendingTopSubOptions}
+              trendingTopSubOptions={visibleTrendingSections}
             />
           ) : (<MessageList
               messages={messages}
