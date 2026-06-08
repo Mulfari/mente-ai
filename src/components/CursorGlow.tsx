@@ -15,6 +15,7 @@ export default function CursorGlow() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    console.log("[CursorGlow] mounted");
 
     let raf = 0;
     let targetX = -2000;
@@ -84,14 +85,14 @@ export default function CursorGlow() {
         position: "fixed",
         left: 0,
         top: 0,
-        width: 720,
-        height: 720,
+        width: 800,
+        height: 800,
         pointerEvents: "none",
-        zIndex: 0,
+        zIndex: 50,
         opacity: 0,
         transition: "opacity 600ms ease",
         background:
-          "radial-gradient(circle, rgba(16,163,127,0.45) 0%, rgba(16,163,127,0.18) 25%, rgba(16,163,127,0.06) 55%, transparent 75%)",
+          "radial-gradient(circle, rgba(16,163,127,0.65) 0%, rgba(16,163,127,0.30) 20%, rgba(16,163,127,0.12) 45%, transparent 70%)",
         willChange: "transform",
       }}
     />
