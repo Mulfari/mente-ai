@@ -503,11 +503,11 @@ body { background: transparent; }
    so the pill contrasts against it instead of floating naked
    over the page. Two layers:
 
-   1. A solid platform background on `.chat-input-area` — the
-      same color across the full bottom strip, ~70% background
-      + 30% surface so it's just barely lighter than the page.
+   1. A solid platform background on `.chat-input-area` — full
+      width, sits behind the pill, with a 1px top hairline so
+      the boundary reads even when the page is very dark.
    2. A short `::before` at the very top of the platform that
-      fades the platform color up to transparent over 18px. This
+      fades the platform color up to transparent over 24px. This
       softens the boundary where the messages above meet the
       platform — same idea as Gemini's solid tray, but with a
       gentle top edge instead of a hard line.
@@ -518,7 +518,8 @@ body { background: transparent; }
    affected at all — the fade is contained inside the wrapper. */
 .chat-input-area {
   position: relative;
-  background: color-mix(in srgb, var(--background) 70%, var(--surface) 30%);
+  background: color-mix(in srgb, var(--background) 45%, var(--surface) 55%);
+  border-top: 1px solid color-mix(in srgb, var(--text-tertiary) 18%, transparent);
 }
 .chat-input-area::before {
   content: "";
@@ -526,11 +527,11 @@ body { background: transparent; }
   top: 0;
   left: 0;
   right: 0;
-  height: 18px;
+  height: 24px;
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    color-mix(in srgb, var(--background) 70%, var(--surface) 30%) 100%
+    color-mix(in srgb, var(--background) 45%, var(--surface) 55%) 100%
   );
   pointer-events: none;
   z-index: 0;
