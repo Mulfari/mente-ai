@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 type TrendingSubOption = {
   id: string;
@@ -122,56 +122,110 @@ type SectionDef = {
   icon: React.ReactNode;
 };
 
-const SECTION_DEFS: SectionDef[] = [
+const TAB_DEFS: SectionDef[] = [
   { key: "trending", title: "Tendencia",     icon: <FireIcon /> },
-  { key: "nearYou",  title: "Cerca de ti",   icon: <MapPinIcon /> },
   { key: "forYou",   title: "Para vos",      icon: <SparklesIcon /> },
-  { key: "recent",   title: "Recién",        icon: <ClockIcon /> },
+  { key: "nearYou",  title: "Cerca de ti",   icon: <MapPinIcon /> },
 ];
 
-function allEmpty(s: TrendingSections): boolean {
-  return s.trending.length === 0 && s.nearYou.length === 0 && s.forYou.length === 0 && s.recent.length === 0;
-}
-
 export default function DiscoverSuggestions({ onSelect, sections }: Props) {
-  // Cold start: every section is empty → fall back to the 3 static categories.
-  if (allEmpty(sections)) {
+  // Only show tabs that have at least one sub-option. If none have data, fall
+  // back to the static curated list (cold start).
+  const visibleTabs = TAB_DEFS.filter((def) => sections[def.key].length > 0);
+  if (visibleTabs.length === 0) {
     return <StaticFallback onSelect={onSelect} />;
   }
 
-  // Render each section as a label followed by the actual top prompt cards
-  // for that section. No sub-option chip step — the user sees the trending
-  // questions directly under each section header.
+  // Track the active tab. Default to the first visible one; if the active tab
+  // loses its data (e.g., trending goes empty after a re-fetch), fall back
+  // to the first visible tab so we never render an empty state.
+  const [activeKey, setActiveKey] = useState<keyof TrendingSections>(visibleTabs[0].key);
+  useEffect(() => {
+    if (!visibleTabs.some((t) => t.key === activeKey)) {
+      setActiveKey(visibleTabs[0]?.key ?? "trending");
+    }
+  }, [visibleTabs, activeKey]);
+
+  const activeItems = sections[activeKey];
+  const cards = flattenToCards(activeItems);
+
   return (
-    <div className="w-full flex flex-col gap-6">
-      {SECTION_DEFS.map((def) => (
-        <SectionPrompts
-          key={def.key}
-          title={def.title}
-          icon={def.icon}
-          items={sections[def.key]}
-          onSelect={onSelect}
-        />
-      ))}
+    <div className="w-full flex flex-col gap-4">
+      {/* Tab row — pill style, consistent with the rest of the design */}
+      <div className="flex gap-2 flex-wrap" role="tablist">
+        {visibleTabs.map((def, i) => {
+          const selected = def.key === activeKey;
+          return (
+            <button
+              key={def.key}
+              role="tab"
+              aria-selected={selected}
+              onClick={() => setActiveKey(def.key)}
+              className="group flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                backgroundColor: selected
+                  ? "color-mix(in srgb, var(--primary) 15%, var(--surface))"
+                  : "color-mix(in srgb, var(--text-primary) 4%, transparent)",
+                border: selected
+                  ? "1px solid color-mix(in srgb, var(--primary) 60%, transparent)"
+                  : "1px solid var(--border)",
+                color: selected ? "var(--text-primary)" : "var(--text-secondary)",
+                animation: `fadeIn 0.4s ease-out ${i * 60}ms backwards`,
+              }}
+            >
+              <span
+                className="w-3.5 h-3.5 inline-flex items-center justify-center"
+                style={{ color: "var(--primary)" }}
+              >
+                {def.icon}
+              </span>
+              <span className="whitespace-nowrap">{def.title}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Cards below — the `key` on the grid re-mounts the cards on tab switch,
+          which re-fires the staggered fadeIn animation. Small but feels alive. */}
+      <div key={activeKey} className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+        {cards.length > 0 ? (
+          cards.map((c, i) => (
+            <PromptCard
+              key={`${activeKey}-${c.subOptionId}-${i}`}
+              prompt={c.prompt}
+              icon={subOptionIcon(c.subOptionId)}
+              eventCount={c.eventCount}
+              index={i}
+              onClick={() =>
+                onSelect(c.prompt, {
+                  categoryId: c.categoryId,
+                  subOptionId: c.subOptionId,
+                  source: "discover",
+                })
+              }
+            />
+          ))
+        ) : (
+          <div
+            className="col-span-full text-[0.82rem] py-3 text-center"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            Sin sugerencias por ahora
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function SectionPrompts({
-  title,
-  icon,
-  items,
-  onSelect,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  items: TrendingSubOption[];
-  onSelect: Props["onSelect"];
-}) {
-  // Flatten the section's sub-options into individual prompt cards. Take up
-  // to 3 top sub-options, each with up to 2 prompts, capped at 4 cards per
-  // section. The diversity comes from mixing sub-options, not stacking the
-  // same one's prompts.
+// Flatten a section's sub-options into individual prompt cards. Takes up to
+// 3 top sub-options, each with up to 2 prompts, capped at 4 cards total.
+function flattenToCards(items: TrendingSubOption[]): {
+  prompt: string;
+  subOptionId: string;
+  categoryId: string;
+  eventCount: number;
+}[] {
   const cards: { prompt: string; subOptionId: string; categoryId: string; eventCount: number }[] = [];
   for (const sub of items.slice(0, 3)) {
     for (const prompt of (sub.prompts ?? []).slice(0, 2)) {
@@ -185,31 +239,7 @@ function SectionPrompts({
     }
     if (cards.length >= 4) break;
   }
-  if (cards.length === 0) return null;
-
-  return (
-    <div>
-      <SectionLabel icon={icon}>{title}</SectionLabel>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
-        {cards.map((c, i) => (
-          <PromptCard
-            key={`${title}-${c.subOptionId}-${i}`}
-            prompt={c.prompt}
-            icon={subOptionIcon(c.subOptionId)}
-            eventCount={c.eventCount}
-            index={i}
-            onClick={() =>
-              onSelect(c.prompt, {
-                categoryId: c.categoryId,
-                subOptionId: c.subOptionId,
-                source: "discover",
-              })
-            }
-          />
-        ))}
-      </div>
-    </div>
-  );
+  return cards;
 }
 
 function StaticFallback({ onSelect }: { onSelect: Props["onSelect"] }) {
