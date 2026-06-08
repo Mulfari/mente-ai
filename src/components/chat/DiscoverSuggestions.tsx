@@ -133,199 +133,80 @@ function allEmpty(s: TrendingSections): boolean {
   return s.trending.length === 0 && s.nearYou.length === 0 && s.forYou.length === 0 && s.recent.length === 0;
 }
 
-function findSubInSections(id: string, s: TrendingSections): TrendingSubOption | null {
-  for (const arr of [s.trending, s.nearYou, s.forYou, s.recent]) {
-    const found = arr.find((x) => x.id === id);
-    if (found) return found;
-  }
-  return null;
-}
-
 export default function DiscoverSuggestions({ onSelect, sections }: Props) {
   // Cold start: every section is empty → fall back to the 3 static categories.
   if (allEmpty(sections)) {
     return <StaticFallback onSelect={onSelect} />;
   }
 
-  // Default selection: first item of the first non-empty section.
-  const defaultSub = sections.trending[0]
-    ?? sections.nearYou[0]
-    ?? sections.forYou[0]
-    ?? sections.recent[0]
-    ?? null;
-
-  const [selectedId, setSelectedId] = React.useState<string | null>(defaultSub?.id ?? null);
-
-  // If sections change and our current selection disappears, fall back.
-  React.useEffect(() => {
-    if (selectedId && !findSubInSections(selectedId, sections)) {
-      setSelectedId(defaultSub?.id ?? null);
-    } else if (!selectedId && defaultSub) {
-      setSelectedId(defaultSub.id);
-    }
-  }, [sections, selectedId, defaultSub]);
-
-  const selected = selectedId ? findSubInSections(selectedId, sections) : defaultSub;
-
+  // Render each section as a label followed by the actual top prompt cards
+  // for that section. No sub-option chip step — the user sees the trending
+  // questions directly under each section header.
   return (
-    <div className="w-full flex flex-col gap-4">
-      {SECTION_DEFS.map((def) => {
-        const items = sections[def.key];
-        if (items.length === 0) return null;
-        return (
-          <Section
-            key={def.key}
-            title={def.title}
-            icon={def.icon}
-            items={items}
-            selectedId={selected?.id ?? null}
-            onPick={(s) => setSelectedId(s.id)}
-          />
-        );
-      })}
-
-      <Divider />
-      <Cards
-        key={selected?.id ?? "empty"}
-        sub={selected}
-        onSelect={onSelect}
-      />
+    <div className="w-full flex flex-col gap-6">
+      {SECTION_DEFS.map((def) => (
+        <SectionPrompts
+          key={def.key}
+          title={def.title}
+          icon={def.icon}
+          items={sections[def.key]}
+          onSelect={onSelect}
+        />
+      ))}
     </div>
   );
 }
 
-function Section({
+function SectionPrompts({
   title,
   icon,
   items,
-  selectedId,
-  onPick,
+  onSelect,
 }: {
   title: string;
   icon: React.ReactNode;
   items: TrendingSubOption[];
-  selectedId: string | null;
-  onPick: (s: TrendingSubOption) => void;
-}) {
-  return (
-    <div className="w-full">
-      <SectionLabel icon={icon}>{title}</SectionLabel>
-      <div className="flex gap-2 w-full mt-2.5 overflow-x-auto pb-1 -mx-1 px-1 scroll-smooth snap-x snap-mandatory">
-        {items.map((s, i) => (
-          <FilterChip
-            key={`${title}-${s.id}`}
-            sub={s}
-            index={i}
-            selected={selectedId === s.id}
-            onClick={() => onPick(s)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FilterChip({
-  sub,
-  index,
-  selected,
-  onClick,
-}: {
-  sub: TrendingSubOption;
-  index: number;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="group shrink-0 snap-start flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[0.82rem] font-medium transition-all duration-200 hover:-translate-y-0.5"
-      style={{
-        backgroundColor: selected
-          ? "color-mix(in srgb, var(--primary) 15%, var(--surface))"
-          : "color-mix(in srgb, var(--text-primary) 4%, transparent)",
-        border: selected
-          ? "1px solid color-mix(in srgb, var(--primary) 60%, transparent)"
-          : "1px solid var(--border)",
-        color: selected ? "var(--text-primary)" : "var(--text-secondary)",
-        animation: `fadeIn 0.4s ease-out ${index * 60}ms backwards`,
-      }}
-      onMouseEnter={(e) => {
-        if (selected) return;
-        e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--primary) 10%, var(--surface))";
-        e.currentTarget.style.borderColor = "color-mix(in srgb, var(--primary) 50%, transparent)";
-        e.currentTarget.style.color = "var(--text-primary)";
-      }}
-      onMouseLeave={(e) => {
-        if (selected) return;
-        e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--text-primary) 4%, transparent)";
-        e.currentTarget.style.borderColor = "var(--border)";
-        e.currentTarget.style.color = "var(--text-secondary)";
-      }}
-      title={sub.subtitle}
-    >
-      <span
-        className="w-3.5 h-3.5 inline-flex items-center justify-center transition-transform group-hover:scale-110"
-        style={{ color: "var(--primary)" }}
-      >
-        {subOptionIcon(sub.id)}
-      </span>
-      <span className="whitespace-nowrap">{sub.title}</span>
-    </button>
-  );
-}
-
-function Cards({
-  sub,
-  onSelect,
-}: {
-  sub: TrendingSubOption | null;
   onSelect: Props["onSelect"];
 }) {
-  if (!sub) {
-    return (
-      <div className="w-full">
-        <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
-        <div
-          className="text-[0.82rem] py-3 text-center"
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          Selecciona una opción para ver preguntas sugeridas.
-        </div>
-      </div>
-    );
+  // Flatten the section's sub-options into individual prompt cards. Take up
+  // to 3 top sub-options, each with up to 2 prompts, capped at 4 cards per
+  // section. The diversity comes from mixing sub-options, not stacking the
+  // same one's prompts.
+  const cards: { prompt: string; subOptionId: string; categoryId: string; eventCount: number }[] = [];
+  for (const sub of items.slice(0, 3)) {
+    for (const prompt of (sub.prompts ?? []).slice(0, 2)) {
+      cards.push({
+        prompt,
+        subOptionId: sub.id,
+        categoryId: sub.categoryId,
+        eventCount: sub.eventCount,
+      });
+      if (cards.length >= 4) break;
+    }
+    if (cards.length >= 4) break;
   }
+  if (cards.length === 0) return null;
 
-  const prompts = sub.prompts ?? [];
   return (
-    <div className="w-full">
-      <SectionLabel icon={<ChatBubbleIcon />}>O pregúntale algo</SectionLabel>
+    <div>
+      <SectionLabel icon={icon}>{title}</SectionLabel>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full mt-3">
-        {prompts.map((p, i) => (
+        {cards.map((c, i) => (
           <PromptCard
-            key={`${sub.id}-${i}-${p}`}
-            prompt={p}
-            icon={subOptionIcon(sub.id)}
-            trending={i === 0}
-            eventCount={sub.eventCount}
+            key={`${title}-${c.subOptionId}-${i}`}
+            prompt={c.prompt}
+            icon={subOptionIcon(c.subOptionId)}
+            eventCount={c.eventCount}
             index={i}
             onClick={() =>
-              onSelect(p, {
-                categoryId: sub.categoryId,
-                subOptionId: sub.id,
+              onSelect(c.prompt, {
+                categoryId: c.categoryId,
+                subOptionId: c.subOptionId,
                 source: "discover",
               })
             }
           />
         ))}
-        {prompts.length === 0 && (
-          <div
-            className="col-span-full text-[0.82rem] py-3 text-center"
-            style={{ color: "var(--text-tertiary)" }}
-          >
-            Sin sugerencias por ahora
-          </div>
-        )}
       </div>
     </div>
   );
@@ -411,7 +292,7 @@ function PromptCard({
   prompt: string;
   icon: React.ReactNode;
   title?: string;
-  trending: boolean;
+  trending?: boolean;
   eventCount?: number;
   index: number;
   onClick: () => void;
