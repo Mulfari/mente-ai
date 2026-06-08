@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
 import { useSpeechRecognition } from "@/lib/voice";
+import ExpandInputModal from "./ExpandInputModal";
 
 type BlockReason = {
   canWrite: boolean;
@@ -41,6 +42,9 @@ export default function ChatInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = useState(false);
+  const [measuredHeight, setMeasuredHeight] = useState(24);
+  const [shape, setShape] = useState<"pill" | "box">("pill");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Voice input (STT). The mic button is hidden if the browser doesn't
   // support Web Speech API. While listening, the transcript replaces the
@@ -83,17 +87,23 @@ export default function ChatInput({
     }
   }, [autoFocus]);
 
-  // Auto-resize the textarea to fit its content. Reset to "auto" first so
-  // scrollHeight reflects the natural content height, then cap at 160px
-  // (~6 lines at 24px line-height) so the field never takes over the
-  // viewport. When the cap is hit, the textarea scrolls internally; the
-  // project hides scrollbars globally so the overflow is invisible.
-  useEffect(() => {
+  // Auto-resize the textarea to fit its content. useLayoutEffect runs
+  // before paint so we never see the old height flash. Reset to "auto"
+  // first so scrollHeight reflects natural content height, then cap at
+  // 160px (~6 lines at 24px line-height). When the cap is hit, the
+  // textarea scrolls internally; the project hides scrollbars globally.
+  // We also update `shape` and `measuredHeight` here so the wrapper can
+  // transition between pill (1 line) and box (2+ lines) and the expand
+  // button can appear at 5+ lines.
+  useLayoutEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
-  }, [input]);
+    const next = Math.min(ta.scrollHeight, 160);
+    ta.style.height = `${next}px`;
+    setMeasuredHeight(next);
+    setShape(next > 40 ? "box" : "pill");
+  }, [input, isExpanded]);
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -113,7 +123,7 @@ export default function ChatInput({
   const canSend = (input.trim() || attachments.length > 0) && !sending && block.canWrite;
 
   return (
-    <div className="chat-input-area px-4 pb-4 pt-2 flex-none">
+    <div className="px-4 pb-4 pt-2 flex-none">
       <div className="max-w-4xl mx-auto">
         {/* Attachment previews */}
         {attachments.length > 0 && (
@@ -151,15 +161,20 @@ export default function ChatInput({
         {/* Input pill — items-end anchors the 48px buttons to the bottom
             of the container when the textarea grows, so they stay at the
             user's thumb on mobile. The textarea uses self-center to keep
-            the text visually centered in 1-line mode. */}
+            the text visually centered in 1-line mode.
+
+            Shape is dynamic: `rounded-full` for 1-line, `rounded-2xl`
+            for 2+ lines. The transition on `border-radius` runs at
+            0.2s so the shape change feels tied to the height change. */}
         <div
-          className="relative flex items-end gap-1.5 rounded-full pl-5 pr-2 py-2 transition-all duration-200"
+          className={`relative flex items-end gap-1.5 ${shape === "pill" ? "rounded-full" : "rounded-2xl"} pl-5 pr-2 py-2`}
           style={{
             backgroundColor: "rgba(30,30,34,0.9)",
             border: `1px solid ${isFocused ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)"}`,
             boxShadow: isFocused
               ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent), 0 12px 40px rgba(0,0,0,0.4)"
               : "0 6px 24px rgba(0,0,0,0.3)",
+            transition: "border-radius 0.2s var(--motion-standard), box-shadow 0.2s, border-color 0.2s",
           }}
           onFocus={() => setIsFocused(true)}
           onBlur={(e) => {
@@ -186,7 +201,9 @@ export default function ChatInput({
           {/* Multi-line text area with auto-resize. Enter sends, Shift+Enter
               inserts a newline (default textarea behavior — our onKeyDown
               only intercepts plain Enter). Height is set dynamically by the
-              useEffect above, capped at 160px via maxHeight. */}
+              useLayoutEffect above, capped at 160px via maxHeight. The
+              `chat-input-field` class provides the 0.15s height transition
+              (defined in globals.css) so the resize feels smooth. */}
           <textarea
             ref={textareaRef}
             rows={1}
@@ -204,7 +221,7 @@ export default function ChatInput({
               return "Pregúntale algo a VeChat...";
             })()}
             disabled={sending || !block.canWrite}
-            className="flex-1 min-w-0 bg-transparent text-base outline-none resize-none self-center px-1 placeholder:text-[var(--text-tertiary)] overflow-hidden"
+            className="flex-1 min-w-0 bg-transparent text-base outline-none resize-none self-center px-1 placeholder:text-[var(--text-tertiary)] overflow-hidden chat-input-field"
             style={{
               color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)",
               maxHeight: "160px",
@@ -259,7 +276,43 @@ export default function ChatInput({
               <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
             </svg>
           </button>
+
+          {/* Expand — full-screen editor for very long messages. Shown
+              when the textarea hits ~5 lines. Sits absolute in the
+              corner of the wrapper so it doesn't shift the layout. */}
+          {measuredHeight >= 120 && !isExpanded && (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors z-10"
+              style={{ color: "var(--text-tertiary)" }}
+              title="Expandir editor"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+            </button>
+          )}
         </div>
+
+        {/* Full-screen editor modal. Local to the input — the modal
+            commits the new text into the parent's `input` state and
+            re-syncs the textarea height on the next frame. */}
+        {isExpanded && (
+          <ExpandInputModal
+            initialValue={input}
+            onCommit={(text) => {
+              setInput(text);
+              setIsExpanded(false);
+              requestAnimationFrame(() => {
+                const ta = textareaRef.current;
+                if (!ta) return;
+                ta.style.height = "auto";
+                ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+              });
+            }}
+            onCancel={() => setIsExpanded(false)}
+          />
+        )}
 
         {/* Voice error message — auto-clears after 4s */}
         {error && (

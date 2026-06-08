@@ -143,28 +143,39 @@ export default function EmptyState(props: Props) {
   }, []);
 
   return (
-    <div className="relative min-h-full">
-      {/* Hero — absolute, just above the Input's center.
-          Input wrapper is 98px (49 half), gap is 7px → 56px above center.
-          Using 50% (not 50vh) so the layout is relative to the chat area,
-          not the viewport — works correctly next to the sidebar. */}
-      <div
-        className="absolute left-0 right-0 px-4 flex justify-center pointer-events-none"
-        style={{ bottom: "calc(50% + 56px)" }}
-      >
+    <div className="relative min-h-full flex flex-col">
+      {/* Hero — flex-1, anchored to the bottom of its area so it sits
+          right above the input. As the input grows, hero shrinks.
+          This replaces the old absolute positioning which caused
+          overlap when the input hit 5+ lines. */}
+      <div className="flex-1 flex items-end justify-center px-4 pb-2 pointer-events-none">
         <div className="w-full max-w-2xl pointer-events-auto">
           <Hero opener={opener} className={heroShown ? "lm-fade-up" : "opacity-0"} />
         </div>
       </div>
 
-      {/* Footer — fills the bottom half of the chat area (from just below the
-          input down to the bottom edge), with internal scroll when its content
-          overflows. The scroll container is the inner max-w-2xl div (not the
-          outer wrapper) so the scrollbar sits at the right edge of the
-          content, not at the right edge of the main area. */}
+      {/* Input — flex-none so it takes only its natural height.
+          pointer-events-none on the wrapper + pointer-events-auto on
+          the input itself, same as before. max-w-xl keeps the input
+          visually lighter than the hero/footer so the cards get more
+          weight. */}
+      <div className="flex-none max-w-xl mx-auto px-4 w-full z-10 pointer-events-none">
+        <div className="pointer-events-auto">
+          <ChatInput
+            {...chatInputProps}
+            autoFocus
+            getBlockReason={getBlockReason}
+            isLoggedIn={isLoggedIn}
+          />
+        </div>
+      </div>
+
+      {/* Footer — flex-1, anchored to the top of its area so it sits
+          right below the input. Internal overflow-y-auto so a long
+          list of suggestions scrolls inside the footer area without
+          pushing the input off-screen. */}
       <div
-        className={`absolute left-0 right-0 px-4 flex justify-center pointer-events-none ${footerShown ? "lm-fade-up" : "opacity-0"}`}
-        style={{ top: "calc(50% + 56px)", bottom: 0 }}
+        className={`flex-1 flex justify-center px-4 pt-2 pb-4 pointer-events-none ${footerShown ? "lm-fade-up" : "opacity-0"}`}
       >
         <div
           className="w-full max-w-2xl pointer-events-auto overflow-y-auto"
@@ -180,21 +191,6 @@ export default function EmptyState(props: Props) {
             onShowAccountMenu={onShowAccountMenu}
             trendingTopSubOptions={trendingTopSubOptions}
             trendingLoading={trendingLoading}
-          />
-        </div>
-      </div>
-
-      {/* Input — absolute, centered in the chat area. pointer-events-none
-          on the wrapper so clicks on the hero/footer underneath still
-          work; pointer-events-auto on the input itself. max-w-xl keeps
-          the input visually lighter so the footer cards get more weight. */}
-      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 max-w-xl mx-auto px-4 z-10 pointer-events-none">
-        <div className="pointer-events-auto">
-          <ChatInput
-            {...chatInputProps}
-            autoFocus
-            getBlockReason={getBlockReason}
-            isLoggedIn={isLoggedIn}
           />
         </div>
       </div>

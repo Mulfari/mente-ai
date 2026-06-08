@@ -540,3 +540,12 @@ body { background: transparent; }
   position: relative;
   z-index: 1;
 }
+
+/* Chat input textarea — smooth height transition for auto-resize.
+   0.15s feels instant but smooth — long enough to mask the discrete
+   height jumps between N and N+1 lines, short enough to not feel
+   laggy. Scoped via class so we don't transition every textarea
+   in the app (message composer, onboarding, etc). */
+textarea.chat-input-field {
+  transition: height 0.15s var(--motion-standard);
+}
