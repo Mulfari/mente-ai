@@ -15,7 +15,6 @@ export default function CursorGlow() {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    console.log("[CursorGlow] mounted");
 
     let raf = 0;
     let targetX = -2000;
