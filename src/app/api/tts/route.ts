@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || "";
-const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "XB0fDUnXU5powFXDhxwa"; // Aria — warm, clear, great in Spanish
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "EXAVITQu4vr4xnSDxMaL"; // Sarah — Mature, Reassuring, Confident. Multilingual v2 sounds great in Spanish.
 const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_flash_v2_5"; // fast, low latency, multilingual
 
 const KOKORO_URL =
