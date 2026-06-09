@@ -11,8 +11,20 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://177.7.46.156:3000";
-const TTS_PATH = "/api/tts";
+// Kokoro TTS runs on a separate VPS from the orchestrator. The orchestrator
+// has a /api/tts proxy that forwards to Kokoro, but in this deployment the
+// orchestrator and Kokoro are on different hosts, so we hit Kokoro directly
+// to keep latency low and avoid a double proxy hop.
+//
+// Override via KOKORO_TTS_URL env var. If unset, fall back to the
+// orchestrator's /api/tts endpoint (works when orchestrator and Kokoro
+// share a host).
+const KOKORO_URL =
+  process.env.KOKORO_TTS_URL ||
+  (process.env.VPS_ORCHESTRATOR_URL
+    ? `${process.env.VPS_ORCHESTRATOR_URL.replace(/\/+$/, "")}/api/tts`
+    : "");
+const TTS_PATH = ""; // KOKORO_URL is a full path including /tts
 // Kokoro can take a while for long messages. Synth is ~1.7s for 3s audio
 // on the VPS CPU; allow up to 60s for very long messages.
 const UPSTREAM_TIMEOUT_MS = 60_000;
@@ -34,10 +46,8 @@ export async function POST(req: NextRequest) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
-  // Build the upstream URL — strip trailing slash from VPS_URL to avoid
-  // `//api/tts` which some servers (this one) return 404 for.
-  const baseUrl = (VPS_URL || "").replace(/\/+$/, "");
-  const upstreamUrl = `${baseUrl}${TTS_PATH}`;
+  // Build the upstream URL.
+  const upstreamUrl = (KOKORO_URL || "").replace(/\/+$/, "") + TTS_PATH;
   console.log(`[tts-proxy] forwarding to ${upstreamUrl}`);
 
   try {
