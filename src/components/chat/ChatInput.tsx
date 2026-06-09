@@ -335,8 +335,18 @@ export default function ChatInput({
   const primaryActive = isStreaming || canSend;
 
   return (
-    <div className="px-4 pb-4 pt-2 flex-none">
-      <div className="max-w-4xl mx-auto">
+    // Wrapper exterior: padding lateral más generoso en desktop, compacto
+    // en móvil para que el textarea gane ancho de escritura. El padding
+    // inferior respeta el safe area del dispositivo (home bar del iPhone,
+    // gesture bar de Android) — `max(0.75rem, env(safe-area-inset-bottom))`
+    // toma el mayor entre 12px y el inset del SO, así nunca queda
+    // visualmente pegado al borde pero tampoco flotando con demasiado
+    // hueco en dispositivos sin notch.
+    <div
+      className="px-3 sm:px-4 pt-2 flex-none"
+      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+    >
+      <div className="max-w-3xl mx-auto">
         {/* Pill de estado cuando está grabando — sobre el input. */}
         {isListening && (
           <div
@@ -395,15 +405,24 @@ export default function ChatInput({
 
         {/* Input wrapper — fixed rounded-2xl shape. The textarea's height
             grows monotonically as the user types, but the wrapper geometry
-            stays the same. This is the "no jump" baseline. */}
+            stays the same. This is the "no jump" baseline.
+
+            The wrapper uses a translucent background + backdrop-blur so it
+            "floats" over the chat content instead of sitting flush against
+            it. Border is a touch more visible than the previous 0.08
+            opacity to give the input a clear edge. Padding is reduced on
+            mobile (pl-4/pr-1.5) and full on desktop (sm:pl-5/sm:pr-2) so
+            the textarea has more horizontal room to write in narrow viewports. */}
         <div
-          className="relative flex items-end gap-1.5 rounded-2xl pl-5 pr-2 py-2"
+          className="relative flex items-end gap-1.5 rounded-2xl pl-4 sm:pl-5 pr-1.5 sm:pr-2 py-2"
           style={{
-            backgroundColor: "rgba(30,30,34,0.9)",
-            border: `1px solid ${isFocused ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)"}`,
+            backgroundColor: "rgba(30,30,34,0.94)",
+            border: `1px solid ${isFocused ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.10)"}`,
+            backdropFilter: "blur(20px) saturate(1.2)",
+            WebkitBackdropFilter: "blur(20px) saturate(1.2)",
             boxShadow: isFocused
-              ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent), 0 12px 40px rgba(0,0,0,0.4)"
-              : "0 6px 24px rgba(0,0,0,0.3)",
+              ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent), 0 -1px 0 0 rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.45)"
+              : "0 -1px 0 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)",
             transition: "box-shadow 0.2s, border-color 0.2s",
           }}
           onFocus={() => setIsFocused(true)}

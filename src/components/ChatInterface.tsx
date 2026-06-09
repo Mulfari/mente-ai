@@ -1719,9 +1719,18 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           )}
         </main>
 
-        {/* Input area — at bottom when conversation is active */}
+        {/* Input area — at bottom when conversation is active.
+
+            The wrapper's bottom padding respects the device safe area (the
+            chat-area wrapper above already handles the home indicator for
+            the messages list; this is the input's own breathing room
+            above that). `pt-2` stays constant so the slide-up entrance
+            animation has a consistent start point. */}
         {activeConv?.id && (
-        <div className={`w-full flex-none flex justify-center pb-4 pt-2 ${convJustStarted ? "slide-up" : ""}`}>
+        <div
+          className={`w-full flex-none flex justify-center pt-2 ${convJustStarted ? "slide-up" : ""}`}
+          style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
+        >
           <ChatInput
             input={input}
             setInput={setInput}
