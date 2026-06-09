@@ -40,8 +40,11 @@ type UseSpeechSynthesisOptions = {
   lang?: VoiceLang;
 };
 
-const VPS_URL = process.env.NEXT_PUBLIC_VPS_ORCHESTRATOR_URL || "";
-const TTS_ENDPOINT = VPS_URL ? `${VPS_URL}/api/tts` : "";
+// TTS endpoint: prefer the Vercel proxy at /api/tts (works around mixed
+// content — the page is HTTPS but the VPS is HTTP). Set
+// NEXT_PUBLIC_TTS_ENDPOINT to override (e.g. for local dev pointing at
+// the VPS directly).
+const TTS_ENDPOINT = process.env.NEXT_PUBLIC_TTS_ENDPOINT || "/api/tts";
 const DEFAULT_VOICE = "ef_dora"; // Kokoro Spanish female
 
 export function useSpeechSynthesisServer(options: UseSpeechSynthesisOptions = {}) {
