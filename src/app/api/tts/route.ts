@@ -1,30 +1,29 @@
-// /api/tts — proxy on Vercel to the VPS orchestrator's /api/tts endpoint.
+// /api/tts — proxy on Vercel that calls ElevenLabs (preferred) or falls
+// back to local Kokoro on the VPS.
 //
-// Why: the browser is on HTTPS (mulfai.com.ve via Vercel) but the VPS
-// orchestrator is plain HTTP (177.7.46.156:3000). Direct browser→VPS calls
-// are blocked as mixed content. This route runs server-to-server (no
-// mixed content restriction), forwards the request, and streams the audio
-// binary back to the browser.
+// Why a proxy: the browser is on HTTPS (mulfai.com.ve via Vercel) and we
+// don't want the API key exposed in client JS. This route runs
+// server-to-server, holds the key, and returns audio/mpeg to the browser.
+//
+// Provider order:
+//   1. ElevenLabs (ELEVENLABS_API_KEY set) — best quality, ~$5/mes for low traffic
+//   2. Kokoro on VPS (KOKORO_TTS_URL or VPS_ORCHESTRATOR_URL set) — free local TTS
 
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-// Kokoro TTS runs on a separate VPS from the orchestrator. The orchestrator
-// has a /api/tts proxy that forwards to Kokoro, but in this deployment the
-// orchestrator and Kokoro are on different hosts, so we hit Kokoro directly
-// to keep latency low and avoid a double proxy hop.
-//
-// Override via KOKORO_TTS_URL env var. If unset, fall back to the
-// orchestrator's /api/tts endpoint (works when orchestrator and Kokoro
-// share a host).
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || "";
+const ELEVENLABS_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || "XB0fDUnXU5powFXDhxwa"; // Aria — warm, clear, great in Spanish
+const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_flash_v2_5"; // fast, low latency, multilingual
+
 const KOKORO_URL =
   process.env.KOKORO_TTS_URL ||
   (process.env.VPS_ORCHESTRATOR_URL
     ? `${process.env.VPS_ORCHESTRATOR_URL.replace(/\/+$/, "")}/api/tts`
     : "");
-const TTS_PATH = ""; // KOKORO_URL is a full path including /tts
+const TTS_PATH = "";
 // Kokoro can take a while for long messages. Synth is ~1.7s for 3s audio
 // on the VPS CPU; allow up to 60s for very long messages.
 const UPSTREAM_TIMEOUT_MS = 60_000;
@@ -47,28 +46,54 @@ export async function POST(req: NextRequest) {
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
   // Build the upstream URL.
-  const upstreamUrl = (KOKORO_URL || "").replace(/\/+$/, "") + TTS_PATH;
-  console.log(`[tts-proxy] forwarding to ${upstreamUrl}`);
+  const useElevenLabs = !!ELEVENLABS_API_KEY;
+  const upstreamUrl = useElevenLabs
+    ? `https://api.elevenlabs.io/v1/text-to-speech/${ELEVENLABS_VOICE_ID}?output_format=mp3_44100_128`
+    : (KOKORO_URL || "").replace(/\/+$/, "") + TTS_PATH;
+  console.log(`[tts-proxy] using ${useElevenLabs ? "elevenlabs" : "kokoro"} → ${upstreamUrl.replace(ELEVENLABS_API_KEY, "[REDACTED]")}`);
 
   try {
-    const upstream = await fetch(upstreamUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        voice: body.voice || "ef_dora",
-        format: body.format || "mp3",
-        speed: body.speed || 1.0,
-      }),
-      signal: controller.signal,
-    });
+    let upstream: Response;
+    if (useElevenLabs) {
+      upstream = await fetch(upstreamUrl, {
+        method: "POST",
+        headers: {
+          "xi-api-key": ELEVENLABS_API_KEY,
+          "Content-Type": "application/json",
+          "Accept": "audio/mpeg",
+        },
+        body: JSON.stringify({
+          text,
+          model_id: ELEVENLABS_MODEL_ID,
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+            style: 0.0,
+            use_speaker_boost: true,
+          },
+        }),
+        signal: controller.signal,
+      });
+    } else {
+      upstream = await fetch(upstreamUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text,
+          voice: body.voice || "ef_dora",
+          format: body.format || "mp3",
+          speed: body.speed || 1.0,
+        }),
+        signal: controller.signal,
+      });
+    }
     clearTimeout(timer);
 
     if (!upstream.ok) {
       const errText = await upstream.text().catch(() => "");
       console.error("[tts-proxy] upstream error:", upstream.status, "url:", upstreamUrl, "body:", errText.slice(0, 200));
       return NextResponse.json(
-        { error: "upstream tts failed", upstream: upstream.status, url: upstreamUrl, body: errText.slice(0, 200) },
+        { error: "upstream tts failed", upstream: upstream.status, url: useElevenLabs ? "[elevenlabs]" : upstreamUrl, body: errText.slice(0, 200) },
         { status: 502 }
       );
     }
@@ -81,6 +106,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": ct,
         "Content-Length": String(audio.length),
         "Cache-Control": "public, max-age=3600",
+        "X-TTS-Provider": useElevenLabs ? "elevenlabs" : "kokoro",
         "X-Synth-Time": upstream.headers.get("X-Synth-Time") || "",
       },
     });
