@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { useSpeechSynthesis } from "@/lib/voice";
+import { useSpeechSynthesisServer } from "@/lib/voice-server";
 
 type Message = {
   id: string;
@@ -41,11 +41,30 @@ export default function MessageBubble({
   const isStreaming = message._loading || message.id === streamingMsgId || retryMode === message.id;
   const isUser = message.role === "user";
 
-  // Voice output (TTS). Hook is shared across all bubbles — clicking the
-  // speaker on a different message auto-stops the previous one (handled
-  // inside the hook via speechSynthesis.cancel before each new speak).
-  const { speak, stop, isSpeaking, currentText, isSupported } = useSpeechSynthesis();
+  // Voice output (TTS) — usa Kokoro TTS corriendo en el VPS en lugar de la
+  // voz del navegador (que suena robótica para español). Misma interfaz
+  // que useSpeechSynthesis: speak(), stop(), isSpeaking, progress (0-1),
+  // charIndex (para resaltar la palabra actual). El charIndex ahora se
+  // estima del progreso de tiempo del audio, no del evento `boundary`.
+  const { speak, stop, isSpeaking, currentText, isSupported, progress, charIndex } = useSpeechSynthesisServer();
   const isThisSpeaking = isSpeaking && currentText === message.content;
+
+  // Resaltar la palabra actual durante TTS. Dividimos el contenido por
+  // caracteres hasta charIndex y aplicamos estilos diferentes a la
+  // parte "leída" vs "por leer". Esto da el efecto karaoke.
+  function renderWithHighlight(content: string): React.ReactNode {
+    if (!isThisSpeaking || charIndex <= 0) {
+      return <span style={{ color: "var(--text-primary)" }}>{content}</span>;
+    }
+    const upTo = content.slice(0, charIndex);
+    const from = content.slice(charIndex);
+    return (
+      <>
+        <span style={{ color: "var(--text-primary)" }}>{upTo}</span>
+        <span style={{ color: "var(--text-tertiary)" }}>{from}</span>
+      </>
+    );
+  }
 
   return (
     <div
@@ -178,7 +197,9 @@ export default function MessageBubble({
 
         {/* Timestamp + speaker button (TTS). The speaker only shows on
             assistant messages that have finished streaming, on browsers
-            that support speechSynthesis. */}
+            that support speechSynthesis. Cuando este bubble está siendo
+            leído, mostramos una mini-barra de progreso al lado del
+            timestamp para que se sepa cuánto falta. */}
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             {formatTime(message.created_at)}
@@ -201,6 +222,26 @@ export default function MessageBubble({
                 </svg>
               )}
             </button>
+          )}
+          {isThisSpeaking && (
+            <div className="flex items-center gap-1.5 ml-1">
+              <div
+                className="h-1 rounded-full overflow-hidden"
+                style={{ width: "60px", backgroundColor: "color-mix(in srgb, var(--primary) 20%, transparent)" }}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.round(progress * 100)}%`,
+                    backgroundColor: "var(--primary)",
+                    transition: "width 0.1s linear",
+                  }}
+                />
+              </div>
+              <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
+                {Math.round(progress * 100)}%
+              </span>
+            </div>
           )}
         </div>
       </div>
