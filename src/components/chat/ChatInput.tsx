@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
-import { useSpeechRecognition } from "@/lib/voice";
+import { useSpeechRecognitionServer } from "@/lib/voice-server";
 import ExpandInputModal from "./ExpandInputModal";
 
 type BlockReason = {
@@ -46,22 +46,59 @@ export default function ChatInput({
   const [shape, setShape] = useState<"pill" | "box">("pill");
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Voice input (STT). The mic button is hidden if the browser doesn't
-  // support Web Speech API. While listening, the transcript replaces the
-  // input value (with the user's previously-typed text as a prefix).
-  const prefixRef = useRef("");
-  const { isListening, transcript, error, isSupported, start, stop, reset } = useSpeechRecognition({
-    lang: "es-ES",
+  // Voice input (STT). El mic se muestra deshabilitado (no oculto) si
+  // el navegador no soporta Web Speech API, con un mensaje claro. El
+  // transcript se concatena a lo que el usuario ya haya escrito: si
+  // empieza a dictar sobre texto existente, ese texto se preserva
+  // como prefijo y el dictado se suma después. Si el usuario sigue
+  // escribiendo MIENTRAS dicta, el texto se respeta (ya no se
+  // sobrescribe como antes con prefixRef).
+  // Idioma fijo: español de Venezuela (mercado principal de VeChat).
+  const baseTextRef = useRef("");
+  const lastTranscriptRef = useRef("");
+  const cursorPosRef = useRef<number | null>(null);
+  // Voice input (STT) — usa ElevenLabs Scribe corriendo en el proxy /api/stt
+  // en lugar de Web Speech API. Mejor para acento venezolano, ~$0.30/mes
+  // para tu uso. Es batch (no streaming): el transcript aparece cuando
+  // sueltas el botón, no en vivo. Si quieres streaming en vivo, dime.
+  const { isListening, isProcessing, transcript, error, isSupported, start, stop, reset } = useSpeechRecognitionServer({
+    lang: "es-VE",
   });
 
+  // Cuando cambia el transcript mientras escucha, sincronizamos con el input.
+  // El formato es: <texto base que tenía> + (espacio si hace falta) + <transcript>.
+  // Si el usuario escribió algo durante el dictado, eso YA está en `input`
+  // y solo necesitamos anexar el transcript al final. Para soportar eso,
+  // cuando arranca la grabación guardamos la longitud del input y siempre
+  // reconstruimos como `input.substring(0, baseLen) + transcript`.
+  const baseLenRef = useRef(0);
   useEffect(() => {
-    if (isListening) {
-      const prefix = prefixRef.current;
-      const t = transcript;
-      const next = prefix && t ? `${prefix} ${t}` : t || prefix;
-      if (next !== input) setInput(next);
+    if (!isListening) {
+      baseTextRef.current = "";
+      lastTranscriptRef.current = "";
+      baseLenRef.current = 0;
+      return;
     }
-  }, [isListening, transcript]);
+    if (!transcript) return;
+    // Construimos: base + (separador) + transcript
+    const base = input.substring(0, baseLenRef.current).replace(/\s+$/, "");
+    const separator = base ? " " : "";
+    const next = `${base}${separator}${transcript}`;
+    if (next === input) return;
+    // Preservar cursor al final del texto nuevo
+    cursorPosRef.current = next.length;
+    setInput(next);
+    lastTranscriptRef.current = transcript;
+  }, [isListening, transcript]); // input intencionalmente omitido del array
+
+  // Restaurar cursor después del re-render
+  useLayoutEffect(() => {
+    if (cursorPosRef.current !== null && textareaRef.current) {
+      const pos = cursorPosRef.current;
+      textareaRef.current.setSelectionRange(pos, pos);
+      cursorPosRef.current = null;
+    }
+  });
 
   useEffect(() => {
     if (!error) return;
@@ -73,7 +110,8 @@ export default function ChatInput({
     if (isListening) {
       stop();
     } else {
-      prefixRef.current = input;
+      baseTextRef.current = input;
+      baseLenRef.current = input.length;
       start();
     }
   };
@@ -125,6 +163,29 @@ export default function ChatInput({
   return (
     <div className="px-4 pb-4 pt-2 flex-none">
       <div className="max-w-4xl mx-auto">
+        {/* Pill de estado cuando está grabando — sobre el input. */}
+        {isListening && (
+          <div
+            className="flex items-center justify-center gap-2 mb-2 px-3 py-1.5 rounded-full text-xs font-medium animate-fadeInUp"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--danger) 15%, transparent)",
+              color: "var(--danger)",
+              border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)",
+              width: "fit-content",
+              margin: "0 auto 8px",
+            }}
+          >
+            <span className="inline-block w-2 h-2 rounded-full recording-pulse" style={{ backgroundColor: "var(--danger)" }} />
+            Escuchando...
+            <button
+              onClick={stop}
+              className="ml-2 opacity-70 hover:opacity-100"
+              title="Detener"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         {/* Attachment previews */}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
@@ -229,21 +290,43 @@ export default function ChatInput({
             }}
           />
 
-          {/* Microphone — Web Speech API STT. Hidden on unsupported browsers. */}
-          {isSupported && (
+          {/* Microphone — Web Speech API STT. Se muestra aunque el navegador
+              no lo soporte, pero deshabilitado con tooltip explicativo
+              en vez de desaparecer silenciosamente. */}
+          <div className="shrink-0">
             <button
               onClick={handleMicClick}
-              disabled={!block.canWrite || sending}
-              className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all ${
-                isListening ? "recording-pulse" : "hover:bg-white/10"
+              disabled={!isSupported || !block.canWrite || sending || isProcessing}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+                !isSupported
+                  ? "opacity-30 cursor-not-allowed"
+                  : isProcessing
+                  ? "opacity-70"
+                  : isListening
+                  ? "recording-pulse"
+                  : "hover:bg-white/10"
               }`}
               style={{
                 color: isListening ? "white" : "var(--text-tertiary)",
                 backgroundColor: isListening ? "var(--danger)" : "transparent",
               }}
-              title={isListening ? "Detener grabación" : "Dictar mensaje"}
+              title={
+                !isSupported
+                  ? "Tu navegador no soporta dictado por voz. Prueba Chrome o Safari."
+                  : isProcessing
+                  ? "Transcribiendo..."
+                  : isListening
+                  ? "Detener grabación"
+                  : "Dictar mensaje"
+              }
             >
-              {isListening ? (
+              {isProcessing ? (
+                // Spinner mientras ElevenLabs Scribe transcribe (~1-3s)
+                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={3} />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+              ) : isListening ? (
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>
@@ -253,7 +336,7 @@ export default function ChatInput({
                 </svg>
               )}
             </button>
-          )}
+          </div>
 
           {/* Send — solid color, filled paper plane */}
           <button

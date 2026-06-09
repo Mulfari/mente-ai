@@ -271,3 +271,153 @@ function textHash(text: string): string {
   }
   return h.toString(36) + "-" + text.length;
 }
+
+// === useSpeechRecognitionServer ===
+// Reemplaza useSpeechRecognition (Web Speech API) con ElevenLabs Scribe.
+// Misma interfaz pública, así ChatInput.tsx no necesita cambios funcionales.
+//
+// Diferencias vs Web Speech API:
+//   - No es streaming: el transcript aparece solo cuando el usuario suelta el
+//     botón del mic (es batch, subimos el audio y Scribe devuelve el texto).
+//   - Mejor para acento venezolano: Scribe fue entrenado en español LATAM.
+//   - Costo: ~$0.30/hora de audio (gratis para uso ligero).
+//
+// Audio: MediaRecorder graba webm/opus. Chrome, Edge, Firefox y Safari lo
+// soportan. El audio va al proxy /api/stt que llama a Scribe (la API key
+// nunca sale al browser).
+
+const STT_ENDPOINT = process.env.NEXT_PUBLIC_STT_ENDPOINT || "/api/stt";
+
+export function useSpeechRecognitionServer(options: {
+  lang?: VoiceLang;
+  onFinalResult?: (text: string) => void;
+  onError?: (message: string) => void;
+} = {}) {
+  const { lang = "es-VE", onFinalResult, onError } = options;
+  const [isListening, setIsListening] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [transcript, setTranscript] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSupported, setIsSupported] = useState(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const onFinalRef = useRef(onFinalResult);
+  const onErrorRef = useRef(onError);
+  const streamRef = useRef<MediaStream | null>(null);
+  onFinalRef.current = onFinalResult;
+  onErrorRef.current = onError;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const supported =
+      "MediaRecorder" in window &&
+      "mediaDevices" in navigator &&
+      !!navigator.mediaDevices?.getUserMedia;
+    setIsSupported(supported);
+  }, []);
+
+  const start = useCallback(async () => {
+    if (!isSupported) return;
+    if (mediaRecorderRef.current) {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    }
+    setTranscript("");
+    setError(null);
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      // webm/opus en Chrome/Edge/Firefox, mp4 en Safari. Scribe acepta ambos.
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : "";
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = recorder;
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        // Stop mic tracks (browser shows red dot otherwise)
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+
+        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+        chunksRef.current = [];
+        if (blob.size < 1000) {
+          // Too short, probably accidental click
+          setIsListening(false);
+          return;
+        }
+        setIsProcessing(true);
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "recording.webm");
+          form.append("language", lang.split("-")[0] || "es"); // "es-VE" -> "es"
+
+          const res = await fetch(STT_ENDPOINT, { method: "POST", body: form });
+          if (!res.ok) {
+            const errBody = await res.text().catch(() => "");
+            const msg = `STT error: ${res.status}`;
+            setError(msg);
+            onErrorRef.current?.(msg);
+            return;
+          }
+          const data = await res.json();
+          const text = (data.text || "").trim();
+          if (text) {
+            setTranscript(text);
+            onFinalRef.current?.(text);
+          }
+        } catch (e: any) {
+          const msg = e?.message || "Error al transcribir";
+          setError(msg);
+          onErrorRef.current?.(msg);
+        } finally {
+          setIsProcessing(false);
+          setIsListening(false);
+        }
+      };
+
+      recorder.start();
+      setIsListening(true);
+    } catch (e: any) {
+      const msg =
+        e?.name === "NotAllowedError"
+          ? "Permiso de micrófono denegado"
+          : e?.name === "NotFoundError"
+          ? "No se encontró micrófono"
+          : e?.message || "No se pudo iniciar el micrófono";
+      setError(msg);
+      onErrorRef.current?.(msg);
+      setIsListening(false);
+    }
+  }, [isSupported, lang]);
+
+  const stop = useCallback(() => {
+    const r = mediaRecorderRef.current;
+    if (r && r.state !== "inactive") {
+      try { r.stop(); } catch {}
+    }
+    // onstop will set isListening=false after the upload completes
+  }, []);
+
+  const reset = useCallback(() => {
+    setTranscript("");
+    setError(null);
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      try { mediaRecorderRef.current?.stop(); } catch {}
+    };
+  }, []);
+
+  return { isListening, isProcessing, transcript, error, isSupported, start, stop, reset };
+}
