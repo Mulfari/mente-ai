@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import SwipeableConversation from "./SwipeableConversation";
 
 type Conversation = {
   id: string;
@@ -13,6 +12,7 @@ type Conversation = {
 type ProfileData = {
   status?: string;
   subscription_weeks?: number;
+  // Other fields kept for type compat with parent, but unused in this component.
   subscription_start?: string;
   subscription_end?: string;
   used_coupon_label?: string;
@@ -21,587 +21,751 @@ type ProfileData = {
   weekly_reset_at?: string;
 } | null;
 
-const SIDEBAR_TRANSITION = "width 0.3s cubic-bezier(0.2, 0, 0, 1)";
-const LABEL_TRANSITION = "max-width 0.3s cubic-bezier(0.2, 0, 0, 1), opacity 0.15s cubic-bezier(0.2, 0, 0, 1) 100ms";
+const COLLAPSED_W = 60;
+const EXPANDED_W = 280;
+const WIDTH_TRANSITION = "width 0.28s cubic-bezier(0.2, 0, 0, 1)";
 
-function formatDateLabel(conv: Conversation) {
-  const dateStr = conv.updated_at && conv.updated_at !== conv.created_at ? conv.updated_at : conv.created_at;
+function formatDateLabel(conv: Conversation): string {
+  const dateStr =
+    conv.updated_at && conv.updated_at !== conv.created_at
+      ? conv.updated_at
+      : conv.created_at;
   const d = new Date(dateStr || "");
   const now = new Date();
-  const isValidDate = !isNaN(d.getTime());
-  if (!isValidDate) return "";
+  if (isNaN(d.getTime())) return "";
   const isToday = d.toDateString() === now.toDateString();
-  const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
   const isYesterday = d.toDateString() === yesterday.toDateString();
   const diffMs = now.getTime() - d.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  return isToday ? "Hoy" : isYesterday ? "Ayer" : diffDays > 1 ? `Hace ${diffDays} días` : "";
-}
-
-type MobileSidebarProps = {
-  showSidebar: boolean;
-  userEmail: string;
-  onCloseSidebar: () => void;
-  onNewConversation: () => void;
-  searchQuery: string;
-  setSearchQuery: (v: string) => void;
-  conversations: Conversation[];
-  activeConv: Conversation | null;
-  onSelectConv: (conv: Conversation) => void;
-  onDeleteConv: (convId: string) => void;
-  onShowAccountMenu: () => void;
-  profile: ProfileData;
-  onSignOut: () => void;
-};
-
-function MobileSidebar({
-  showSidebar,
-  userEmail,
-  onCloseSidebar,
-  onNewConversation,
-  searchQuery,
-  setSearchQuery,
-  conversations,
-  activeConv,
-  onSelectConv,
-  onDeleteConv,
-  onShowAccountMenu,
-  profile,
-  onSignOut,
-}: MobileSidebarProps) {
-  const [hasOpened, setHasOpened] = React.useState(false);
-  React.useEffect(() => {
-    setHasOpened(true);
-  }, []);
-
-  if (!showSidebar) return null;
-  return (
-    <div
-      className={`fixed inset-y-0 left-0 z-50 w-[300px] max-sm:w-[92vw] flex flex-col md:hidden ${!userEmail ? "opacity-50 pointer-events-none select-none" : ""}`}
-      style={{
-        backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
-        borderRight: "1px solid var(--border)",
-        transform: hasOpened ? "translateX(0)" : "translateX(-100%)",
-        transition: "transform 0.35s cubic-bezier(0.2, 0, 0, 1)",
-        touchAction: "pan-y",
-        overflowY: "auto",
-        scrollbarWidth: "none",
-      }}>
-      <div className="flex items-center justify-between px-5 pt-6 pb-4 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-            <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </div>
-          <span className="text-base font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
-        </div>
-        <button onClick={onCloseSidebar} className="md:hidden p-2 rounded-xl cursor-pointer"
-          style={{ color: "var(--text-tertiary)", backgroundColor: "transparent" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="px-4 shrink-0 pb-3 space-y-2">
-        <button onClick={onNewConversation}
-          className="group w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer transition-all duration-200 active:scale-[0.97]"
-          style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
-          onMouseEnter={e => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.color = "var(--primary)";
-            el.style.backgroundColor = "var(--surface-hover)";
-          }}
-          onMouseLeave={e => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.color = "rgba(255,255,255,0.8)";
-            el.style.backgroundColor = "transparent";
-          }}
-        >
-          <svg className="w-4 h-4 transition-transform duration-200 group-hover:rotate-90 group-hover:scale-110" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-          </svg>
-          <span className="relative">Nueva conversación</span>
-        </button>
-
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-            style={{ color: "var(--text-tertiary)" }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Buscar conversaciones..."
-            className="w-full pl-9 pr-3 py-2 rounded-xl text-xs transition-all cursor-pointer"
-            style={{ backgroundColor: "var(--surface-hover)", color: "rgba(255,255,255,0.8)", border: "1px solid transparent", outline: "none" }}
-            onFocus={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.backgroundColor = "var(--surface)"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.backgroundColor = "var(--surface-hover)"; }}
-          />
-        </div>
-      </div>
-
-      <div className="px-4 pb-1 shrink-0" style={{ height: "1px", backgroundColor: "var(--border)" }} />
-
-      <div className="flex-1 overflow-y-auto px-2" style={{ touchAction: "pan-y" }}>
-        {conversations.length === 0 ? (
-          <div className="py-8 text-center">
-            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{searchQuery ? "Sin resultados" : "Sin conversaciones"}</p>
-          </div>
-        ) : (
-          <div className="space-y-0.5 pb-4">
-            {conversations.filter(c => !searchQuery || c.title.toLowerCase().includes(searchQuery.toLowerCase())).map(conv => {
-              const isActive = activeConv?.id === conv.id;
-              return (
-                <div key={conv.id}>
-                  <SwipeableConversation
-                    conv={conv}
-                    isActive={isActive}
-                    dateLabel={formatDateLabel(conv)}
-                    onSelect={() => onSelectConv(conv)}
-                    onDelete={() => onDeleteConv(conv.id)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      <div className="px-3 pb-4 pt-3 shrink-0" style={{ borderTop: "1px solid var(--border)" }}>
-        <button onClick={onShowAccountMenu}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all"
-          style={{ backgroundColor: "transparent" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
-          <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 0 12px rgba(16,163,127,0.35)" }}>
-            {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{userEmail}</p>
-            {profile && (
-              <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>
-                {(profile.subscription_weeks ?? 0) !== 0 ? `${profile.subscription_weeks} semanas` : "Sin suscripcion"}
-              </p>
-            )}
-          </div>
-          {profile && (
-            <div className="w-2 h-2 rounded-full shrink-0"
-              style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "var(--primary)" : "var(--danger)", boxShadow: (profile.subscription_weeks ?? 0) !== 0 ? "0 0 6px rgba(16,163,127,0.6)" : "none" }} />
-          )}
-        </button>
-        <button onClick={onSignOut}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl transition-all mt-1"
-          style={{ color: "rgba(255,255,255,0.5)", backgroundColor: "transparent" }}
-          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; }}
-          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-          </svg>
-          <span className="text-xs">Cerrar sesion</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-type DesktopSidebarProps = {
-  sidebarLock: "locked" | "unlocked";
-  setSidebarLock: (v: "locked" | "unlocked") => void;
-  sidebarHovered: boolean;
-  setSidebarHovered: (v: boolean) => void;
-  transitionEnabled: boolean;
-  sidebarInitialized: boolean;
-  userEmail: string;
-  onNewConversation: () => void;
-  searchQuery: string;
-  setSearchQuery: (v: string) => void;
-  conversations: Conversation[];
-  activeConv: Conversation | null;
-  onSelectConv: (conv: Conversation) => void;
-  onDeleteConv: (convId: string) => void;
-  onShowAccountMenu: () => void;
-  profile: ProfileData;
-  onSignOut: () => void;
-};
-
-function DesktopSidebar({
-  sidebarLock,
-  setSidebarLock,
-  sidebarHovered,
-  setSidebarHovered,
-  transitionEnabled,
-  sidebarInitialized,
-  userEmail,
-  onNewConversation,
-  searchQuery,
-  setSearchQuery,
-  conversations,
-  activeConv,
-  onSelectConv,
-  onDeleteConv,
-  onShowAccountMenu,
-  profile,
-  onSignOut,
-}: DesktopSidebarProps) {
-  // During the first render sidebarInitialized is false, so the sidebar starts
-  // collapsed (56px). Once the parent flips the flag in its mount effect, the
-  // expanded state goes true and the width transition fires 56→320 — the
-  // left-to-right entrance the user wanted. After the first mount, the flag
-  // stays true forever, so subsequent renders behave normally.
-  const expanded = sidebarInitialized && (sidebarLock === "locked" || sidebarHovered);
-
-  // The mouse is almost never on the sidebar at the moment it mounts, so the
-  // browser fires onMouseLeave on the very first paint and would collapse the
-  // sidebar back to 56px right after the entrance animation. We gate the
-  // collapse on whether the user has actually entered the sidebar at least
-  // once — before that, the sidebar stays expanded regardless of mouse events.
-  const hasEnteredRef = React.useRef(false);
-
-  return (
-    <div
-      className="relative shrink-0 hidden md:flex flex-col"
-      style={{
-        width: expanded ? 320 : 56,
-        transition: transitionEnabled ? SIDEBAR_TRANSITION : "none",
-      }}
-    >
-      <div
-        className={`h-full flex flex-col overflow-hidden ${!userEmail ? "opacity-50 pointer-events-none select-none" : ""}`}
-        style={{
-          backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
-          backdropFilter: "blur(40px)",
-          borderRight: "1px solid var(--border)",
-        }}
-        onMouseEnter={() => {
-          hasEnteredRef.current = true;
-          if (sidebarLock === "unlocked") setSidebarHovered(true);
-        }}
-        onMouseLeave={() => {
-          if (hasEnteredRef.current && sidebarLock === "unlocked") setSidebarHovered(false);
-        }}
-      >
-        {/* Brand row */}
-        <div className="h-14 flex items-center shrink-0">
-          <div className="w-14 flex items-center justify-center shrink-0">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </div>
-          </div>
-          <span
-            className="sidebar-label-in text-base font-semibold tracking-tight whitespace-nowrap overflow-hidden"
-            style={{
-              color: "var(--text-primary)",
-              maxWidth: expanded ? "160px" : 0,
-              opacity: expanded ? 1 : 0,
-              transition: LABEL_TRANSITION,
-            }}
-          >
-            VeChat
-          </span>
-          {expanded && (
-            <button
-              onClick={() => setSidebarLock(sidebarLock === "locked" ? "unlocked" : "locked")}
-              className="ml-auto mr-2 p-2 rounded-xl cursor-pointer transition-colors duration-150"
-              style={{ color: "var(--text-tertiary)" }}
-              title={sidebarLock === "locked" ? "Sidebar fija (clic para desbloquear)" : "Sidebar colapsable al hacer hover"}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
-            >
-              {sidebarLock === "locked" ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                </svg>
-              )}
-            </button>
-          )}
-        </div>
-
-        {/* Actions: new chat + search */}
-        <div className="px-2 shrink-0 pb-2 space-y-1">
-          <button
-            onClick={onNewConversation}
-            className={`group w-full flex items-center rounded-lg text-sm font-medium cursor-pointer transition-colors duration-150 ${expanded ? "h-9 px-2 gap-2" : "h-10 justify-center"}`}
-            style={{ backgroundColor: "transparent", color: "rgba(255,255,255,0.8)" }}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.color = "var(--primary)";
-              el.style.backgroundColor = "var(--surface-hover)";
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLButtonElement;
-              el.style.color = "rgba(255,255,255,0.8)";
-              el.style.backgroundColor = "transparent";
-            }}
-            title="Nueva conversación"
-          >
-            <svg className="w-4 h-4 shrink-0 transition-transform duration-200 group-hover:rotate-90" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-            {expanded && (
-              <span
-                className="sidebar-label-in whitespace-nowrap overflow-hidden"
-                style={{
-                  maxWidth: expanded ? "200px" : 0,
-                  opacity: expanded ? 1 : 0,
-                  transition: LABEL_TRANSITION,
-                }}
-              >
-                Nueva conversación
-              </span>
-            )}
-          </button>
-
-          <div
-            className={`w-full flex items-center rounded-lg transition-colors duration-150 ${expanded ? "h-9 px-2 gap-2" : "h-10 justify-center"}`}
-            style={{ backgroundColor: expanded ? "var(--surface-hover)" : "transparent" }}
-            title="Buscar conversaciones"
-          >
-            <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-              style={{ color: "var(--text-tertiary)" }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            {expanded && (
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Buscar conversaciones..."
-                className="flex-1 outline-none bg-transparent text-xs min-w-0"
-                style={{ color: "rgba(255,255,255,0.8)" }}
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Divider */}
-        <div className="mx-3 h-px shrink-0" style={{ backgroundColor: "var(--border)" }} />
-
-        {/* Conversation list — only when expanded */}
-        {expanded && (
-          <div
-            className="sidebar-list-in flex-1 overflow-y-auto px-2"
-            style={{ touchAction: "pan-y" }}
-            key="conversation-list"
-          >
-            {conversations.length === 0 ? (
-              <div className="py-8 text-center">
-                <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>{searchQuery ? "Sin resultados" : "Sin conversaciones"}</p>
-              </div>
-            ) : (
-              <div className="space-y-0.5 pb-4">
-                {conversations.filter(c => !searchQuery || c.title.toLowerCase().includes(searchQuery.toLowerCase())).map(conv => {
-                  const isActive = activeConv?.id === conv.id;
-                  return (
-                    <div key={conv.id}
-                      className="group w-full text-left rounded-xl flex items-center gap-3 cursor-pointer transition-colors duration-150 px-3 py-3 relative"
-                      onClick={() => onSelectConv(conv)}
-                      onMouseEnter={e => {
-                        const el = e.currentTarget as HTMLDivElement;
-                        el.style.backgroundColor = "var(--surface-hover)";
-                        el.style.boxShadow = "inset 3px 0 0 var(--primary)";
-                      }}
-                      onMouseLeave={e => {
-                        const el = e.currentTarget as HTMLDivElement;
-                        el.style.backgroundColor = "transparent";
-                        el.style.boxShadow = "none";
-                      }}>
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full" style={{ backgroundColor: "var(--primary)" }} />
-                      )}
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ backgroundColor: isActive ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "var(--surface-hover)" }}>
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24"
-                          style={{ color: isActive ? "var(--primary)" : "var(--text-tertiary)" }}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate leading-tight" style={{ color: "var(--text-primary)" }}>{conv.title}</p>
-                        <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.8)" }}>{formatDateLabel(conv)}</p>
-                      </div>
-                      <button onClick={(e) => { e.stopPropagation(); onDeleteConv(conv.id); }}
-                        className="shrink-0 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-opacity duration-150 flex items-center justify-center cursor-pointer"
-                        style={{ color: "#EF4444", backgroundColor: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.1)" }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(239,68,68,0.2)";
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(239,68,68,0.08)";
-                        }}
-                        title="Eliminar conversación">
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Account chip */}
-        <div className="px-2 pb-3 pt-2 shrink-0">
-          <button
-            onClick={onShowAccountMenu}
-            className={`w-full flex items-center rounded-xl transition-colors duration-150 ${expanded ? "h-10 px-2 gap-2" : "h-10 justify-center"}`}
-            style={{ backgroundColor: "transparent" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}
-            title={userEmail || "Cuenta"}
-          >
-            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 0 12px rgba(16,163,127,0.35)" }}>
-              {userEmail ? userEmail.charAt(0).toUpperCase() : "U"}
-            </div>
-            {expanded && (
-              <>
-                <div
-                  className="sidebar-label-in flex-1 text-left min-w-0 overflow-hidden"
-                  style={{
-                    maxWidth: expanded ? "180px" : 0,
-                    opacity: expanded ? 1 : 0,
-                    transition: LABEL_TRANSITION,
-                  }}
-                >
-                  <p className="text-sm font-medium truncate" style={{ color: "rgba(255,255,255,0.9)" }}>{userEmail}</p>
-                  {profile && (
-                    <p className="text-[10px] mt-0.5 truncate" style={{ color: "rgba(255,255,255,0.45)" }}>
-                      {(profile.subscription_weeks ?? 0) !== 0 ? `${profile.subscription_weeks} semanas` : "Sin suscripcion"}
-                    </p>
-                  )}
-                </div>
-                {profile && (
-                  <div className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: (profile.subscription_weeks ?? 0) !== 0 ? "var(--primary)" : "var(--danger)", boxShadow: (profile.subscription_weeks ?? 0) !== 0 ? "0 0 6px rgba(16,163,127,0.6)" : "none" }} />
-                )}
-              </>
-            )}
-          </button>
-          {expanded && (
-            <button onClick={onSignOut}
-              className="w-full flex items-center h-9 px-2 mt-1 rounded-xl transition-colors duration-150"
-              style={{ color: "rgba(255,255,255,0.5)" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; (e.currentTarget as HTMLButtonElement).style.color = "var(--danger)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.5)"; }}>
-              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span
-                className="sidebar-label-in ml-2 text-xs whitespace-nowrap overflow-hidden"
-                style={{
-                  maxWidth: expanded ? "200px" : 0,
-                  opacity: expanded ? 1 : 0,
-                  transition: LABEL_TRANSITION,
-                }}
-              >
-                Cerrar sesion
-              </span>
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  if (isToday) return "Hoy";
+  if (isYesterday) return "Ayer";
+  if (diffDays > 1 && diffDays < 7) return "Esta semana";
+  if (diffDays >= 7 && diffDays < 30) return "Este mes";
+  return "Más antiguo";
 }
 
 type Props = {
-  showSidebar: boolean;
   conversations: Conversation[];
   activeConv: Conversation | null;
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   userEmail: string;
   profile: ProfileData;
-  supabase: any;
   onSelectConv: (conv: Conversation) => void;
   onDeleteConv: (convId: string) => void;
   onNewConversation: () => void;
   onShowAccountMenu: () => void;
-  onSignOut: () => void;
-  onCloseSidebar: () => void;
-  sidebarLock: "locked" | "unlocked";
-  setSidebarLock: (v: "locked" | "unlocked") => void;
-  sidebarHovered: boolean;
-  setSidebarHovered: (v: boolean) => void;
-  transitionEnabled: boolean;
-  sidebarInitialized: boolean;
+  // Mobile sheet
+  showMobile: boolean;
+  onCloseMobile: () => void;
+  // Disabled (logged-out) state — fades the sidebar and blocks clicks
+  disabled?: boolean;
 };
 
+function VeChatMark({ size = 16 }: { size?: number }) {
+  // Minimal "V" mark — single stroke, no gradient square.
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ color: "var(--primary)" }}
+    >
+      <path d="M4 5l8 14L20 5" />
+    </svg>
+  );
+}
+
+function NewChatIcon() {
+  return (
+    <svg
+      className="w-4 h-4 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg
+      className="w-3.5 h-3.5 shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      viewBox="0 0 24 24"
+      style={{ color: "var(--text-tertiary)" }}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+      />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg
+      className="w-3.5 h-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+      />
+    </svg>
+  );
+}
+
+function CollapseIcon({ collapsed }: { collapsed: boolean }) {
+  // Chevron that flips: collapsed → points right, expanded → points left.
+  return (
+    <svg
+      className="w-3.5 h-3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      viewBox="0 0 24 24"
+      style={{
+        transition: "transform 0.2s ease",
+        transform: collapsed ? "rotate(180deg)" : "rotate(0deg)",
+      }}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 19l-7-7 7-7"
+      />
+    </svg>
+  );
+}
+
+function CollapseExpandIcon({ expanded }: { expanded: boolean }) {
+  // Same chevron, opposite direction. Used as the "force expand" affordance
+  // when the sidebar is collapsed.
+  return (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.5}
+      viewBox="0 0 24 24"
+      style={{
+        transition: "transform 0.2s ease",
+        transform: expanded ? "rotate(0deg)" : "rotate(180deg)",
+      }}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+      />
+    </svg>
+  );
+}
+
+type RowProps = {
+  conv: Conversation;
+  isActive: boolean;
+  visible: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  disabled: boolean;
+};
+
+function ConversationRow({
+  conv,
+  isActive,
+  visible,
+  onSelect,
+  onDelete,
+  disabled,
+}: RowProps) {
+  const [hovered, setHovered] = React.useState(false);
+  return (
+    <div
+      role="button"
+      tabIndex={disabled ? -1 : 0}
+      onClick={disabled ? undefined : onSelect}
+      onKeyDown={(e) => {
+        if (disabled) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="group relative w-full text-left rounded-lg cursor-pointer flex items-center gap-2 px-2.5 py-2 transition-colors duration-150"
+      style={{
+        backgroundColor:
+          isActive || (hovered && !disabled)
+            ? "var(--surface-hover)"
+            : "transparent",
+        opacity: visible ? 1 : 0,
+        height: visible ? 36 : 0,
+        overflow: "hidden",
+        transition:
+          "background-color 0.15s ease, opacity 0.2s ease, height 0.2s ease",
+      }}
+    >
+      {isActive && (
+        <div
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
+          style={{ backgroundColor: "var(--primary)" }}
+        />
+      )}
+      <span
+        className="flex-1 min-w-0 truncate text-[13px] font-medium"
+        style={{
+          color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+        }}
+      >
+        {conv.title}
+      </span>
+      {!disabled && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          aria-label="Eliminar conversacion"
+          className="shrink-0 p-1 rounded-md transition-opacity duration-100"
+          style={{
+            color: hovered ? "var(--danger)" : "var(--text-tertiary)",
+            backgroundColor: hovered
+              ? "color-mix(in srgb, var(--danger) 12%, transparent)"
+              : "transparent",
+            opacity: hovered ? 1 : 0,
+          }}
+        >
+          <DeleteIcon />
+        </button>
+      )}
+    </div>
+  );
+}
+
+type SidebarBodyProps = {
+  conversations: Conversation[];
+  activeConv: Conversation | null;
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  userEmail: string;
+  onSelectConv: (conv: Conversation) => void;
+  onDeleteConv: (convId: string) => void;
+  onNewConversation: () => void;
+  onShowAccountMenu: () => void;
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  disabled: boolean;
+  // Optional: how the collapse/expand affordance should look.
+  // "desktop" → chevron that collapses the sidebar (when expanded) or expands it (when collapsed)
+  // "mobile"  → no affordance; the sheet is always open while visible
+  variant: "desktop" | "mobile";
+};
+
+function SidebarBody({
+  conversations,
+  activeConv,
+  searchQuery,
+  setSearchQuery,
+  userEmail,
+  onSelectConv,
+  onDeleteConv,
+  onNewConversation,
+  onShowAccountMenu,
+  expanded,
+  onToggleExpanded,
+  disabled,
+  variant,
+}: SidebarBodyProps) {
+  // Group conversations by their date label so we can show section headers.
+  const filtered = React.useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    const q = searchQuery.toLowerCase();
+    return conversations.filter((c) => c.title.toLowerCase().includes(q));
+  }, [conversations, searchQuery]);
+
+  const grouped = React.useMemo(() => {
+    const order: string[] = [];
+    const map = new Map<string, Conversation[]>();
+    for (const conv of filtered) {
+      const label = formatDateLabel(conv) || "Más antiguo";
+      if (!map.has(label)) {
+        map.set(label, []);
+        order.push(label);
+      }
+      map.get(label)!.push(conv);
+    }
+    return { order, map };
+  }, [filtered]);
+
+  const isMobile = variant === "mobile";
+  // Hide labels and helper text when collapsed. Sections still take space
+  // because rows themselves stay visible (just truncated).
+  const showLabels = expanded;
+  const avatarLetter = (userEmail || "U").charAt(0).toUpperCase();
+  const canInteract = !disabled;
+
+  return (
+    <div
+      className="h-full flex flex-col overflow-hidden"
+      style={{
+        backgroundColor:
+          "color-mix(in srgb, var(--surface) 96%, transparent)",
+        backdropFilter: "blur(40px)",
+        borderRight: "1px solid var(--border)",
+        opacity: disabled ? 0.5 : 1,
+        pointerEvents: disabled ? "none" : "auto",
+      }}
+    >
+      {/* Top bar — brand + collapse */}
+      <div
+        className="h-14 flex items-center shrink-0"
+        style={{ paddingLeft: expanded ? 16 : 0, paddingRight: expanded ? 12 : 0 }}
+      >
+        {expanded ? (
+          <>
+            <div className="flex items-center gap-2 min-w-0">
+              <VeChatMark size={18} />
+              <span
+                className="text-[15px] font-semibold tracking-tight whitespace-nowrap"
+                style={{ color: "var(--text-primary)" }}
+              >
+                VeChat
+              </span>
+            </div>
+            {!isMobile && canInteract && (
+              <button
+                onClick={onToggleExpanded}
+                aria-label="Colapsar sidebar"
+                title="Colapsar"
+                className="ml-auto p-1.5 rounded-lg transition-colors duration-150"
+                style={{ color: "var(--text-tertiary)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    "var(--surface-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    "transparent";
+                }}
+              >
+                <CollapseIcon collapsed={false} />
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="w-full flex justify-center">
+            {!isMobile && canInteract ? (
+              <button
+                onClick={onToggleExpanded}
+                aria-label="Expandir sidebar"
+                title="Expandir"
+                className="p-1.5 rounded-lg transition-colors duration-150"
+                style={{ color: "var(--text-tertiary)" }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    "var(--surface-hover)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                    "transparent";
+                }}
+              >
+                <CollapseExpandIcon expanded={false} />
+              </button>
+            ) : (
+              <VeChatMark size={18} />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Actions: new chat + search */}
+      <div
+        className="shrink-0 space-y-1"
+        style={{ padding: expanded ? "0 8px 8px" : "0 8px 8px" }}
+      >
+        {expanded ? (
+          <>
+            <button
+              onClick={onNewConversation}
+              disabled={!canInteract}
+              className="group w-full flex items-center gap-2 h-9 px-2.5 rounded-lg text-[13px] font-medium cursor-pointer transition-colors duration-150"
+              style={{ color: "rgba(255,255,255,0.85)" }}
+              onMouseEnter={(e) => {
+                if (!canInteract) return;
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.backgroundColor = "var(--surface-hover)";
+                el.style.color = "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLButtonElement;
+                el.style.backgroundColor = "transparent";
+                el.style.color = "rgba(255,255,255,0.85)";
+              }}
+            >
+              <NewChatIcon />
+              <span className="truncate">Nuevo chat</span>
+            </button>
+            <div
+              className="w-full flex items-center gap-2 h-9 px-2.5 rounded-lg"
+              style={{ backgroundColor: "var(--surface-hover)" }}
+            >
+              <SearchIcon />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Buscar..."
+                className="flex-1 min-w-0 outline-none bg-transparent text-[13px]"
+                style={{ color: "var(--text-primary)" }}
+                disabled={!canInteract}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-1">
+            <button
+              onClick={onNewConversation}
+              disabled={!canInteract}
+              aria-label="Nuevo chat"
+              title="Nuevo chat"
+              className="w-10 h-10 rounded-lg flex items-center justify-center cursor-pointer transition-colors duration-150"
+              style={{ color: "var(--text-secondary)" }}
+              onMouseEnter={(e) => {
+                if (!canInteract) return;
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                  "var(--surface-hover)";
+                (e.currentTarget as HTMLButtonElement).style.color =
+                  "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                  "transparent";
+                (e.currentTarget as HTMLButtonElement).style.color =
+                  "var(--text-secondary)";
+              }}
+            >
+              <NewChatIcon />
+            </button>
+            <button
+              onClick={onToggleExpanded}
+              disabled={!canInteract}
+              aria-label="Buscar"
+              title="Buscar"
+              className="w-10 h-10 rounded-lg flex items-center justify-center cursor-pointer transition-colors duration-150"
+              style={{ color: "var(--text-secondary)" }}
+              onMouseEnter={(e) => {
+                if (!canInteract) return;
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                  "var(--surface-hover)";
+                (e.currentTarget as HTMLButtonElement).style.color =
+                  "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                  "transparent";
+                (e.currentTarget as HTMLButtonElement).style.color =
+                  "var(--text-secondary)";
+              }}
+            >
+              <SearchIcon />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Divider */}
+      <div
+        className="mx-3 h-px shrink-0"
+        style={{ backgroundColor: "var(--border)" }}
+      />
+
+      {/* Conversation list — only in expanded mode */}
+      {expanded && (
+        <div
+          className="flex-1 overflow-y-auto px-1.5"
+          style={{ touchAction: "pan-y" }}
+        >
+          {filtered.length === 0 ? (
+            <div className="py-8 text-center">
+              <p
+                className="text-xs"
+                style={{ color: "var(--text-tertiary)" }}
+              >
+                {searchQuery ? "Sin resultados" : "Sin conversaciones"}
+              </p>
+            </div>
+          ) : (
+            <div className="pb-3">
+              {grouped.order.map((label) => (
+                <div key={label} className="mb-1">
+                  {showLabels && (
+                    <div
+                      className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider"
+                      style={{ color: "var(--text-tertiary)" }}
+                    >
+                      {label}
+                    </div>
+                  )}
+                  <div className="space-y-0.5">
+                    {grouped.map.get(label)!.map((conv) => (
+                      <ConversationRow
+                        key={conv.id}
+                        conv={conv}
+                        isActive={activeConv?.id === conv.id}
+                        visible={true}
+                        onSelect={() => onSelectConv(conv)}
+                        onDelete={() => onDeleteConv(conv.id)}
+                        disabled={disabled}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Spacer when collapsed — pushes the avatar to the bottom */}
+      {!expanded && <div className="flex-1" />}
+
+      {/* Account chip — single avatar, opens account menu */}
+      <div
+        className="shrink-0"
+        style={{
+          padding: expanded ? "8px 8px 12px" : "8px 8px 12px",
+        }}
+      >
+        {expanded ? (
+          <button
+            onClick={onShowAccountMenu}
+            disabled={!canInteract}
+            className="w-full flex items-center gap-2 h-10 px-2.5 rounded-lg transition-colors duration-150"
+            style={{ backgroundColor: "transparent" }}
+            onMouseEnter={(e) => {
+              if (!canInteract) return;
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                "var(--surface-hover)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                "transparent";
+            }}
+          >
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+              }}
+            >
+              {avatarLetter}
+            </div>
+            <span
+              className="flex-1 min-w-0 truncate text-left text-[13px] font-medium"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {userEmail || "Cuenta"}
+            </span>
+          </button>
+        ) : (
+          <div className="flex justify-center">
+            <button
+              onClick={onShowAccountMenu}
+              disabled={!canInteract}
+              aria-label="Cuenta"
+              title="Cuenta"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-bold cursor-pointer transition-opacity"
+              style={{
+                background:
+                  "linear-gradient(135deg, var(--primary), var(--primary-hover))",
+                opacity: canInteract ? 1 : 0.6,
+              }}
+            >
+              {avatarLetter}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ConversationSidebar({
-  showSidebar,
   conversations,
   activeConv,
   searchQuery,
   setSearchQuery,
   userEmail,
   profile,
-  supabase,
   onSelectConv,
   onDeleteConv,
   onNewConversation,
   onShowAccountMenu,
-  onSignOut,
-  onCloseSidebar,
-  sidebarLock,
-  setSidebarLock,
-  sidebarHovered,
-  setSidebarHovered,
-  transitionEnabled,
-  sidebarInitialized,
+  showMobile,
+  onCloseMobile,
+  disabled,
 }: Props) {
-  void supabase;
+  // Suppress unused-var warning for `profile` — kept in the prop type so the
+  // parent (ChatInterface) doesn't need to refactor its call site.
+  void profile;
+
+  // ── Desktop collapse/expand state ──
+  // `lock` persists to localStorage: "locked" keeps the sidebar open at all
+  // times, "unlocked" lets it collapse on mouse-leave. We hydrate from
+  // localStorage in an effect (not in the useState initializer) to avoid the
+  // SSR/CSR mismatch that would otherwise happen on the first paint.
+  const [lock, setLock] = React.useState<"locked" | "unlocked">("unlocked");
+  const [hovered, setHovered] = React.useState(false);
+  const [initialized, setInitialized] = React.useState(false);
+  const [transitionEnabled, setTransitionEnabled] = React.useState(false);
+  // Track whether the cursor has entered the sidebar at least once — without
+  // this, the first paint fires a synthetic mouseLeave that would collapse
+  // the sidebar back to 60px right after the entrance animation.
+  const hasEnteredRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = localStorage.getItem("vechat-sidebar-lock");
+    if (stored === "locked" || stored === "unlocked") {
+      setLock(stored);
+    }
+    setInitialized(true);
+    // Enable the width transition on the next frame so the initial mount
+    // (which uses `none` to prevent a flash) doesn't animate from 0→60.
+    const id = requestAnimationFrame(() => setTransitionEnabled(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("vechat-sidebar-lock", lock);
+  }, [lock]);
+
+  // Expanded = initialized AND (locked OR hovered). The `initialized` gate
+  // forces the sidebar to render collapsed on first paint, then expand on
+  // the next tick — that's what produces the 60→280 entrance.
+  const expanded = initialized && (lock === "locked" || hovered);
+
+  const toggleLock = () => {
+    setLock((cur) => (cur === "locked" ? "unlocked" : "locked"));
+  };
+
+  const onToggleExpanded = () => {
+    // Called from the collapsed-mode expand button. Toggles lock so the
+    // sidebar stays open after the click.
+    setLock((cur) => (cur === "locked" ? "unlocked" : "locked"));
+  };
+
+  // ── Mobile sheet state ──
+  // The mobile sidebar slides in from the left when `showMobile` is true.
+  // Backdrop click closes it. Body scroll is left alone — the sheet is
+  // already sized to the viewport and its content scrolls internally.
+  const [hasOpened, setHasOpened] = React.useState(false);
+  React.useEffect(() => {
+    if (showMobile) {
+      // Reset to false so the slide-in animation replays every time the
+      // sheet is reopened.
+      setHasOpened(false);
+      const id = requestAnimationFrame(() => setHasOpened(true));
+      return () => cancelAnimationFrame(id);
+    }
+  }, [showMobile]);
+
   return (
     <>
-      <MobileSidebar
-        showSidebar={showSidebar}
-        userEmail={userEmail}
-        onCloseSidebar={onCloseSidebar}
-        onNewConversation={onNewConversation}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        conversations={conversations}
-        activeConv={activeConv}
-        onSelectConv={onSelectConv}
-        onDeleteConv={onDeleteConv}
-        onShowAccountMenu={onShowAccountMenu}
-        profile={profile}
-        onSignOut={onSignOut}
+      {/* Desktop sidebar */}
+      <div
+        className="relative shrink-0 hidden md:block"
+        style={{
+          width: expanded ? EXPANDED_W : COLLAPSED_W,
+          transition: transitionEnabled ? WIDTH_TRANSITION : "none",
+        }}
+        onMouseEnter={() => {
+          hasEnteredRef.current = true;
+          if (lock === "unlocked") setHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (hasEnteredRef.current && lock === "unlocked") setHovered(false);
+        }}
+      >
+        <SidebarBody
+          conversations={conversations}
+          activeConv={activeConv}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          userEmail={userEmail}
+          onSelectConv={onSelectConv}
+          onDeleteConv={onDeleteConv}
+          onNewConversation={onNewConversation}
+          onShowAccountMenu={onShowAccountMenu}
+          expanded={expanded}
+          onToggleExpanded={toggleLock}
+          disabled={!!disabled}
+          variant="desktop"
+        />
+      </div>
+
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
+        style={{
+          opacity: showMobile ? 1 : 0,
+          pointerEvents: showMobile ? "auto" : "none",
+          transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)",
+        }}
+        onClick={onCloseMobile}
+        aria-hidden="true"
       />
-      <DesktopSidebar
-        sidebarLock={sidebarLock}
-        setSidebarLock={setSidebarLock}
-        sidebarHovered={sidebarHovered}
-        setSidebarHovered={setSidebarHovered}
-        transitionEnabled={transitionEnabled}
-        sidebarInitialized={sidebarInitialized}
-        userEmail={userEmail}
-        onNewConversation={onNewConversation}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        conversations={conversations}
-        activeConv={activeConv}
-        onSelectConv={onSelectConv}
-        onDeleteConv={onDeleteConv}
-        onShowAccountMenu={onShowAccountMenu}
-        profile={profile}
-        onSignOut={onSignOut}
-      />
+
+      {/* Mobile sheet */}
+      <div
+        className="fixed inset-y-0 left-0 z-50 md:hidden"
+        style={{
+          width: Math.min(EXPANDED_W, 0.92 * (typeof window !== "undefined" ? window.innerWidth : 360)),
+          transform: hasOpened ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.32s cubic-bezier(0.2, 0, 0, 1)",
+          touchAction: "pan-y",
+        }}
+      >
+        <SidebarBody
+          conversations={conversations}
+          activeConv={activeConv}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          userEmail={userEmail}
+          onSelectConv={onSelectConv}
+          onDeleteConv={onDeleteConv}
+          onNewConversation={onNewConversation}
+          onShowAccountMenu={onShowAccountMenu}
+          expanded={true}
+          onToggleExpanded={onCloseMobile}
+          disabled={!!disabled}
+          variant="mobile"
+        />
+      </div>
     </>
   );
 }
