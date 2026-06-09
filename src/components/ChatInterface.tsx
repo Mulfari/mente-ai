@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -10,7 +10,6 @@ import AuthModal from "./AuthModal";
 import AccountMenu from "./AccountMenu";
 import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
-import SwipeableConversation from "./chat/SwipeableConversation";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import { OnboardingTour } from "./OnboardingTour";
@@ -80,41 +79,7 @@ export default function ChatInterface({
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
-  const [sidebarLock, setSidebarLock] = useState<"locked" | "unlocked">("unlocked");
-  const lockRef = useRef<SVGSVGElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
-  const [sidebarHovered, setSidebarHovered] = useState(true);
-  const [sidebarTransitionEnabled, setSidebarTransitionEnabled] = useState(false);
-  // Gates the sidebar's expanded state during the initial mount so the sidebar
-  // starts collapsed (56px) and animates open (320px) on every page load.
-  // Without this flag, sidebarHovered defaults to true and the sidebar is
-  // already at 320px on first render — no left-to-right entrance.
-  const [sidebarInitialized, setSidebarInitialized] = useState(false);
-
-  // Hydrate sidebar lock from localStorage, arm the width transition, and flip
-  // sidebarInitialized to true — all after first paint. Reading localStorage in
-  // a useEffect (not in the useState initializer) avoids the SSR/CSR mismatch;
-  // setting the transition flag here silences the first mouseLeave that would
-  // otherwise animate width right after the page settles (also covers tab-return
-  // scenarios where the first paint replays). Flipping sidebarInitialized in the
-  // same tick is what causes the initial 56→320 load animation.
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("vechat-sidebar-lock");
-      if (stored === "locked" || stored === "unlocked") {
-        setSidebarLock(stored);
-      }
-      setSidebarTransitionEnabled(true);
-      setSidebarInitialized(true);
-    }
-  }, []);
-
-  // Persist sidebar lock state
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem("vechat-sidebar-lock", sidebarLock);
-    }
-  }, [sidebarLock]);
 
   // Reset convJustStarted after animation completes
   useEffect(() => {
@@ -201,6 +166,13 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   type QueuedMsg = { text: string; files: File[]; previews: Record<string, string> };
   const queuedMsgRef = useRef<QueuedMsg | null>(null);
   const currentStreamReqRef = useRef<{ message: string; conversationId: string; contentParts: any[]; mode: string } | null>(null);
+  // Controls the in-flight VPS stream request. ChatInput's Stop button calls
+  // `stopStream()` which invokes `controller.abort()` — the fetch's signal
+  // propagates down to the reader's `read()` promise, the catch in
+  // `processVPSStream` distinguishes the AbortError from a network error,
+  // and we mark the message as `in_progress: false` with a "(detenido)" tag
+  // so other devices see the partial response immediately.
+  const streamAbortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Throttle the per-chunk Supabase upsert — a long stream fires hundreds of
   // upserts otherwise. We coalesce to at most one per UPSERT_THROTTLE_MS.
@@ -217,6 +189,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
+  const loadingConvRef = useRef<string | null>(null); // dedup: skip concurrent loadMessages() for the same conv
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // reveal-on-load timer (must survive effect re-runs)
   const fastPollRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fast polling when remote stream detected
 
   // Auth init — if the server already provided the auth state (via initial
@@ -409,46 +383,53 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   }
 
   async function loadMessages(conversationId: string) {
+    // Dedup: two useEffects (URL-load + auth-ready) can both fire on initial
+    // mount for the same conv. Without this guard the second call would clear
+    // the first's pending scroll-reveal timer via effect cleanup, leaving the
+    // conversation stuck at the top.
+    if (loadingConvRef.current === conversationId) return;
+    loadingConvRef.current = conversationId;
     const loadId = conversationId; // capture for stale-check
-    setMessages([]); // clear stale messages immediately
+    // Skeleton takes over the screen while we load (controlled by
+    // isLoadingMsgs in the JSX) — no need to blank the messages array,
+    // which caused a visual flash and double-firing of the scroll effect.
     setLoadingMessages(true);
     setLoadingConvId(conversationId);
     setIsLoadingMsgs(true);
-    const { data, error } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true })
-      .limit(100);
-    if (error) console.error("loadMessages error:", error);
-    // Ignore stale results (race condition: user switched conv while loading)
-    if (loadId !== currentConvIdRef.current) {
+    try {
+      const { data, error } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true })
+        .limit(100);
+      if (error) console.error("loadMessages error:", error);
+      // Ignore stale results (race condition: user switched conv while loading)
+      if (loadId !== currentConvIdRef.current) return;
+      // Filter out messages still actively streaming with no content.
+      // If message has content (from progressive save), show it even if in_progress=true
+      // Keep assistant messages with in_progress=true even if empty — they're active streaming from another device
+      const valid = (data ?? [])
+        .filter(m => !(m.role === "assistant" && !m.in_progress && !m.content?.trim()))
+        .map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" })) as Message[];
+      // Clear streaming state — these were saved from a previous session
+      setStreamingMsgId(null);
+      // Reveal-on-load: scroll-to-top → wait → smooth-scroll-to-bottom.
+      // (Previously gated on `length > 4`, which left short convs stuck
+      // near the top. Now triggered for any conversation with history.)
+      if (valid.length > 0) initialScrollPendingRef.current = true;
+      setMessages(valid);
+      lastErrorRef.current = null;
       setLoadingMessages(false);
+      setConvLoaded(true);
       setLoadingConvId(null);
       setIsLoadingMsgs(false);
-      return;
-    }
-    // Filter out messages still actively streaming with no content.
-    // If message has content (from progressive save), show it even if in_progress=true
-    // Keep assistant messages with in_progress=true even if empty — they're active streaming from another device
-    const valid = (data ?? [])
-      .filter(m => !(m.role === "assistant" && !m.in_progress && !m.content?.trim()))
-      .map(m => ({ ...m, _isDeep: m.role === "assistant" && m.mode === "deep" })) as Message[];
-    // Clear streaming state — these were saved from a previous session
-    setStreamingMsgId(null);
-    // If this conversation has enough history, force-scroll to bottom on
-    // first render. Short conversations look better vertically centered
-    // (handled by MessageList's justify-end on a small content block).
-    if (valid.length > 4) initialScrollPendingRef.current = true;
-    setMessages(valid);
-    lastErrorRef.current = null;
-    setLoadingMessages(false);
-    setConvLoaded(true);
-    setLoadingConvId(null);
-    setIsLoadingMsgs(false);
 
-    // Setup realtime subscription for this conversation
-    setupRealtimeSubscription(conversationId);
+      // Setup realtime subscription for this conversation
+      setupRealtimeSubscription(conversationId);
+    } finally {
+      loadingConvRef.current = null;
+    }
   }
 
   // Fetch new messages from DB and merge with local state
@@ -700,10 +681,22 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
   // Smart auto-scroll: only scroll if the user is near the bottom of the
   // conversation. If they've scrolled up to read something, we don't yank
-  // them back down when a new response arrives. Uses rAF so the DOM has
-  // already committed before we measure the new height. On initial load of
-  // a conversation, force the scroll to bottom (initialScrollPendingRef).
-  useEffect(() => {
+  // them back down when a new response arrives.
+  //
+  // On initial load of a conversation (initialScrollPendingRef = true set
+  // inside loadMessages), do a "reveal" instead of jumping straight to
+  // the bottom: show the top of the conversation first, then after a
+  // short delay smoothly slide down to the latest message. The delay
+  // gives the user a moment to register the start of the thread before
+  // the scroll takes them to the end.
+  //
+  // The reveal timer is held in a ref (not in this effect's local scope)
+  // because setupRealtimeSubscription → fetchNewMessages fires a second
+  // messages-state update right after loadMessages, which re-runs this
+  // effect. If the timer lived in this effect's closure, the first run's
+  // cleanup would clear it before it ever fires. The ref outlives every
+  // re-run of this effect; only a new reveal or a conv change cancels it.
+  useLayoutEffect(() => {
     const el = mainScrollRef.current;
     if (!el) return;
     const force = initialScrollPendingRef.current;
@@ -712,18 +705,40 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       const NEAR_BOTTOM_PX = 120;
       if (distanceFromBottom > NEAR_BOTTOM_PX) return;
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      return;
     }
-    const raf = requestAnimationFrame(() => {
-      // Two passes: one for the first paint, one for any images/late layouts.
-      el.scrollTo({ top: el.scrollHeight, behavior: force ? "auto" : "smooth" });
-      if (force) {
-        requestAnimationFrame(() => {
-          el.scrollTo({ top: el.scrollHeight, behavior: "auto" });
-        });
-      }
-    });
-    return () => cancelAnimationFrame(raf);
+    // Forced initial scroll: show top → wait → slide to bottom.
+    // Skip the reveal when the content already fits in the viewport
+    // (no scroll distance to animate over — the top IS the bottom).
+    const fitsViewport = el.scrollHeight <= el.clientHeight;
+    if (fitsViewport) {
+      el.scrollTop = 0;
+      return;
+    }
+    // 1) Show the top of the conversation immediately.
+    el.scrollTop = 0;
+    // 2) Wait briefly so the user registers the start of the thread.
+    // 3) Smooth-scroll to the bottom. The browser's smooth-scroll
+    //    re-measures scrollHeight each frame, so late layout
+    //    (markdown tables, syntax-highlighted code, images) is fine.
+    // Cancel any in-flight reveal from a previous conv load.
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    revealTimerRef.current = setTimeout(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+      revealTimerRef.current = null;
+    }, 600);
   }, [messages, sending]);
+
+  // Cancel any pending reveal when the user navigates to a different conv.
+  useEffect(() => {
+    return () => {
+      if (revealTimerRef.current) {
+        clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
+    };
+  }, [activeConv?.id]);
 
   // Keep textarea focused after sending + prevent zoom on mobile
   useEffect(() => {
@@ -952,6 +967,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         conversation_id: convId, _loading: true
       }]);
       setStreamingMsgId(msgId);
+      // Install a fresh AbortController for this stream — ChatInput's Stop
+      // button will call .abort() on it. Replaces any prior handle.
+      streamAbortRef.current = new AbortController();
 
       // Now get VPS token — other devices already see the "AI thinking" message
       const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
@@ -997,6 +1015,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           Accept: "text/event-stream",
         },
         body: JSON.stringify(payload),
+        signal: streamAbortRef.current?.signal,
       });
 
       if (!streamRes.ok) {
@@ -1108,10 +1127,35 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             textareaRef.current?.focus();
           }
         } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: msg.includes('fetch') ? 'Error de conexion. Intenta de nuevo.' : msg, _loading: false } : m));
+          // AbortError = the user clicked Stop. Treat as a clean cancellation:
+          // keep whatever the model already streamed, mark the message as
+          // finished (in_progress=false) with a small visual marker, and
+          // persist the partial content to Supabase so other devices see it.
+          const isAbort = e instanceof DOMException && e.name === "AbortError";
+          const finalContent = isAbort
+            ? (accumulatedText ? `${accumulatedText}\n\n_[Generación detenida]_` : "_[Generación detenida]_")
+            : (e instanceof Error ? e.message : String(e));
+          const finalDisplay = isAbort
+            ? finalContent
+            : (finalContent.includes('fetch') ? 'Error de conexion. Intenta de nuevo.' : finalContent);
+          try {
+            await supabase.from('messages').upsert({
+              id: msgId,
+              conversation_id: convId,
+              content: finalContent,
+              role: 'assistant',
+              in_progress: false,
+            });
+          } catch {}
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalDisplay, _loading: false } : m));
           setSending(false);
           setStreamingMsgId(null);
+          textareaRef.current?.focus();
+        } finally {
+          // Always release the abort handle so the next sendMessage can install
+          // a fresh one. Without this the second stream would reuse a signal
+          // that's already aborted and fail immediately.
+          streamAbortRef.current = null;
         }
       };
 
@@ -1123,6 +1167,20 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }
     setTimeout(() => { autoResize(); textareaRef.current?.focus(); }, 0);
   }
+
+  // Stop the in-flight stream when the user clicks Stop in ChatInput. The
+  // AbortController's signal is wired into both the stream fetch and the
+  // reader's `read()` promise, so the catch in processVPSStream fires
+  // almost immediately and we mark the message as finished with a
+  // "(detenido)" tag.
+  const stopStream = useCallback(() => {
+    if (streamAbortRef.current) {
+      streamAbortRef.current.abort();
+      // Don't null the ref here — the processVPSStream's `finally` block
+      // is the single source of truth for releasing the handle, so the
+      // abort + cleanup happen in a deterministic order.
+    }
+  }, []);
 
   async function sendMessage() {
     const inputVal = input.trim();
@@ -1310,6 +1368,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         conversation_id: convId, _loading: true
       }]);
       setStreamingMsgId(msgId);
+      // Install a fresh AbortController for this stream — ChatInput's Stop
+      // button will call .abort() on it. Replaces any prior handle.
+      streamAbortRef.current = new AbortController();
 
       // Now get VPS token and stream — other devices already see the message
       const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
@@ -1483,10 +1544,36 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             textareaRef.current?.focus();
           }
         } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: msg.includes('fetch') ? 'Error de conexion. Intenta de nuevo.' : msg, _loading: false } : m));
+          // AbortError = the user clicked Stop. Treat as a clean cancellation:
+          // keep whatever the model already streamed, mark the message as
+          // finished (in_progress=false) with a small visual marker, and
+          // persist the partial content to Supabase so other devices see it.
+          const isAbort = e instanceof DOMException && e.name === "AbortError";
+          const finalContent = isAbort
+            ? (accumulatedText ? `${accumulatedText}\n\n_[Generación detenida]_` : "_[Generación detenida]_")
+            : (e instanceof Error ? e.message : String(e));
+          const finalDisplay = isAbort
+            ? finalContent
+            : (finalContent.includes('fetch') ? 'Error de conexion. Intenta de nuevo.' : finalContent);
+          try {
+            await supabase.from('messages').upsert({
+              id: msgId,
+              conversation_id: convId,
+              content: finalContent,
+              role: 'assistant',
+              in_progress: false,
+            });
+          } catch {}
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalDisplay, _loading: false } : m));
           setSending(false);
           setStreamingMsgId(null);
+          // Re-focus the textarea so the user can immediately type a follow-up.
+          textareaRef.current?.focus();
+        } finally {
+          // Always release the abort handle so the next sendMessage can install
+          // a fresh one. Without this the second stream would reuse a signal
+          // that's already aborted and fail immediately.
+          streamAbortRef.current = null;
         }
       };
 
@@ -1506,89 +1593,73 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     <div className="fixed inset-0 flex bg-transparent">
       {/* Sidebar */}
       <ConversationSidebar
-        showSidebar={showSidebar}
         conversations={conversations}
         activeConv={activeConv}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         userEmail={userEmail}
         profile={profile}
-        supabase={supabase}
         onSelectConv={selectConv}
         onDeleteConv={deleteConv}
         onNewConversation={newConversation}
         onShowAccountMenu={() => setShowAccountMenu(true)}
-        onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
-        onCloseSidebar={() => setShowSidebar(false)}
-        sidebarLock={sidebarLock}
-        setSidebarLock={setSidebarLock}
-        sidebarHovered={sidebarHovered}
-        setSidebarHovered={setSidebarHovered}
-        transitionEnabled={sidebarTransitionEnabled}
-        sidebarInitialized={sidebarInitialized}
+        showMobile={showSidebar}
+        onCloseMobile={() => setShowSidebar(false)}
+        disabled={isDisabled}
       />
-      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden" style={{ transition: "opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1)", opacity: showSidebar ? 1 : 0, pointerEvents: showSidebar ? "auto" : "none" }} onClick={() => setShowSidebar(false)} />
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Top bar */}
-        <header className="h-14 flex items-center justify-center px-4 shrink-0 md:hidden"
+        {/* Top bar — mobile only (md:hidden). Hamburger left, wordmark
+            centered, account chip right. No subscription indicator here —
+            it lives in the account menu modal where it belongs. */}
+        <header className="h-14 flex items-center justify-between px-4 shrink-0 md:hidden"
           style={{
-            background: "linear-gradient(180deg, rgba(38,38,38,0.98) 0%, rgba(28,28,28,0.99) 100%)",
+            backgroundColor: "color-mix(in srgb, var(--surface) 92%, transparent)",
             backdropFilter: "blur(20px)",
             borderBottom: "1px solid var(--border)",
           }}>
           <button onClick={() => setShowSidebar(true)}
-            className="absolute left-4 p-2 rounded-full transition-colors" style={{ color: "rgba(255,255,255,0.8)", backgroundColor: "transparent" }}
+            aria-label="Abrir menu"
+            className="p-2 rounded-lg transition-colors"
+            style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 2px 10px color-mix(in srgb, var(--primary) 35%, transparent)" }}>
-              <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-            </div>
-            <span className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>VeChat</span>
-          </div>
-          {/* Subscription indicator / Login button */}
-          {mounted ? (isLoggedIn && profile ? (
-            <button onClick={() => setShowAccountMenu(true)}
-              className="absolute right-4 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-80"
-              style={{
-                backgroundColor: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
-                  ? "color-mix(in srgb, var(--primary) 15%, transparent)" : "rgba(239,68,68,0.15)",
-                color: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
-                  ? "var(--primary)" : "var(--danger)",
-              }}>
-              <div className="w-1.5 h-1.5 rounded-full"
-                style={{
-                  backgroundColor: (profile.subscription_weeks ?? 0) > 0 || (profile.subscription_weeks ?? 0) < 0
-                    ? "var(--primary)" : "var(--danger)",
-                }} />
-              {(profile.subscription_weeks ?? 0) < 0 ? (
-                <span>Ilimitado</span>
-              ) : (profile.subscription_weeks ?? 0) > 0 ? (
-                <span>{profile.subscription_weeks} sem{(profile.subscription_weeks ?? 0) !== 1 ? "s" : ""}</span>
-              ) : (
-                <span>Expirado</span>
-              )}
-            </button>
+          <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
+          {mounted ? (
+            isLoggedIn && userEmail ? (
+              <button onClick={() => setShowAccountMenu(true)}
+                aria-label="Cuenta"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer transition-opacity hover:opacity-80"
+                style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+                {userEmail.charAt(0).toUpperCase()}
+              </button>
+            ) : (
+              <button onClick={() => setShowAuthPrompt(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
+                style={{ background: "var(--surface-hover)", color: "var(--text-primary)" }}>
+                Entrar
+              </button>
+            )
           ) : (
-            <button onClick={() => setShowAuthPrompt(true)}
-              className="absolute right-4 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", color: "white" }}>
-              Iniciar sesion
-            </button>
-          )) : null}
+            <div className="w-8 h-8" />
+          )}
         </header>
 
         {/* Messages */}
-        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}>
+        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}
+          style={{
+            // Soft fade at the bottom of the conversation so the edge
+            // between the last message and the input below dissolves
+            // instead of cutting sharply. The mask leaves the top 100%
+            // fully visible and only softens the last ~48px.
+            maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
+          }}>
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
@@ -1636,6 +1707,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onRemoveAttachment={removeAttachment}
               trendingTopSubOptions={visibleTrendingSections}
               trendingLoading={trendingLoading}
+              convId={null}
+              isStreaming={false}
             />
           ) : (<MessageList
               messages={messages}
@@ -1660,6 +1733,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             onSend={sendMessage}
             onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
             onRemoveAttachment={removeAttachment}
+            isStreaming={!!streamingMsgId}
+            onStop={stopStream}
+            convId={activeConv?.id}
           />
         </div>
         )}

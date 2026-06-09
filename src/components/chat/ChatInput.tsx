@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useRef, useState, useEffect, useLayoutEffect } from "react";
-import { useSpeechRecognitionServer } from "@/lib/voice-server";
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
+import { useSpeechRecognition } from "@/lib/voice";
 import ExpandInputModal from "./ExpandInputModal";
 
 type BlockReason = {
@@ -9,8 +9,6 @@ type BlockReason = {
   canSend: boolean;
   reason: string;
 };
-
-type FilePreview = File;
 
 type Props = {
   input: string;
@@ -23,8 +21,59 @@ type Props = {
   onSend: () => void;
   onFileSelect: (files: File[]) => void;
   onRemoveAttachment: (name: string, size: number) => void;
+  /** True while a model response is streaming in. The send button becomes a stop button. */
+  isStreaming?: boolean;
+  /** Called when the user clicks the stop button during streaming. */
+  onStop?: () => void;
+  /** Conversation id used to scope the localStorage draft. Pass null for the "new conversation" empty state. */
+  convId?: string | null;
   autoFocus?: boolean;
 };
+
+// localStorage key prefix for per-conversation drafts. The empty state
+// (no active conversation yet) shares a single "new" key.
+const DRAFT_KEY = (convId: string | null | undefined) =>
+  `vechat:draft:${convId ?? "new"}`;
+const DRAFT_SAVE_DEBOUNCE_MS = 400;
+const MAX_DRAFT_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — drafts older than this are ignored
+
+type StoredDraft = { v: string; t: number };
+function readDraft(convId: string | null | undefined): string {
+  if (typeof window === "undefined") return "";
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY(convId));
+    if (!raw) return "";
+    const parsed = JSON.parse(raw) as StoredDraft;
+    if (typeof parsed?.v !== "string") return "";
+    if (typeof parsed?.t !== "number") return parsed.v;
+    if (Date.now() - parsed.t > MAX_DRAFT_AGE_MS) {
+      localStorage.removeItem(DRAFT_KEY(convId));
+      return "";
+    }
+    return parsed.v;
+  } catch {
+    return "";
+  }
+}
+function writeDraft(convId: string | null | undefined, value: string) {
+  if (typeof window === "undefined") return;
+  try {
+    if (!value) {
+      localStorage.removeItem(DRAFT_KEY(convId));
+      return;
+    }
+    const payload: StoredDraft = { v: value, t: Date.now() };
+    localStorage.setItem(DRAFT_KEY(convId), JSON.stringify(payload));
+  } catch {
+    // Quota exceeded or private mode — silently ignore, draft just won't persist.
+  }
+}
+function clearDraft(convId: string | null | undefined) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(DRAFT_KEY(convId));
+  } catch {}
+}
 
 export default function ChatInput({
   input,
@@ -37,14 +86,25 @@ export default function ChatInput({
   onSend,
   onFileSelect,
   onRemoveAttachment,
+  isStreaming = false,
+  onStop,
+  convId = null,
   autoFocus,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isFocused, setIsFocused] = useState(false);
-  const [measuredHeight, setMeasuredHeight] = useState(24);
-  const [shape, setShape] = useState<"pill" | "box">("pill");
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  // Tracks whether the current `input` value originated from a localStorage
+  // draft. We use it to avoid wiping a draft before the user actually edits
+  // (e.g. when the parent re-renders the same value back to us).
+  const hydratedRef = useRef(false);
+  // Set true while we're programmatically restoring the draft — skip the
+  // "save" effect for one tick so we don't immediately re-write the same value.
+  const restoringRef = useRef(false);
+  const lastConvIdRef = useRef<string | null | undefined>(convId);
+  const dragCounterRef = useRef(0);
 
   // Voice input (STT). El mic se muestra deshabilitado (no oculto) si
   // el navegador no soporta Web Speech API, con un mensaje claro. El
@@ -57,11 +117,7 @@ export default function ChatInput({
   const baseTextRef = useRef("");
   const lastTranscriptRef = useRef("");
   const cursorPosRef = useRef<number | null>(null);
-  // Voice input (STT) — usa ElevenLabs Scribe corriendo en el proxy /api/stt
-  // en lugar de Web Speech API. Mejor para acento venezolano, ~$0.30/mes
-  // para tu uso. Es batch (no streaming): el transcript aparece cuando
-  // sueltas el botón, no en vivo. Si quieres streaming en vivo, dime.
-  const { isListening, isProcessing, transcript, error, isSupported, start, stop, reset } = useSpeechRecognitionServer({
+  const { isListening, transcript, error, isSupported, start, stop, reset } = useSpeechRecognition({
     lang: "es-VE",
   });
 
@@ -130,18 +186,56 @@ export default function ChatInput({
   // first so scrollHeight reflects natural content height, then cap at
   // 160px (~6 lines at 24px line-height). When the cap is hit, the
   // textarea scrolls internally; the project hides scrollbars globally.
-  // We also update `shape` and `measuredHeight` here so the wrapper can
-  // transition between pill (1 line) and box (2+ lines) and the expand
-  // button can appear at 5+ lines.
+  // The wrapper keeps a fixed `rounded-2xl` shape — the height grows
+  // monotonically, the geometry never changes.
   useLayoutEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
     const next = Math.min(ta.scrollHeight, 160);
     ta.style.height = `${next}px`;
-    setMeasuredHeight(next);
-    setShape(next > 40 ? "box" : "pill");
   }, [input, isExpanded]);
+
+  // Hydrate the draft when the conversation changes. The parent owns the
+  // `input` state, so we push the draft into it via setInput. We guard with
+  // a ref so we don't fight with the parent's own state updates.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const convChanged = lastConvIdRef.current !== convId;
+    if (!convChanged && hydratedRef.current) return;
+    lastConvIdRef.current = convId;
+    hydratedRef.current = true;
+    const draft = readDraft(convId);
+    // Only restore if the input is currently empty — we never want to
+    // clobber something the user just typed in another tab or that the
+    // parent is mid-updating.
+    if (draft) {
+      restoringRef.current = true;
+      setInput(draft);
+    }
+  }, [convId, setInput]);
+
+  // Persist the draft on every change, debounced. We skip the very first
+  // write after a hydration so we don't redundantly re-save the value we
+  // just read. Empty input = clear the draft.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (restoringRef.current) {
+      restoringRef.current = false;
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const handle = setTimeout(() => {
+      writeDraft(convId, input);
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [input, convId]);
+
+  // Clear the draft when the user successfully sends. Called from the
+  // parent's onSend via a side-effect: the parent calls setInput("")
+  // synchronously, our save effect above would still write the empty
+  // string after the debounce — which IS what we want (empty = clear).
+  // So we don't need an extra hook here.
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
@@ -157,8 +251,88 @@ export default function ChatInput({
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  // Drag & drop — wraps the input in a drop zone. dragenter/dragleave
+  // fire on every child element, so we use a counter to know when the
+  // cursor truly enters/leaves the wrapper. The overlay only renders
+  // while isDragging is true and is non-interactive (pointer-events:none)
+  // so it doesn't block the drop event.
+  const handleDragEnter = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    dragCounterRef.current += 1;
+    if (dragCounterRef.current === 1) setIsDragging(true);
+  };
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+    if (dragCounterRef.current === 0) setIsDragging(false);
+  };
+  const handleDragOver = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+  const handleDrop = (e: React.DragEvent) => {
+    if (!e.dataTransfer?.types?.includes("Files")) return;
+    e.preventDefault();
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length === 0) return;
+    const accepted: File[] = [];
+    for (const file of files) {
+      if (attachments.length + accepted.length >= 3) break;
+      if (file.size > 5 * 1024 * 1024) continue;
+      accepted.push(file);
+    }
+    if (accepted.length > 0) onFileSelect(accepted);
+  };
+
+  // Paste — intercept image data on the clipboard and convert to File
+  // objects. Only fires when the textarea is the active element. We don't
+  // preventDefault for non-image pastes — plain text behaves as usual.
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const images: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) images.push(file);
+      }
+    }
+    if (images.length === 0) return;
+    e.preventDefault();
+    const accepted: File[] = [];
+    for (const file of images) {
+      if (attachments.length + accepted.length >= 3) break;
+      if (file.size > 5 * 1024 * 1024) continue;
+      // Give the pasted file a sensible name — most clipboard images
+      // arrive unnamed (e.g. screenshots). Without a name the preview
+      // key collides and the remove button breaks.
+      const named = file.name && file.name.length > 0
+        ? file
+        : new File([file], `pasted-${Date.now()}.${(file.type.split("/")[1] || "png")}`, { type: file.type });
+      accepted.push(named);
+    }
+    if (accepted.length > 0) onFileSelect(accepted);
+  };
+
+  const handlePrimaryClick = useCallback(() => {
+    if (isStreaming) {
+      onStop?.();
+    } else {
+      onSend();
+    }
+  }, [isStreaming, onStop, onSend]);
+
   const block = getBlockReason();
-  const canSend = (input.trim() || attachments.length > 0) && !sending && block.canWrite;
+  const canSend = !isStreaming && (input.trim() || attachments.length > 0) && !sending && block.canWrite;
+  // The primary button is interactive in two mutually-exclusive cases:
+  // streaming (becomes Stop) or ready to send. If neither, it's disabled.
+  const primaryActive = isStreaming || canSend;
 
   return (
     <div className="px-4 pb-4 pt-2 flex-none">
@@ -219,23 +393,18 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Input pill — items-end anchors the 48px buttons to the bottom
-            of the container when the textarea grows, so they stay at the
-            user's thumb on mobile. The textarea uses self-center to keep
-            the text visually centered in 1-line mode.
-
-            Shape is dynamic: `rounded-full` for 1-line, `rounded-2xl`
-            for 2+ lines. The transition on `border-radius` runs at
-            0.2s so the shape change feels tied to the height change. */}
+        {/* Input wrapper — fixed rounded-2xl shape. The textarea's height
+            grows monotonically as the user types, but the wrapper geometry
+            stays the same. This is the "no jump" baseline. */}
         <div
-          className={`relative flex items-end gap-1.5 ${shape === "pill" ? "rounded-full" : "rounded-2xl"} pl-5 pr-2 py-2`}
+          className="relative flex items-end gap-1.5 rounded-2xl pl-5 pr-2 py-2"
           style={{
             backgroundColor: "rgba(30,30,34,0.9)",
             border: `1px solid ${isFocused ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)"}`,
             boxShadow: isFocused
               ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent), 0 12px 40px rgba(0,0,0,0.4)"
               : "0 6px 24px rgba(0,0,0,0.3)",
-            transition: "border-radius 0.2s var(--motion-standard), box-shadow 0.2s, border-color 0.2s",
+            transition: "box-shadow 0.2s, border-color 0.2s",
           }}
           onFocus={() => setIsFocused(true)}
           onBlur={(e) => {
@@ -243,11 +412,44 @@ export default function ChatInput({
               setIsFocused(false);
             }
           }}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
         >
+          {/* Drag & drop overlay — non-interactive, sits above the wrapper
+              content while a file is being dragged over the input. Uses
+              pointer-events:none so the drop event still reaches the
+              wrapper. The dashed border + icon are the only feedback. */}
+          {isDragging && (
+            <div
+              className="absolute inset-0 rounded-2xl pointer-events-none z-20 flex items-center justify-center"
+              style={{
+                backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+                border: "2px dashed var(--primary)",
+                borderRadius: "16px",
+              }}
+            >
+              <div
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+                style={{
+                  backgroundColor: "var(--surface)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-primary)",
+                }}
+              >
+                <svg className="w-4 h-4" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                Suelta el archivo
+              </div>
+            </div>
+          )}
+
           {/* Attach */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={attachments.length >= 3 || !block.canWrite || sending}
+            disabled={attachments.length >= 3 || !block.canWrite || sending || isStreaming}
             className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-colors hover:bg-white/10 disabled:opacity-30"
             style={{ color: "var(--text-tertiary)" }}
             title="Adjuntar archivo"
@@ -260,11 +462,9 @@ export default function ChatInput({
             onChange={handleFileSelect} className="hidden" />
 
           {/* Multi-line text area with auto-resize. Enter sends, Shift+Enter
-              inserts a newline (default textarea behavior — our onKeyDown
-              only intercepts plain Enter). Height is set dynamically by the
-              useLayoutEffect above, capped at 160px via maxHeight. The
-              `chat-input-field` class provides the 0.15s height transition
-              (defined in globals.css) so the resize feels smooth. */}
+              inserts a newline. Height is set dynamically by the
+              useLayoutEffect above, capped at 160px. Paste of an image
+              triggers the attach flow. */}
           <textarea
             ref={textareaRef}
             rows={1}
@@ -273,9 +473,14 @@ export default function ChatInput({
             onKeyDown={e => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                onSend();
+                if (isStreaming) {
+                  onStop?.();
+                } else if (canSend) {
+                  onSend();
+                }
               }
             }}
+            onPaste={handlePaste}
             placeholder={(() => {
               if (!isLoggedIn) return "Inicia sesion para chatear...";
               if (!block.canWrite) return "Sin suscripcion activa...";
@@ -296,12 +501,10 @@ export default function ChatInput({
           <div className="shrink-0">
             <button
               onClick={handleMicClick}
-              disabled={!isSupported || !block.canWrite || sending || isProcessing}
+              disabled={!isSupported || !block.canWrite || sending || isStreaming}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 !isSupported
                   ? "opacity-30 cursor-not-allowed"
-                  : isProcessing
-                  ? "opacity-70"
                   : isListening
                   ? "recording-pulse"
                   : "hover:bg-white/10"
@@ -313,20 +516,12 @@ export default function ChatInput({
               title={
                 !isSupported
                   ? "Tu navegador no soporta dictado por voz. Prueba Chrome o Safari."
-                  : isProcessing
-                  ? "Transcribiendo..."
                   : isListening
                   ? "Detener grabación"
                   : "Dictar mensaje"
               }
             >
-              {isProcessing ? (
-                // Spinner mientras ElevenLabs Scribe transcribe (~1-3s)
-                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={3} />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                </svg>
-              ) : isListening ? (
+              {isListening ? (
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <rect x="6" y="6" width="12" height="12" rx="2" />
                 </svg>
@@ -338,32 +533,52 @@ export default function ChatInput({
             </button>
           </div>
 
-          {/* Send — solid color, filled paper plane */}
+          {/* Primary action — Send (paper plane) when idle, Stop (square)
+              while streaming. Same 48px circle, same color treatment
+              shift. Disabled when neither case applies. */}
           <button
-            onClick={onSend}
-            disabled={!canSend}
+            onClick={handlePrimaryClick}
+            disabled={!primaryActive}
             className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200"
             style={{
-              backgroundColor: canSend ? "var(--primary)" : "rgba(255,255,255,0.05)",
-              color: canSend ? "white" : "var(--text-tertiary)",
+              backgroundColor: isStreaming
+                ? "var(--danger)"
+                : canSend
+                ? "var(--primary)"
+                : "rgba(255,255,255,0.05)",
+              color: primaryActive ? "white" : "var(--text-tertiary)",
             }}
-            title="Enviar"
+            title={isStreaming ? "Detener generación" : "Enviar"}
             onMouseEnter={(e) => {
-              if (canSend) e.currentTarget.style.backgroundColor = "var(--primary-hover)";
+              if (isStreaming) {
+                e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--danger) 85%, black)";
+              } else if (canSend) {
+                e.currentTarget.style.backgroundColor = "var(--primary-hover)";
+              }
             }}
             onMouseLeave={(e) => {
-              if (canSend) e.currentTarget.style.backgroundColor = "var(--primary)";
+              if (isStreaming) {
+                e.currentTarget.style.backgroundColor = "var(--danger)";
+              } else if (canSend) {
+                e.currentTarget.style.backgroundColor = "var(--primary)";
+              }
             }}
           >
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-            </svg>
+            {isStreaming ? (
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+              </svg>
+            )}
           </button>
 
           {/* Expand — full-screen editor for very long messages. Shown
               when the textarea hits ~5 lines. Sits absolute in the
               corner of the wrapper so it doesn't shift the layout. */}
-          {measuredHeight >= 120 && !isExpanded && (
+          {!isStreaming && input.length > 240 && !isExpanded && (
             <button
               onClick={() => setIsExpanded(true)}
               className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors z-10"

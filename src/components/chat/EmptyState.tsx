@@ -21,6 +21,9 @@ type ChatInputProps = {
   onSend: () => void;
   onFileSelect: (files: File[]) => void;
   onRemoveAttachment: (name: string, size: number) => void;
+  isStreaming?: boolean;
+  onStop?: () => void;
+  convId?: string | null;
   autoFocus?: boolean;
 };
 
@@ -158,7 +161,9 @@ export default function EmptyState(props: Props) {
           pointer-events-none on the wrapper + pointer-events-auto on
           the input itself, same as before. max-w-xl keeps the input
           visually lighter than the hero/footer so the cards get more
-          weight. */}
+          weight. convId={null} scopes the draft to a shared "new" key
+          since no conversation exists yet. isStreaming is always false
+          in this view (we're in the welcome state, not mid-response). */}
       <div className="flex-none max-w-xl mx-auto px-4 w-full z-10 pointer-events-none">
         <div className="pointer-events-auto">
           <ChatInput
@@ -166,6 +171,8 @@ export default function EmptyState(props: Props) {
             autoFocus
             getBlockReason={getBlockReason}
             isLoggedIn={isLoggedIn}
+            convId={null}
+            isStreaming={false}
           />
         </div>
       </div>
