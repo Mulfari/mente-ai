@@ -50,18 +50,36 @@ export async function POST(req: NextRequest) {
       // Deepgram: send raw audio bytes with model+language in the URL.
       // nova-3 is their latest, trained on LATAM Spanish. smart_format
       // auto-punctuates. Returns a tree of channels/alternatives.
+      //
+      // MediaRecorder in Chrome/Edge produces `audio/webm;codecs=opus`
+      // at 48kHz. Deepgram needs `encoding=opus` (not mimetype) to decode
+      // this correctly. Setting the wrong param is the #1 reason STT
+      // works in the browser console but transcribes garbage.
+      const uploadMime = (file as any).type || "audio/webm";
+      const isOpusWebm = uploadMime.includes("webm") || uploadMime.includes("opus");
+      const isMp4 = uploadMime.includes("mp4") || uploadMime.includes("aac");
+
       const url = new URL("https://api.deepgram.com/v1/listen");
       url.searchParams.set("model", "nova-3");
       url.searchParams.set("language", lang);
       url.searchParams.set("smart_format", "true");
       url.searchParams.set("punctuate", "true");
-      url.searchParams.set("mimetype", (file as any).type || "audio/webm");
+      // Tell Deepgram exactly what encoding is inside the container
+      if (isOpusWebm) {
+        url.searchParams.set("encoding", "opus");
+      } else if (isMp4) {
+        url.searchParams.set("encoding", "aac");
+      }
+      // Some browsers send raw audio without a container — let Deepgram
+      // auto-detect via sample rate hint
+      url.searchParams.set("sample_rate", "48000");
+      url.searchParams.set("channels", "1");
 
       const r = await fetch(url, {
         method: "POST",
         headers: {
           "Authorization": `Token ${DEEPGRAM_API_KEY}`,
-          "Content-Type": (file as any).type || "audio/webm",
+          "Content-Type": uploadMime,
         },
         body: file,
         signal: controller.signal,
