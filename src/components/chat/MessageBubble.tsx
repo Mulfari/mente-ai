@@ -46,7 +46,7 @@ export default function MessageBubble({
   // que useSpeechSynthesis: speak(), stop(), isSpeaking, progress (0-1),
   // charIndex (para resaltar la palabra actual). El charIndex ahora se
   // estima del progreso de tiempo del audio, no del evento `boundary`.
-  const { speak, stop, isSpeaking, currentText, isSupported, progress, charIndex } = useSpeechSynthesisServer();
+  const { speak, stop, isSpeaking, isLoading, currentText, isSupported, progress, charIndex } = useSpeechSynthesisServer();
   const isThisSpeaking = isSpeaking && currentText === message.content;
 
   // Resaltar la palabra actual durante TTS. Dividimos el contenido por
@@ -197,50 +197,69 @@ export default function MessageBubble({
 
         {/* Timestamp + speaker button (TTS). The speaker only shows on
             assistant messages that have finished streaming, on browsers
-            that support speechSynthesis. Cuando este bubble está siendo
-            leído, mostramos una mini-barra de progreso al lado del
-            timestamp para que se sepa cuánto falta. */}
+            that support TTS. Tres estados visuales:
+            1. Idle: bocina gris
+            2. Loading (Kokoro generando): spinner girando
+            3. Speaking: cuadrito + barra de progreso */}
         <div className="flex items-center gap-1.5 mt-1.5">
           <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
             {formatTime(message.created_at)}
           </span>
-          {!isUser && !isStreaming && isSupported && message.content && (
-            <button
-              onClick={() => (isThisSpeaking ? stop() : speak(message.content))}
-              className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-white/10"
-              style={{ color: isThisSpeaking ? "var(--primary)" : "var(--text-tertiary)" }}
-              title={isThisSpeaking ? "Detener lectura" : "Leer en voz alta"}
-              aria-label={isThisSpeaking ? "Detener lectura" : "Leer en voz alta"}
-            >
-              {isThisSpeaking ? (
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.506-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
-                </svg>
-              )}
-            </button>
-          )}
-          {isThisSpeaking && (
-            <div className="flex items-center gap-1.5 ml-1">
-              <div
-                className="h-1 rounded-full overflow-hidden"
-                style={{ width: "60px", backgroundColor: "color-mix(in srgb, var(--primary) 20%, transparent)" }}
+          {!isUser && !isStreaming && isSupported && message.content && (() => {
+            const isThisLoading = isLoading && currentText === message.content;
+            return (
+              <button
+                onClick={() => (isThisSpeaking || isThisLoading ? stop() : speak(message.content))}
+                className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-white/10"
+                style={{ color: isThisSpeaking ? "var(--primary)" : "var(--text-tertiary)" }}
+                title={isThisSpeaking ? "Detener lectura" : isThisLoading ? "Generando audio..." : "Leer en voz alta"}
+                aria-label={isThisSpeaking ? "Detener lectura" : isThisLoading ? "Generando audio" : "Leer en voz alta"}
               >
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${Math.round(progress * 100)}%`,
-                    backgroundColor: "var(--primary)",
-                    transition: "width 0.1s linear",
-                  }}
-                />
-              </div>
-              <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
-                {Math.round(progress * 100)}%
-              </span>
+                {isThisSpeaking ? (
+                  <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="6" y="6" width="12" height="12" rx="2" />
+                  </svg>
+                ) : isThisLoading ? (
+                  // Spinner mientras Kokoro genera el audio (~1-3s)
+                  <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={3} />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.506-1.938-1.354A9.01 9.01 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+                  </svg>
+                )}
+              </button>
+            );
+          })()}
+          {(isLoading || isSpeaking) && (currentText === message.content || isThisSpeaking) && (
+            <div className="flex items-center gap-1.5 ml-1">
+              {isLoading && currentText === message.content ? (
+                // Texto "Generando..." durante el fetch
+                <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
+                  Generando...
+                </span>
+              ) : (
+                <>
+                  <div
+                    className="h-1 rounded-full overflow-hidden"
+                    style={{ width: "60px", backgroundColor: "color-mix(in srgb, var(--primary) 20%, transparent)" }}
+                  >
+                    <div
+                      className="h-full rounded-full"
+                      style={{
+                        width: `${Math.round(progress * 100)}%`,
+                        backgroundColor: "var(--primary)",
+                        transition: "width 0.1s linear",
+                      }}
+                    />
+                  </div>
+                  <span className="text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
+                    {Math.round(progress * 100)}%
+                  </span>
+                </>
+              )}
             </div>
           )}
         </div>

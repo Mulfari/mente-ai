@@ -30,11 +30,13 @@ export function setStoredLang(lang: VoiceLang) {
 // Calidad: humana (top 2 mundial en TTS Arena). Costo: $0 (modelo local
 // en el VPS, 2 cores, real-time factor ~0.6 → 5s de audio en ~3s).
 //
+// Estados que expone (además de los del Web Speech API):
+//   - isLoading: true mientras se hace el fetch al VPS (típicamente 1-3s)
+//   - error: mensaje si algo falla (TTS caído, sin red, etc.)
+//
 // Diferencias vs Web Speech API:
 //   - El "boundary" event (resaltar palabra por palabra) ya no existe —
 //     usamos timeupdate y estimamos charIndex proporcional.
-//   - isSupported = true si el browser soporta HTML5 Audio Y el endpoint
-//     TTS responde. Cacheamos el resultado.
 
 type UseSpeechSynthesisOptions = {
   lang?: VoiceLang;
@@ -50,6 +52,7 @@ const DEFAULT_VOICE = "ef_dora"; // Kokoro Spanish female
 export function useSpeechSynthesisServer(options: UseSpeechSynthesisOptions = {}) {
   const { lang = "es-VE" } = options;
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [currentText, setCurrentText] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -85,6 +88,7 @@ export function useSpeechSynthesisServer(options: UseSpeechSynthesisOptions = {}
       } catch {}
     }
     setIsSpeaking(false);
+    setIsLoading(false);
     setCurrentText(null);
     setProgress(0);
     setCharIndex(0);
@@ -105,19 +109,25 @@ export function useSpeechSynthesisServer(options: UseSpeechSynthesisOptions = {}
         audioRef.current = null;
       }
 
+      // Limpia el texto antes de mandarlo a Kokoro: saca emojis y markdown
+      // que el TTS leería raro ("carita sonriente", "asterisco", etc.).
+      const cleaned = cleanTextForTTS(text);
+
       currentTextRef.current = text;
       setCurrentText(text);
       setProgress(0);
       setCharIndex(0);
-      textLengthRef.current = text.length;
+      textLengthRef.current = cleaned.length;
       setError(null);
+      setIsLoading(true);
 
       let url: string;
       try {
-        url = await getOrFetchAudio(text, cacheRef.current, setError);
+        url = await getOrFetchAudio(cleaned, cacheRef.current, setError);
         if (currentTextRef.current !== text) return; // user moved on
       } catch (e: any) {
         setError(e?.message || "Error al generar audio");
+        setIsLoading(false);
         setIsSpeaking(false);
         setCurrentText(null);
         return;
@@ -131,12 +141,14 @@ export function useSpeechSynthesisServer(options: UseSpeechSynthesisOptions = {}
 
       audio.onended = () => {
         setIsSpeaking(false);
+        setIsLoading(false);
         setCurrentText(null);
         setProgress(1);
         setCharIndex(0);
       };
       audio.onerror = () => {
         setIsSpeaking(false);
+        setIsLoading(false);
         setCurrentText(null);
         setError("No se pudo reproducir el audio");
         setProgress(0);
@@ -148,19 +160,27 @@ export function useSpeechSynthesisServer(options: UseSpeechSynthesisOptions = {}
         setProgress(p);
         setCharIndex(Math.floor(p * textLengthRef.current));
       };
-      audio.onplay = () => setIsSpeaking(true);
+      audio.onplay = () => {
+        setIsLoading(false);
+        setIsSpeaking(true);
+      };
 
       try {
         await audio.play();
       } catch (e: any) {
         setError("Click para permitir audio del navegador");
+        setIsLoading(false);
         setIsSpeaking(false);
       }
     },
     [isSupported, stop]
   );
 
-  return { speak, stop, isSpeaking, currentText, isSupported, progress, charIndex, error };
+  return {
+    speak, stop,
+    isSpeaking, isLoading, currentText, isSupported,
+    progress, charIndex, error,
+  };
 }
 
 async function getOrFetchAudio(
@@ -204,6 +224,43 @@ async function getOrFetchAudio(
   }
   cache.set(key, url);
   return url;
+}
+
+// === cleanTextForTTS ===
+// Limpia el texto antes de mandarlo a Kokoro. Sin esto, el TTS intenta
+// pronunciar emojis como "carita sonriente", markdown como "asterisco
+// asterisco", URLs enteras, etc. El usuario reportó esto.
+//
+// - Quita emojis (rango Unicode principal + symbols + pictographs)
+// - Quita markdown básico (`**negrita**`, `*italic*`, `~~tachado~~`, `## h1`)
+// - Quita URLs (http(s)://...)
+// - Colapsa espacios múltiples
+function cleanTextForTTS(text: string): string {
+  return text
+    // Quitar URLs
+    .replace(/https?:\/\/\S+/g, "")
+    // Quitar bloques de código (```...```)
+    .replace(/```[\s\S]*?```/g, " bloque de código ")
+    // Quitar código inline (`code`)
+    .replace(/`([^`]+)`/g, "$1")
+    // Quitar bold (**texto**) → texto
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    // Quitar italic (*texto* o _texto_) → texto
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/_([^_]+)_/g, "$1")
+    // Quitar tachado (~~texto~~) → texto
+    .replace(/~~([^~]+)~~/g, "$1")
+    // Quitar headers (# titulo) → titulo
+    .replace(/^#{1,6}\s*/gm, "")
+    // Quitar emojis (rango principal + symbols + pictographs + emoticons)
+    .replace(/[\u{1F300}-\u{1FAFF}]/gu, "")
+    .replace(/[\u{2600}-\u{27BF}]/gu, "")
+    .replace(/[\u{1F000}-\u{1F2FF}]/gu, "")
+    // Quitar bullets al inicio de linea (- o *)
+    .replace(/^\s*[-*+]\s+/gm, "")
+    // Colapsar espacios y newlines
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function textHash(text: string): string {
