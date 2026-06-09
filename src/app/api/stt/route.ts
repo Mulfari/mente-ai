@@ -1,9 +1,10 @@
-// /api/stt — speech-to-text proxy. Prefers Deepgram Nova-3 (best for
-// Venezuelan Spanish) and falls back to ElevenLabs Scribe if no Deepgram
-// key is set.
+// /api/stt — speech-to-text proxy. Prefers ElevenLabs Scribe (most
+// reliable with WAV input) and falls back to Deepgram Nova-3 if no
+// ElevenLabs key is set.
 //
-// Browser uploads audio (webm/opus from MediaRecorder) to this route;
-// the route forwards to the STT provider and returns the transcript JSON.
+// Browser uploads audio (now WAV 16kHz mono PCM, converted in-browser
+// from webm/opus via AudioContext) to this route; the route forwards to
+// the STT provider and returns the transcript JSON.
 //
 // Why proxy: the API key never goes to the browser. The browser only
 // sees our /api/stt which is server-to-server authenticated.
@@ -46,7 +47,38 @@ export async function POST(req: NextRequest) {
   const timer = setTimeout(() => controller.abort(), 30_000);
 
   try {
-    if (DEEPGRAM_API_KEY) {
+    if (ELEVENLABS_API_KEY) {
+      // ElevenLabs Scribe (preferred) — best general quality, with WAV input
+      // from the browser this is the most reliable.
+      const upstream = new FormData();
+      upstream.append("file", file, (file as any).name || "recording.wav");
+      upstream.append("model_id", "scribe_v1");
+      upstream.append("language_code", lang);
+
+      const r = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+        method: "POST",
+        headers: { "xi-api-key": ELEVENLABS_API_KEY },
+        body: upstream,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+
+      if (!r.ok) {
+        const errText = await r.text().catch(() => "");
+        console.error("[stt] scribe error:", r.status, errText.slice(0, 200));
+        return NextResponse.json(
+          { error: "scribe failed", upstream: r.status, body: errText.slice(0, 200) },
+          { status: 502 }
+        );
+      }
+
+      const data = await r.json();
+      return NextResponse.json({
+        text: (data.text || "").trim(),
+        language: data.language_code || lang,
+        provider: "elevenlabs",
+      });
+    } else if (DEEPGRAM_API_KEY) {
       // Deepgram: send raw audio bytes with model+language in the URL.
       // nova-3 is their latest, trained on LATAM Spanish. smart_format
       // auto-punctuates. Returns a tree of channels/alternatives.
@@ -104,35 +136,12 @@ export async function POST(req: NextRequest) {
         provider: "deepgram",
       });
     } else {
-      // ElevenLabs Scribe fallback
-      const upstream = new FormData();
-      upstream.append("file", file, (file as any).name || "recording.webm");
-      upstream.append("model_id", "scribe_v1");
-      upstream.append("language_code", lang);
-
-      const r = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
-        method: "POST",
-        headers: { "xi-api-key": ELEVENLABS_API_KEY },
-        body: upstream,
-        signal: controller.signal,
-      });
+      // No provider configured
       clearTimeout(timer);
-
-      if (!r.ok) {
-        const errText = await r.text().catch(() => "");
-        console.error("[stt] scribe error:", r.status, errText.slice(0, 200));
-        return NextResponse.json(
-          { error: "scribe failed", upstream: r.status, body: errText.slice(0, 200) },
-          { status: 502 }
-        );
-      }
-
-      const data = await r.json();
-      return NextResponse.json({
-        text: (data.text || "").trim(),
-        language: data.language_code || lang,
-        provider: "elevenlabs",
-      });
+      return NextResponse.json(
+        { error: "STT no configurado" },
+        { status: 503 }
+      );
     }
   } catch (err: any) {
     clearTimeout(timer);

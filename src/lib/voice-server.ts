@@ -346,23 +346,31 @@ export function useSpeechRecognitionServer(options: {
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
 
-        const blob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
+        const rawBlob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
         chunksRef.current = [];
-        if (blob.size < 1000) {
+        if (rawBlob.size < 1000) {
           // Too short, probably accidental click
           setIsListening(false);
           return;
         }
         setIsProcessing(true);
         try {
+          // Convert webm/opus from MediaRecorder → WAV 16kHz mono PCM.
+          // Most STT services (ElevenLabs Scribe, Deepgram, Whisper) handle
+          // WAV much more reliably than webm. Decoding the webm in-browser
+          // via AudioContext and re-encoding as standard PCM WAV removes
+          // all "container/encoding" mismatches that cause garbage
+          // transcriptions.
+          const wavBlob = await convertToWav(rawBlob);
+
           const form = new FormData();
-          form.append("audio", blob, "recording.webm");
+          form.append("audio", wavBlob, "recording.wav");
           form.append("language", lang.split("-")[0] || "es"); // "es-VE" -> "es"
 
           const res = await fetch(STT_ENDPOINT, { method: "POST", body: form });
           if (!res.ok) {
             const errBody = await res.text().catch(() => "");
-            const msg = `STT error: ${res.status}`;
+            const msg = `STT error: ${res.status}: ${errBody.slice(0, 100)}`;
             setError(msg);
             onErrorRef.current?.(msg);
             return;
@@ -420,4 +428,82 @@ export function useSpeechRecognitionServer(options: {
   }, []);
 
   return { isListening, isProcessing, transcript, error, isSupported, start, stop, reset };
+}
+
+// === Audio conversion: webm/opus → WAV 16kHz mono PCM ===
+//
+// MediaRecorder produces webm/opus (Chrome) or mp4/aac (Safari). Most
+// STT services handle WAV PCM much more reliably than containerized
+// formats. This function:
+//   1. Decodes the original audio in the browser via Web Audio API
+//   2. Resamples to 16kHz mono (the sweet spot for STT services)
+//   3. Encodes as 16-bit PCM WAV (RIFF header + raw samples)
+async function convertToWav(blob: Blob): Promise<Blob> {
+  // Use anyAudioContext to avoid issues in older Safari
+  const Ctx: typeof AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
+  const arrayBuffer = await blob.arrayBuffer();
+  const ctx = new Ctx();
+  let audioBuffer: AudioBuffer;
+  try {
+    audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+  } catch (e) {
+    // If decoding fails (corrupt or unsupported), fall back to the raw blob
+    ctx.close();
+    throw new Error("No se pudo decodificar el audio. Intenta de nuevo.");
+  }
+
+  const targetSampleRate = 16000;
+  const numChannels = 1;
+
+  // Resample + mix to mono using OfflineAudioContext. For 1-channel source
+  // this is a straight resample; for stereo it also downmixes.
+  const offlineCtx = new OfflineAudioContext(
+    numChannels,
+    Math.ceil(audioBuffer.duration * targetSampleRate),
+    targetSampleRate
+  );
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  source.connect(offlineCtx.destination);
+  source.start();
+  const rendered = await offlineCtx.startRendering();
+
+  // Encode as 16-bit PCM WAV (RIFF header + samples)
+  const numSamples = rendered.length;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = targetSampleRate * blockAlign;
+  const dataSize = numSamples * blockAlign;
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  const writeStr = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i));
+  };
+
+  writeStr(0, "RIFF");
+  view.setUint32(4, 36 + dataSize, true);
+  writeStr(8, "WAVE");
+  writeStr(12, "fmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true); // PCM
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, targetSampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, 16, true); // bits per sample
+  writeStr(36, "data");
+  view.setUint32(40, dataSize, true);
+
+  // PCM data — channel 0 only (mono)
+  const channel = rendered.getChannelData(0);
+  let offset = 44;
+  for (let i = 0; i < numSamples; i++) {
+    const s = Math.max(-1, Math.min(1, channel[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    offset += 2;
+  }
+
+  ctx.close();
+  return new Blob([buffer], { type: "audio/wav" });
 }
