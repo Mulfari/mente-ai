@@ -34,8 +34,14 @@ export async function POST(req: NextRequest) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
+  // Build the upstream URL — strip trailing slash from VPS_URL to avoid
+  // `//api/tts` which some servers (this one) return 404 for.
+  const baseUrl = (VPS_URL || "").replace(/\/+$/, "");
+  const upstreamUrl = `${baseUrl}${TTS_PATH}`;
+  console.log(`[tts-proxy] forwarding to ${upstreamUrl}`);
+
   try {
-    const upstream = await fetch(`${VPS_URL}${TTS_PATH}`, {
+    const upstream = await fetch(upstreamUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -50,9 +56,9 @@ export async function POST(req: NextRequest) {
 
     if (!upstream.ok) {
       const errText = await upstream.text().catch(() => "");
-      console.error("[tts-proxy] upstream error:", upstream.status, errText.slice(0, 200));
+      console.error("[tts-proxy] upstream error:", upstream.status, "url:", upstreamUrl, "body:", errText.slice(0, 200));
       return NextResponse.json(
-        { error: "upstream tts failed", upstream: upstream.status },
+        { error: "upstream tts failed", upstream: upstream.status, url: upstreamUrl, body: errText.slice(0, 200) },
         { status: 502 }
       );
     }
