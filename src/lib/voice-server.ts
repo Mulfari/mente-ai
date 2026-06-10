@@ -292,8 +292,9 @@ export function useSpeechRecognitionServer(options: {
   lang?: VoiceLang;
   onFinalResult?: (text: string) => void;
   onError?: (message: string) => void;
+  onAutoSend?: (text: string) => void;
 } = {}) {
-  const { lang = "es-VE", onFinalResult, onError } = options;
+  const { lang = "es-VE", onFinalResult, onError, onAutoSend } = options;
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -302,11 +303,17 @@ export function useSpeechRecognitionServer(options: {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const levelRef = useRef(0); // current amplitude 0..1, read by UI rAF loop
+  const cancelledRef = useRef(false);
   const onFinalRef = useRef(onFinalResult);
   const onErrorRef = useRef(onError);
+  const onAutoSendRef = useRef(onAutoSend);
   const streamRef = useRef<MediaStream | null>(null);
   onFinalRef.current = onFinalResult;
   onErrorRef.current = onError;
+  onAutoSendRef.current = onAutoSend;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -324,10 +331,41 @@ export function useSpeechRecognitionServer(options: {
     }
     setTranscript("");
     setError(null);
+    cancelledRef.current = false;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+
+      // AudioContext + AnalyserNode for the live waveform visualizer.
+      // Runs alongside MediaRecorder reading the same mic stream.
+      // The analyser feeds levelRef 60x/sec which the UI consumes in
+      // requestAnimationFrame to draw the bars.
+      const Ctx: typeof AudioContext =
+        (window as any).AudioContext || (window as any).webkitAudioContext;
+      const ctx = new Ctx();
+      audioCtxRef.current = ctx;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      let raf: number;
+      const tick = () => {
+        analyser.getByteTimeDomainData(data);
+        // RMS amplitude for a stable level
+        let sum = 0;
+        for (let i = 0; i < data.length; i++) {
+          const v = (data[i] - 128) / 128;
+          sum += v * v;
+        }
+        const rms = Math.sqrt(sum / data.length);
+        levelRef.current = Math.min(1, rms * 2.5);
+        raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+
       // webm/opus en Chrome/Edge/Firefox, mp4 en Safari. Scribe acepta ambos.
       const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
         ? "audio/webm;codecs=opus"
@@ -342,9 +380,23 @@ export function useSpeechRecognitionServer(options: {
         if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
       };
       recorder.onstop = async () => {
-        // Stop mic tracks (browser shows red dot otherwise)
+        // Cleanup the level meter
+        cancelAnimationFrame(raf);
+        levelRef.current = 0;
+        if (audioCtxRef.current) {
+          try { await audioCtxRef.current.close(); } catch {}
+          audioCtxRef.current = null;
+        }
+        analyserRef.current = null;
         streamRef.current?.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+
+        if (cancelledRef.current) {
+          // User cancelled — drop the audio
+          setIsListening(false);
+          setIsProcessing(false);
+          return;
+        }
 
         const rawBlob = new Blob(chunksRef.current, { type: mimeType || "audio/webm" });
         chunksRef.current = [];
@@ -380,6 +432,7 @@ export function useSpeechRecognitionServer(options: {
           if (text) {
             setTranscript(text);
             onFinalRef.current?.(text);
+            onAutoSendRef.current?.(text);
           }
         } catch (e: any) {
           const msg = e?.message || "Error al transcribir";
@@ -414,6 +467,15 @@ export function useSpeechRecognitionServer(options: {
     // onstop will set isListening=false after the upload completes
   }, []);
 
+  const cancel = useCallback(() => {
+    // Stop recording AND drop the audio (don't transcribe, don't send)
+    cancelledRef.current = true;
+    const r = mediaRecorderRef.current;
+    if (r && r.state !== "inactive") {
+      try { r.stop(); } catch {}
+    }
+  }, []);
+
   const reset = useCallback(() => {
     setTranscript("");
     setError(null);
@@ -427,7 +489,11 @@ export function useSpeechRecognitionServer(options: {
     };
   }, []);
 
-  return { isListening, isProcessing, transcript, error, isSupported, start, stop, reset };
+  return {
+    isListening, isProcessing, transcript, error, isSupported,
+    start, stop, cancel, reset,
+    getLevel: () => levelRef.current,
+  };
 }
 
 // === Audio conversion: webm/opus → WAV 16kHz mono PCM ===

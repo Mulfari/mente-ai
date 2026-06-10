@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
-import { useSpeechRecognition } from "@/lib/voice";
+import { useSpeechRecognitionServer } from "@/lib/voice-server";
 import ExpandInputModal from "./ExpandInputModal";
 
 type BlockReason = {
@@ -117,9 +117,31 @@ export default function ChatInput({
   const baseTextRef = useRef("");
   const lastTranscriptRef = useRef("");
   const cursorPosRef = useRef<number | null>(null);
-  const { isListening, transcript, error, isSupported, start, stop, reset } = useSpeechRecognition({
+  // Voice input (STT) — ElevenLabs Scribe via /api/stt. Estilo Gemini:
+  // mientras el usuario habla vemos ondas animadas (no texto). Al soltar,
+  // se manda a transcribir (~1-3s) y luego onAutoSend envía el mensaje
+  // automáticamente. Si el usuario se arrepiente, X para cancelar.
+  const {
+    isListening, isProcessing, transcript, error, isSupported,
+    start, stop, cancel, reset, getLevel,
+  } = useSpeechRecognitionServer({
     lang: "es-VE",
+    onAutoSend: (text: string) => {
+      // Fill the input with the transcript, then send immediately.
+      // We can't use the functional updater (the prop signature is just
+      // (val: string) => void) so we read the current input via the
+      // ref'd element or just use the latest transcript + text.
+      const current = (typeof document !== "undefined"
+        ? (document.querySelector("textarea") as HTMLTextAreaElement | null)?.value
+        : "") || "";
+      const sep = current && !current.endsWith(" ") ? " " : "";
+      setInput((current + sep + text).trim());
+      requestAnimationFrame(() => onSend());
+      reset();
+    },
   });
+  // Canvas for the live waveform. rAF draws bars based on getLevel().
+  const waveformCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Cuando cambia el transcript mientras escucha, sincronizamos con el input.
   // El formato es: <texto base que tenía> + (espacio si hace falta) + <transcript>.
