@@ -447,31 +447,22 @@ function SidebarBody({
       >
         {expanded ? (
           <>
-            {/* "+ Nuevo chat" — primary action. Subtle border + filled-on-hover
-                so it reads as a button, not a row. */}
+            {/* "+ Nuevo chat" — primary action. Same visual weight as a
+                conv row, but bolder text + icon-first. No background or
+                border so it sits flush with the list. */}
             <button
               onClick={onNewConversation}
               disabled={!canInteract}
               className="group w-full flex items-center gap-2 h-9 px-2.5 rounded-lg text-[13px] font-semibold cursor-pointer transition-colors duration-150"
-              style={{
-                color: "var(--text-primary)",
-                backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
-                border: "1px solid color-mix(in srgb, var(--primary) 18%, transparent)",
-              }}
+              style={{ color: "var(--text-primary)" }}
               onMouseEnter={(e) => {
                 if (!canInteract) return;
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor =
-                  "color-mix(in srgb, var(--primary) 18%, transparent)";
-                el.style.borderColor =
-                  "color-mix(in srgb, var(--primary) 32%, transparent)";
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                  "var(--surface-hover)";
               }}
               onMouseLeave={(e) => {
-                const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor =
-                  "color-mix(in srgb, var(--primary) 8%, transparent)";
-                el.style.borderColor =
-                  "color-mix(in srgb, var(--primary) 18%, transparent)";
+                (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                  "transparent";
               }}
             >
               <NewChatIcon />
@@ -718,24 +709,22 @@ export default function ConversationSidebar({
   void profile;
 
   // ── Desktop collapse/expand state ──
-  // `lock` persists to localStorage: "locked" keeps the sidebar open at all
-  // times, "unlocked" lets it collapse on mouse-leave. We hydrate from
-  // localStorage in an effect (not in the useState initializer) to avoid the
-  // SSR/CSR mismatch that would otherwise happen on the first paint.
-  const [lock, setLock] = React.useState<"locked" | "unlocked">("unlocked");
-  const [hovered, setHovered] = React.useState(false);
+  // Single boolean `isOpen`. Default = closed (60px). Persisted in
+  // localStorage so the user's preference sticks across sessions. No more
+  // hover-to-expand, no more lock concept — a deterministic toggle.
+  const [isOpen, setIsOpen] = React.useState(false);
   const [initialized, setInitialized] = React.useState(false);
   const [transitionEnabled, setTransitionEnabled] = React.useState(false);
-  // Track whether the cursor has entered the sidebar at least once — without
-  // this, the first paint fires a synthetic mouseLeave that would collapse
-  // the sidebar back to 60px right after the entrance animation.
-  const hasEnteredRef = React.useRef(false);
+  // Ref to the outer desktop wrapper. Used by the document click listener
+  // to decide whether a click landed inside the sidebar (do nothing) or
+  // outside (close it).
+  const desktopWrapperRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    const stored = localStorage.getItem("vechat-sidebar-lock");
-    if (stored === "locked" || stored === "unlocked") {
-      setLock(stored);
+    const stored = localStorage.getItem("vechat-sidebar-open");
+    if (stored === "true" || stored === "false") {
+      setIsOpen(stored === "true");
     }
     setInitialized(true);
     // Enable the width transition on the next frame so the initial mount
@@ -746,23 +735,33 @@ export default function ConversationSidebar({
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
-    localStorage.setItem("vechat-sidebar-lock", lock);
-  }, [lock]);
+    if (initialized) {
+      localStorage.setItem("vechat-sidebar-open", isOpen ? "true" : "false");
+    }
+  }, [isOpen, initialized]);
 
-  // Expanded = initialized AND (locked OR hovered). The `initialized` gate
-  // forces the sidebar to render collapsed on first paint, then expand on
-  // the next tick — that's what produces the 60→280 entrance.
-  const expanded = initialized && (lock === "locked" || hovered);
+  // Click outside the sidebar → close it. Only fires when the sidebar is
+  // currently open. The listener is `mousedown` (not `click`) so the close
+  // happens before any other handler on the target — feels snappier than
+  // waiting for the click event to bubble up.
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handler = (e: MouseEvent) => {
+      const root = desktopWrapperRef.current;
+      if (!root) return;
+      if (e.target instanceof Node && root.contains(e.target)) return;
+      setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [isOpen]);
 
-  const toggleLock = () => {
-    setLock((cur) => (cur === "locked" ? "unlocked" : "locked"));
-  };
+  // `initialized` gates the first paint so the sidebar can render collapsed
+  // (60px) on SSR, then potentially open on the next tick if the user
+  // previously had it open — that's the entrance animation.
+  const expanded = initialized && isOpen;
 
-  const onToggleExpanded = () => {
-    // Called from the collapsed-mode expand button. Toggles lock so the
-    // sidebar stays open after the click.
-    setLock((cur) => (cur === "locked" ? "unlocked" : "locked"));
-  };
+  const onToggleExpanded = () => setIsOpen((cur) => !cur);
 
   // ── Mobile sheet state ──
   // The mobile sidebar slides in from the left when `showMobile` is true.
@@ -796,17 +795,11 @@ export default function ConversationSidebar({
     <>
       {/* Desktop sidebar */}
       <div
+        ref={desktopWrapperRef}
         className="relative shrink-0 hidden md:block"
         style={{
           width: expanded ? EXPANDED_W : COLLAPSED_W,
           transition: transitionEnabled ? WIDTH_TRANSITION : "none",
-        }}
-        onMouseEnter={() => {
-          hasEnteredRef.current = true;
-          if (lock === "unlocked") setHovered(true);
-        }}
-        onMouseLeave={() => {
-          if (hasEnteredRef.current && lock === "unlocked") setHovered(false);
         }}
       >
         <SidebarBody
@@ -820,7 +813,7 @@ export default function ConversationSidebar({
           onNewConversation={onNewConversation}
           onShowAccountMenu={onShowAccountMenu}
           expanded={expanded}
-          onToggleExpanded={toggleLock}
+          onToggleExpanded={onToggleExpanded}
           disabled={!!disabled}
           variant="desktop"
         />
