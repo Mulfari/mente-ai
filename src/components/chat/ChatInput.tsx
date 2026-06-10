@@ -368,11 +368,12 @@ export default function ChatInput({
       className="px-3 sm:px-4 pt-2 flex-none"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
-      {/* Width grows aggressively on larger screens because the input is
-          the primary affordance and the user wants horizontal room to
-          write. The chat messages above stay at 3xl so the input reads
-          as the dominant element on the screen at desktop sizes. */}
-      <div className="max-w-3xl md:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto">
+      {/* Width grows aggressively on larger screens. Bumped the 2xl ceiling
+          to 7xl (1280px) so on a 1536+ px display the input clearly
+          dominates the chat area below it. The chat messages above stay
+          at 3xl, which is the desired visual hierarchy: the input is
+          the dominant element. */}
+      <div className="max-w-3xl md:max-w-4xl xl:max-w-5xl 2xl:max-w-7xl mx-auto">
         {/* Pill de estado cuando está grabando — sobre el input. */}
         {isListening && (
           <div
