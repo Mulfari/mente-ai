@@ -41,7 +41,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      clerkJSUrl="https://clerk.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+    >
       <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
         <head>
           <script dangerouslySetInnerHTML={{
