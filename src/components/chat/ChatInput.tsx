@@ -368,10 +368,11 @@ export default function ChatInput({
       className="px-3 sm:px-4 pt-2 flex-none"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
-      {/* Width grows on larger screens: 768px mobile/tablet, 896px laptop,
-          1024px desktop, 1152px ultrawide. Matches MessageList's width so
-          the input never feels narrower than the chat above it. */}
-      <div className="max-w-3xl xl:max-w-4xl 2xl:max-w-5xl mx-auto">
+      {/* Width grows aggressively on larger screens because the input is
+          the primary affordance and the user wants horizontal room to
+          write. The chat messages above stay at 3xl so the input reads
+          as the dominant element on the screen at desktop sizes. */}
+      <div className="max-w-3xl md:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto">
         {/* Pill de estado cuando está grabando — sobre el input. */}
         {isListening && (
           <div
