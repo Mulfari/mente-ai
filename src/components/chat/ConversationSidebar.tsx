@@ -181,6 +181,24 @@ function CollapseExpandIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
+function CloseIcon() {
+  return (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6 18L18 6M6 6l12 12"
+      />
+    </svg>
+  );
+}
+
 type RowProps = {
   conv: Conversation;
   isActive: boolean;
@@ -228,7 +246,7 @@ function ConversationRow({
     >
       {isActive && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full"
           style={{ backgroundColor: "var(--primary)" }}
         />
       )}
@@ -337,7 +355,7 @@ function SidebarBody({
         pointerEvents: disabled ? "none" : "auto",
       }}
     >
-      {/* Top bar — brand + collapse */}
+      {/* Top bar — brand + collapse (desktop) / brand + close X (mobile) */}
       <div
         className="h-14 flex items-center shrink-0"
         style={{ paddingLeft: expanded ? 16 : 0, paddingRight: expanded ? 12 : 0 }}
@@ -353,24 +371,46 @@ function SidebarBody({
                 VeChat
               </span>
             </div>
-            {!isMobile && canInteract && (
-              <button
-                onClick={onToggleExpanded}
-                aria-label="Colapsar sidebar"
-                title="Colapsar"
-                className="ml-auto p-1.5 rounded-lg transition-colors duration-150"
-                style={{ color: "var(--text-tertiary)" }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    "var(--surface-hover)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.backgroundColor =
-                    "transparent";
-                }}
-              >
-                <CollapseIcon collapsed={false} />
-              </button>
+            {isMobile ? (
+              canInteract && (
+                <button
+                  onClick={onToggleExpanded}
+                  aria-label="Cerrar menu"
+                  title="Cerrar"
+                  className="ml-auto p-1.5 rounded-lg transition-colors duration-150"
+                  style={{ color: "var(--text-tertiary)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                      "var(--surface-hover)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                      "transparent";
+                  }}
+                >
+                  <CloseIcon />
+                </button>
+              )
+            ) : (
+              canInteract && (
+                <button
+                  onClick={onToggleExpanded}
+                  aria-label="Colapsar sidebar"
+                  title="Colapsar"
+                  className="ml-auto p-1.5 rounded-lg transition-colors duration-150"
+                  style={{ color: "var(--text-tertiary)" }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                      "var(--surface-hover)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.backgroundColor =
+                      "transparent";
+                  }}
+                >
+                  <CollapseIcon collapsed={false} />
+                </button>
+              )
             )}
           </>
         ) : (
@@ -407,21 +447,31 @@ function SidebarBody({
       >
         {expanded ? (
           <>
+            {/* "+ Nuevo chat" — primary action. Subtle border + filled-on-hover
+                so it reads as a button, not a row. */}
             <button
               onClick={onNewConversation}
               disabled={!canInteract}
-              className="group w-full flex items-center gap-2 h-9 px-2.5 rounded-lg text-[13px] font-medium cursor-pointer transition-colors duration-150"
-              style={{ color: "rgba(255,255,255,0.85)" }}
+              className="group w-full flex items-center gap-2 h-9 px-2.5 rounded-lg text-[13px] font-semibold cursor-pointer transition-colors duration-150"
+              style={{
+                color: "var(--text-primary)",
+                backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+                border: "1px solid color-mix(in srgb, var(--primary) 18%, transparent)",
+              }}
               onMouseEnter={(e) => {
                 if (!canInteract) return;
                 const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor = "var(--surface-hover)";
-                el.style.color = "var(--text-primary)";
+                el.style.backgroundColor =
+                  "color-mix(in srgb, var(--primary) 18%, transparent)";
+                el.style.borderColor =
+                  "color-mix(in srgb, var(--primary) 32%, transparent)";
               }}
               onMouseLeave={(e) => {
                 const el = e.currentTarget as HTMLButtonElement;
-                el.style.backgroundColor = "transparent";
-                el.style.color = "rgba(255,255,255,0.85)";
+                el.style.backgroundColor =
+                  "color-mix(in srgb, var(--primary) 8%, transparent)";
+                el.style.borderColor =
+                  "color-mix(in srgb, var(--primary) 18%, transparent)";
               }}
             >
               <NewChatIcon />
@@ -508,13 +558,48 @@ function SidebarBody({
           style={{ touchAction: "pan-y" }}
         >
           {filtered.length === 0 ? (
-            <div className="py-8 text-center">
-              <p
-                className="text-xs"
-                style={{ color: "var(--text-tertiary)" }}
-              >
-                {searchQuery ? "Sin resultados" : "Sin conversaciones"}
-              </p>
+            <div className="py-10 px-4 text-center">
+              {searchQuery ? (
+                <>
+                  <p
+                    className="text-[13px] font-medium mb-1"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    Sin resultados
+                  </p>
+                  <p
+                    className="text-[11px]"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Prueba con otro termino
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div
+                    className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                    style={{
+                      backgroundColor:
+                        "color-mix(in srgb, var(--primary) 10%, transparent)",
+                      color: "var(--primary)",
+                    }}
+                  >
+                    <NewChatIcon />
+                  </div>
+                  <p
+                    className="text-[13px] font-medium mb-1"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+            Tu primera conversacion
+                  </p>
+                  <p
+                    className="text-[11px]"
+                    style={{ color: "var(--text-tertiary)" }}
+                  >
+                    Escribe abajo para empezar
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="pb-3">
@@ -684,6 +769,19 @@ export default function ConversationSidebar({
   // Backdrop click closes it. Body scroll is left alone — the sheet is
   // already sized to the viewport and its content scrolls internally.
   const [hasOpened, setHasOpened] = React.useState(false);
+  // Measure viewport on mount and on resize so the sheet width matches the
+  // current screen. Read in an effect, not during render, to avoid the
+  // SSR/CSR mismatch warning — SSR sees `mobileSheetW = EXPANDED_W` and CSR
+  // sees the real `min(EXPANDED_W, 0.92 * innerWidth)` after mount.
+  const [mobileSheetW, setMobileSheetW] = React.useState(EXPANDED_W);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const update = () =>
+      setMobileSheetW(Math.min(EXPANDED_W, 0.92 * window.innerWidth));
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
   React.useEffect(() => {
     if (showMobile) {
       // Reset to false so the slide-in animation replays every time the
@@ -744,7 +842,7 @@ export default function ConversationSidebar({
       <div
         className="fixed inset-y-0 left-0 z-50 md:hidden"
         style={{
-          width: Math.min(EXPANDED_W, 0.92 * (typeof window !== "undefined" ? window.innerWidth : 360)),
+          width: mobileSheetW,
           transform: hasOpened ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.32s cubic-bezier(0.2, 0, 0, 1)",
           touchAction: "pan-y",
