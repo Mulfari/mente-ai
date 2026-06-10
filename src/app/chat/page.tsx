@@ -24,7 +24,7 @@ export default async function ChatPage() {
   if (userId) {
     const { data: profile } = await supabase
       .from("profiles")
-      .select("email, status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
+      .select("id, email, status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
       .eq("clerk_user_id", userId)
       .maybeSingle();
 

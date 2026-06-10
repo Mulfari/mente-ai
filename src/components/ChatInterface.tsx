@@ -7,7 +7,6 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
-import AuthModal from "./AuthModal";
 import AccountMenu from "./AccountMenu";
 import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
@@ -98,6 +97,10 @@ export default function ChatInterface({
   const [mounted, setMounted] = useState(initialIsLoggedIn);
   const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  // Helper: redirect to Clerk sign-in instead of showing a custom modal.
+  const requireSignIn = useCallback(() => {
+    window.location.href = "/sign-in";
+  }, []);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   // Clerk hooks
@@ -219,16 +222,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       // middleware handles the post-sign-in redirect. Nothing to re-check.
       setMounted(true);
     }
-
-    // With Clerk, auth state changes are managed by the middleware — no
-    // need for onAuthStateChange here.
-      setUserEmail(session.user.email || "");
-      loadConversations(session.user.id);
-      supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
-        .then(({ data: uc }) => { if (uc) setUserContext(uc); });
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   // Load conversation from URL when userId or convIdFromUrl changes
@@ -621,6 +614,21 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }
   }, [activeConv]);
 
+  // Browser tab title — "VeChat" by default, "VeChat - <title>" once the
+  // user is inside a conversation. Truncated at 50 chars so long titles
+  // don't blow up the tab. Falls back to "Conversacion" if the title is
+  // empty (defensive — shouldn't happen).
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!activeConv) {
+      document.title = "VeChat";
+      return;
+    }
+    const raw = activeConv.title?.trim() || "Conversacion";
+    const trimmed = raw.length > 50 ? raw.slice(0, 50) + "…" : raw;
+    document.title = `VeChat - ${trimmed}`;
+  }, [activeConv?.id, activeConv?.title]);
+
   // Realtime subscription for conversations (stable — runs once per login)
   useEffect(() => {
     if (!isLoggedIn || !userId) return;
@@ -781,7 +789,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   
 
   async function newConversation() {
-    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
+    if (!isLoggedIn) { requireSignIn(); return; }
     currentConvIdRef.current = null;
     setActiveConv(null);
     setMessages([]);
@@ -795,7 +803,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   }
 
   async function selectConv(conv: Conversation) {
-    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
+    if (!isLoggedIn) { requireSignIn(); return; }
     currentConvIdRef.current = conv.id;
     // Update updated_at in sidebar list so date label doesn't disappear
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
@@ -887,7 +895,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
   ) {
     if (sending) return;
-    if (!isLoggedIn) { setShowAuthPrompt(true); return; }
+    if (!isLoggedIn) { requireSignIn(); return; }
     setSending(true);
     setSuggestions([]);
     if (!activeConv) setConvLoaded(true);
@@ -1635,7 +1643,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 {userEmail.charAt(0).toUpperCase()}
               </button>
             ) : (
-              <button onClick={() => setShowAuthPrompt(true)}
+              <button onClick={() => requireSignIn()}
                 className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
                 style={{ background: "var(--surface-hover)", color: "var(--text-primary)" }}>
                 Entrar
@@ -1691,7 +1699,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               suggestionsLoading={suggestionsLoading}
               getBlockReason={getBlockReason}
               submitSuggestion={submitSuggestion}
-              onShowAuthPrompt={() => setShowAuthPrompt(true)}
+              onShowAuthPrompt={() => requireSignIn()}
               onShowAccountMenu={() => setShowAccountMenu(true)}
               input={input}
               setInput={setInput}
@@ -1745,10 +1753,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         </div>
         )}
       </div>
-      {showAuthPrompt && <AuthModal onSuccess={() => {
-          setShowAuthPrompt(false);
-          window.location.reload();
-        }} onClose={() => setShowAuthPrompt(false)} />}
       {showAccountMenu && (
         <AccountMenu
           email={userEmail}

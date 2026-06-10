@@ -1,24 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import LandingPage from "./LandingPage";
-import AuthModal from "@/components/AuthModal";
 
 export default function LandingPageGate() {
-  const [authMode, setAuthMode] = useState<"login" | "register" | null>(null);
-
   return (
-    <>
-      <LandingPage onShowAuth={(m) => setAuthMode(m)} />
-      {authMode && (
-        <AuthModal
-          initialMode={authMode}
-          onClose={() => setAuthMode(null)}
-          onSuccess={() => {
-            window.location.reload();
-          }}
-        />
-      )}
-    </>
+    <LandingPage
+      onShowAuth={(m) => {
+        // Redirect to Clerk's catch-all routes. After successful auth,
+        // Clerk redirects to NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL (configured to /chat).
+        window.location.href = m === "login" ? "/sign-in" : "/sign-up";
+      }}
+    />
   );
 }

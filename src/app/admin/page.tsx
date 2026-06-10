@@ -57,9 +57,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
   const supabaseUrl = supabaseUrlRaw.replace(/\s+/g, "");
-  const adminClient = serviceKey && supabaseUrl
-    ? createClient(supabaseUrl, serviceKey)
-    : supabase;
+  const adminClient = supabase;
 
   // Fetch profiles (now has email column populated by Clerk webhook)
   const { data: allProfiles } = await adminClient
