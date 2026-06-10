@@ -1590,7 +1590,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const isDisabled = !isLoggedIn;
 
   return (
-    <div className="fixed inset-0 flex bg-transparent">
+    <div
+      className="fixed top-0 left-0 right-0 flex bg-transparent"
+      style={{ height: "calc(var(--vh, 1vh) * 100)" }}
+    >
+      {/* Chat root. Height comes from the --vh CSS variable (synced by
+          the ViewportHeight client component) so the container shrinks
+          with the on-screen keyboard instead of staying at the
+          pre-keyboard height. */}
       {/* Sidebar */}
       <ConversationSidebar
         conversations={conversations}

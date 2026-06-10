@@ -1,6 +1,8 @@
+import {ClerkProvider} from "@clerk/nextjs";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import ViewportHeight from "@/components/ViewportHeight";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,7 +47,14 @@ export default function RootLayout({
           __html: `(function(){try{var t=localStorage.getItem('vechat-theme');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','dark');}catch(e){}})()`
         }} />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {/* Syncs --vh CSS var to window.visualViewport.height so the chat
+            container and input follow the on-screen keyboard without jumping. */}
+        <ViewportHeight />
+        <ClerkProvider>
+          {children}
+        </ClerkProvider>
+      </body>
     </html>
   );
 }
