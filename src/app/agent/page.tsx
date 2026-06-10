@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useUser } from "@clerk/nextjs";
 import { createClient } from "@/lib/supabase/client";
 import ReactMarkdown from "react-markdown";
 
@@ -45,6 +46,7 @@ function formatTime(date: string) {
 }
 
 export default function AgentPage() {
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -60,31 +62,26 @@ export default function AgentPage() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    if (!clerkLoaded) return;
+    if (!clerkUser) {
+      window.location.href = "/sign-in";
+      return;
+    }
+    setIsLoggedIn(true);
+    setUserId(clerkUser.id);
+    setShowCityPrompt(true);
+    setMessages([{
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "Hola! Soy **Mente AI**, tu asistente personal con inteligencia artificial.\n\nEstoy aqui para ayudarte con lo que necesites: restaurantes, servicios, informacion local, y mucho mas.\n\nAntes de empezar, **en que ciudad estas?** Asi puedo darte respuestas personalizadas.",
+      created_at: new Date().toISOString(),
+    }]);
+    setIsLoading(false);
+  }, [clerkLoaded, clerkUser]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-
-  async function checkAuth() {
-    const { data: { user } } = await getSupabase().auth.getUser();
-    if (user) {
-      setIsLoggedIn(true);
-      setUserId(user.id);
-      setShowCityPrompt(true);
-      // Welcome message
-      setMessages([{
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content: "Hola! Soy **Mente AI**, tu asistente personal con inteligencia artificial.\n\nEstoy aqui para ayudarte con lo que necesites: restaurantes, servicios, informacion local, y mucho mas.\n\nAntes de empezar, **en que ciudad estas?** Asi puedo darte respuestas personalizadas.",
-        created_at: new Date().toISOString(),
-      }]);
-    } else {
-      window.location.href = "/";
-    }
-    setIsLoading(false);
-  }
 
   function selectCity(city: string) {
     setShowCityPrompt(false);

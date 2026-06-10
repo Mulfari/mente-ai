@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useClerk } from "@clerk/nextjs";
 
 type Props = {
   userId: string;
@@ -26,15 +26,16 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
   const [tab, setTab] = useState<Tab>("context");
   const [tick, setTick] = useState(0);
   const [profile, setProfile] = useState(profileProp ?? null);
-  const supabase = createClient();
+  const { signOut } = useClerk();
 
   // Always fetch fresh profile so it's never null
   useEffect(() => {
-    supabase
-      .from("profiles")
-      .select("subscription_weeks, subscription_start, subscription_end")
-      .maybeSingle()
-      .then(({ data }) => { setProfile(data); });
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((res) => {
+        if (res.profile) setProfile(res.profile);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -151,7 +152,7 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
 
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
-            {tab === "context" ? <ContextTab userId={userId} userContext={userContext} supabase={supabase} onSave={onSave} /> :
+            {tab === "context" ? <ContextTab userId={userId} userContext={userContext} onSave={onSave} /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
           </div>
@@ -162,10 +163,9 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
 }
 
 // --- Context Tab ---
-function ContextTab({ userId, userContext, supabase, onSave }: {
+function ContextTab({ userId, userContext, onSave }: {
   userId: string;
   userContext: { full_name: string; city: string; custom_notes: string; interests: string } | null;
-  supabase: ReturnType<typeof createClient>;
   onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
 }) {
   const [data, setData] = useState(() => ({
@@ -179,7 +179,6 @@ function ContextTab({ userId, userContext, supabase, onSave }: {
   const [error, setError] = useState("");
   const [locating, setLocating] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const supabase_client = supabase;
 
   const total = data.full_name.length + data.city.length + data.custom_notes.length + data.interests.length;
 

@@ -1,13 +1,15 @@
+import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const { data: profile } = await supabase.from("profiles").select("role, id").eq("clerk_user_id", userId).single();
   if (!profile || profile.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const internalUserId = profile.id;
 
   const { id, status, ...rest } = await req.json();
 
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${supabaseUrl}/rest/v1/knowledge`, {
         method: "POST",
         headers: { ...headers, Prefer: "return=representation" },
-        body: JSON.stringify({ ...rest, status: rest.status || "pending", created_by: user.id }),
+        body: JSON.stringify({ ...rest, status: rest.status || "pending", created_by: internalUserId }),
       });
       if (!res.ok) return NextResponse.json({ error: "Failed to create" }, { status: 500 });
       return NextResponse.json({ success: true, data: await res.json() });
@@ -44,11 +46,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+  const { data: profile } = await supabase.from("profiles").select("role").eq("clerk_user_id", userId).single();
   if (!profile || profile.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
