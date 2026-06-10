@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 
 // GET /api/trending — four ranked sections, like a discovery feed:
@@ -114,23 +115,23 @@ function topFromAgg(bySubOption: Map<string, Agg>, limit: number): SubOptionOut[
 }
 
 export async function GET(_request: NextRequest) {
+  const { userId } = await auth();
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
 
   // Pull the user's city and their most-asked category in parallel.
   let userCity: string | null = null;
   let topCategory: string | null = null;
-  if (user) {
+  if (userId) {
     const [ctxRes, historyRes] = await Promise.all([
       supabase
         .from("user_context")
         .select("city")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle(),
       supabase
         .from("query_events")
         .select("category_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .not("sub_option_id", "is", null)
         .order("created_at", { ascending: false })
         .limit(200),

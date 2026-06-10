@@ -1,31 +1,11 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient } from "@supabase/supabase-js";
 
+// Server-side Supabase client for DB queries.
+// Uses service role key — bypasses RLS. Only call from server code (route handlers, server components).
+// All user authentication/authorization should be done via Clerk's `auth()` helper BEFORE calling this.
 export async function createClient() {
-  const cookieStore = await cookies();
-
-  return createServerClient(
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, {
-                ...options,
-                maxAge: 60 * 60 * 24 * 30, // 30 days — persist across browser restarts
-                sameSite: "lax",
-              } as CookieOptions)
-            );
-          } catch {
-            // The `setAll` method was called from a Server Component.
-          }
-        },
-      },
-    }
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }

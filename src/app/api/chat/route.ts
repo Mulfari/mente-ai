@@ -1,3 +1,4 @@
+import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
@@ -57,18 +58,19 @@ async function generateVpsToken(userId: string): Promise<string> {
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Error 401.", code: 401 }, { status: 401 });
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Error 401.", code: 401 }, { status: 401 });
 
-    // Validate profile
+    // Validate profile (clerk_user_id is the link)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at, weekly_reset_at")
-      .eq("id", user.id)
+      .select("id, status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at, weekly_reset_at")
+      .eq("clerk_user_id", userId)
       .single();
 
     if (!profile) return NextResponse.json({ error: "Error 404.", code: 404 }, { status: 404 });
+    const internalUserId = profile.id;
 
     const now = new Date();
     const validation = validateProfile(profile, now);
@@ -112,7 +114,7 @@ export async function POST(request: Request) {
     const { data: userContext } = await supabase
       .from("user_context")
       .select("full_name, city, interests, custom_notes")
-      .eq("user_id", user.id)
+      .eq("user_id", internalUserId)
       .maybeSingle();
 
     const historyText = historyMessages.length > 0 ? historyToText(historyMessages) : "";
@@ -123,7 +125,7 @@ export async function POST(request: Request) {
     // Generate VPS token server-side (no browser involvement)
     let vpsToken: string;
     try {
-      vpsToken = await generateVpsToken(user.id);
+      vpsToken = await generateVpsToken(internalUserId);
     } catch {
       return NextResponse.json({ error: "Error de autenticación con el servidor." }, { status: 500 });
     }
@@ -147,7 +149,7 @@ export async function POST(request: Request) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               token: vpsToken,
-              user_id: user.id,
+              user_id: internalUserId,
               message_id: assistantMsgId,
               conversation_id: conversation_id || null,
               mode: mode || "normal",

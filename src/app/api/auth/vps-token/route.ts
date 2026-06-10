@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
 
@@ -11,16 +11,15 @@ function getBaseUrl() {
 }
 
 export async function POST() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
 
   if (!VPS_SECRET) {
     return NextResponse.json({ error: "VPS_SECRET no configurado" }, { status: 500 });
   }
 
   const secret = new TextEncoder().encode(VPS_SECRET);
-  const token = await new jose.SignJWT({ userId: user.id })
+  const token = await new jose.SignJWT({ userId })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30s")

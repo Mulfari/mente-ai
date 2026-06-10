@@ -1,5 +1,10 @@
 import { createBrowserClient, type CookieOptions } from "@supabase/ssr";
 
+// Browser Supabase client — uses anon key + Clerk session via cookies.
+// Note: with Clerk as the auth provider, Supabase no longer has a server-side
+// session. Queries from the browser go through with the anon key and rely on
+// RLS being permissive for authenticated users. All auth gating happens in
+// Clerk's middleware before this client is even reached.
 export function createClient() {
   return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,9 +12,9 @@ export function createClient() {
     {
       auth: {
         flowType: "pkce",
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
       },
       cookies: {
         getAll() {

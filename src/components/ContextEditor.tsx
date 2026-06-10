@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
 const MAX_CHARS = 2000;
@@ -13,8 +13,6 @@ const VENEZUELAN_CITIES = [
 ];
 
 type Context = {
-  id?: string;
-  user_id?: string;
   full_name: string;
   city: string;
   interests: string;
@@ -23,6 +21,7 @@ type Context = {
 };
 
 export default function ContextEditor() {
+  const { user, isLoaded } = useUser();
   const [context, setContext] = useState<Context>({
     full_name: "",
     city: "",
@@ -33,37 +32,27 @@ export default function ContextEditor() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [userId, setUserId] = useState<string | null>(null);
-  const supabase = createClient();
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: authData }) => {
-      const uid = authData?.user?.id;
-      if (!uid) { router.push("/auth/login"); return; }
-      setUserId(uid);
+    if (!isLoaded) return;
+    if (!user) { router.push("/sign-in"); return; }
 
-      supabase
-        .from("user_context")
-        .select("*")
-        .eq("user_id", uid)
-        .single()
-        .then(({ data, error }) => {
-          setLoading(false);
-          if (data) {
-            setContext({
-              full_name: data.full_name || "",
-              city: data.city || "",
-              interests: data.interests || "",
-              custom_notes: data.custom_notes || "",
-            });
-          }
-          if (error && error.code !== "PGRST116") {
-            setError("Error cargando contexto");
-          }
-        });
-    });
-  }, [supabase, router]);
+    fetch("/api/user-context")
+      .then((r) => r.json())
+      .then((res) => {
+        setLoading(false);
+        if (res.context) {
+          setContext({
+            full_name: res.context.full_name || "",
+            city: res.context.city || "",
+            interests: res.context.interests || "",
+            custom_notes: res.context.custom_notes || "",
+          });
+        }
+      })
+      .catch(() => setLoading(false));
+  }, [isLoaded, user, router]);
 
   function totalChars() {
     return context.full_name.length + context.city.length + context.interests.length + context.custom_notes.length;
@@ -71,51 +60,37 @@ export default function ContextEditor() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!userId || totalChars() > MAX_CHARS) {
-      if (!userId) setError("Cargando usuario...");
-      if (totalChars() > MAX_CHARS) setError(`Máximo ${MAX_CHARS} caracteres permitidos`);
+    if (totalChars() > MAX_CHARS) {
+      setError(`Máximo ${MAX_CHARS} caracteres permitidos`);
       return;
     }
     setSaving(true);
     setError("");
     setSaved(false);
 
-    const payload = {
-      user_id: userId,
-      full_name: context.full_name.trim(),
-      city: context.city.trim(),
-      interests: context.interests.trim(),
-      custom_notes: context.custom_notes.trim(),
-    };
-
-    const { error: updateError } = await supabase
-      .from("user_context")
-      .update(payload)
-      .eq("user_id", userId);
-
-    if (updateError) {
-      if (updateError.code === "PGRST116") {
-        // No row to update — insert it
-        const { error: insertError } = await supabase
-          .from("user_context")
-          .insert(payload);
-        setSaving(false);
-        if (insertError) {
-          setError("Error guardando. Intenta de nuevo.");
-        } else {
-          setSaved(true);
-          setTimeout(() => setSaved(false), 2500);
-        }
-      } else {
-        setSaving(false);
+    try {
+      const res = await fetch("/api/user-context/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          full_name: context.full_name.trim(),
+          city: context.city.trim(),
+          interests: context.interests.trim(),
+          custom_notes: context.custom_notes.trim(),
+        }),
+      });
+      const result = await res.json();
+      setSaving(false);
+      if (!res.ok || result.error) {
         setError("Error guardando. Intenta de nuevo.");
+        return;
       }
-      return;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch {
+      setSaving(false);
+      setError("Error guardando. Intenta de nuevo.");
     }
-
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
   }
 
   if (loading) {

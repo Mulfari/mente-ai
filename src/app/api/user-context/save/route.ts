@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 
 // POST /api/user-context/save — save or upsert user context
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { full_name, city, custom_notes, interests } = await req.json();
 
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
   const { data: existing } = await supabase
     .from("user_context")
     .select("id")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .maybeSingle();
 
   let err: string | null = null;
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   } else {
     const { error: e } = await supabase
       .from("user_context")
-      .insert({ user_id: user.id, ...trimmed });
+      .insert({ user_id: userId, ...trimmed });
     if (e) err = e.message;
   }
 

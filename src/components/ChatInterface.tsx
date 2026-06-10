@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useClerk, useUser } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -99,6 +100,9 @@ export default function ChatInterface({
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  // Clerk hooks
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  const { signOut: clerkSignOut } = useClerk();
   const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(initialProfile);
   const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(
     initialFullName ? { full_name: initialFullName, city: "", interests: "", custom_notes: "" } : null
@@ -211,27 +215,13 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       const seenV2 = localStorage.getItem("mulfai_tour_v2_seen");
       if (!seenV2) setTimeout(() => setShowOnboarding(true), 300);
     } else if (!initialIsLoggedIn) {
-      // Server says we're logged out. Re-check on the client in case the
-      // user just signed in (e.g. auth callback returned) — this is the
-      // only path that needs getSession().
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session) { setMounted(true); return; }
-        setIsLoggedIn(true);
-        setUserEmail(session.user.email || "");
-        loadConversations(session.user.id);
-        supabase.from("profiles").select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at").eq("id", session.user.id).single()
-          .then(({ data: p }) => { if (p) setProfile(p); });
-        supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
-          .then(({ data: uc }) => { if (uc) setUserContext(uc); });
-        setMounted(true);
-        const seenV2 = localStorage.getItem("mulfai_tour_v2_seen");
-        if (!seenV2) setTimeout(() => setShowOnboarding(true), 300);
-      });
+      // With Clerk, if the server says we're logged out, we are. Clerk's
+      // middleware handles the post-sign-in redirect. Nothing to re-check.
+      setMounted(true);
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) { setIsLoggedIn(false); return; }
-      setIsLoggedIn(true);
+    // With Clerk, auth state changes are managed by the middleware — no
+    // need for onAuthStateChange here.
       setUserEmail(session.user.email || "");
       loadConversations(session.user.id);
       supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", session.user.id).maybeSingle()
@@ -589,9 +579,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         return;
       }
 
-      // Get current user from client-side auth (userId prop may be empty on server render)
-      const { data: authData } = await supabase.auth.getUser();
-      const currentUserId = authData?.user?.id;
+      // Get current user from Clerk
+      const currentUserId = clerkUser?.id || userId;
       if (!currentUserId) return;
 
       const { data, error } = await supabase
@@ -1767,7 +1756,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           userContext={userContext}
           userId={userId}
           onSave={(data) => { setUserContext(prev => prev ? { ...prev, ...data } : prev); }}
-          onSignOut={async () => { await supabase.auth.signOut(); window.location.href = "/"; }}
+          onSignOut={async () => { await clerkSignOut(); window.location.href = "/"; }}
           onClose={() => setShowAccountMenu(false)}
         />
       )}

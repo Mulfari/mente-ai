@@ -1,8 +1,14 @@
+import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Debes iniciar sesión." }, { status: 401 });
+    }
+
     const { code } = await request.json();
 
     if (!code?.trim()) {
@@ -10,11 +16,6 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Debes iniciar sesión." }, { status: 401 });
-    }
 
     // Buscar cupón
     const { data: coupon } = await supabase
@@ -31,11 +32,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Este cupón ya ha sido utilizado." }, { status: 400 });
     }
 
-    // Obtener perfil actual
+    // Obtener perfil actual (usando clerk_user_id)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("subscription_weeks, subscription_end, status")
-      .eq("id", user.id)
+      .select("id, email, subscription_weeks, subscription_end, status")
+      .eq("clerk_user_id", userId)
       .single();
 
     if (!profile) {
@@ -76,13 +77,13 @@ export async function POST(request: Request) {
       status: newStatus,
       used_coupon_label: label,
       used_coupon_color: color,
-    }).eq("id", user.id);
+    }).eq("id", profile.id);
 
     // Marcar cupón como usado
     await supabase.from("coupons").update({
-      used_by: user.id,
-      used_by_email: user.email,
-      used_by_name: user.user_metadata?.full_name || user.email,
+      used_by: profile.id,
+      used_by_email: profile.email,
+      used_by_name: profile.email,
       used_at: new Date().toISOString(),
     }).eq("id", coupon.id);
 
