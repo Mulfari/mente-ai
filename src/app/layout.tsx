@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import ViewportHeight from "@/components/ViewportHeight";
 
@@ -40,18 +41,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem('vechat-theme');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','dark');}catch(e){}})()`
-        }} />
-      </head>
-      <body className="antialiased">
-        {/* Syncs --vh CSS var to window.visualViewport.height so the chat
-            container and input follow the on-screen keyboard without jumping. */}
-        <ViewportHeight />
-        {children}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
+        <head>
+          <script dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('vechat-theme');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','dark');}catch(e){}})()`
+          }} />
+        </head>
+        <body className="antialiased">
+          {/* Syncs --vh CSS var to window.visualViewport.height so the chat
+              container and input follow the on-screen keyboard without jumping. */}
+          <ViewportHeight />
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
