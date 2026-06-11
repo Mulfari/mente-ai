@@ -138,7 +138,6 @@ export default function ChatInterface({
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   // Theme disabled - only dark mode
   void theme; void setTheme;
-  const [searchQuery, setSearchQuery] = useState("");
 
   const [displayedText, setDisplayedText] = useState<Record<string, string>>({});
   // Typing reveal state per message
@@ -819,8 +818,13 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     await supabase.from("conversations").delete().eq("id", convId);
     setConversations(prev => prev.filter(c => c.id !== convId));
     if (activeConv?.id === convId) {
+      // Reset completo: si la URL apuntaba a la conversación borrada,
+      // volver a la home para que un reload no caiga en un 404 lógico.
+      currentConvIdRef.current = null;
       setActiveConv(null);
       setMessages([]);
+      setConvLoaded(false);
+      window.history.pushState(null, "", "/");
     }
   }
 
@@ -1599,8 +1603,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       <ConversationSidebar
         conversations={conversations}
         activeConv={activeConv}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
         userEmail={userEmail}
         profile={profile}
         onSelectConv={selectConv}
