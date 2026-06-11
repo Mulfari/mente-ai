@@ -756,9 +756,14 @@ export default function ConversationSidebar({
         style={{
           width: mobileSheetW,
           transform: hasOpened && showMobile ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform 0.32s cubic-bezier(0.2, 0, 0, 1)",
+          // Al cerrar, visibility pasa a hidden DESPUÉS del slide-out (0.32s)
+          // para que el contenido fuera de pantalla no sea alcanzable por
+          // teclado ni lectores. Al abrir, visible de inmediato.
+          transition: showMobile
+            ? "transform 0.32s cubic-bezier(0.2, 0, 0, 1)"
+            : "transform 0.32s cubic-bezier(0.2, 0, 0, 1), visibility 0s linear 0.32s",
           touchAction: "pan-y",
-          visibility: showMobile || hasOpened ? "visible" : "hidden",
+          visibility: showMobile ? "visible" : "hidden",
         }}
       >
         <SidebarBody
