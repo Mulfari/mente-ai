@@ -41,13 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      // Frontend API proxied through the apex domain (see src/proxy.ts).
-      // Clerk requires the proxy on the registered domain (mulfai.com.ve,
-      // sin www), so the URL must be absolute — a relative one would
-      // resolve to www and fail Clerk's host attribution.
-      proxyUrl="https://mulfai.com.ve/__clerk"
-    >
+    <ClerkProvider>
       <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
         <head>
           <script dangerouslySetInnerHTML={{
