@@ -11,16 +11,19 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 
 ## Auth (Clerk)
 - Login/registro en `/sign-in` y `/sign-up` (componentes de Clerk)
-- Middleware en `src/proxy.ts` (`clerkMiddleware`) protege rutas y **proxea la
-  Frontend API de Clerk por `https://mulfai.com.ve/__clerk`** (sin CNAME
-  `clerk.mulfai.com.ve`). Clerk exige el proxy en el dominio registrado (apex,
-  sin www); el middleware redirige 308 apex→www para todo lo demás.
-- `ClerkProvider` en `layout.tsx` usa `proxyUrl="https://mulfai.com.ve/__clerk"` (absoluto, no relativo)
-- DNS en Vercel DNS (`ns1/ns2.vercel-dns.com`) — los CNAME de email de Clerk
-  (clkmail, clk._domainkey, clk2._domainkey) ya están agregados
-- Webhook `POST /api/webhooks/clerk` (verifyWebhook): crea/actualiza/soft-borra perfiles
+- Setup estándar con CNAME: Frontend API en `clerk.mulfai.com.ve`
+  (DNS en Vercel DNS, `ns1/ns2.vercel-dns.com`; los 5 CNAME de Clerk —
+  clerk, accounts, clkmail, clk._domainkey, clk2._domainkey — ya existen
+  y el dominio está verificado en Clerk)
+- Middleware en `src/proxy.ts` (`clerkMiddleware`) protege rutas; el redirect
+  apex→www lo hace Vercel a nivel de plataforma
+- Webhook `POST /api/webhooks/clerk` (verifyWebhook): crea/actualiza/soft-borra
+  perfiles. OJO: se le pasa `signingSecret: process.env.CLERK_WEBHOOK_SECRET`
+  explícito (el default del SDK lee CLERK_WEBHOOK_SIGNING_SECRET)
 - Fallback `getOrCreateProfile()` en `src/lib/profile.ts`: si el webhook no
   creó el perfil, se crea en el primer page-load server-side
+- La app real en Clerk es **"My Application"** (`ins_3EvTLqEOpB2fLyQ0j7mYFwlEDRc`);
+  hay apps duplicadas en el workspace que se pueden borrar
 
 ## Identidades (IMPORTANTE)
 - `profiles.clerk_user_id` (text) = id de Clerk (`user_xxx`) — el link externo
@@ -28,7 +31,8 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   tablas (`conversations.user_id`, `user_context.user_id`, `query_events.user_id`,
   `coupons.used_by/created_by`, `knowledge.created_by`) referencian este UUID
 - Las páginas server-side resuelven el perfil y pasan `profiles.id` al cliente;
-  el browser consulta Supabase directo (anon key) con ese UUID
+  el browser consulta Supabase directo con el **token de Clerk** (third-party
+  auth, ver sección RLS) usando ese UUID
 - El JWT del VPS se firma con el UUID interno (igual en `/api/chat` y `/api/auth/vps-token`)
 
 ## Supabase Schema
@@ -47,12 +51,19 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - Panel en `/admin` — acceso por `profiles.role = 'admin'` (gate en página y en `/api/admin/*`)
 - Ver usuarios, activar/cancelar cuentas, agregar semanas, eliminar (borra el usuario en Clerk vía `clerkClient`), cupones
 
-## RLS
-- RLS deshabilitado en las tablas de la app — el control de acceso se maneja
-  en las rutas API (server-side). Las policies viejas de `auth.uid()` se
-  eliminaron (Clerk no crea sesión de Supabase, auth.uid() siempre era NULL).
-- Tradeoff conocido: el anon key puede leer/escribir esas tablas. Mejora
-  futura: third-party auth de Clerk en Supabase + policies con auth.jwt().
+## RLS (third-party auth Clerk↔Supabase)
+- RLS **habilitado en TODAS las tablas**. El anon key solo no puede leer nada.
+- Supabase tiene a Clerk como third-party auth provider (dominio
+  `clerk.mulfai.com.ve`). El browser manda el session token de Clerk
+  (JWT template `supabase`, claim `role: authenticated`) como Bearer —
+  ver `src/lib/supabase/client.ts` (opción `accessToken`).
+- Policies en `profiles`/`conversations`/`messages`/`user_context`: mapean
+  `auth.jwt()->>'sub'` (clerk_user_id) al UUID interno vía la función
+  `public.clerk_profile_id()` (SECURITY DEFINER, STABLE).
+- **NUNCA usar `auth.uid()`** en policies: el sub de Clerk (`user_xxx`) no es
+  uuid y el cast explota. Siempre `auth.jwt()->>'sub'`.
+- El resto de tablas (coupons, knowledge*, query_events, places, etc.) tienen
+  RLS ON sin policies: solo las rutas API con el service role key acceden.
 
 ## Modelo de negocio
 - Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
