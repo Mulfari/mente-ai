@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
+import { getProfileByClerkId } from "@/lib/profile";
 
 const VPS_SECRET = process.env.VPS_SHARED_SECRET || "";
 
@@ -18,8 +19,13 @@ export async function POST() {
     return NextResponse.json({ error: "VPS_SECRET no configurado" }, { status: 500 });
   }
 
+  // The VPS identifies users by the internal profile UUID (same id that
+  // /api/chat signs), not by the Clerk user id.
+  const profile = await getProfileByClerkId(userId);
+  if (!profile) return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
+
   const secret = new TextEncoder().encode(VPS_SECRET);
-  const token = await new jose.SignJWT({ userId })
+  const token = await new jose.SignJWT({ userId: profile.id })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30s")

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useClerk, useUser } from "@clerk/nextjs";
+import { useClerk } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
@@ -104,7 +104,6 @@ export default function ChatInterface({
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   // Clerk hooks
-  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
   const { signOut: clerkSignOut } = useClerk();
   const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(initialProfile);
   const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(
@@ -572,8 +571,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         return;
       }
 
-      // Get current user from Clerk
-      const currentUserId = clerkUser?.id || userId;
+      // userId is the internal profile UUID resolved server-side —
+      // conversations.user_id references it, NOT the Clerk user id.
+      const currentUserId = userId;
       if (!currentUserId) return;
 
       const { data, error } = await supabase

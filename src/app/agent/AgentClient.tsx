@@ -66,7 +66,12 @@ export default function AgentClient() {
       return;
     }
     setIsLoggedIn(true);
-    setUserId(clerkUser.id);
+    // The VPS and the DB identify users by the internal profile UUID,
+    // not by the Clerk user id — resolve it via /api/profile.
+    fetch("/api/profile")
+      .then((r) => r.json())
+      .then((d) => { if (d.profile?.id) setUserId(d.profile.id); })
+      .catch(() => {});
     setShowCityPrompt(true);
     setMessages([{
       id: crypto.randomUUID(),

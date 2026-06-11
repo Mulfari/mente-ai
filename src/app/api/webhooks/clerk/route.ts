@@ -1,5 +1,5 @@
-import { Webhook } from "svix";
-import { headers } from "next/headers";
+import { verifyWebhook } from "@clerk/nextjs/webhooks";
+import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -10,70 +10,48 @@ type ClerkEmailAddress = {
   email_address: string;
 };
 
-type ClerkUserEvent = {
-  type: "user.created" | "user.updated" | "user.deleted";
-  data: {
-    id: string;
-    email_addresses?: ClerkEmailAddress[];
-    primary_email_address_id?: string;
-    deleted?: boolean;
-  };
-};
+function primaryEmail(data: {
+  email_addresses?: ClerkEmailAddress[];
+  primary_email_address_id?: string | null;
+}): string | undefined {
+  return data.email_addresses?.find((e) => e.id === data.primary_email_address_id)
+    ?.email_address ?? data.email_addresses?.[0]?.email_address;
+}
 
-export async function POST(req: Request) {
-  const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
-
-  if (!WEBHOOK_SECRET) {
-    console.error("[clerk-webhook] CLERK_WEBHOOK_SECRET not configured");
-    return new Response("Webhook secret not configured", { status: 500 });
-  }
-
-  const headerPayload = await headers();
-  const svix_id = headerPayload.get("svix-id");
-  const svix_timestamp = headerPayload.get("svix-timestamp");
-  const svix_signature = headerPayload.get("svix-signature");
-
-  if (!svix_id || !svix_timestamp || !svix_signature) {
-    return new Response("Missing svix headers", { status: 400 });
-  }
-
-  const body = await req.text();
-
-  const wh = new Webhook(WEBHOOK_SECRET);
-  let evt: ClerkUserEvent;
-
+export async function POST(req: NextRequest) {
+  // verifyWebhook validates the svix signature using CLERK_WEBHOOK_SECRET
+  let evt: Awaited<ReturnType<typeof verifyWebhook>>;
   try {
-    evt = wh.verify(body, {
-      "svix-id": svix_id,
-      "svix-timestamp": svix_timestamp,
-      "svix-signature": svix_signature,
-    }) as ClerkUserEvent;
+    evt = await verifyWebhook(req);
   } catch (err) {
     console.error("[clerk-webhook] Signature verification failed", err);
     return new Response("Invalid signature", { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
 
   try {
     if (evt.type === "user.created") {
-      const { id, email_addresses, primary_email_address_id } = evt.data;
-      const email = email_addresses?.find(
-        (e) => e.id === primary_email_address_id
-      )?.email_address;
+      const { id } = evt.data;
+      const email = primaryEmail(evt.data);
 
       if (!email) {
         console.error("[clerk-webhook] user.created without email", { id });
         return new Response("Missing email", { status: 400 });
       }
 
-      const { error } = await supabase.from("profiles").insert({
-        clerk_user_id: id,
-        email,
-        status: "active",
-        subscription_weeks: 0,
-        weekly_limit: 0,
-      });
+      // Upsert: the page-level getOrCreateProfile fallback may have already
+      // created the row if the user hit the app before this webhook arrived.
+      const { error } = await supabase.from("profiles").upsert(
+        {
+          clerk_user_id: id,
+          email,
+          status: "active",
+          subscription_weeks: 0,
+          weekly_limit: 0,
+        },
+        { onConflict: "clerk_user_id" }
+      );
 
       if (error) {
         console.error("[clerk-webhook] Failed to insert profile", error);
@@ -84,10 +62,8 @@ export async function POST(req: Request) {
     }
 
     if (evt.type === "user.updated") {
-      const { id, email_addresses, primary_email_address_id } = evt.data;
-      const email = email_addresses?.find(
-        (e) => e.id === primary_email_address_id
-      )?.email_address;
+      const { id } = evt.data;
+      const email = primaryEmail(evt.data);
 
       if (!email) {
         console.error("[clerk-webhook] user.updated without email", { id });

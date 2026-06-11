@@ -1,60 +1,62 @@
 import { NextResponse } from "next/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
+import { createClient } from "@/lib/supabase/server";
 
 // GET /api/admin/data?type=profiles | coupons | coupon-history&userId=xxx
-// Admin access is gatekept at the /admin page server-component level.
-// This route uses the service role key so RLS is bypassed.
+// Every handler is gatekept here with Clerk: only profiles.role === "admin".
+// Uses the service role key so RLS (disabled project-wide) never interferes.
+
+async function requireAdmin() {
+  const { userId } = await auth();
+  if (!userId) return null;
+  const supabase = createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("clerk_user_id", userId)
+    .maybeSingle();
+  if (!profile || profile.role !== "admin") return null;
+  return profile;
+}
+
 export async function GET(request: Request) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
     const userId = searchParams.get("userId");
 
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: "Missing env vars", supabase: !!supabaseUrl, service: !!serviceKey }, { status: 500 });
-    }
-
-    const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
-    };
+    const supabase = createClient();
 
     if (type === "profiles") {
-      const res = await fetch(`${supabaseUrl}/rest/v1/profiles?select=*&order=created_at.desc`, { headers });
-      if (!res.ok) return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 });
-      const profiles = await res.json();
-
-      // Enrich with emails from Admin Auth API
-      try {
-        const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, { headers });
-        if (authRes.ok) {
-          const authData = await authRes.json();
-          const emailMap: Record<string, string> = {};
-          for (const u of authData.users || []) {
-            emailMap[u.id] = u.email;
-          }
-          for (const p of profiles as any[]) {
-            if (emailMap[p.id]) p.email = emailMap[p.id];
-          }
-        }
-      } catch { /* Auth API unavailable */ }
-
-      return NextResponse.json({ data: profiles });
+      // profiles.email is populated by the Clerk webhook — no auth lookup needed
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 });
+      return NextResponse.json({ data });
     }
 
     if (type === "coupons") {
-      const res = await fetch(`${supabaseUrl}/rest/v1/coupons?select=*&order=created_at.desc`, { headers });
-      if (!res.ok) return NextResponse.json({ error: "Failed to fetch coupons" }, { status: 500 });
-      return NextResponse.json({ data: await res.json() });
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) return NextResponse.json({ error: "Failed to fetch coupons" }, { status: 500 });
+      return NextResponse.json({ data });
     }
 
     if (type === "coupon-history" && userId) {
-      const res = await fetch(`${supabaseUrl}/rest/v1/coupons?select=*&used_by=eq.${userId}&order=used_at.desc`, { headers });
-      if (!res.ok) return NextResponse.json({ error: "Failed to fetch coupon history" }, { status: 500 });
-      return NextResponse.json({ data: await res.json() });
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .eq("used_by", userId)
+        .order("used_at", { ascending: false });
+      if (error) return NextResponse.json({ error: "Failed to fetch coupon history" }, { status: 500 });
+      return NextResponse.json({ data });
     }
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });
@@ -64,16 +66,11 @@ export async function GET(request: Request) {
   }
 }
 
-// PATCH /api/admin/data?type=profile
-// Update a user's profile
+// PATCH /api/admin/data — update a user's profile
 export async function PATCH(request: Request) {
   try {
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    if (!serviceKey || !supabaseUrl) {
-      return NextResponse.json({ error: "Service role key not configured" }, { status: 500 });
-    }
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
 
     const body = await request.json();
     const { userId, updates } = body;
@@ -81,22 +78,10 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Missing userId or updates" }, { status: 400 });
     }
 
-    const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    };
-
-    const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify(updates),
-    });
-
-    if (!res.ok) {
-      const text = await res.text();
-      return NextResponse.json({ error: `Supabase error: ${res.status} ${text}` }, { status: 500 });
+    const supabase = createClient();
+    const { error } = await supabase.from("profiles").update(updates).eq("id", userId);
+    if (error) {
+      return NextResponse.json({ error: `Supabase error: ${error.message}` }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
@@ -109,53 +94,61 @@ export async function PATCH(request: Request) {
 // DELETE /api/admin/data?type=profile&id=xxx
 export async function DELETE(request: Request) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
     const id = searchParams.get("id");
 
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    if (!supabaseUrl || !serviceKey) {
-      return NextResponse.json({ error: "Missing env vars" }, { status: 500 });
-    }
-
-    const headers: Record<string, string> = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-    };
+    const supabase = createClient();
 
     if (type === "coupon" && id) {
-      const res = await fetch(`${supabaseUrl}/rest/v1/coupons?id=eq.${id}`, {
-        method: "DELETE",
-        headers,
-      });
-      if (!res.ok) return NextResponse.json({ error: "Failed to delete coupon" }, { status: 500 });
+      const { error } = await supabase.from("coupons").delete().eq("id", id);
+      if (error) return NextResponse.json({ error: "Failed to delete coupon" }, { status: 500 });
       return NextResponse.json({ success: true });
     }
 
     if (type === "profile" && id) {
-      // 1. Clear coupons first (FK RESTRICT blocks auth user deletion otherwise)
-      await fetch(`${supabaseUrl}/rest/v1/coupons?used_by=eq.${id}`, {
-        method: "PATCH",
-        headers: { ...headers, Prefer: "return=minimal" },
-        body: JSON.stringify({ used_by: null, used_by_email: null, used_by_name: null, used_at: null }),
-      }).catch(() => {});
-      // 2. Delete conversations (user_id FK cascades to messages)
-      await fetch(`${supabaseUrl}/rest/v1/conversations?user_id=eq.${id}`, {
-        method: "DELETE",
-        headers,
-      }).catch(() => {});
-      // 3. Delete auth user — cascades to profile deletion
-      const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${id}`, {
-        method: "DELETE",
-        headers,
-      });
-      if (!authRes.ok) {
-        const body = await authRes.text();
-        console.error("[admin/data DELETE] Auth delete failed:", authRes.status, body);
-        return NextResponse.json({ error: `Auth delete failed: ${authRes.status} ${body}` }, { status: 500 });
+      // Look up the profile to get its Clerk user id before removing anything
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id, clerk_user_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (!profile) return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
+
+      // 1. Release coupons referencing this profile (FK would block otherwise)
+      await supabase
+        .from("coupons")
+        .update({ used_by: null, used_by_email: null, used_by_name: null, used_at: null })
+        .eq("used_by", id);
+
+      // 2. Delete conversations (FK cascades to messages)
+      await supabase.from("conversations").delete().eq("user_id", id);
+
+      // 3. Delete user context
+      await supabase.from("user_context").delete().eq("user_id", id);
+
+      // 4. Delete the Clerk user (auth account). The user.deleted webhook may
+      //    fire afterwards; its soft-delete update finds no row, which is fine.
+      if (profile.clerk_user_id && !profile.clerk_user_id.startsWith("legacy_")) {
+        try {
+          const client = await clerkClient();
+          await client.users.deleteUser(profile.clerk_user_id);
+        } catch (err: any) {
+          // 404 = already gone in Clerk; anything else should surface
+          if (err?.status !== 404) {
+            console.error("[admin/data DELETE] Clerk delete failed:", err?.message ?? err);
+            return NextResponse.json({ error: "No se pudo eliminar la cuenta en Clerk" }, { status: 500 });
+          }
+        }
       }
+
+      // 5. Delete the profile row itself
+      const { error } = await supabase.from("profiles").delete().eq("id", id);
+      if (error) return NextResponse.json({ error: `Supabase error: ${error.message}` }, { status: 500 });
+
       return NextResponse.json({ success: true });
     }
 
@@ -168,46 +161,30 @@ export async function DELETE(request: Request) {
 // POST /api/admin/data?type=generate-coupons
 export async function POST(request: Request) {
   try {
+    const admin = await requireAdmin();
+    if (!admin) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
-    const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "").replace(/\s+/g, "").trim();
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-    if (!serviceKey || !supabaseUrl) {
-      return NextResponse.json({ error: "Service role key not configured" }, { status: 500 });
-    }
-
     const body = await request.json();
 
-    const headers = {
-      apikey: serviceKey,
-      Authorization: `Bearer ${serviceKey}`,
-      "Content-Type": "application/json",
-      Prefer: "return=minimal",
-    };
-
     if (type === "generate-coupons") {
-      const { codes, config, adminId } = body;
-      if (!codes || !Array.isArray(codes) || !config || !adminId) {
+      const { codes, config } = body;
+      if (!codes || !Array.isArray(codes) || !config) {
         return NextResponse.json({ error: "Invalid request" }, { status: 400 });
       }
 
       const inserts = codes.map((c: string) => ({
         code: c,
-        created_by: adminId,
+        created_by: admin.id,
         ...config,
       }));
 
-      const res = await fetch(`${supabaseUrl}/rest/v1/coupons`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(inserts),
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        return NextResponse.json({ error: `Supabase error: ${res.status} ${text}` }, { status: 500 });
+      const supabase = createClient();
+      const { error } = await supabase.from("coupons").insert(inserts);
+      if (error) {
+        return NextResponse.json({ error: `Supabase error: ${error.message}` }, { status: 500 });
       }
       return NextResponse.json({ success: true });
     }

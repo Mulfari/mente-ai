@@ -1,37 +1,24 @@
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
+import { getOrCreateProfile, type Profile } from "@/lib/profile";
 import ChatInterface from "@/components/ChatInterface";
-
-type InitialProfile = {
-  status?: string;
-  subscription_weeks?: number;
-  subscription_start?: string;
-  subscription_end?: string;
-  used_coupon_label?: string;
-  used_coupon_color?: string;
-  last_message_at?: string;
-  weekly_reset_at?: string;
-};
 
 export default async function ChatPage() {
   const { userId } = await auth();
-  const supabase = await createClient();
 
+  let internalUserId = "";
   let userEmail = "";
   let initialFullName: string | null = null;
-  let initialProfile: InitialProfile | null = null;
+  let initialProfile: Profile | null = null;
 
   if (userId) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, email, status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
-      .eq("clerk_user_id", userId)
-      .maybeSingle();
-
+    const profile = await getOrCreateProfile(userId);
     if (profile) {
+      internalUserId = profile.id;
       userEmail = profile.email;
       initialProfile = profile;
 
+      const supabase = createClient();
       const { data: uc } = await supabase
         .from("user_context")
         .select("full_name")
@@ -42,14 +29,12 @@ export default async function ChatPage() {
   }
 
   return (
-    <>
-      <ChatInterface
-        userId={userId ?? ""}
-        initialIsLoggedIn={!!userId}
-        initialUserEmail={userEmail}
-        initialFullName={initialFullName}
-        initialProfile={initialProfile}
-      />
-    </>
+    <ChatInterface
+      userId={internalUserId}
+      initialIsLoggedIn={!!internalUserId}
+      initialUserEmail={userEmail}
+      initialFullName={initialFullName}
+      initialProfile={initialProfile}
+    />
   );
 }

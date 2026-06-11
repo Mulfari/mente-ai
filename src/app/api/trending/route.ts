@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
+import { getProfileByClerkId } from "@/lib/profile";
 
 // GET /api/trending — four ranked sections, like a discovery feed:
 //   • trending — top clicks in the last 48h (viral / hot right now)
@@ -119,19 +120,21 @@ export async function GET(_request: NextRequest) {
   const supabase = await createClient();
 
   // Pull the user's city and their most-asked category in parallel.
+  // Both tables key on the internal profile UUID, not the Clerk id.
   let userCity: string | null = null;
   let topCategory: string | null = null;
-  if (userId) {
+  const internalUserId = userId ? (await getProfileByClerkId(userId))?.id ?? null : null;
+  if (internalUserId) {
     const [ctxRes, historyRes] = await Promise.all([
       supabase
         .from("user_context")
         .select("city")
-        .eq("user_id", userId)
+        .eq("user_id", internalUserId)
         .maybeSingle(),
       supabase
         .from("query_events")
         .select("category_id")
-        .eq("user_id", userId)
+        .eq("user_id", internalUserId)
         .not("sub_option_id", "is", null)
         .order("created_at", { ascending: false })
         .limit(200),

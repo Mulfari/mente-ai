@@ -271,26 +271,6 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
     window.location.href = `/admin?action=update-profile&userId=${userId}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
   }
 
-  async function sendConfirmationEmail(userId: string, email: string) {
-    setActionLoading(userId + "-confirm");
-    try {
-      const res = await fetch("/api/send-confirmation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, user_id: userId }),
-      });
-      if (res.ok) {
-        showToast("success", "Correo de confirmacion enviado");
-      } else {
-        const data = await res.json();
-        showToast("error", data.error || "Error al enviar correo");
-      }
-    } catch {
-      showToast("error", "Error al enviar correo");
-    }
-    setActionLoading(null);
-  }
-
   async function generateCoupons(count: number, type: CouponType) {
     setGeneratingCoupons(true);
     const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -744,28 +724,16 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                             Cupones
                           </button>
                           {user.status !== "active" ? (
-                            <>
-                              <button
-                                onClick={() => activateUser(user.id, weeksToAdd[user.id] ?? 1)}
-                                disabled={actionLoading === user.id + "-activate"}
-                                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40"
-                                style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
-                                Activar
-                              </button>
-                              <button
-                                onClick={() => sendConfirmationEmail(user.id, user.email)}
-                                disabled={actionLoading === user.id + "-confirm"}
-                                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all hover:opacity-90"
-                                style={{ backgroundColor: "rgba(139,92,246,0.1)", color: "#8b5cf6", border: "1px solid rgba(139,92,246,0.15)" }}>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                </svg>
-                                Enviar correo
-                              </button>
-                            </>
+                            <button
+                              onClick={() => activateUser(user.id, weeksToAdd[user.id] ?? 1)}
+                              disabled={actionLoading === user.id + "-activate"}
+                              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                              style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                              Activar
+                            </button>
                           ) : (
                             <button
                               onClick={() => deactivateUser(user.id)}

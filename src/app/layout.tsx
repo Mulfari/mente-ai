@@ -42,7 +42,11 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider
-      clerkJSUrl="https://clerk.clerk.accounts.dev/npm/@clerk/clerk-js@6/dist/clerk.browser.js"
+      // Frontend API proxied through our own domain (see src/proxy.ts).
+      // Relative URL resolves against the current origin in the browser.
+      // clerk-js script source can still be overridden with the
+      // NEXT_PUBLIC_CLERK_JS_URL env var (the SDK reads it automatically).
+      proxyUrl="/__clerk"
     >
       <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
         <head>
