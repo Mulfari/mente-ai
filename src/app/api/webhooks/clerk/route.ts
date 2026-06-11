@@ -19,10 +19,14 @@ function primaryEmail(data: {
 }
 
 export async function POST(req: NextRequest) {
-  // verifyWebhook validates the svix signature using CLERK_WEBHOOK_SECRET
+  // verifyWebhook valida la firma svix. OJO: el default del SDK lee
+  // CLERK_WEBHOOK_SIGNING_SECRET; nuestra env se llama CLERK_WEBHOOK_SECRET,
+  // así que se pasa explícito.
   let evt: Awaited<ReturnType<typeof verifyWebhook>>;
   try {
-    evt = await verifyWebhook(req);
+    evt = await verifyWebhook(req, {
+      signingSecret: process.env.CLERK_WEBHOOK_SECRET,
+    });
   } catch (err) {
     console.error("[clerk-webhook] Signature verification failed", err);
     return new Response("Invalid signature", { status: 400 });
