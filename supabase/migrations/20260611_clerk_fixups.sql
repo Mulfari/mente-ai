@@ -73,6 +73,11 @@ ALTER TABLE knowledge
   ADD CONSTRAINT knowledge_created_by_fkey
   FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE SET NULL;
 
+-- 5b. profiles.id used to come from auth.users(id). With Clerk, rows are
+--     created by the webhook / getOrCreateProfile without an explicit id,
+--     so the PK needs its own default.
+ALTER TABLE profiles ALTER COLUMN id SET DEFAULT gen_random_uuid();
+
 -- 6. profiles.status: the Clerk webhook soft-deletes with status='deleted',
 --    which the old CHECK did not allow.
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_status_check;
