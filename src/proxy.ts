@@ -18,6 +18,15 @@ const isProtectedRoute = createRouteMatcher([
 
 export default clerkMiddleware(
   async (auth, req) => {
+    // Canonical redirect: el apex sirve la app solo para que el proxy de
+    // Clerk (/__clerk, interceptado antes de llegar aqui) viva en el mismo
+    // dominio registrado en Clerk. Todo lo demas va a www.
+    if (req.nextUrl.hostname === "mulfai.com.ve") {
+      const url = req.nextUrl.clone();
+      url.hostname = "www.mulfai.com.ve";
+      return NextResponse.redirect(url, 308);
+    }
+
     // Proteger rutas privadas con Clerk
     if (isProtectedRoute(req)) {
       await auth.protect();
@@ -34,10 +43,11 @@ export default clerkMiddleware(
     return response;
   },
   {
-    // Proxy de la Frontend API por /__clerk en nuestro propio dominio.
-    // Evita configurar el CNAME clerk.mulfai.com.ve: el navegador habla con
-    // www.mulfai.com.ve/__clerk y el middleware reenvía a Clerk. Requiere
-    // registrar el proxy URL en Clerk Dashboard → Domains → Frontend API.
+    // Proxy de la Frontend API por /__clerk en el dominio apex (Clerk exige
+    // que el proxy viva en el mismo dominio registrado: mulfai.com.ve, sin
+    // www). El navegador habla con mulfai.com.ve/__clerk y este middleware
+    // reenvía a Clerk. Registrado via API: PATCH /v1/domains proxy_url.
+    proxyUrl: "https://mulfai.com.ve/__clerk",
     frontendApiProxy: { enabled: true },
   }
 );

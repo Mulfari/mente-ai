@@ -42,11 +42,11 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider
-      // Frontend API proxied through our own domain (see src/proxy.ts).
-      // Relative URL resolves against the current origin in the browser.
-      // clerk-js script source can still be overridden with the
-      // NEXT_PUBLIC_CLERK_JS_URL env var (the SDK reads it automatically).
-      proxyUrl="/__clerk"
+      // Frontend API proxied through the apex domain (see src/proxy.ts).
+      // Clerk requires the proxy on the registered domain (mulfai.com.ve,
+      // sin www), so the URL must be absolute — a relative one would
+      // resolve to www and fail Clerk's host attribution.
+      proxyUrl="https://mulfai.com.ve/__clerk"
     >
       <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
         <head>
