@@ -1,38 +1,43 @@
-import { createBrowserClient, type CookieOptions } from "@supabase/ssr";
+import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 
-// Browser Supabase client — uses anon key + Clerk session via cookies.
-// Note: with Clerk as the auth provider, Supabase no longer has a server-side
-// session. Queries from the browser go through with the anon key and rely on
-// RLS being permissive for authenticated users. All auth gating happens in
-// Clerk's middleware before this client is even reached.
+// Browser Supabase client autenticado con Clerk (third-party auth).
+// Cada request lleva el session token de Clerk como Bearer; Supabase lo
+// valida contra el JWKS de la instancia (configurado en Authentication →
+// Third-Party Auth) y las policies de RLS resuelven el perfil interno vía
+// auth.jwt()->>'sub' (clerk_user_id). Sin sesión → anon → RLS bloquea todo.
+
+type ClerkGlobal = {
+  loaded?: boolean;
+  session?: { getToken(opts?: { template?: string }): Promise<string | null> } | null;
+};
+
+// clerk-js lo inyecta ClerkProvider de forma asíncrona; las primeras queries
+// del chat pueden disparar antes de que cargue. Esperamos (máx 10s) a que
+// esté listo para no mandar requests anónimas que RLS devolvería vacías.
+async function clerkAccessToken(): Promise<string | null> {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as { Clerk?: ClerkGlobal };
+  const start = Date.now();
+  while (!w.Clerk?.loaded && Date.now() - start < 10_000) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
+  try {
+    // Template "supabase" (creado vía Clerk API): añade {"role":"authenticated"},
+    // requisito de Supabase third-party auth. clerk-js lo cachea ~60s.
+    return (await w.Clerk?.session?.getToken({ template: "supabase" })) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+let client: SupabaseClient | null = null;
+
 export function createClient() {
-  return createBrowserClient(
+  if (client) return client;
+  client = createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        flowType: "pkce",
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-      cookies: {
-        getAll() {
-          if (typeof document === "undefined") return [];
-          return document.cookie.split(";").reduce<Array<{ name: string; value: string }>>((acc, part) => {
-            const [name, ...rest] = part.trim().split("=");
-            if (name) acc.push({ name, value: rest.join("=") });
-            return acc;
-          }, []);
-        },
-        setAll(cookiesToSet) {
-          if (typeof document === "undefined") return;
-          cookiesToSet.forEach(({ name, value, options }) => {
-            const maxAge = (options as CookieOptions).maxAge ?? 60 * 60 * 24 * 30;
-            document.cookie = `${name}=${value}; path=${(options as CookieOptions).path ?? "/"}; max-age=${maxAge}; samesite=${(options as CookieOptions).sameSite ?? "lax"}; secure`;
-          });
-        },
-      },
-    }
+    { accessToken: clerkAccessToken }
   );
+  return client;
 }
