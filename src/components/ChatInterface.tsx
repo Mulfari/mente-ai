@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useClerk } from "@clerk/nextjs";
+import { useClerk, useAuth } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AccountMenu from "./AccountMenu";
@@ -146,19 +146,35 @@ export default function ChatInterface({
   const [mounted, setMounted] = useState(initialIsLoggedIn);
   const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [userEmail, setUserEmail] = useState(initialUserEmail);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  // Clerk hooks
+  const { signOut: clerkSignOut, openSignIn, openSignUp } = useClerk();
+  const { isSignedIn } = useAuth();
+
   // Deslogueado: cualquier intento de interactuar guarda la pregunta (si la
-  // hay) y manda a crear cuenta; tras el registro se envía sola.
+  // hay) y abre el MODAL de registro de Clerk encima del chat — el visitante
+  // no pierde la página ni su pregunta. Al autenticarse (modal u OAuth) la
+  // home recarga y la pregunta pendiente se envía sola.
   const requireSignIn = useCallback((pendingPrompt?: string) => {
     try {
       const q = (pendingPrompt ?? "").trim();
       if (q) localStorage.setItem("vechat-pending-question", q);
     } catch { /* storage bloqueado — el registro sigue valiendo */ }
-    window.location.href = "/sign-up";
-  }, []);
-  const [userEmail, setUserEmail] = useState(initialUserEmail);
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-  // Clerk hooks
-  const { signOut: clerkSignOut } = useClerk();
+    openSignUp({ forceRedirectUrl: "/", signInForceRedirectUrl: "/" });
+  }, [openSignUp]);
+
+  // El modal de auth no navega: con email/contraseña la sesión nace
+  // client-side. Cuando el server nos renderizó como visitante pero Clerk
+  // ya tiene sesión, recargamos para que el server resuelva el perfil — y
+  // la pregunta pendiente (si la hay) se teclee y envíe sola. El flujo de
+  // OAuth (Google) recarga por su cuenta al volver del redirect.
+  useEffect(() => {
+    if (!initialIsLoggedIn && isSignedIn) {
+      window.location.reload();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSignedIn]);
   const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(initialProfile);
   const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(
     initialFullName ? { full_name: initialFullName, city: "", interests: "", custom_notes: "" } : null
@@ -1763,16 +1779,20 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               <span style={{ color: "var(--primary)" }}>V</span> VeChat
             </span>
             <div className="flex items-center gap-2.5">
-              <a href="/sign-in"
-                className="text-[13px] px-3 py-2 rounded-full transition-colors hover:bg-[var(--surface-hover)]"
+              {/* Modales de Clerk en vez de navegar: el visitante no pierde
+                  el feed ni lo que tenga escrito en el input. */}
+              <button
+                onClick={() => openSignIn({ forceRedirectUrl: "/", signUpForceRedirectUrl: "/" })}
+                className="text-[13px] px-3 py-2 rounded-full cursor-pointer transition-colors hover:bg-[var(--surface-hover)]"
                 style={{ color: "var(--text-secondary)" }}>
                 Iniciar sesión
-              </a>
-              <a href="/sign-up"
-                className="text-[13px] font-medium text-white px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+              </button>
+              <button
+                onClick={() => openSignUp({ forceRedirectUrl: "/", signInForceRedirectUrl: "/" })}
+                className="text-[13px] font-medium text-white px-4 py-2 rounded-full cursor-pointer transition-opacity hover:opacity-90"
                 style={{ backgroundColor: "var(--primary)" }}>
                 Crear cuenta
-              </a>
+              </button>
             </div>
           </header>
         )}

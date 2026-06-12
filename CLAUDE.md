@@ -10,7 +10,14 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - API proxy del modelo: `api.selectapi.vip`
 
 ## Auth (Clerk)
-- Login/registro en `/sign-in` y `/sign-up` (componentes de Clerk)
+- MODAL-FIRST: dentro de la app el auth se abre con `openSignIn`/`openSignUp`
+  de Clerk encima del chat (requireSignIn y CTAs del header en ChatInterface);
+  al autenticarse sin redirect (email/contraseña) un efecto con `useAuth`
+  recarga la página para que el server resuelva el perfil
+- Apariencia global en `src/lib/clerkAppearance.ts` (clara, verde VeChat),
+  inyectada UNA vez en el ClerkProvider — no pasar appearance por componente
+- `/sign-in` y `/sign-up` quedan como fallback (correos de Clerk, links
+  directos, redirects del middleware) con `AuthShell` (tarjeta centrada)
 - Setup estándar con CNAME: Frontend API en `clerk.mulfai.com.ve`
   (DNS en Vercel DNS, `ns1/ns2.vercel-dns.com`; los 5 CNAME de Clerk —
   clerk, accounts, clkmail, clk._domainkey, clk2._domainkey — ya existen
@@ -70,9 +77,9 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   ven exactamente lo mismo (hero criollo + input centrado a pantalla
   completa + feed de tendencias bajo el fold con scroll interno)
 - Deslogueado: sin sidebar, header con marca y CTAs; `getBlockReason`
-  permite escribir y `sendMessage`/`submitSuggestion` redirigen a /sign-up
-  guardando la pregunta (`vechat-pending-question` en localStorage) que se
-  envía sola tras el registro
+  permite escribir y `sendMessage`/`submitSuggestion` abren el modal de
+  registro guardando la pregunta (`vechat-pending-question` en localStorage),
+  que tras autenticarse se teclea sola en el input (typeAndSubmit) y se envía
 - Logueado: sidebar con historial; los clicks del feed envían directo;
   cuenta bloqueada (0 semanas) abre el AccountMenu
 - Feed: `TrendingFeed` (componente único) + `GET /api/feed` (único endpoint;
@@ -81,8 +88,8 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   solo con volumen real ≥3)
 - NO recrear páginas/landings paralelas ni segundos empty states — cualquier
   cambio de la home va en EmptyState/TrendingFeed
-- Auth pages con `AuthShell` (claro, marca VeChat) + Clerk en español
-  (`@clerk/localizations` esES en el ClerkProvider)
+- Auth en español (`@clerk/localizations` esES en el ClerkProvider); el
+  flujo principal es el modal (ver sección Auth), las páginas son fallback
 - Tema: claro/oscuro/sistema. Tokens en `:root` (claro) y `[data-theme="dark"]`
   (paleta original) en globals.css; preferencia en localStorage `vechat-theme`
   (default: sistema); script anti-flash en layout + `ThemeWatcher`; selector

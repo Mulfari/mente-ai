@@ -1,10 +1,10 @@
 import { SignUp } from "@clerk/nextjs";
-import AuthShell, { authAppearance } from "@/components/auth/AuthShell";
+import AuthShell from "@/components/auth/AuthShell";
 
 export default function SignUpPage() {
   return (
     <AuthShell>
-      <SignUp appearance={authAppearance} />
+      <SignUp />
     </AuthShell>
   );
 }
