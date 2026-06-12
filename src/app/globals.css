@@ -239,35 +239,6 @@ html[data-sidebar="closed"] .sidebar-desktop {
   background-color: var(--primary-hover);
 }
 
-/* ── Hero sticky de la home: morph a barra compacta (patrón iOS "large
-   title"). --hp la setea EmptyState con el scroll: 0 = hero centrado a
-   tamaño completo, 1 = pegado al tope como header compacto. El título se
-   encoge, el subtítulo se desvanece y colapsa, los espacios se aprietan y
-   aparece un hairline inferior. Todo scroll-linked (sigue el dedo). */
-.hero-sticky {
-  --hp: 0;
-  padding-top: calc(12px - 4px * var(--hp));
-  padding-bottom: 4px;
-  border-bottom: 1px solid
-    color-mix(in srgb, var(--border) calc(var(--hp) * 100%), transparent);
-}
-.hero-head {
-  margin-bottom: calc(24px - 16px * var(--hp));
-}
-.hero-title {
-  font-size: calc(1.5rem - 0.5625rem * var(--hp)); /* 24px → 15px */
-}
-@media (min-width: 640px) {
-  .hero-title {
-    font-size: calc(1.875rem - 0.875rem * var(--hp)); /* 30px → 16px */
-  }
-}
-.hero-sub {
-  margin-top: calc(6px * (1 - var(--hp)));
-  height: calc(1.5em * (1 - var(--hp)));
-  overflow: hidden;
-  opacity: calc(1 - var(--hp) * 1.8); /* desaparece antes de llegar (p≈0.55) */
-}
 
 /* Typing cursor for streaming */
 .typing-cursor {

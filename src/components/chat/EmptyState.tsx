@@ -139,98 +139,34 @@ export default function EmptyState(props: Props) {
     };
   }, []);
 
-  // El bloque hero+input es sticky: arranca centrado (el espaciador de
-  // arriba lo empuja) y al scrollear sube hasta pegarse al tope, donde se
-  // queda mientras el feed sigue scrolleando por debajo. Para que el input
-  // quede centrado igual que siempre (borde inferior al 46% del alto), el
-  // espaciador mide 46% MENOS la altura real del bloque — medida en vivo
-  // (cambia entre visitante/logueado y cuando el textarea crece).
-  const heroRef = React.useRef<HTMLElement>(null);
-  const scrollerRef = React.useRef<HTMLDivElement>(null);
-  const spacerRef = React.useRef<HTMLDivElement>(null);
-  // Progreso del morph (0 = centrado, 1 = pegado arriba) — vive en un ref y
-  // en la CSS var --hp; nunca en estado de React (cambia en cada frame).
-  const hpRef = React.useRef(0);
-  const [heroH, setHeroH] = React.useState<number | null>(null);
-  React.useLayoutEffect(() => {
-    const el = heroRef.current;
-    if (!el) return;
-    const update = () => {
-      // Solo medir en reposo (sin morph): la altura encogida del bloque
-      // pegado NO debe realimentar el espaciador — sería un loop de layout.
-      if (hpRef.current > 0.05) return;
-      setHeroH(el.getBoundingClientRect().height);
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  const spacerHeight =
-    heroH === null
-      ? "max(0px, calc(46% - 190px))" // estimación pre-medida (un frame)
-      : `max(0px, calc(46% - ${Math.round(heroH)}px))`;
-
-  // Morph ligado al scroll (patrón iOS "large title"): mientras el bloque
-  // viaja hacia el tope, el título de hero se encoge a título de barra, el
-  // subtítulo se desvanece y los espacios se aprietan — ver .hero-sticky en
-  // globals.css. Sigue el dedo 1:1 (scroll-linked, no animación autónoma).
-  React.useEffect(() => {
-    const scroller = scrollerRef.current;
-    const section = heroRef.current;
-    const spacer = spacerRef.current;
-    if (!scroller || !section || !spacer) return;
-    let raf = 0;
-    const apply = () => {
-      raf = 0;
-      const travel = spacer.getBoundingClientRect().height;
-      const p = travel > 1
-        ? Math.min(1, Math.max(0, scroller.scrollTop / travel))
-        : 1; // sin espacio para viajar (pantallas bajitas) = compacto directo
-      hpRef.current = p;
-      section.style.setProperty("--hp", p.toFixed(3));
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(apply);
-    };
-    apply();
-    scroller.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      scroller.removeEventListener("scroll", onScroll);
-      if (raf) cancelAnimationFrame(raf);
-    };
-  }, []);
+  // El feed scrollea en SU PROPIA zona debajo del input; el hero y el input
+  // son fijos y no se mueven jamás. La rueda del mouse sobre el hero se
+  // reenvía al feed para que la página no se sienta muerta fuera de él.
+  const feedScrollRef = React.useRef<HTMLElement>(null);
 
   return (
-    <div ref={scrollerRef} className="h-full overflow-y-auto">
-      {/* Espaciador scrolleable: empuja el hero+input al centro vertical al
-          cargar; al scrollear hacia el feed se consume y el bloque sticky
-          de abajo se pega al tope. Su altura define el recorrido del morph. */}
-      <div ref={spacerRef} aria-hidden style={{ height: spacerHeight }} />
-
-      {/* Hero + input: sticky — sube con el scroll hasta el tope y se queda
-          ahí (vidrio esmerilado) mientras se transforma en barra compacta;
-          el feed sigue scrolleando por debajo. */}
+    <div
+      className="h-full flex flex-col overflow-hidden"
+      onWheel={(e) => {
+        const el = feedScrollRef.current;
+        if (el && !el.contains(e.target as Node)) el.scrollTop += e.deltaY;
+      }}
+    >
+      {/* Hero + input: FIJOS — ocupan la mitad superior anclados a su
+          fondo (input centrado en pantalla); nada los tapa ni los mueve. */}
       <section
-        ref={heroRef}
-        className="sticky top-0 z-10 flex flex-col items-center hero-sticky"
-        style={{
-          // 95% y no menos: con más transparencia el feed que pasa por
-          // debajo se leía a través del vidrio (sobre todo en tema oscuro).
-          backgroundColor: "color-mix(in srgb, var(--background) 95%, transparent)",
-          backdropFilter: "blur(16px) saturate(1.1)",
-          WebkitBackdropFilter: "blur(16px) saturate(1.1)",
-        }}
+        className="flex-none flex flex-col items-center justify-end"
+        style={{ minHeight: "46%" }}
       >
-        <header className={`text-center px-4 hero-head ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms", ...leaveStyle }}>
+        <header className={`text-center mb-6 px-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms", ...leaveStyle }}>
           <h1
-            className="font-semibold tracking-tighter hero-title"
+            className="text-2xl sm:text-3xl font-semibold tracking-tighter"
             style={{ color: "var(--text-primary)" }}
           >
             {opener}
           </h1>
           {!isLoggedIn && (
-            <p className="text-[13.5px] hero-sub" style={{ color: "var(--text-secondary)" }}>
+            <p className="text-[13.5px] mt-1.5" style={{ color: "var(--text-secondary)" }}>
               La IA que sí sabe de Venezuela — pregunta lo que sea
             </p>
           )}
@@ -253,8 +189,8 @@ export default function EmptyState(props: Props) {
         </div>
       </section>
 
-      {/* Microcopy / bloqueo — entre el input y el feed */}
-      <div className="flex flex-col items-center px-4" style={leaveStyle}>
+      {/* Microcopy / bloqueo — fijos con el hero, entre el input y el feed */}
+      <div className="flex-none flex flex-col items-center px-4" style={leaveStyle}>
         {!isLoggedIn && (
           <p className={`text-[12px] mt-3.5 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ color: "var(--text-tertiary)" }}>
             Gratis para empezar — crea tu cuenta en 10 segundos con Google
@@ -279,12 +215,26 @@ export default function EmptyState(props: Props) {
         )}
       </div>
 
-      {/* Feed de tendencias — asomando justo debajo del input */}
-      <section className={`max-w-2xl mx-auto px-4 pt-10 pb-20 ${feedShown ? "gentle-fade" : "opacity-0"}`} style={leaveStyle}>
-        <TrendingFeed
-          feed={feed}
-          onAsk={(prompt) => submitSuggestion(prompt, { source: "discover" })}
-        />
+      {/* Feed de tendencias — asoma justo debajo del input y scrollea en su
+          propia zona (el hero no se entera). El desvanecido superior hace
+          que las tarjetas entren/salgan suave por el borde, sin rayas ni
+          superposiciones. */}
+      <section
+        ref={feedScrollRef}
+        className={`flex-1 min-h-0 overflow-y-auto ${feedShown ? "gentle-fade" : "opacity-0"}`}
+        style={{
+          maskImage: "linear-gradient(to bottom, transparent 0, black 28px)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, black 28px)",
+          touchAction: "pan-y",
+          ...leaveStyle,
+        }}
+      >
+        <div className="max-w-2xl mx-auto px-4 pt-7 pb-20">
+          <TrendingFeed
+            feed={feed}
+            onAsk={(prompt) => submitSuggestion(prompt, { source: "discover" })}
+          />
+        </div>
       </section>
     </div>
   );
