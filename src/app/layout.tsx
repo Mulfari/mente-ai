@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { esES } from "@clerk/localizations";
 import { vechatAppearance } from "@/lib/clerkAppearance";
+import { vechatLocalization } from "@/lib/clerkLocalization";
 import "./globals.css";
 import ViewportHeight from "@/components/ViewportHeight";
 import ThemeWatcher from "@/components/ThemeWatcher";
@@ -44,7 +44,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider localization={esES} appearance={vechatAppearance}>
+    <ClerkProvider localization={vechatLocalization} appearance={vechatAppearance}>
       <html lang="es" className={inter.variable} suppressHydrationWarning>
         <head>
           {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema) y
