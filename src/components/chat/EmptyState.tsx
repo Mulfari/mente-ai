@@ -162,12 +162,12 @@ export default function EmptyState(props: Props) {
           )}
         </header>
 
-        {/* 800px = max-w-3xl del contenido del input (768) + su propio
+        {/* 704px = max-w-2xl del contenido del input (672) + su propio
             padding lateral (32). Así la pastilla centrada mide EXACTAMENTE
             lo mismo que la del dock inferior en cualquier viewport y la
             animación de despegue es un deslizamiento puro, sin saltos
             de ancho. */}
-        <div className="w-full max-w-[800px]">
+        <div className="w-full max-w-[704px]">
           <ChatInput
             {...chatInputProps}
             autoFocus

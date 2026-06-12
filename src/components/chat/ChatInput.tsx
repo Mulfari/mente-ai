@@ -367,11 +367,12 @@ export default function ChatInput({
       className="px-3 sm:px-4 pt-2 flex-none"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
-      {/* Mismo ancho que la columna de mensajes (max-w-3xl en MessageList):
-          el input y la conversación comparten la misma columna visual.
-          Antes crecía hasta 7xl en pantallas grandes y quedaba
-          desproporcionado respecto al contenido. */}
-      <div className="max-w-3xl mx-auto">
+      {/* max-w-2xl (672px): un pelo más angosto que la columna de mensajes
+          (3xl) — el input queda recogido y cómodo de leer. OJO: si cambias
+          este ancho, ajusta el max-w-[704px] del wrapper en EmptyState
+          (672 + 32 de padding propio) para que el despegue FLIP siga
+          siendo un deslizamiento puro sin saltos de ancho. */}
+      <div className="max-w-2xl mx-auto">
         {/* Pill de estado cuando está grabando — sobre el input. La ✕
             CANCELA (descarta el audio, no transcribe ni envía); para
             enviar lo dictado se toca el botón del mic (cuadrado rojo). */}

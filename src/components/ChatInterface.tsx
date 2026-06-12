@@ -269,7 +269,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         const weeks = initialProfile?.subscription_weeks ?? 0;
         const canSendPending = initialProfile?.status !== "inactive" && weeks !== 0;
         if (canSendPending) {
-          setTimeout(() => submitSuggestion(pending, { source: "typed" }), 600);
+          // typeAndSubmit: la pregunta se teclea sola en el input y despega.
+          setTimeout(() => typeAndSubmit(pending, { source: "typed" }), 600);
         } else {
           setInput(pending);
         }
@@ -913,6 +914,56 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       return next;
     });
   }
+
+  // "Se escribe solo": al tocar una tarjeta del feed (o al volver del
+  // registro con una pregunta pendiente), el texto se teclea en el input
+  // centrado y la pregunta despega sola — así el usuario ve qué se va a
+  // preguntar en vez de que la conversación arranque de la nada.
+  const typeAnimRef = useRef(0);
+  function typeAndSubmit(
+    s: string,
+    meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
+  ) {
+    if (sending) return;
+    // Deslogueado o cuenta bloqueada: mismos caminos que el envío directo
+    // (registro / menú de cuenta) — ahí no hay nada que teclear.
+    if (!isLoggedIn || !getBlockReason().canSend) {
+      submitSuggestion(s, meta);
+      return;
+    }
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      submitSuggestion(s, meta);
+      return;
+    }
+    const anim = ++typeAnimRef.current;
+    // ~22ms por carácter, acotado a 280-650ms — rápido pero legible.
+    const total = Math.min(650, Math.max(280, s.length * 22));
+    const t0 = performance.now();
+    setInput("");
+    const step = (now: number) => {
+      if (typeAnimRef.current !== anim) return; // cancelada: el usuario escribió o tocó otra tarjeta
+      const p = Math.min(1, (now - t0) / total);
+      setInput(s.slice(0, Math.max(1, Math.round(p * s.length))));
+      if (p < 1) {
+        requestAnimationFrame(step);
+      } else {
+        // Pausa breve para que se lea completa, después despega.
+        setTimeout(() => {
+          if (typeAnimRef.current !== anim) return;
+          setInput("");
+          submitSuggestion(s, meta);
+        }, 200);
+      }
+    };
+    requestAnimationFrame(step);
+  }
+
+  // setInput para escritura humana: invalida cualquier tecleo automático en
+  // curso para no pelear con el teclado del usuario.
+  const setInputFromUser = useCallback((v: string) => {
+    typeAnimRef.current++;
+    setInput(v);
+  }, []);
 
   async function submitSuggestion(
     s: string,
@@ -1770,10 +1821,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               feed={feed}
               leaving={leavingEmpty}
               getBlockReason={getBlockReason}
-              submitSuggestion={submitSuggestion}
+              submitSuggestion={typeAndSubmit}
               onShowAccountMenu={() => setShowAccountMenu(true)}
               input={input}
-              setInput={setInput}
+              setInput={setInputFromUser}
               sending={sending}
               attachments={attachments}
               previewUrls={previewUrls}
@@ -1811,7 +1862,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         >
           <ChatInput
             input={input}
-            setInput={setInput}
+            setInput={setInputFromUser}
             sending={sending}
             attachments={attachments}
             previewUrls={previewUrls}
