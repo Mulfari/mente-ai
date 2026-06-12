@@ -1809,12 +1809,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           </header>
         )}
 
-        {/* Messages. OJO: sin máscara de fade inferior — el desvanecido de
-            48px "comía" el final del contenido contra el fondo (las últimas
-            líneas del último mensaje quedaban ilegibles y se veía como una
-            franja de fondo tapando el chat abajo). El borde entre mensajes
-            e input queda limpio y completo. */}
-        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}>
+        {/* Messages. OJO #1: sin máscara de fade inferior — el desvanecido
+            de 48px "comía" el final del contenido contra el fondo.
+            OJO #2: en la home (empty state) main NO lleva padding inferior:
+            con py-6, el EmptyState (h-full + overflow-hidden) terminaba
+            24px ANTES del borde de la página — el feed se recortaba ahí
+            (tarjetas cortadas con el borde visible) y quedaba una franja
+            de fondo pegada al borde inferior. */}
+        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "pt-6 flex flex-col" : "py-6"}`}>
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
