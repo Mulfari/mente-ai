@@ -49,6 +49,16 @@
 html { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
 
+/* Los componentes de Clerk (modal de auth y páginas /sign-in /sign-up) son
+   superficie CLARA de marca aunque la app esté en tema oscuro. Sin esto,
+   el color-scheme: dark de arriba pinta los inputs del modal con fondo
+   oscuro del navegador dentro de la tarjeta blanca. */
+.cl-rootBox,
+.cl-modalBackdrop,
+.cl-cardBox {
+  color-scheme: light;
+}
+
 /* VeChat background: clean solid canvas + fine grain noise for
    warmth. Nothing else. Lets the content (chat, trending cards,
    bubbles) be the protagonist. */
