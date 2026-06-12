@@ -239,14 +239,6 @@ export default function TrendingFeed({
         ))}
       </div>
       </section>
-
-      {/* Cierre del feed: remate suave en vez de un corte abrupto. */}
-      <p
-        className="text-center text-[11.5px] pt-9 pb-1"
-        style={{ color: "var(--text-tertiary)" }}
-      >
-        Esto se mueve solo — VeChat aprende de lo que la gente pregunta
-      </p>
     </div>
   );
 }

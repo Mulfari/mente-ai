@@ -32,12 +32,32 @@ export function resolveTheme(pref: ThemePreference): ResolvedTheme {
   return pref === "system" ? systemTheme() : pref;
 }
 
+// Marco del navegador móvil (barra de URL, zonas del sistema): debe ser
+// EXACTAMENTE el --background del tema o se ven bandas de otro color
+// alrededor de la página. El script inline del layout lo aplica pre-paint;
+// esto lo mantiene en sincronía cuando el tema cambia en caliente.
+const CHROME_COLORS: Record<ResolvedTheme, string> = {
+  light: "#FBFBFA",
+  dark: "#0B1418",
+};
+
+function syncBrowserChrome(resolved: ResolvedTheme) {
+  let meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    document.head.appendChild(meta);
+  }
+  meta.setAttribute("content", CHROME_COLORS[resolved]);
+}
+
 export function applyThemePreference(pref: ThemePreference) {
   try {
     localStorage.setItem(STORAGE_KEY, pref);
   } catch { /* storage bloqueado */ }
   const resolved = resolveTheme(pref);
   document.documentElement.setAttribute("data-theme", resolved);
+  syncBrowserChrome(resolved);
   window.dispatchEvent(new CustomEvent(EVENT));
 }
 
@@ -49,7 +69,9 @@ export function useResolvedTheme(): ResolvedTheme {
       const onSystem = () => {
         // Solo re-aplica si la preferencia sigue al sistema.
         if (getThemePreference() === "system") {
-          document.documentElement.setAttribute("data-theme", systemTheme());
+          const resolved = systemTheme();
+          document.documentElement.setAttribute("data-theme", resolved);
+          syncBrowserChrome(resolved);
         }
         onChange();
       };

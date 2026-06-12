@@ -59,22 +59,11 @@ html[data-theme="dark"] { color-scheme: dark; }
   color-scheme: light;
 }
 
-/* VeChat background: clean solid canvas + fine grain noise for
-   warmth. Nothing else. Lets the content (chat, trending cards,
-   bubbles) be the protagonist. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-color: var(--background);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.4 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/></svg>");
-  background-size: 200px 200px;
-  pointer-events: none;
-  z-index: -1;
-}
-[data-theme="dark"] body::before {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/></svg>");
-}
+/* VeChat background: lienzo SÓLIDO y uniforme. Antes había una textura de
+   grano encima del color y eso hacía que toda superficie pintada con el
+   token puro (títulos sticky del feed, zonas del navegador en móvil) se
+   viera de un tono distinto al fondo — fuera el grano, fuera esa clase
+   entera de costuras. */
 
 @theme inline {
   --color-primary: var(--primary);
@@ -112,8 +101,10 @@ html, body {
 @supports not (height: 100dvh) {
   html, body { height: 100vh; }
 }
+/* El MISMO color plano en html y body: lo que asome del navegador (barra
+   de URL en móvil, overscroll, safe areas) se funde con la página. */
 html { background: var(--background); }
-body { background: transparent; }
+body { background: var(--background); }
 
 /* === SCROLLBAR — hidden, scroll still works via wheel/touchpad/keyboard === */
 * {

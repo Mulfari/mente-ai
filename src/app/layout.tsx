@@ -19,6 +19,9 @@ export const viewport: Viewport = {
   minimumScale: 1.0,
   userScalable: false,
   interactiveWidget: "overlays-content",
+  // El fondo llega hasta los bordes físicos (notch, home bar); los paddings
+  // con env(safe-area-inset-*) ya existen donde hace falta.
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
@@ -47,11 +50,13 @@ export default function RootLayout({
     <ClerkProvider localization={vechatLocalization} appearance={vechatAppearance}>
       <html lang="es" className={inter.variable} suppressHydrationWarning>
         <head>
-          {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema) y
-              el estado del sidebar (abierto/cerrado) para que el layout nazca
-              con el ancho correcto — sin flash de tema ni brinco del input. */}
+          {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema), el
+              color del marco del navegador móvil (theme-color) y el estado del
+              sidebar para que el layout nazca correcto — sin flash de tema,
+              sin bandas de otro color alrededor de la barra de URL, sin
+              brinco del input. */}
           <script dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=localStorage.getItem('vechat-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(p==='light'||p==='dark')?p:(d?'dark':'light');document.documentElement.setAttribute('data-theme',t);var s=localStorage.getItem('vechat-sidebar-open');document.documentElement.setAttribute('data-sidebar',s==='false'?'closed':'open');}catch(e){}})()`
+            __html: `(function(){try{var p=localStorage.getItem('vechat-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(p==='light'||p==='dark')?p:(d?'dark':'light');document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',t==='dark'?'#0B1418':'#FBFBFA');var s=localStorage.getItem('vechat-sidebar-open');document.documentElement.setAttribute('data-sidebar',s==='false'?'closed':'open');}catch(e){}})()`
           }} />
         </head>
         <body className="antialiased">
