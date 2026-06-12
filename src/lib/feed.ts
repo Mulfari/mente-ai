@@ -428,6 +428,26 @@ export async function getPublicFeed(
   }
 
   // Preguntando ahora: últimas preguntas reales publicables + semillas.
+  // Con el diccionario canónico disponible, cada entrada se muestra con su
+  // versión limpia reescrita por el digest en vez del texto crudo.
+  let recentAlias = new Map<string, string>();
+  if (fromCache && events.length > 0) {
+    try {
+      const candidateKeys = [...new Set(
+        events
+          .map((e) => sanitizePrompt(e.prompt))
+          .filter((p): p is string => p !== null)
+          .map((p) => normalizeKey(p))
+      )].slice(0, 20);
+      if (candidateKeys.length > 0) {
+        const { data: al } = await supabase
+          .from("feed_topic_aliases")
+          .select("key, topic_key")
+          .in("key", candidateKeys);
+        recentAlias = new Map((al ?? []).map((a) => [a.key as string, a.topic_key as string]));
+      }
+    } catch { /* sin tabla aún */ }
+  }
   const recentReal: FeedRecentItem[] = [];
   const seenRecent = new Set<string>();
   for (const e of events) {
@@ -435,10 +455,13 @@ export async function getPublicFeed(
     const clean = sanitizePrompt(e.prompt);
     if (!clean) continue;
     const key = normalizeKey(clean);
-    if (seenRecent.has(key)) continue;
-    seenRecent.add(key);
+    const topicKey = recentAlias.get(key);
+    const canonical = topicKey ? topics.get(topicKey)?.prompt ?? clean : clean;
+    const dedupeKey = topicKey ?? key;
+    if (seenRecent.has(dedupeKey)) continue;
+    seenRecent.add(dedupeKey);
     recentReal.push({
-      prompt: clean,
+      prompt: canonical,
       city: e.city,
       minutesAgo: Math.max(1, Math.round((now - new Date(e.created_at).getTime()) / 60_000)),
     });

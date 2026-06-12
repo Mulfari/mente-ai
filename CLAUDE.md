@@ -53,6 +53,8 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `VPS_SHARED_SECRET`, `VPS_ORCHESTRATOR_URL`
 - `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`
+- `CRON_SECRET` (auth del cron del feed), `FEED_LLM_URL`, `FEED_LLM_KEY`,
+  `FEED_LLM_MODEL` (canonicalización del feed; hoy MiniMax-M3)
 
 ## Admin
 - Panel en `/admin` — acceso por `profiles.role = 'admin'` (gate en página y en `/api/admin/*`)
@@ -83,9 +85,22 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - Logueado: sidebar con historial; los clicks del feed envían directo;
   cuenta bloqueada (0 semanas) abre el AccountMenu
 - Feed: `TrendingFeed` (componente único) + `GET /api/feed` (único endpoint;
-  ciudad por user_context o IP) + `src/lib/feed.ts` (agregación 48h/7d de
-  query_events, sanitizado PII/groserías, semillas cold-start, contadores
-  solo con volumen real ≥3)
+  ciudad por user_context o IP) + secciones Tendencias / Cerca de ti /
+  Para ti (personalizada por historial; visitantes ven "Preguntando ahora")
+- Algoritmo del feed (corre en Vercel server-side, NO en el VPS):
+  - Fase 1 (`src/lib/feed.ts`): score por PERSONAS distintas (repetidos 15%,
+    anónimos 40% cap 1.5), decaimiento exp(-edad/18h), bonus de pico 6h,
+    diversidad máx 2/categoría, contadores solo con ≥3 personas/48h,
+    semillas cold-start que los datos reales desplazan
+  - Fase 2 (`src/lib/feedDigest.ts` + cron `/api/cron/feed-digest`): un LLM
+    agrupa variantes en temas canónicos (tablas feed_topics/
+    feed_topic_aliases), reescribe la pregunta pública, clasifica y filtra
+    publicabilidad; materializa agregados en feed_cache. Cron diario 9 UTC
+    (vercel.json) + retrigger en background desde /api/feed si la caché
+    tiene >6h. getPublicFeed usa la caché (<26h) o cae a fase 1 en vivo.
+  - LLM agnóstico: FEED_LLM_URL/KEY/MODEL (OpenAI-compatible; hoy MiniMax
+    M3 vía api.minimax.io/v1 — OJO: razonador, mete <think> en el content
+    y el parser lo limpia) con fallback ANTHROPIC_API_KEY/BASE_URL
 - NO recrear páginas/landings paralelas ni segundos empty states — cualquier
   cambio de la home va en EmptyState/TrendingFeed
 - Auth en español (`@clerk/localizations` esES en el ClerkProvider); el
