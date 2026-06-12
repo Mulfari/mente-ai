@@ -65,18 +65,25 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - El resto de tablas (coupons, knowledge*, query_events, places, etc.) tienen
   RLS ON sin policies: solo las rutas API con el service role key acceden.
 
-## Home pública y feed de tendencias
-- `/` deslogueado: `PublicHome` (claro, minimal) — hero 100dvh con el input
-  centrado y feed de tendencias bajo el fold
-- Feed dinámico en `src/lib/feed.ts`: agrega `query_events` (48h/7d) con
-  sanitizado de prompts (PII/groserías/longitud), ciudad por IP
-  (`x-vercel-ip-city`), y semillas curadas para cold start (los contadores
-  solo se muestran con volumen real ≥3)
-- Funnel: la pregunta del visitante se guarda en localStorage
-  (`vechat-pending-question`) → registro → ChatInterface la envía sola
-  (o la deja en el input si la cuenta está bloqueada)
+## UN SOLO CHAT (arquitectura de la home)
+- `ChatInterface` es LA única superficie para todos: deslogueado y logueado
+  ven exactamente lo mismo (hero criollo + input centrado a pantalla
+  completa + feed de tendencias bajo el fold con scroll interno)
+- Deslogueado: sin sidebar, header con marca y CTAs; `getBlockReason`
+  permite escribir y `sendMessage`/`submitSuggestion` redirigen a /sign-up
+  guardando la pregunta (`vechat-pending-question` en localStorage) que se
+  envía sola tras el registro
+- Logueado: sidebar con historial; los clicks del feed envían directo;
+  cuenta bloqueada (0 semanas) abre el AccountMenu
+- Feed: `TrendingFeed` (componente único) + `GET /api/feed` (único endpoint;
+  ciudad por user_context o IP) + `src/lib/feed.ts` (agregación 48h/7d de
+  query_events, sanitizado PII/groserías, semillas cold-start, contadores
+  solo con volumen real ≥3)
+- NO recrear páginas/landings paralelas ni segundos empty states — cualquier
+  cambio de la home va en EmptyState/TrendingFeed
 - Auth pages con `AuthShell` (claro, marca VeChat) + Clerk en español
   (`@clerk/localizations` esES en el ClerkProvider)
+- Tema: claro único, tokens en `:root` de globals.css (no hay modo oscuro)
 
 ## Modelo de negocio
 - Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
