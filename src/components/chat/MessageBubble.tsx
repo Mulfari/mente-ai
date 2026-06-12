@@ -4,7 +4,8 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneLight, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useResolvedTheme } from "@/lib/theme";
 import { useSpeechSynthesisServer } from "@/lib/voice-server";
 
 type Message = {
@@ -40,6 +41,8 @@ export default function MessageBubble({
 }: Props) {
   const isStreaming = message._loading || message.id === streamingMsgId || retryMode === message.id;
   const isUser = message.role === "user";
+  // Tema resuelto (claro/oscuro) — decide el estilo del syntax highlighting.
+  const resolvedTheme = useResolvedTheme();
 
   // Voice output (TTS) — usa Kokoro TTS corriendo en el VPS en lugar de la
   // voz del navegador (que suena robótica para español). Misma interfaz
@@ -178,7 +181,7 @@ export default function MessageBubble({
                             </button>
                           </div>
                           <SyntaxHighlighter
-                            style={oneLight as any}
+                            style={(resolvedTheme === "dark" ? vscDarkPlus : oneLight) as any}
                             language={match[1]}
                             PreTag="div"
                             customStyle={{ margin: 0, borderRadius: 0, fontSize: "13px", backgroundColor: "transparent" }}
@@ -210,7 +213,7 @@ export default function MessageBubble({
             return (
               <button
                 onClick={() => (isThisSpeaking || isThisLoading ? stop() : speak(message.content))}
-                className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-black/5"
+                className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-[var(--surface-hover)]"
                 style={{ color: isThisSpeaking ? "var(--primary)" : "var(--text-tertiary)" }}
                 title={isThisSpeaking ? "Detener lectura" : isThisLoading ? "Generando audio..." : "Leer en voz alta"}
                 aria-label={isThisSpeaking ? "Detener lectura" : isThisLoading ? "Generando audio" : "Leer en voz alta"}

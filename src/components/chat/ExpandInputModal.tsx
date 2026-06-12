@@ -58,7 +58,7 @@ export default function ExpandInputModal({ initialValue, onCommit, onCancel }: P
           </h3>
           <button
             onClick={onCancel}
-            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-black/5 transition-colors"
+            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-[var(--surface-hover)] transition-colors"
             style={{ color: "var(--text-tertiary)" }}
             title="Cerrar"
           >
@@ -87,7 +87,7 @@ export default function ExpandInputModal({ initialValue, onCommit, onCancel }: P
         >
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-black/5"
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-[var(--surface-hover)]"
             style={{ color: "var(--text-secondary)" }}
           >
             Cancelar

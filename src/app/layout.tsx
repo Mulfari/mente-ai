@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { esES } from "@clerk/localizations";
 import "./globals.css";
 import ViewportHeight from "@/components/ViewportHeight";
+import ThemeWatcher from "@/components/ThemeWatcher";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -43,11 +44,20 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={esES}>
-      <html lang="es" className={inter.variable} style={{ colorScheme: "light" }} suppressHydrationWarning>
+      <html lang="es" className={inter.variable} suppressHydrationWarning>
+        <head>
+          {/* Aplica el tema (claro/oscuro/sistema) antes del primer paint
+              para evitar el flash. La preferencia vive en vechat-theme. */}
+          <script dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=localStorage.getItem('vechat-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(p==='light'||p==='dark')?p:(d?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})()`
+          }} />
+        </head>
         <body className="antialiased">
           {/* Syncs --vh CSS var to window.visualViewport.height so the chat
               container and input follow the on-screen keyboard without jumping. */}
           <ViewportHeight />
+          {/* Sigue los cambios de tema del sistema cuando la preferencia es "system" */}
+          <ThemeWatcher />
           {children}
         </body>
       </html>

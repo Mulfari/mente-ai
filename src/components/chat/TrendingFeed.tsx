@@ -7,15 +7,24 @@ import type { PublicFeed, FeedCard } from "@/lib/feed";
 // deslogueado y para el usuario en el empty state del chat. La única
 // diferencia es qué hace onAsk (registrarse vs. enviar directo).
 
-const CATEGORY_STYLES: Record<string, { color: string; bg: string }> = {
-  comida: { color: "#D97706", bg: "#FEF7E8" },
-  servicios: { color: "#0E8F6F", bg: "#E8F6F1" },
-  ofertas: { color: "#DB2777", bg: "#FDF2F8" },
-  tramites: { color: "#2563EB", bg: "#EFF6FF" },
-  negocios: { color: "#7C3AED", bg: "#F5F3FF" },
-  salud: { color: "#DC2626", bg: "#FEF2F2" },
-  general: { color: "#0E8F6F", bg: "#E8F6F1" },
+// Pills de categoría: el fondo se deriva del color con transparencia
+// (color-mix) para que funcione igual en tema claro y oscuro.
+const CATEGORY_COLORS: Record<string, string> = {
+  comida: "#D97706",
+  servicios: "#0E8F6F",
+  ofertas: "#DB2777",
+  tramites: "#2563EB",
+  negocios: "#7C3AED",
+  salud: "#DC2626",
+  general: "#0E8F6F",
 };
+
+const CATEGORY_STYLES: Record<string, { color: string; bg: string }> = Object.fromEntries(
+  Object.entries(CATEGORY_COLORS).map(([id, color]) => [
+    id,
+    { color, bg: `color-mix(in srgb, ${color} 14%, transparent)` },
+  ])
+);
 
 function categoryStyle(id: string) {
   return CATEGORY_STYLES[id] ?? CATEGORY_STYLES.general;
@@ -137,7 +146,7 @@ export default function TrendingFeed({
         {feed.nearYou.city && (
           <span
             className="text-[10.5px] font-medium px-2.5 py-0.5 rounded-full"
-            style={{ color: "#0A6B54", backgroundColor: "#E8F6F1" }}
+            style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 14%, transparent)" }}
           >
             {feed.nearYou.city}
           </span>
@@ -148,7 +157,7 @@ export default function TrendingFeed({
           <button
             key={p}
             onClick={() => onAsk(p)}
-            className="text-[12.5px] px-4 py-2 rounded-full transition-colors cursor-pointer hover:bg-black/5"
+            className="text-[12.5px] px-4 py-2 rounded-full transition-colors cursor-pointer hover:bg-[var(--surface-hover)]"
             style={{
               color: "var(--text-primary)",
               backgroundColor: "var(--surface)",

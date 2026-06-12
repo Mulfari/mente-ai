@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useClerk } from "@clerk/nextjs";
+import { applyThemePreference, getThemePreference, type ThemePreference } from "@/lib/theme";
 
 type Props = {
   userId: string;
@@ -18,7 +19,7 @@ type Props = {
   onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
 };
 
-type Tab = "context" | "subscription" | "coupon";
+type Tab = "context" | "personalization" | "subscription" | "coupon";
 
 const MAX_CHARS = 2000;
 
@@ -87,6 +88,12 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                 </svg>
               )},
+              { id: "personalization" as Tab, label: "Personalizacion", icon: (
+                <svg className="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                </svg>
+              )},
               { id: "subscription" as Tab, label: "Suscripcion", icon: (
                 <svg className="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -133,10 +140,13 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
             style={{ borderBottom: "1px solid var(--border)" }}>
             <div>
               <h2 className="text-base sm:text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                {tab === "context" ? "Mi contexto" : tab === "subscription" ? "Suscripcion" : "Anadir cupon"}
+                {tab === "context" ? "Mi contexto" :
+                 tab === "personalization" ? "Personalizacion" :
+                 tab === "subscription" ? "Suscripcion" : "Anadir cupon"}
               </h2>
               <p className="text-xs sm:text-sm mt-0.5" style={{ color: "var(--text-tertiary)" }}>
                 {tab === "context" ? "Personaliza tu experiencia de chat" :
+                 tab === "personalization" ? "Apariencia de la aplicacion" :
                  tab === "subscription" ? "Gestiona tu suscripcion" :
                  "Introduce un codigo de cupon"}
               </p>
@@ -153,10 +163,104 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
           {/* Tab content */}
           <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
             {tab === "context" ? <ContextTab userId={userId} userContext={userContext} onSave={onSave} /> :
+             tab === "personalization" ? <PersonalizationTab /> :
              tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
              <CouponTab email={email} onClose={onClose} />}
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// --- Personalization Tab ---
+function PersonalizationTab() {
+  const [pref, setPref] = useState<ThemePreference>("system");
+  useEffect(() => {
+    setPref(getThemePreference());
+  }, []);
+
+  const choose = (next: ThemePreference) => {
+    setPref(next);
+    applyThemePreference(next);
+  };
+
+  const OPTIONS: { id: ThemePreference; label: string; detail: string; icon: React.ReactNode }[] = [
+    {
+      id: "light",
+      label: "Claro",
+      detail: "Fondo blanco, ideal de día",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="4" />
+          <path strokeLinecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+      ),
+    },
+    {
+      id: "dark",
+      label: "Oscuro",
+      detail: "Los colores clásicos de VeChat",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+        </svg>
+      ),
+    },
+    {
+      id: "system",
+      label: "Sistema",
+      detail: "Sigue la preferencia de tu dispositivo",
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+          <rect x="2" y="4" width="20" height="13" rx="2" />
+          <path strokeLinecap="round" d="M8 21h8m-4-4v4" />
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div className="p-6 sm:p-8">
+      <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Tema</p>
+      <p className="text-xs mb-5" style={{ color: "var(--text-tertiary)" }}>
+        Elige cómo se ve VeChat. Con &quot;Sistema&quot; cambia solo según tu dispositivo.
+      </p>
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+        {OPTIONS.map((opt) => {
+          const selected = pref === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => choose(opt.id)}
+              aria-pressed={selected}
+              className="text-left rounded-2xl p-4 transition-all"
+              style={{
+                backgroundColor: "var(--surface)",
+                border: `2px solid ${selected ? "var(--primary)" : "var(--border)"}`,
+                boxShadow: selected ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent)" : "none",
+              }}
+            >
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
+                style={{
+                  backgroundColor: selected
+                    ? "color-mix(in srgb, var(--primary) 12%, transparent)"
+                    : "var(--surface-hover)",
+                  color: selected ? "var(--primary)" : "var(--text-secondary)",
+                }}
+              >
+                {opt.icon}
+              </div>
+              <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>
+                {opt.label}
+              </p>
+              <p className="text-[11.5px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
+                {opt.detail}
+              </p>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

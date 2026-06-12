@@ -20,9 +20,34 @@
   --code-bg: rgba(17,24,39,0.06);
   --code-block-bg: #F6F7F8;
   --table-row-hover: rgba(16,163,127,0.05);
+  --table-head-bg: #F9FAFB;
   --motion-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
+
+/* Tema oscuro: la paleta original de la app. Se activa con
+   data-theme="dark" en <html> (selector en AccountMenu → Personalización;
+   por defecto sigue la preferencia del sistema). */
+[data-theme="dark"] {
+  --background: #0B1418;
+  --surface: #1a1a1a;
+  --surface-hover: #242424;
+  --border: #383838;
+  --text-primary: #f5f5f7;
+  --text-secondary: #86868b;
+  --text-tertiary: #6e6e73;
+  --danger: #FF453A;
+  --warning: #FF9F0A;
+  --success: #30D158;
+  --user-bubble: #005C4B;
+  --code-bg: rgba(255,255,255,0.06);
+  --code-block-bg: rgba(255,255,255,0.04);
+  --table-row-hover: rgba(255,255,255,0.03);
+  --table-head-bg: rgba(255,255,255,0.04);
+}
+
+html { color-scheme: light; }
+html[data-theme="dark"] { color-scheme: dark; }
 
 /* VeChat background: clean solid canvas + fine grain noise for
    warmth. Nothing else. Lets the content (chat, trending cards,
@@ -31,11 +56,14 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-color: #FBFBFA;
+  background-color: var(--background);
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.4 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/></svg>");
   background-size: 200px 200px;
   pointer-events: none;
   z-index: -1;
+}
+[data-theme="dark"] body::before {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/></svg>");
 }
 
 @theme inline {
@@ -236,7 +264,7 @@ body { background: transparent; }
 
 /* Header */
 .prose thead {
-  background: #F9FAFB;
+  background: var(--table-head-bg);
   border-bottom: 1px solid var(--border);
 }
 .prose thead tr th {

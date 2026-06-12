@@ -1675,7 +1675,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             </span>
             <div className="flex items-center gap-2.5">
               <a href="/sign-in"
-                className="text-[13px] px-3 py-2 rounded-full transition-colors hover:bg-black/5"
+                className="text-[13px] px-3 py-2 rounded-full transition-colors hover:bg-[var(--surface-hover)]"
                 style={{ color: "var(--text-secondary)" }}>
                 Iniciar sesión
               </a>

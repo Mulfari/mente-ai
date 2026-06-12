@@ -443,7 +443,7 @@ export default function ChatInput({
         <div
           className="relative flex items-end gap-1.5 rounded-2xl pl-4 sm:pl-5 pr-1.5 sm:pr-2 py-2"
           style={{
-            backgroundColor: "rgba(255,255,255,0.96)",
+            backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
             border: `1px solid ${isFocused ? "color-mix(in srgb, var(--primary) 45%, var(--border))" : "var(--border)"}`,
             backdropFilter: "blur(20px) saturate(1.2)",
             WebkitBackdropFilter: "blur(20px) saturate(1.2)",
@@ -496,7 +496,7 @@ export default function ChatInput({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={!isLoggedIn || attachments.length >= 3 || !block.canWrite || sending || isStreaming}
-            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
+            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)] disabled:opacity-30"
             style={{ color: "var(--text-tertiary)" }}
             title="Adjuntar archivo"
           >
@@ -553,7 +553,7 @@ export default function ChatInput({
                   ? "opacity-30 cursor-not-allowed"
                   : isListening
                   ? "recording-pulse"
-                  : "hover:bg-black/5"
+                  : "hover:bg-[var(--surface-hover)]"
               }`}
               style={{
                 color: isListening ? "white" : "var(--text-tertiary)",
@@ -591,7 +591,7 @@ export default function ChatInput({
                 ? "var(--danger)"
                 : canSend
                 ? "var(--primary)"
-                : "rgba(17,24,39,0.05)",
+                : "var(--surface-hover)",
               color: primaryActive ? "white" : "var(--text-tertiary)",
             }}
             title={isStreaming ? "Detener generación" : "Enviar"}
@@ -627,7 +627,7 @@ export default function ChatInput({
           {!isStreaming && input.length > 240 && !isExpanded && (
             <button
               onClick={() => setIsExpanded(true)}
-              className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center hover:bg-black/5 transition-colors z-10"
+              className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center hover:bg-[var(--surface-hover)] transition-colors z-10"
               style={{ color: "var(--text-tertiary)" }}
               title="Expandir editor"
             >
