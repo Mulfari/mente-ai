@@ -72,11 +72,15 @@ Responde SOLO con un array JSON válido, sin texto adicional:
 }
 
 function extractJsonArray(text: string): CanonResult[] | null {
-  const start = text.indexOf("[");
-  const end = text.lastIndexOf("]");
+  // Los modelos razonadores (MiniMax M3, etc.) intercalan su pensamiento en
+  // <think>...</think> DENTRO del contenido — y ese texto puede contener
+  // corchetes. Se elimina antes de buscar el array JSON.
+  const stripped = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  const start = stripped.indexOf("[");
+  const end = stripped.lastIndexOf("]");
   if (start === -1 || end <= start) return null;
   try {
-    const arr = JSON.parse(text.slice(start, end + 1));
+    const arr = JSON.parse(stripped.slice(start, end + 1));
     if (!Array.isArray(arr)) return null;
     return arr as CanonResult[];
   } catch {
@@ -94,8 +98,10 @@ async function callLlm(prompt: string): Promise<string | null> {
       headers: { Authorization: `Bearer ${oaiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: process.env.FEED_LLM_MODEL || "",
-        max_tokens: 3000,
-        temperature: 0,
+        // Presupuesto amplio: los razonadores gastan tokens en <think>
+        // antes de la respuesta útil.
+        max_tokens: 8000,
+        temperature: 1.0,
         messages: [{ role: "user", content: prompt }],
       }),
     });
@@ -121,7 +127,7 @@ async function callLlm(prompt: string): Promise<string | null> {
     },
     body: JSON.stringify({
       model,
-      max_tokens: 3000,
+      max_tokens: 8000,
       stream: false,
       messages: [{ role: "user", content: prompt }],
     }),
