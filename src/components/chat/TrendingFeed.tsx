@@ -91,7 +91,7 @@ function TrendCard({ card, onAsk, delay = 0 }: { card: FeedCard; onAsk: (p: stri
   return (
     <button
       onClick={() => onAsk(card.prompt)}
-      className="text-left rounded-2xl p-3.5 cursor-pointer feed-card gentle-fade-up-soft w-[168px] flex flex-col items-start"
+      className="text-left rounded-2xl p-3.5 cursor-pointer feed-card gentle-fade-up-soft flex flex-col items-start"
       style={{ animationDelay: `${delay}ms` }}
     >
       <span
@@ -123,16 +123,12 @@ export default function TrendingFeed({
     // Skeleton ligero mientras carga /api/feed — con la forma de las filas
     // deslizables reales.
     return (
-      <div className="feed-hrow" aria-hidden="true">
+      <div className="feed-row-trending" aria-hidden="true">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-2xl h-[140px] w-[168px]"
-            style={{
-              backgroundColor: "var(--surface)",
-              border: "1px solid var(--border)",
-              animation: `pulse 1.5s ease-in-out infinite ${i * 0.15}s`,
-            }}
+            className="rounded-2xl h-[140px] feed-skel"
+            style={{ animation: `pulse 1.5s ease-in-out infinite ${i * 0.15}s` }}
           />
         ))}
       </div>
@@ -153,11 +149,12 @@ export default function TrendingFeed({
         </h2>
       </SectionHeader>
 
-      {/* Fila deslizable: destacado + tendencias, con snap por tarjeta. */}
-      <div className="feed-hrow">
+      {/* Móvil: fila deslizable con snap; escritorio: cuadrícula 2 col
+          (el ancho de cada tarjeta lo decide .feed-row-trending en CSS). */}
+      <div className="feed-row-trending">
         <button
           onClick={() => onAsk(feed.featured.prompt)}
-          className="text-left rounded-2xl p-4 flex flex-col justify-between w-[230px] min-h-[150px] cursor-pointer feed-featured gentle-fade-up-soft"
+          className="text-left rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[150px] cursor-pointer feed-featured gentle-fade-up-soft"
           style={{
             background:
               "radial-gradient(120% 90% at 85% -10%, rgba(255,255,255,0.18), transparent 50%), linear-gradient(160deg, var(--primary), #0A6B54)",
@@ -202,8 +199,8 @@ export default function TrendingFeed({
           </span>
         )}
       </SectionHeader>
-      {/* Chips en fila deslizable (sin wrap, sin snap — scroll libre). */}
-      <div className="feed-hrow feed-hrow-free">
+      {/* Móvil: chips en fila deslizable; escritorio: con wrap clásico. */}
+      <div className="feed-row-chips">
         {feed.nearYou.prompts.map((p, i) => (
           <button
             key={p}

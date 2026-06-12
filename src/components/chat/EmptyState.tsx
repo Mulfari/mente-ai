@@ -208,7 +208,9 @@ export default function EmptyState(props: Props) {
           ...leaveStyle,
         }}
       >
-        <div className="max-w-2xl mx-auto px-4 pt-7 pb-20">
+        {/* En escritorio el feed gana ancho (3xl = 768px) para aprovechar
+            mejor el espacio; en móvil se queda en 2xl. */}
+        <div className="max-w-2xl md:max-w-3xl mx-auto px-4 pt-7 pb-20">
           <TrendingFeed
             feed={feed}
             onAsk={(prompt) => submitSuggestion(prompt, { source: "discover" })}

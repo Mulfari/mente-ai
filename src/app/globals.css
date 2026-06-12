@@ -250,31 +250,67 @@ html[data-sidebar="closed"] .sidebar-desktop {
   transform: translateY(-2px);
 }
 
-/* Filas deslizables del feed (estilo app): scroll horizontal con snap.
-   El margen negativo sangra la fila hasta el borde del wrapper (px-4 =
-   16px) para que la última tarjeta visible quede CORTADA por el borde —
-   la señal universal de "desliza". El padding-block da aire al lift de
-   los hovers (overflow-x:auto recorta en vertical). touch-action propio:
-   el scroller vertical del feed declara pan-y y sin esto los deslizamientos
-   horizontales sobre las filas se ignorarían en táctil. */
-.feed-hrow {
+/* Layout responsive del feed: en MÓVIL filas deslizables estilo app
+   (scroll horizontal con snap, sangrado hasta el borde para que la última
+   tarjeta quede cortada e invite a deslizar, touch-action propio porque el
+   scroller vertical declara pan-y); en ESCRITORIO (md+) la cuadrícula
+   clásica de 2 columnas con el destacado a doble fila, y los chips con
+   wrap. El padding-block móvil da aire al lift del hover (overflow-x
+   recorta en vertical). */
+.feed-row-trending,
+.feed-row-chips {
   display: flex;
   gap: 10px;
   overflow-x: auto;
   margin-inline: -16px;
   padding-inline: 16px;
   padding-block: 4px 6px;
-  scroll-snap-type: x mandatory;
   scroll-padding-inline: 16px;
   touch-action: pan-x pan-y;
   -webkit-overflow-scrolling: touch;
 }
-.feed-hrow > * {
+.feed-row-trending {
+  scroll-snap-type: x mandatory;
+}
+.feed-row-trending > *,
+.feed-row-chips > * {
   scroll-snap-align: start;
   flex: 0 0 auto;
 }
-.feed-hrow-free {
-  scroll-snap-type: none;
+.feed-row-trending > .feed-card,
+.feed-row-trending > .feed-skel {
+  width: 168px;
+}
+.feed-row-trending > .feed-featured {
+  width: 230px;
+}
+@media (min-width: 768px) {
+  .feed-row-trending {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    overflow: visible;
+    margin-inline: 0;
+    padding-inline: 0;
+    scroll-snap-type: none;
+  }
+  .feed-row-trending > .feed-card,
+  .feed-row-trending > .feed-skel,
+  .feed-row-trending > .feed-featured {
+    width: auto;
+  }
+  .feed-row-trending > .feed-featured {
+    grid-row: span 2;
+  }
+  .feed-row-chips {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+}
+.feed-skel {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
 }
 .feed-chip {
   background-color: var(--surface);
