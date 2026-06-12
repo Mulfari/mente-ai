@@ -83,7 +83,11 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   cambio de la home va en EmptyState/TrendingFeed
 - Auth pages con `AuthShell` (claro, marca VeChat) + Clerk en español
   (`@clerk/localizations` esES en el ClerkProvider)
-- Tema: claro único, tokens en `:root` de globals.css (no hay modo oscuro)
+- Tema: claro/oscuro/sistema. Tokens en `:root` (claro) y `[data-theme="dark"]`
+  (paleta original) en globals.css; preferencia en localStorage `vechat-theme`
+  (default: sistema); script anti-flash en layout + `ThemeWatcher`; selector
+  en AccountMenu → Personalización; `useResolvedTheme()` (src/lib/theme.ts)
+  para lo que no se puede tokenizar (p. ej. syntax highlighting)
 
 ## Modelo de negocio
 - Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
