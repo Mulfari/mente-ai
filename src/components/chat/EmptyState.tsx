@@ -98,14 +98,6 @@ function pickOpener(firstName: string | null, isLoggedIn: boolean): string {
   return OPENERS_NO_NAME[0];
 }
 
-function ChevronDown() {
-  return (
-    <svg width={18} height={18} fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  );
-}
-
 export default function EmptyState(props: Props) {
   const {
     userName,
@@ -124,8 +116,6 @@ export default function EmptyState(props: Props) {
   );
 
   const block = getBlockReason();
-  const feedRef = React.useRef<HTMLDivElement>(null);
-  const scrollRef = React.useRef<HTMLDivElement>(null);
 
   // Cascada de entrada: input primero, hero después, feed al final.
   const [heroShown, setHeroShown] = React.useState(false);
@@ -140,9 +130,14 @@ export default function EmptyState(props: Props) {
   }, []);
 
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto">
-      {/* ── Pantalla 1: hero + input centrados ── */}
-      <section className="min-h-full relative flex flex-col items-center justify-center px-4">
+    <div className="h-full overflow-y-auto">
+      {/* Hero + input: el bloque ocupa la mitad superior y se ancla a su
+          fondo, así el input queda en el centro vertical de la pantalla y
+          el feed asoma justo debajo — visible sin scrollear. */}
+      <section
+        className="flex flex-col items-center justify-end px-4"
+        style={{ minHeight: "46%" }}
+      >
         <header className={`text-center mb-6 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms" }}>
           <h1
             className="text-2xl sm:text-3xl font-semibold tracking-tighter"
@@ -167,15 +162,17 @@ export default function EmptyState(props: Props) {
             isStreaming={false}
           />
         </div>
+      </section>
 
+      {/* Microcopy / bloqueo — entre el input y el feed */}
+      <div className="flex flex-col items-center px-4">
         {!isLoggedIn && (
-          <p className={`text-[12px] mt-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ color: "var(--text-tertiary)" }}>
+          <p className={`text-[12px] mt-3.5 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ color: "var(--text-tertiary)" }}>
             Gratis para empezar — crea tu cuenta en 10 segundos con Google
           </p>
         )}
-
         {isLoggedIn && !block.canWrite && (
-          <div className={`text-center mt-5 ${heroShown ? "lm-fade-up" : "opacity-0"}`}>
+          <div className={`text-center mt-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`}>
             <p className="text-sm font-semibold mb-1" style={{ color: "var(--warning)" }}>
               Suscripción bloqueada
             </p>
@@ -191,23 +188,10 @@ export default function EmptyState(props: Props) {
             </button>
           </div>
         )}
+      </div>
 
-        {/* Hint de scroll hacia el feed */}
-        <button
-          onClick={() => feedRef.current?.scrollIntoView({ behavior: "smooth" })}
-          aria-label="Ver tendencias"
-          className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5 cursor-pointer transition-opacity hover:opacity-70 ${feedShown ? "gentle-fade" : "opacity-0"}`}
-          style={{ color: "var(--text-tertiary)" }}
-        >
-          <span className="text-[11.5px]">Mira lo que se pregunta la gente</span>
-          <span className="animate-bounce">
-            <ChevronDown />
-          </span>
-        </button>
-      </section>
-
-      {/* ── Pantalla 2: feed de tendencias (debajo del fold) ── */}
-      <section ref={feedRef} className={`max-w-2xl mx-auto px-4 pt-8 pb-20 ${feedShown ? "gentle-fade" : "opacity-0"}`}>
+      {/* Feed de tendencias — asomando justo debajo del input */}
+      <section className={`max-w-2xl mx-auto px-4 pt-10 pb-20 ${feedShown ? "gentle-fade" : "opacity-0"}`}>
         <TrendingFeed
           feed={feed}
           onAsk={(prompt) => submitSuggestion(prompt, { source: "discover" })}
