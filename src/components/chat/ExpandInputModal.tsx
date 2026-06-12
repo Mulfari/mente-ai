@@ -35,7 +35,7 @@ export default function ExpandInputModal({ initialValue, onCommit, onCancel }: P
   const modal = (
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center px-4 animate-fade-in"
-      style={{ backgroundColor: "rgba(0,0,0,0.6)", backdropFilter: "blur(14px)" }}
+      style={{ backgroundColor: "rgba(17,24,39,0.45)", backdropFilter: "blur(8px)" }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onCancel();
       }}
@@ -45,7 +45,7 @@ export default function ExpandInputModal({ initialValue, onCommit, onCancel }: P
         style={{
           backgroundColor: "var(--surface)",
           border: "1px solid var(--border)",
-          boxShadow: "0 24px 64px rgba(0,0,0,0.5)",
+          boxShadow: "0 24px 64px rgba(0,0,0,0.18)",
           maxHeight: "80vh",
         }}
       >
@@ -58,7 +58,7 @@ export default function ExpandInputModal({ initialValue, onCommit, onCancel }: P
           </h3>
           <button
             onClick={onCancel}
-            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors"
+            className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-black/5 transition-colors"
             style={{ color: "var(--text-tertiary)" }}
             title="Cerrar"
           >
@@ -87,7 +87,7 @@ export default function ExpandInputModal({ initialValue, onCommit, onCancel }: P
         >
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-white/5"
+            className="px-4 py-2 rounded-xl text-sm font-medium transition-colors hover:bg-black/5"
             style={{ color: "var(--text-secondary)" }}
           >
             Cancelar

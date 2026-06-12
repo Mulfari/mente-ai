@@ -47,14 +47,14 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+      style={{ backgroundColor: "rgba(17,24,39,0.45)", backdropFilter: "blur(8px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="w-full max-w-[48rem] max-h-[78vh] rounded-2xl overflow-hidden flex animate-fade-in"
-        style={{ backgroundColor: "var(--surface)", boxShadow: "0 25px 50px rgba(0,0,0,0.5)" }}>
+        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 60px rgba(0,0,0,0.18)" }}>
 
         {/* Left sidebar */}
         <div className="w-14 sm:w-52 shrink-0 self-start sticky top-0 flex flex-col py-5 sm:py-6"
-          style={{ backgroundColor: "rgba(0,0,0,0.35)", borderRight: "1px solid var(--border)", height: "78vh" }}>
+          style={{ backgroundColor: "var(--background)", borderRight: "1px solid var(--border)", height: "78vh" }}>
 
           {/* Header */}
           <div className="px-4 sm:px-5 mb-5 sm:mb-6">
@@ -103,7 +103,7 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
                 style={{
                   backgroundColor: tab === id ? "var(--surface)" : "transparent",
                   color: tab === id ? "var(--primary)" : "var(--text-secondary)",
-                  boxShadow: tab === id ? "0 1px 4px rgba(0,0,0,0.1)" : "none",
+                  boxShadow: tab === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
                 }}>
                 <span style={{ color: tab === id ? "var(--primary)" : "var(--text-tertiary)" }}>{icon}</span>
                 <span className="hidden sm:inline">{label}</span>

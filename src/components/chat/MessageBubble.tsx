@@ -4,7 +4,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useSpeechSynthesisServer } from "@/lib/voice-server";
 
 type Message = {
@@ -98,8 +98,8 @@ export default function MessageBubble({
               color: "var(--text-primary)",
               wordBreak: "break-word",
               overflowWrap: "anywhere",
-              backgroundColor: "transparent",
-              boxShadow: "inset -3px 0 0 0 rgba(255, 255, 255, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.08)",
+              backgroundColor: "var(--user-bubble)",
+              boxShadow: "inset -3px 0 0 0 var(--primary), inset 0 0 0 1px var(--border)",
               borderRadius: "12px",
               padding: "12px 16px",
             }}
@@ -165,12 +165,12 @@ export default function MessageBubble({
                         <div className="relative group rounded-xl overflow-hidden my-2" style={{ maxWidth: "100%" }}>
                           <div className="flex items-center justify-between px-4 py-2"
                             style={{ backgroundColor: "color-mix(in srgb, var(--surface) 80%, transparent)", borderBottom: "1px solid var(--border)" }}>
-                            <span className="text-xs font-medium" style={{ color: "rgba(255,255,255,0.8)" }}>
+                            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
                               {match[1]}
                             </span>
                             <button onClick={() => navigator.clipboard.writeText(code)}
                               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
-                              style={{ backgroundColor: "var(--code-bg)", color: "rgba(255,255,255,0.8)" }}>
+                              style={{ backgroundColor: "var(--code-bg)", color: "var(--text-secondary)" }}>
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                               </svg>
@@ -178,7 +178,7 @@ export default function MessageBubble({
                             </button>
                           </div>
                           <SyntaxHighlighter
-                            style={vscDarkPlus as any}
+                            style={oneLight as any}
                             language={match[1]}
                             PreTag="div"
                             customStyle={{ margin: 0, borderRadius: 0, fontSize: "13px", backgroundColor: "transparent" }}
@@ -210,7 +210,7 @@ export default function MessageBubble({
             return (
               <button
                 onClick={() => (isThisSpeaking || isThisLoading ? stop() : speak(message.content))}
-                className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-white/10"
+                className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-colors hover:bg-black/5"
                 style={{ color: isThisSpeaking ? "var(--primary)" : "var(--text-tertiary)" }}
                 title={isThisSpeaking ? "Detener lectura" : isThisLoading ? "Generando audio..." : "Leer en voz alta"}
                 aria-label={isThisSpeaking ? "Detener lectura" : isThisLoading ? "Generando audio" : "Leer en voz alta"}

@@ -443,13 +443,13 @@ export default function ChatInput({
         <div
           className="relative flex items-end gap-1.5 rounded-2xl pl-4 sm:pl-5 pr-1.5 sm:pr-2 py-2"
           style={{
-            backgroundColor: "rgba(30,30,34,0.94)",
-            border: `1px solid ${isFocused ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.10)"}`,
+            backgroundColor: "rgba(255,255,255,0.96)",
+            border: `1px solid ${isFocused ? "color-mix(in srgb, var(--primary) 45%, var(--border))" : "var(--border)"}`,
             backdropFilter: "blur(20px) saturate(1.2)",
             WebkitBackdropFilter: "blur(20px) saturate(1.2)",
             boxShadow: isFocused
-              ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent), 0 -1px 0 0 rgba(255,255,255,0.04), 0 12px 40px rgba(0,0,0,0.45)"
-              : "0 -1px 0 0 rgba(255,255,255,0.04), 0 8px 32px rgba(0,0,0,0.4)",
+              ? "0 0 0 4px color-mix(in srgb, var(--primary) 10%, transparent), 0 2px 20px rgba(0,0,0,0.08)"
+              : "0 2px 16px rgba(0,0,0,0.06)",
             transition: "box-shadow 0.2s, border-color 0.2s",
           }}
           onFocus={() => setIsFocused(true)}
@@ -496,7 +496,7 @@ export default function ChatInput({
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={attachments.length >= 3 || !block.canWrite || sending || isStreaming}
-            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-colors hover:bg-white/10 disabled:opacity-30"
+            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
             style={{ color: "var(--text-tertiary)" }}
             title="Adjuntar archivo"
           >
@@ -553,7 +553,7 @@ export default function ChatInput({
                   ? "opacity-30 cursor-not-allowed"
                   : isListening
                   ? "recording-pulse"
-                  : "hover:bg-white/10"
+                  : "hover:bg-black/5"
               }`}
               style={{
                 color: isListening ? "white" : "var(--text-tertiary)",
@@ -591,7 +591,7 @@ export default function ChatInput({
                 ? "var(--danger)"
                 : canSend
                 ? "var(--primary)"
-                : "rgba(255,255,255,0.05)",
+                : "rgba(17,24,39,0.05)",
               color: primaryActive ? "white" : "var(--text-tertiary)",
             }}
             title={isStreaming ? "Detener generación" : "Enviar"}
@@ -627,7 +627,7 @@ export default function ChatInput({
           {!isStreaming && input.length > 240 && !isExpanded && (
             <button
               onClick={() => setIsExpanded(true)}
-              className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center hover:bg-white/10 transition-colors z-10"
+              className="absolute top-2 right-2 w-6 h-6 rounded-md flex items-center justify-center hover:bg-black/5 transition-colors z-10"
               style={{ color: "var(--text-tertiary)" }}
               title="Expandir editor"
             >

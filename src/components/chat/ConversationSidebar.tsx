@@ -737,7 +737,7 @@ export default function ConversationSidebar({
 
       {/* Mobile backdrop */}
       <div
-        className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm md:hidden"
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
         style={{
           opacity: showMobile ? 1 : 0,
           pointerEvents: showMobile ? "auto" : "none",

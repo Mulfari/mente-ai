@@ -1247,7 +1247,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
 
         {/* Modals */}
         {showPlaceModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(17,24,39,0.45)", backdropFilter: "blur(8px)" }}
             onClick={e => { if (e.target === e.currentTarget) setShowPlaceModal(false); }}>
             <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
               <h3 className="text-base font-bold mb-5" style={{ color: "var(--text-primary)" }}>{editingPlace ? "Editar lugar" : "Nuevo lugar"}</h3>
@@ -1306,7 +1306,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
         )}
 
         {showCategoryModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(17,24,39,0.45)", backdropFilter: "blur(8px)" }}
             onClick={e => { if (e.target === e.currentTarget) setShowCategoryModal(false); }}>
             <div className="w-full max-w-sm rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
               <h3 className="text-base font-bold mb-5" style={{ color: "var(--text-primary)" }}>{editingCategory ? "Editar categoría" : "Nueva categoría"}</h3>
@@ -1333,7 +1333,7 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
         )}
 
         {showRuleModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(0,0,0,0.75)", backdropFilter: "blur(12px)" }}
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ backgroundColor: "rgba(17,24,39,0.45)", backdropFilter: "blur(8px)" }}
             onClick={e => { if (e.target === e.currentTarget) setShowRuleModal(false); }}>
             <div className="w-full max-w-lg rounded-2xl p-6 shadow-2xl" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
               <h3 className="text-base font-bold mb-5" style={{ color: "var(--text-primary)" }}>{editingRule ? "Editar regla" : "Nueva regla de conocimiento"}</h3>

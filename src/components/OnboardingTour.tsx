@@ -148,7 +148,7 @@ export function OnboardingTour({
   return (
     <div
       className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4"
-      style={{ backgroundColor: "rgba(0,0,0,0.78)", backdropFilter: "blur(14px)" }}
+      style={{ backgroundColor: "rgba(17,24,39,0.45)", backdropFilter: "blur(8px)" }}
       onClick={(e) => { if (e.target === e.currentTarget) skip(); }}
     >
       <div
@@ -156,7 +156,7 @@ export function OnboardingTour({
         style={{
           backgroundColor: "var(--surface)",
           border: "1px solid var(--border)",
-          boxShadow: "0 25px 50px rgba(0,0,0,0.6)",
+          boxShadow: "0 25px 60px rgba(0,0,0,0.18)",
         }}
       >
         {/* Header gradient bar */}

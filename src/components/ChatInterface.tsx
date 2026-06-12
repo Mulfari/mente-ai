@@ -5,8 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useClerk } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import AccountMenu from "./AccountMenu";
 import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
@@ -1836,7 +1834,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       )}
       {notification && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] px-4 py-2.5 rounded-lg flex items-center gap-2 animate-fade-in"
-          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
+          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}>
           <div className="w-5 h-5 rounded flex items-center justify-center shrink-0"
             style={{ backgroundColor: "var(--primary)", color: "white" }}>
             <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">

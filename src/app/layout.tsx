@@ -43,12 +43,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={esES}>
-      <html lang="es" className={inter.variable} data-theme="dark" suppressHydrationWarning>
-        <head>
-          <script dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('vechat-theme');if(t)document.documentElement.setAttribute('data-theme',t);else document.documentElement.setAttribute('data-theme','dark');}catch(e){}})()`
-          }} />
-        </head>
+      <html lang="es" className={inter.variable} style={{ colorScheme: "light" }} suppressHydrationWarning>
         <body className="antialiased">
           {/* Syncs --vh CSS var to window.visualViewport.height so the chat
               container and input follow the on-screen keyboard without jumping. */}

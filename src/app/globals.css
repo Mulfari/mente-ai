@@ -1,37 +1,38 @@
 @import "tailwindcss";
 
+/* Un solo diseño para toda la app: claro, minimal, verde VeChat.
+   La misma paleta de la home pública (PublicHome) aplicada via tokens. */
 :root {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #0B1418;
-  --surface: #1a1a1a;
-  --surface-hover: #242424;
-  --border: #383838;
-  --text-primary: #f5f5f7;
-  --text-secondary: #86868b;
-  --text-tertiary: #6e6e73;
-  --danger: #FF453A;
-  --warning: #FF9F0A;
-  --success: #30D158;
-  --user-bubble: #005C4B;
+  --background: #FBFBFA;
+  --surface: #FFFFFF;
+  --surface-hover: #F3F4F6;
+  --border: #E8EAED;
+  --text-primary: #111827;
+  --text-secondary: #6B7280;
+  --text-tertiary: #9CA3AF;
+  --danger: #DC2626;
+  --warning: #D97706;
+  --success: #16A34A;
+  --user-bubble: #E8F6F1;
   --accent: #10A37F;
-  --code-bg: rgba(255,255,255,0.06);
-  --code-block-bg: rgba(255,255,255,0.04);
-  --table-row-hover: rgba(255,255,255,0.03);
+  --code-bg: rgba(17,24,39,0.06);
+  --code-block-bg: #F6F7F8;
+  --table-row-hover: rgba(16,163,127,0.05);
   --motion-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
 
 /* VeChat background: clean solid canvas + fine grain noise for
    warmth. Nothing else. Lets the content (chat, trending cards,
-   bubbles) be the protagonist. Same look Linear / Vercel / Stripe
-   use in 2026 — no patterns, no gradients, no mouse interaction. */
+   bubbles) be the protagonist. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-color: #0B1418;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/></svg>");
+  background-color: #FBFBFA;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.4 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/></svg>");
   background-size: 200px 200px;
   pointer-events: none;
   z-index: -1;
@@ -230,26 +231,19 @@ body { background: transparent; }
   border-radius: 16px;
   border: 1px solid var(--border);
   overflow: hidden;
-  box-shadow:
-    0 2px 8px rgba(0,0,0,0.25),
-    0 8px 32px rgba(0,0,0,0.15);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 /* Header */
 .prose thead {
-  background: linear-gradient(
-    180deg,
-    rgba(26,26,26,1) 0%,
-    rgba(26,26,26,0.97) 60%,
-    rgba(16,163,127,0.08) 100%
-  );
+  background: #F9FAFB;
   border-bottom: 1px solid var(--border);
 }
 .prose thead tr th {
   padding: 0.9em 1.1em;
   text-align: left;
   font-weight: 600;
-  color: rgba(245,245,247,0.9);
+  color: var(--text-secondary);
   font-size: 0.72em;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -259,8 +253,8 @@ body { background: transparent; }
 /* Body rows */
 .prose tbody tr {
   transition: background-color 0.15s ease;
-  border-bottom: 1px solid rgba(56,56,56,0.4);
-  background: rgba(11,20,24,0.3);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 .prose tbody tr:last-child {
   border-bottom: none;
@@ -274,7 +268,7 @@ body { background: transparent; }
 /* Cells */
 .prose tbody tr td {
   padding: 0.8em 1.1em;
-  color: rgba(245,245,247,0.85);
+  color: var(--text-secondary);
   font-size: 0.875em;
   line-height: 1.5;
   word-break: break-word;
@@ -288,7 +282,7 @@ body { background: transparent; }
   position: relative;
 }
 .prose tbody tr:hover td:first-child {
-  color: rgba(245,245,247,0.95);
+  color: var(--text-primary);
 }
 
 /* Hovered row cell color */
