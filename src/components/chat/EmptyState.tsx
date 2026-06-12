@@ -174,7 +174,9 @@ export default function EmptyState(props: Props) {
         ref={heroRef}
         className="sticky top-0 z-10 flex flex-col items-center pt-3 pb-1"
         style={{
-          backgroundColor: "color-mix(in srgb, var(--background) 86%, transparent)",
+          // 95% y no menos: con más transparencia el feed que pasa por
+          // debajo se leía a través del vidrio (sobre todo en tema oscuro).
+          backgroundColor: "color-mix(in srgb, var(--background) 95%, transparent)",
           backdropFilter: "blur(16px) saturate(1.1)",
           WebkitBackdropFilter: "blur(16px) saturate(1.1)",
         }}
