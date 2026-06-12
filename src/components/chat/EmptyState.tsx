@@ -41,7 +41,6 @@ type Props = ChatInputProps & {
     s: string,
     meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
   ) => void;
-  onShowAccountMenu: () => void;
   /** True mientras la primera pregunta está creando la conversación:
       hero, microcopy y feed se desvanecen; el input queda visible y
       luego el padre lo anima deslizándose hasta el dock inferior. */
@@ -109,7 +108,6 @@ export default function EmptyState(props: Props) {
     feed,
     getBlockReason,
     submitSuggestion,
-    onShowAccountMenu,
     leaving = false,
     ...chatInputProps
   } = props;
@@ -124,8 +122,6 @@ export default function EmptyState(props: Props) {
     () => pickOpener(firstName, isLoggedIn),
     [firstName, isLoggedIn]
   );
-
-  const block = getBlockReason();
 
   // Cascada de entrada: input primero, hero después, feed al final.
   const [heroShown, setHeroShown] = React.useState(false);
@@ -189,29 +185,14 @@ export default function EmptyState(props: Props) {
         </div>
       </section>
 
-      {/* Microcopy / bloqueo — fijos con el hero, entre el input y el feed */}
+      {/* Microcopy — fijo con el hero, entre el input y el feed. La cuenta
+          bloqueada ya NO muestra panel aquí: el placeholder del input lo
+          dice y cualquier intento de enviar abre el menú de cuenta. */}
       <div className="flex-none flex flex-col items-center px-4" style={leaveStyle}>
         {!isLoggedIn && (
           <p className={`text-[12px] mt-3.5 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ color: "var(--text-tertiary)" }}>
             Gratis para empezar — crea tu cuenta en 10 segundos con Google
           </p>
-        )}
-        {isLoggedIn && !block.canWrite && (
-          <div className={`text-center mt-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`}>
-            <p className="text-sm font-semibold mb-1" style={{ color: "var(--warning)" }}>
-              Suscripción bloqueada
-            </p>
-            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
-              {block.reason}
-            </p>
-            <button
-              onClick={onShowAccountMenu}
-              className="px-6 py-2.5 rounded-xl text-xs font-semibold transition-all hover:opacity-90 text-white"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}
-            >
-              Añadir tiempo
-            </button>
-          </div>
         )}
       </div>
 

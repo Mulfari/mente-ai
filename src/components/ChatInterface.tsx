@@ -1854,7 +1854,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               leaving={leavingEmpty}
               getBlockReason={getBlockReason}
               submitSuggestion={typeAndSubmit}
-              onShowAccountMenu={() => setShowAccountMenu(true)}
               input={input}
               setInput={setInputFromUser}
               sending={sending}
