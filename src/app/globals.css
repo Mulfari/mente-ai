@@ -212,6 +212,23 @@ html[data-sidebar="closed"] .sidebar-desktop {
   .recording-pulse { animation: none; }
 }
 
+/* Botón primario del input (enviar / detener respuesta). El hover vive
+   aquí y no en mouseenter/mouseleave de React: mutar style directo dejaba
+   el color de hover pegado cuando el input vuela debajo del cursor
+   (despegue FLIP de la primera pregunta). El rojo NO se usa aquí — está
+   reservado para la grabación del micrófono. */
+.chat-primary-action {
+  background-color: var(--surface-hover);
+  color: var(--text-tertiary);
+}
+.chat-primary-action.is-active {
+  background-color: var(--primary);
+  color: #fff;
+}
+.chat-primary-action.is-active:hover {
+  background-color: var(--primary-hover);
+}
+
 /* Typing cursor for streaming */
 .typing-cursor {
   display: inline-block;

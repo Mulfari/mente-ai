@@ -612,26 +612,15 @@ export default function ChatInput({
               el rojo + cuadrado es el lenguaje visual de "grabando mic"
               en esta app y usarlo aquí hacía creer que enviar una
               pregunta activaba el micrófono. */}
+          {/* El hover vive en CSS (.chat-primary-action) — mutar style desde
+              mouseenter/mouseleave dejaba el color de hover pegado cuando el
+              input se desliza debajo del cursor (vuelo FLIP al dock). */}
           <button
             onClick={handlePrimaryClick}
             disabled={!primaryActive}
             aria-label={isStreaming ? "Detener respuesta" : "Enviar mensaje"}
-            className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200"
-            style={{
-              backgroundColor: primaryActive ? "var(--primary)" : "var(--surface-hover)",
-              color: primaryActive ? "white" : "var(--text-tertiary)",
-            }}
+            className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 chat-primary-action ${primaryActive ? "is-active" : ""}`}
             title={isStreaming ? "Detener respuesta" : "Enviar"}
-            onMouseEnter={(e) => {
-              if (primaryActive) {
-                e.currentTarget.style.backgroundColor = "var(--primary-hover)";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (primaryActive) {
-                e.currentTarget.style.backgroundColor = "var(--primary)";
-              }
-            }}
           >
             {isStreaming ? (
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
