@@ -34,9 +34,12 @@ let client: SupabaseClient | null = null;
 
 export function createClient() {
   if (client) return client;
+  // .trim(): las env en Vercel pueden guardarse con whitespace accidental;
+  // un espacio al final del anon key rompe la autenticación (p. ej. el
+  // websocket de Realtime entraba en loop de reintentos con 403).
   client = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!.trim(),
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!.trim(),
     { accessToken: clerkAccessToken }
   );
   return client;
