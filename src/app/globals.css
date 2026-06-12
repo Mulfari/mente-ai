@@ -134,6 +134,28 @@ body { background: transparent; }
   to   { opacity: 1; transform: translateX(0); }
 }
 
+/* Sidebar desktop: el ancho lo decide CSS + el atributo data-sidebar puesto
+   en <html> ANTES del primer paint (script en layout). Así el espacio queda
+   reservado desde el pixel uno y el input del chat no brinca al hidratar.
+   El panel entra deslizándose de izquierda a derecha sobre ese espacio. */
+.sidebar-desktop {
+  width: 280px;
+  transition: width 0.28s cubic-bezier(0.2, 0, 0, 1);
+}
+html[data-sidebar="closed"] .sidebar-desktop {
+  width: 60px;
+}
+@keyframes sidebarEnter {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+.sidebar-enter {
+  animation: sidebarEnter 0.45s cubic-bezier(0.2, 0, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-enter { animation: none; }
+}
+
 /* Sidebar content scroll hidden in mobile */
 .sidebar-no-scroll::-webkit-scrollbar { display: none; }
 .sidebar-no-scroll { scrollbar-width: none; -ms-overflow-style: none; }

@@ -46,10 +46,11 @@ export default function RootLayout({
     <ClerkProvider localization={esES}>
       <html lang="es" className={inter.variable} suppressHydrationWarning>
         <head>
-          {/* Aplica el tema (claro/oscuro/sistema) antes del primer paint
-              para evitar el flash. La preferencia vive en vechat-theme. */}
+          {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema) y
+              el estado del sidebar (abierto/cerrado) para que el layout nazca
+              con el ancho correcto — sin flash de tema ni brinco del input. */}
           <script dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=localStorage.getItem('vechat-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(p==='light'||p==='dark')?p:(d?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})()`
+            __html: `(function(){try{var p=localStorage.getItem('vechat-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(p==='light'||p==='dark')?p:(d?'dark':'light');document.documentElement.setAttribute('data-theme',t);var s=localStorage.getItem('vechat-sidebar-open');document.documentElement.setAttribute('data-sidebar',s==='false'?'closed':'open');}catch(e){}})()`
           }} />
         </head>
         <body className="antialiased">

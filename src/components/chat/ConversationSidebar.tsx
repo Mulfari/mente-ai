@@ -20,9 +20,9 @@ type ProfileData = {
   weekly_reset_at?: string;
 } | null;
 
-const COLLAPSED_W = 60;
+// Ancho expandido — usado solo por el sheet móvil; el ancho desktop vive en
+// CSS (.sidebar-desktop en globals.css, 280/60px según data-sidebar).
 const EXPANDED_W = 280;
-const WIDTH_TRANSITION = "width 0.28s cubic-bezier(0.2, 0, 0, 1)";
 const STORAGE_KEY = "vechat-sidebar-open";
 
 // Etiquetas precisas tipo ChatGPT: ventanas de tiempo reales, no
@@ -650,32 +650,29 @@ export default function ConversationSidebar({
   const [searchQuery, setSearchQuery] = React.useState("");
 
   // ── Desktop: toggle explícito, persistido. Abierto por defecto (es la
-  // navegación principal). El estado SOLO cambia con el botón — nada de
-  // click-fuera ni hover mágico: un sidebar fijado se queda donde lo dejaste.
-  const [isOpen, setIsOpen] = React.useState(false);
-  const [initialized, setInitialized] = React.useState(false);
-  const [transitionEnabled, setTransitionEnabled] = React.useState(false);
+  // navegación principal). El ANCHO no lo controla React: lo decide CSS via
+  // el atributo data-sidebar de <html>, que un script en layout aplica antes
+  // del primer paint — el espacio queda reservado desde el pixel uno y el
+  // input del chat no brinca al hidratar. React solo decide el contenido
+  // (rail vs. expandido) y sincroniza el atributo al hacer toggle.
+  const [isOpen, setIsOpen] = React.useState(true);
+  const didSyncRef = React.useRef(false);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
     const stored = localStorage.getItem(STORAGE_KEY);
-    // Sin preferencia guardada → abierto (primer uso).
-    setIsOpen(stored === null ? true : stored === "true");
-    setInitialized(true);
-    // La transición de ancho se habilita un frame después para que el primer
-    // paint (SSR colapsado → preferencia real) salte sin animar.
-    const id = requestAnimationFrame(() => setTransitionEnabled(true));
-    return () => cancelAnimationFrame(id);
+    if (stored === "false") setIsOpen(false);
+    didSyncRef.current = true;
   }, []);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (initialized) {
+    if (!didSyncRef.current) return;
+    try {
       localStorage.setItem(STORAGE_KEY, isOpen ? "true" : "false");
-    }
-  }, [isOpen, initialized]);
+    } catch { /* storage bloqueado */ }
+    document.documentElement.setAttribute("data-sidebar", isOpen ? "open" : "closed");
+  }, [isOpen]);
 
-  const expanded = initialized && isOpen;
+  const expanded = isOpen;
   const onToggleExpanded = () => setIsOpen((cur) => !cur);
 
   // ── Mobile sheet ──
@@ -709,14 +706,11 @@ export default function ConversationSidebar({
 
   return (
     <>
-      {/* Desktop sidebar */}
-      <div
-        className="relative shrink-0 hidden md:block"
-        style={{
-          width: expanded ? EXPANDED_W : COLLAPSED_W,
-          transition: transitionEnabled ? WIDTH_TRANSITION : "none",
-        }}
-      >
+      {/* Desktop sidebar — el wrapper reserva el ancho (CSS, ver
+          .sidebar-desktop); el panel interno entra deslizándose de
+          izquierda a derecha sin mover el resto del layout. */}
+      <div className="relative shrink-0 hidden md:block overflow-hidden sidebar-desktop">
+        <div className="h-full sidebar-enter">
         <SidebarBody
           conversations={conversations}
           activeConv={activeConv}
@@ -733,6 +727,7 @@ export default function ConversationSidebar({
           disabled={!!disabled}
           variant="desktop"
         />
+        </div>
       </div>
 
       {/* Mobile backdrop */}
