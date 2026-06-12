@@ -80,6 +80,14 @@ export default function ChatInterface({
   const [sending, setSending] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
   const [convJustStarted, setConvJustStarted] = useState(false);
+  // True desde que la primera pregunta despega hasta que existe la
+  // conversación: EmptyState desvanece hero/feed (el input queda visible
+  // esperando su vuelo al dock inferior).
+  const [leavingEmpty, setLeavingEmpty] = useState(false);
+  // FLIP del input: top de la pastilla centrada capturado justo antes de
+  // crear la conversación; el efecto de abajo mide la posición final y anima.
+  const inputFlipFromRef = useRef<number | null>(null);
+  const bottomInputRef = useRef<HTMLDivElement>(null);
   const retryRef = useRef<SVGSVGElement>(null);
 
   // Reset convJustStarted after animation completes
@@ -87,10 +95,50 @@ export default function ChatInterface({
     if (convJustStarted) {
       const timer = setTimeout(() => {
         setConvJustStarted(false);
-      }, 600);
+      }, 800);
       return () => clearTimeout(timer);
     }
   }, [convJustStarted]);
+
+  // Captura la posición de la pastilla del input centrado (EmptyState)
+  // ANTES del await que crea la conversación — después ya no existe.
+  function captureInputTakeoff() {
+    const pill = document.querySelector("[data-chat-input-pill]");
+    if (pill) inputFlipFromRef.current = pill.getBoundingClientRect().top;
+    setLeavingEmpty(true);
+  }
+
+  // Vuelo del input centro → dock inferior (FLIP). Corre en el commit en
+  // que la conversación nueva monta el input de abajo: medimos dónde quedó,
+  // lo arrancamos desde donde estaba y lo soltamos con un ease suave.
+  useLayoutEffect(() => {
+    if (!activeConv?.id) return;
+    const fromTop = inputFlipFromRef.current;
+    if (fromTop === null) return;
+    inputFlipFromRef.current = null;
+    setLeavingEmpty(false);
+    const el = bottomInputRef.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const pill = el.querySelector("[data-chat-input-pill]");
+    const toTop = (pill ?? el).getBoundingClientRect().top;
+    const dy = fromTop - toTop;
+    if (Math.abs(dy) < 8) return;
+    const anim = el.animate(
+      [{ transform: `translateY(${dy}px)` }, { transform: "translateY(0)" }],
+      { duration: 750, easing: "cubic-bezier(0.22, 1, 0.36, 1)", fill: "both" }
+    );
+    // Al aterrizar, devolver el foco al textarea (solo desktop — en móvil
+    // levantaría el teclado sin que el usuario lo pida).
+    anim.finished
+      .then(() => {
+        if (window.innerWidth >= 768) {
+          el.querySelector("textarea")?.focus();
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConv?.id]);
 
   const [retryingId, setRetryingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -191,8 +239,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
   const lastErrorRef = useRef<{ message: string; conversationId: string | null; attachments: any[] } | null>(null);
-  const messagesChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  const conversationsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const convSyncCleanupRef = useRef<(() => void) | null>(null); // desmonta el sync (fast poll + visibilidad) de la conversación anterior
   const currentConvIdRef = useRef<string | null>(null); // tracks active conversation ID
   const loadingConvRef = useRef<string | null>(null); // dedup: skip concurrent loadMessages() for the same conv
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // reveal-on-load timer (must survive effect re-runs)
@@ -386,8 +433,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       setLoadingConvId(null);
       setIsLoadingMsgs(false);
 
-      // Setup realtime subscription for this conversation
-      setupRealtimeSubscription(conversationId);
+      // Setup polling/visibility sync for this conversation
+      setupConversationSync(conversationId);
     } finally {
       loadingConvRef.current = null;
     }
@@ -496,11 +543,15 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     fastPollOnce(convId);
   }
 
-  function setupRealtimeSubscription(convId: string) {
-    if (messagesChannelRef.current) {
-      messagesChannelRef.current.unsubscribe();
-      messagesChannelRef.current = null;
-    }
+  // Sync multi-dispositivo por polling: fetch inicial + fast poll si hay un
+  // stream remoto en curso + re-fetch al volver a la pestaña. (Antes había
+  // además un canal de Supabase Realtime, pero nunca llegó a funcionar en
+  // producción y el polling cubre el caso — se eliminó.)
+  function setupConversationSync(convId: string) {
+    // Desmonta el sync de la conversación anterior — sin esto el listener
+    // de visibilitychange se acumula con cada conversación cargada.
+    convSyncCleanupRef.current?.();
+    convSyncCleanupRef.current = null;
     if (!convId || !isLoggedIn) return;
 
     stopFastPoll();
@@ -514,7 +565,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     };
     document.addEventListener("visibilitychange", handleVisibility);
 
-    return () => {
+    convSyncCleanupRef.current = () => {
       stopFastPoll();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
@@ -608,40 +659,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     document.title = `VeChat - ${trimmed}`;
   }, [activeConv?.id, activeConv?.title]);
 
-  // Realtime subscription for conversations (stable — runs once per login)
-  useEffect(() => {
-    if (!isLoggedIn || !userId) return;
-    if (conversationsChannelRef.current) {
-      conversationsChannelRef.current.unsubscribe();
-      conversationsChannelRef.current = null;
-    }
-
-    const channel = supabase
-      .channel("conversations-sidebar")
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "conversations",
-        filter: `user_id=eq.${userId}`,
-      }, (payload) => {
-        if (payload.eventType === "INSERT") {
-          const conv = payload.new as Conversation;
-          setConversations(prev => {
-            if (prev.find(c => c.id === conv.id)) return prev;
-            return [conv, ...prev];
-          });
-        } else if (payload.eventType === "DELETE") {
-          setConversations(prev => prev.filter(c => c.id !== payload.old.id));
-        } else if (payload.eventType === "UPDATE") {
-          setConversations(prev => prev.map(c => c.id === payload.new.id ? { ...c, ...payload.new } : c));
-        }
-      })
-      .subscribe();
-
-    conversationsChannelRef.current = channel;
-    return () => { supabase.removeChannel(channel); conversationsChannelRef.current = null; };
-  }, [isLoggedIn, userId]);
-
   useEffect(() => {
     if (isLoggedIn && "Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
@@ -667,7 +684,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   // the scroll takes them to the end.
   //
   // The reveal timer is held in a ref (not in this effect's local scope)
-  // because setupRealtimeSubscription → fetchNewMessages fires a second
+  // because setupConversationSync → fetchNewMessages fires a second
   // messages-state update right after loadMessages, which re-runs this
   // effect. If the timer lived in this effect's closure, the first run's
   // cleanup would clear it before it ever fires. The ref outlives every
@@ -929,6 +946,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
     let conv = activeConv;
     if (!conv) {
+      captureInputTakeoff();
       const now = new Date().toISOString();
       const title = s.slice(0, 40) + (s.length > 40 ? "..." : "");
       const { data } = await supabase.from("conversations").insert({ user_id: userId, title, updated_at: now, created_at: now }).select().single();
@@ -940,7 +958,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setConvJustStarted(true);
         setConvLoaded(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
-      } else { setSending(false); return; }
+      } else { setLeavingEmpty(false); setSending(false); return; }
     }
 
     const convId = conv!.id;
@@ -955,7 +973,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       currentStreamReqRef.current = reqParams;
 
       // Create assistant message row in DB NOW — before fetching token.
-      // Other devices (same user, same conversation) see it immediately via Realtime INSERT.
+      // Other devices (same user, same conversation) pick it up via the
+      // polling sync (fetchNewMessages) and start fast-polling while in_progress.
       const msgId = crypto.randomUUID();
       await supabase
         .from("messages")
@@ -1321,6 +1340,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     const filesToSend = queuedMsg ? queuedMsg.files : [...attachments];
 
     if (!conv) {
+      captureInputTakeoff();
       const now = new Date().toISOString();
       const title = userMsg.slice(0, 40) + (userMsg.length > 40 ? "..." : "");
       const { data } = await supabase
@@ -1337,7 +1357,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setActiveConv(data);
         setConvJustStarted(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
-      } else { setSending(false); return; }
+      } else { setLeavingEmpty(false); setSending(false); return; }
     }
 
     if (!conv) { setSending(false); return; }
@@ -1378,7 +1398,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
       // Create assistant message row in DB NOW — before fetching token.
       // This allows other devices (same user, same conversation) to see the
-      // "AI is thinking" state immediately via Supabase Realtime INSERT.
+      // "AI is thinking" state via the polling sync (fetchNewMessages).
       const msgId = crypto.randomUUID();
       await supabase
         .from("messages")
@@ -1748,6 +1768,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               userName={userContext?.full_name}
               isLoggedIn={isLoggedIn}
               feed={feed}
+              leaving={leavingEmpty}
               getBlockReason={getBlockReason}
               submitSuggestion={submitSuggestion}
               onShowAccountMenu={() => setShowAccountMenu(true)}
@@ -1760,12 +1781,17 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
             />
-          ) : (<MessageList
-              messages={messages}
-              streamingMsgId={streamingMsgId}
-              retryMode={retryMode}
-              formatTime={formatTime}
-            />
+          ) : (
+            /* gentle-fade: la conversación recién nacida aparece en fundido
+               mientras el input planea hacia el dock (FLIP de arriba). */
+            <div className={convJustStarted ? "gentle-fade" : ""}>
+              <MessageList
+                messages={messages}
+                streamingMsgId={streamingMsgId}
+                retryMode={retryMode}
+                formatTime={formatTime}
+              />
+            </div>
           )}
         </main>
 
@@ -1774,11 +1800,13 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             The wrapper's bottom padding respects the device safe area (the
             chat-area wrapper above already handles the home indicator for
             the messages list; this is the input's own breathing room
-            above that). `pt-2` stays constant so the slide-up entrance
-            animation has a consistent start point. */}
+            above that). La entrada de la primera vez NO es una clase CSS:
+            el efecto FLIP de arriba lo hace volar desde el centro de la
+            pantalla (donde estaba en EmptyState) hasta aquí. */}
         {activeConv?.id && (
         <div
-          className={`w-full flex-none flex justify-center pt-2 ${convJustStarted ? "slide-up" : ""}`}
+          ref={bottomInputRef}
+          className="w-full flex-none pt-2"
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         >
           <ChatInput

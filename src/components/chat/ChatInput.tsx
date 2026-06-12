@@ -129,11 +129,10 @@ export default function ChatInput({
     onAutoSend: (text: string) => {
       // Fill the input with the transcript, then send immediately.
       // We can't use the functional updater (the prop signature is just
-      // (val: string) => void) so we read the current input via the
-      // ref'd element or just use the latest transcript + text.
-      const current = (typeof document !== "undefined"
-        ? (document.querySelector("textarea") as HTMLTextAreaElement | null)?.value
-        : "") || "";
+      // (val: string) => void) so we read the current value from OUR
+      // textarea ref — document.querySelector("textarea") podía agarrar
+      // otro textarea de la página (modales, menú de cuenta).
+      const current = textareaRef.current?.value || "";
       const sep = current && !current.endsWith(" ") ? " " : "";
       setInput((current + sep + text).trim());
       requestAnimationFrame(() => onSend());
@@ -368,13 +367,14 @@ export default function ChatInput({
       className="px-3 sm:px-4 pt-2 flex-none"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
-      {/* Width grows aggressively on larger screens. Bumped the 2xl ceiling
-          to 7xl (1280px) so on a 1536+ px display the input clearly
-          dominates the chat area below it. The chat messages above stay
-          at 3xl, which is the desired visual hierarchy: the input is
-          the dominant element. */}
-      <div className="max-w-3xl md:max-w-4xl xl:max-w-5xl 2xl:max-w-7xl mx-auto">
-        {/* Pill de estado cuando está grabando — sobre el input. */}
+      {/* Mismo ancho que la columna de mensajes (max-w-3xl en MessageList):
+          el input y la conversación comparten la misma columna visual.
+          Antes crecía hasta 7xl en pantallas grandes y quedaba
+          desproporcionado respecto al contenido. */}
+      <div className="max-w-3xl mx-auto">
+        {/* Pill de estado cuando está grabando — sobre el input. La ✕
+            CANCELA (descarta el audio, no transcribe ni envía); para
+            enviar lo dictado se toca el botón del mic (cuadrado rojo). */}
         {isListening && (
           <div
             className="flex items-center justify-center gap-2 mb-2 px-3 py-1.5 rounded-full text-xs font-medium animate-fadeInUp"
@@ -389,12 +389,36 @@ export default function ChatInput({
             <span className="inline-block w-2 h-2 rounded-full recording-pulse" style={{ backgroundColor: "var(--danger)" }} />
             Escuchando...
             <button
-              onClick={stop}
+              onClick={cancel}
               className="ml-2 opacity-70 hover:opacity-100"
-              title="Detener"
+              title="Cancelar dictado"
+              aria-label="Cancelar dictado"
             >
               ✕
             </button>
+          </div>
+        )}
+        {/* Pill mientras se transcribe (1-3s tras soltar el mic) — antes
+            no había feedback y el mensaje "se enviaba solo" de la nada. */}
+        {!isListening && isProcessing && (
+          <div
+            className="flex items-center justify-center gap-2 mb-2 px-3 py-1.5 rounded-full text-xs font-medium animate-fadeInUp"
+            style={{
+              backgroundColor: "var(--surface-hover)",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+              width: "fit-content",
+              margin: "0 auto 8px",
+            }}
+          >
+            <span
+              className="inline-block w-3 h-3 rounded-full animate-spin"
+              style={{
+                border: "2px solid var(--border)",
+                borderTopColor: "var(--primary)",
+              }}
+            />
+            Transcribiendo...
           </div>
         )}
         {/* Attachment previews */}
@@ -441,6 +465,7 @@ export default function ChatInput({
             mobile (pl-4/pr-1.5) and full on desktop (sm:pl-5/sm:pr-2) so
             the textarea has more horizontal room to write in narrow viewports. */}
         <div
+          data-chat-input-pill
           className="relative flex items-end gap-1.5 rounded-2xl pl-4 sm:pl-5 pr-1.5 sm:pr-2 py-2"
           style={{
             backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
@@ -519,11 +544,10 @@ export default function ChatInput({
             onKeyDown={e => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (isStreaming) {
-                  onStop?.();
-                } else if (canSend) {
-                  onSend();
-                }
+                // Enter solo envía. Antes, durante el streaming, Enter
+                // DETENÍA la respuesta — sorpresa desagradable si estabas
+                // escribiendo el siguiente mensaje.
+                if (canSend) onSend();
               }
             }}
             onPaste={handlePaste}
@@ -532,7 +556,11 @@ export default function ChatInput({
               if (!block.canWrite) return "Sin suscripcion activa...";
               return "Pregúntale algo a VeChat...";
             })()}
-            disabled={sending || !block.canWrite}
+            // El textarea NO se deshabilita mientras se envía/streamea:
+            // perder el foco y bloquear la escritura castigaba al usuario
+            // que quería ir redactando el siguiente mensaje. canSend ya
+            // impide enviar dos veces.
+            disabled={!block.canWrite}
             className="flex-1 min-w-0 bg-transparent text-base outline-none resize-none self-center px-1 placeholder:text-[var(--text-tertiary)] overflow-hidden chat-input-field"
             style={{
               color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)",
@@ -580,32 +608,27 @@ export default function ChatInput({
           </div>
 
           {/* Primary action — Send (paper plane) when idle, Stop (square)
-              while streaming. Same 48px circle, same color treatment
-              shift. Disabled when neither case applies. */}
+              while streaming. OJO: el stop usa el color PRIMARY, no rojo —
+              el rojo + cuadrado es el lenguaje visual de "grabando mic"
+              en esta app y usarlo aquí hacía creer que enviar una
+              pregunta activaba el micrófono. */}
           <button
             onClick={handlePrimaryClick}
             disabled={!primaryActive}
+            aria-label={isStreaming ? "Detener respuesta" : "Enviar mensaje"}
             className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200"
             style={{
-              backgroundColor: isStreaming
-                ? "var(--danger)"
-                : canSend
-                ? "var(--primary)"
-                : "var(--surface-hover)",
+              backgroundColor: primaryActive ? "var(--primary)" : "var(--surface-hover)",
               color: primaryActive ? "white" : "var(--text-tertiary)",
             }}
-            title={isStreaming ? "Detener generación" : "Enviar"}
+            title={isStreaming ? "Detener respuesta" : "Enviar"}
             onMouseEnter={(e) => {
-              if (isStreaming) {
-                e.currentTarget.style.backgroundColor = "color-mix(in srgb, var(--danger) 85%, black)";
-              } else if (canSend) {
+              if (primaryActive) {
                 e.currentTarget.style.backgroundColor = "var(--primary-hover)";
               }
             }}
             onMouseLeave={(e) => {
-              if (isStreaming) {
-                e.currentTarget.style.backgroundColor = "var(--danger)";
-              } else if (canSend) {
+              if (primaryActive) {
                 e.currentTarget.style.backgroundColor = "var(--primary)";
               }
             }}

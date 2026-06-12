@@ -42,6 +42,10 @@ type Props = ChatInputProps & {
     meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
   ) => void;
   onShowAccountMenu: () => void;
+  /** True mientras la primera pregunta está creando la conversación:
+      hero, microcopy y feed se desvanecen; el input queda visible y
+      luego el padre lo anima deslizándose hasta el dock inferior. */
+  leaving?: boolean;
 };
 
 const OPENERS_NO_NAME = [
@@ -106,8 +110,14 @@ export default function EmptyState(props: Props) {
     getBlockReason,
     submitSuggestion,
     onShowAccountMenu,
+    leaving = false,
     ...chatInputProps
   } = props;
+
+  // Todo lo que NO es el input se desvanece al despegar la conversación.
+  const leaveStyle: React.CSSProperties = leaving
+    ? { opacity: 0, transition: "opacity 0.25s ease", pointerEvents: "none" }
+    : {};
 
   const firstName = getFirstName(userName);
   const opener = React.useMemo(
@@ -135,10 +145,10 @@ export default function EmptyState(props: Props) {
           fondo, así el input queda en el centro vertical de la pantalla y
           el feed asoma justo debajo — visible sin scrollear. */}
       <section
-        className="flex flex-col items-center justify-end px-4"
+        className="flex flex-col items-center justify-end"
         style={{ minHeight: "46%" }}
       >
-        <header className={`text-center mb-6 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms" }}>
+        <header className={`text-center mb-6 px-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms", ...leaveStyle }}>
           <h1
             className="text-2xl sm:text-3xl font-semibold tracking-tighter"
             style={{ color: "var(--text-primary)" }}
@@ -152,7 +162,12 @@ export default function EmptyState(props: Props) {
           )}
         </header>
 
-        <div className="w-full max-w-xl">
+        {/* 800px = max-w-3xl del contenido del input (768) + su propio
+            padding lateral (32). Así la pastilla centrada mide EXACTAMENTE
+            lo mismo que la del dock inferior en cualquier viewport y la
+            animación de despegue es un deslizamiento puro, sin saltos
+            de ancho. */}
+        <div className="w-full max-w-[800px]">
           <ChatInput
             {...chatInputProps}
             autoFocus
@@ -165,7 +180,7 @@ export default function EmptyState(props: Props) {
       </section>
 
       {/* Microcopy / bloqueo — entre el input y el feed */}
-      <div className="flex flex-col items-center px-4">
+      <div className="flex flex-col items-center px-4" style={leaveStyle}>
         {!isLoggedIn && (
           <p className={`text-[12px] mt-3.5 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ color: "var(--text-tertiary)" }}>
             Gratis para empezar — crea tu cuenta en 10 segundos con Google
@@ -191,7 +206,7 @@ export default function EmptyState(props: Props) {
       </div>
 
       {/* Feed de tendencias — asomando justo debajo del input */}
-      <section className={`max-w-2xl mx-auto px-4 pt-10 pb-20 ${feedShown ? "gentle-fade" : "opacity-0"}`}>
+      <section className={`max-w-2xl mx-auto px-4 pt-10 pb-20 ${feedShown ? "gentle-fade" : "opacity-0"}`} style={leaveStyle}>
         <TrendingFeed
           feed={feed}
           onAsk={(prompt) => submitSuggestion(prompt, { source: "discover" })}
