@@ -165,16 +165,28 @@ export default function ChatInterface({
   }, [openSignUp]);
 
   // El modal de auth no navega: con email/contraseña la sesión nace
-  // client-side. Cuando el server nos renderizó como visitante pero Clerk
-  // ya tiene sesión, recargamos para que el server resuelva el perfil — y
-  // la pregunta pendiente (si la hay) se teclee y envíe sola. El flujo de
-  // OAuth (Google) recarga por su cuenta al volver del redirect.
+  // client-side y el SDK hace router.refresh() — la prop initialIsLoggedIn
+  // llega true del server pero TODOS los useState sembrados con ella
+  // conservan el valor de visitante, así que la UI se queda deslogueada.
+  // Por eso la condición es contra el ESTADO de la UI (isLoggedIn), no
+  // contra la prop: UI de visitante + sesión de Clerk = recargar para que
+  // el server resuelva el perfil y la pregunta pendiente se envíe sola.
+  // El OAuth (Google) no pasa por aquí: recarga al volver del redirect.
   useEffect(() => {
-    if (!initialIsLoggedIn && isSignedIn) {
-      window.location.reload();
+    if (isLoggedIn || !isSignedIn) {
+      if (isLoggedIn) {
+        try { sessionStorage.removeItem("vechat-auth-reloaded"); } catch {}
+      }
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn]);
+    try {
+      // Guard anti-loop: si tras recargar el server SIGUE sin ver la sesión
+      // (cookies rotas), no recargamos infinito — una sola vez por sesión.
+      if (sessionStorage.getItem("vechat-auth-reloaded") === "1") return;
+      sessionStorage.setItem("vechat-auth-reloaded", "1");
+    } catch { /* sin sessionStorage igual recargamos una vez */ }
+    window.location.reload();
+  }, [isSignedIn, isLoggedIn]);
   const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(initialProfile);
   const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(
     initialFullName ? { full_name: initialFullName, city: "", interests: "", custom_notes: "" } : null
