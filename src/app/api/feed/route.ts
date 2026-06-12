@@ -38,6 +38,30 @@ export async function GET(req: NextRequest) {
   // El UUID interno habilita la sección "Para ti" (personalizada por el
   // historial del usuario); null para visitantes.
   const feed = await getPublicFeed(city, internalUserId);
+
+  // Refresco en segundo plano: si la caché materializada del cron tiene más
+  // de 6h (o existe la tabla pero aún no hay fila), disparamos el digest sin
+  // esperar la respuesta. El cron diario es el piso; con tráfico real la
+  // frescura efectiva es de horas.
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    try {
+      const supabase = createClient();
+      const { data: cacheRow, error } = await supabase
+        .from("feed_cache")
+        .select("updated_at")
+        .eq("id", "topics")
+        .maybeSingle();
+      const stale =
+        !error && (!cacheRow || Date.now() - new Date(cacheRow.updated_at).getTime() > 6 * 3600_000);
+      if (stale) {
+        void fetch(`${req.nextUrl.origin}/api/cron/feed-digest?secret=${cronSecret}`).catch(() => {});
+        // micro-espera para que el request alcance a salir antes de cerrar
+        await new Promise((r) => setTimeout(r, 150));
+      }
+    } catch { /* tabla sin migrar — el cron diario lo intentará igual */ }
+  }
+
   return NextResponse.json(feed, {
     headers: { "Cache-Control": "private, max-age=120" },
   });

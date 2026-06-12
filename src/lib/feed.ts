@@ -150,7 +150,7 @@ export function sanitizePrompt(raw: string): string | null {
   );
 }
 
-function normalizeKey(prompt: string): string {
+export function normalizeKey(prompt: string): string {
   return prompt
     .toLowerCase()
     .normalize("NFD")
@@ -174,7 +174,7 @@ const STOPWORDS = new Set([
   "venezuela", "caracas", "maracay", "valencia", "zona", "hoy",
 ]);
 
-function keywordsOf(prompt: string): Set<string> {
+export function keywordsOf(prompt: string): Set<string> {
   const words = normalizeKey(prompt).split(" ");
   const out = new Set<string>();
   for (const w of words) {
@@ -183,7 +183,7 @@ function keywordsOf(prompt: string): Set<string> {
   return out;
 }
 
-type EventRow = {
+export type EventRow = {
   prompt: string;
   category_id: string | null;
   city: string | null;
@@ -191,13 +191,15 @@ type EventRow = {
   user_id: string | null;
 };
 
-function labelFor(categoryId: string | null): { id: string; label: string } {
+export function labelFor(categoryId: string | null): { id: string; label: string } {
   const id = categoryId && CATEGORY_LABELS[categoryId] ? categoryId : "general";
   return { id, label: CATEGORY_LABELS[id] };
 }
 
-// Tema agregado (agrupación por texto normalizado — la fase 2 lo hará con IA).
-type Topic = {
+// Tema agregado. En fase 1 la agrupación es por texto normalizado; el cron
+// de fase 2 (feedDigest) remapea los eventos a temas canónicos con IA y
+// materializa el resultado en feed_cache — getPublicFeed lo usa si existe.
+export type Topic = {
   key: string;
   prompt: string;
   categoryId: string;
@@ -210,7 +212,7 @@ type Topic = {
   lastAt: number;
 };
 
-function buildTopics(events: EventRow[], now: number): Map<string, Topic> {
+export function buildTopics(events: EventRow[], now: number): Map<string, Topic> {
   const topics = new Map<string, Topic>();
   // por tema: peso ya aportado por cada usuario (para descontar repetidos)
   const perTopicUsers = new Map<string, Map<string, number>>();
@@ -288,6 +290,51 @@ function buildTopics(events: EventRow[], now: number): Map<string, Topic> {
   return topics;
 }
 
+// Serialización de temas para feed_cache (Map/Set -> JSON y de vuelta).
+export type SerializedTopic = {
+  key: string;
+  prompt: string;
+  categoryId: string;
+  categoryLabel: string;
+  score: number;
+  people48h: number;
+  cities: Record<string, number>;
+  keywords: string[];
+  lastAt: number;
+};
+
+export function serializeTopics(topics: Topic[]): SerializedTopic[] {
+  return topics.map((t) => ({
+    key: t.key,
+    prompt: t.prompt,
+    categoryId: t.categoryId,
+    categoryLabel: t.categoryLabel,
+    score: t.score,
+    people48h: t.people48h,
+    cities: Object.fromEntries(t.cities),
+    keywords: [...t.keywords],
+    lastAt: t.lastAt,
+  }));
+}
+
+export function deserializeTopics(s: SerializedTopic[]): Topic[] {
+  return s.map((t) => ({
+    key: t.key,
+    prompt: t.prompt,
+    categoryId: t.categoryId,
+    categoryLabel: t.categoryLabel,
+    score: t.score,
+    people48h: t.people48h,
+    cities: new Map(Object.entries(t.cities)),
+    keywords: new Set(t.keywords),
+    lastAt: t.lastAt,
+  }));
+}
+
+// La caché materializada por el cron vale hasta 26h (cron diario + margen);
+// después se ignora y se agrega en vivo (fase 1) como respaldo.
+const CACHE_MAX_AGE_MS = 26 * 3600_000;
+
 // Agregación ------------------------------------------------------------------
 export async function getPublicFeed(
   visitorCity: string | null,
@@ -297,15 +344,33 @@ export async function getPublicFeed(
   const now = Date.now();
   const since7d = new Date(now - 7 * 86_400_000).toISOString();
 
+  // 1) Temas: primero la caché materializada del cron (temas canónicos,
+  //    agrupados con IA); si no existe o está vieja, agregación en vivo.
+  let topics: Map<string, Topic> | null = null;
+  try {
+    const { data: cacheRow, error } = await supabase
+      .from("feed_cache")
+      .select("payload, updated_at")
+      .eq("id", "topics")
+      .maybeSingle();
+    if (!error && cacheRow && now - new Date(cacheRow.updated_at).getTime() < CACHE_MAX_AGE_MS) {
+      const arr = (cacheRow.payload as { topics?: SerializedTopic[] } | null)?.topics;
+      if (arr && arr.length > 0) {
+        topics = new Map(deserializeTopics(arr).map((t) => [t.key, t]));
+      }
+    }
+  } catch { /* tabla aún no migrada — respaldo en vivo */ }
+  const fromCache = topics !== null;
+
   const { data } = await supabase
     .from("query_events")
     .select("prompt, category_id, city, created_at, user_id")
     .gte("created_at", since7d)
     .order("created_at", { ascending: false })
-    .limit(3000);
+    .limit(fromCache ? 100 : 3000);
 
   const events: EventRow[] = data ?? [];
-  const topics = buildTopics(events, now);
+  if (!topics) topics = buildTopics(events, now);
   const ranked = [...topics.values()].sort((a, b) => b.score - a.score);
   const qualifying = ranked.filter((t) => t.people48h >= MIN_REAL_PEOPLE);
 
@@ -416,6 +481,19 @@ export async function getPublicFeed(
           myKeys.add(key);
           myOwn.push({ prompt: clean, categoryId: e.category_id ?? "general" });
         }
+      }
+
+      // Con temas canónicos (caché del cron), traducir las claves crudas del
+      // usuario a sus temas vía alias — para no recomendarle algo que ya
+      // preguntó con otras palabras.
+      if (fromCache && myKeys.size > 0) {
+        try {
+          const { data: aliases } = await supabase
+            .from("feed_topic_aliases")
+            .select("topic_key")
+            .in("key", [...myKeys].slice(0, 80));
+          for (const a of aliases ?? []) myKeys.add(a.topic_key as string);
+        } catch { /* sin tabla aún — la exclusión por clave cruda basta */ }
       }
 
       // Candidatos: temas globales afines que el usuario NO ha preguntado.
