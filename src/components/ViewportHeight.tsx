@@ -20,9 +20,16 @@ export default function ViewportHeight() {
     if (typeof window === "undefined") return;
 
     function setVh() {
-      const height = window.visualViewport?.height ?? window.innerHeight;
-      const vh = height * 0.01;
-      document.documentElement.style.setProperty("--vh", `${vh}px`);
+      // Caja real de la página (100dvh en <html>) — llega hasta el borde
+      // físico inferior. El visual viewport puede ser unos px más corto
+      // (zonas de barras del navegador) y usarlo siempre dejaba una franja
+      // del fondo descubierta abajo en móvil. Regla: recorte GRANDE =
+      // teclado en pantalla → seguirlo (el input queda sobre el teclado);
+      // recorte chico = barras del navegador → ocupar la página completa.
+      const layoutH = document.documentElement.clientHeight;
+      const visualH = window.visualViewport?.height ?? layoutH;
+      const height = layoutH - visualH > 150 ? visualH : layoutH;
+      document.documentElement.style.setProperty("--vh", `${height * 0.01}px`);
     }
 
     setVh();
