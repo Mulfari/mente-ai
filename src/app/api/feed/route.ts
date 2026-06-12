@@ -9,11 +9,13 @@ import { getPublicFeed } from "@/lib/feed";
 // usuario (user_context) o la de la IP (header de Vercel).
 export async function GET(req: NextRequest) {
   let city: string | null = null;
+  let internalUserId: string | null = null;
 
   const { userId } = await auth();
   if (userId) {
     const profile = await getProfileByClerkId(userId);
     if (profile) {
+      internalUserId = profile.id;
       const supabase = createClient();
       const { data: ctx } = await supabase
         .from("user_context")
@@ -33,7 +35,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const feed = await getPublicFeed(city);
+  // El UUID interno habilita la sección "Para ti" (personalizada por el
+  // historial del usuario); null para visitantes.
+  const feed = await getPublicFeed(city, internalUserId);
   return NextResponse.json(feed, {
     headers: { "Cache-Control": "private, max-age=120" },
   });

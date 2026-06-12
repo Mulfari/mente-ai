@@ -43,6 +43,7 @@ const ICONS = {
   mapPin: "M12 21s-7-5.5-7-11a7 7 0 1114 0c0 5.5-7 11-7 11zm0-8.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z",
   clock: "M12 8v4l2.5 2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
   trendingUp: "M3 17l6-6 4 4 8-8m0 0v5m0-5h-5",
+  sparkles: "M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8L12 3zM19 14l.9 2.3L22 17l-2.1.8L19 20l-.9-2.2L16 17l2.1-.7L19 14zM5 14l.9 2.3L8 17l-2.1.8L5 20l-.9-2.2L2 17l2.1-.7L5 14z",
 };
 
 // Título de sección fijado (patrón lista de iOS): se queda pegado arriba
@@ -214,43 +215,87 @@ export default function TrendingFeed({
       </div>
       </section>
 
-      <section className="relative">
-      <SectionHeader>
-        <Icon d={ICONS.clock} size={16} color="var(--text-secondary)" />
-        <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
-          Preguntando ahora
-        </h2>
-        <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
-      </SectionHeader>
-      <div
-        className="rounded-2xl px-2 gentle-fade-up-soft"
-        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
-      >
-        {feed.recent.map((item, i) => (
-          <button
-            key={item.prompt}
-            onClick={() => onAsk(item.prompt)}
-            className="w-full flex items-center justify-between gap-4 py-3 px-2 my-0.5 rounded-xl text-left cursor-pointer group transition-colors hover:bg-[var(--surface-hover)]"
-            style={{ borderTop: i === 0 ? "none" : "1px solid var(--border)" }}
-          >
-            <span
-              className="text-[13px] truncate"
-              style={{ color: "var(--text-primary)" }}
+      {/* Tercera sección: "Para ti" (personalizada por el historial) cuando
+          el algoritmo tiene material; si no, "Preguntando ahora" (visitantes
+          y usuarios nuevos). */}
+      {feed.forYou && feed.forYou.items.length >= 2 ? (
+        <section className="relative">
+        <SectionHeader>
+          <Icon d={ICONS.sparkles} size={16} color="var(--primary)" />
+          <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
+            Para ti
+          </h2>
+        </SectionHeader>
+        <div
+          className="rounded-2xl px-2 gentle-fade-up-soft"
+          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+        >
+          {feed.forYou.items.map((item, i) => (
+            <button
+              key={item.prompt}
+              onClick={() => onAsk(item.prompt)}
+              className="w-full flex items-center justify-between gap-4 py-3 px-2 my-0.5 rounded-xl text-left cursor-pointer group transition-colors hover:bg-[var(--surface-hover)]"
+              style={{ borderTop: i === 0 ? "none" : "1px solid var(--border)" }}
             >
-              “{item.prompt}”
-            </span>
-            <span className="text-[11px] shrink-0" style={{ color: "var(--text-tertiary)" }}>
-              {item.minutesAgo !== null
-                ? item.minutesAgo < 60
-                  ? `hace ${item.minutesAgo} min`
-                  : `hace ${Math.round(item.minutesAgo / 60)} h`
-                : "popular"}
-              {item.city ? ` · ${item.city}` : ""}
-            </span>
-          </button>
-        ))}
-      </div>
-      </section>
+              <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>
+                “{item.prompt}”
+              </span>
+              <span
+                className="text-[10px] font-medium shrink-0 px-2 py-0.5 rounded-full"
+                style={
+                  item.reason === "tuyo"
+                    ? { color: "var(--text-tertiary)", backgroundColor: "var(--surface-hover)" }
+                    : {
+                        color: categoryStyle(item.categoryId).color,
+                        backgroundColor: categoryStyle(item.categoryId).bg,
+                      }
+                }
+              >
+                {item.reason === "tuyo" ? "Retomar" : item.categoryLabel}
+              </span>
+            </button>
+          ))}
+        </div>
+        </section>
+      ) : (
+        <section className="relative">
+        <SectionHeader>
+          <Icon d={ICONS.clock} size={16} color="var(--text-secondary)" />
+          <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
+            Preguntando ahora
+          </h2>
+          <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
+        </SectionHeader>
+        <div
+          className="rounded-2xl px-2 gentle-fade-up-soft"
+          style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+        >
+          {feed.recent.map((item, i) => (
+            <button
+              key={item.prompt}
+              onClick={() => onAsk(item.prompt)}
+              className="w-full flex items-center justify-between gap-4 py-3 px-2 my-0.5 rounded-xl text-left cursor-pointer group transition-colors hover:bg-[var(--surface-hover)]"
+              style={{ borderTop: i === 0 ? "none" : "1px solid var(--border)" }}
+            >
+              <span
+                className="text-[13px] truncate"
+                style={{ color: "var(--text-primary)" }}
+              >
+                “{item.prompt}”
+              </span>
+              <span className="text-[11px] shrink-0" style={{ color: "var(--text-tertiary)" }}>
+                {item.minutesAgo !== null
+                  ? item.minutesAgo < 60
+                    ? `hace ${item.minutesAgo} min`
+                    : `hace ${Math.round(item.minutesAgo / 60)} h`
+                  : "popular"}
+                {item.city ? ` · ${item.city}` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+        </section>
+      )}
     </div>
   );
 }

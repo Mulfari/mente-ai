@@ -1,20 +1,30 @@
 import { createClient } from "@/lib/supabase/server";
 
 // ============================================================================
-// Feed público de descubrimiento ("Tendencias") para la home deslogueada.
+// Feed público de descubrimiento ("Tendencias") — fase 1 del algoritmo.
 //
-// 100% dinámico: se alimenta de query_events (cada pregunta escrita o tarjeta
-// tocada en el producto). Mientras el volumen real es bajo, se mezcla con
-// semillas curadas; los datos reales van desplazando a las semillas solos
-// conforme crece el tráfico. Los contadores ("N hoy") solo se muestran cuando
-// son reales y superan el umbral — nunca se inventan números.
+// Se alimenta de query_events (cada pregunta escrita o tarjeta tocada).
+// Ranking real, sin IA todavía:
+//   - PERSONAS, no eventos: un usuario repitiendo la misma pregunta no
+//     infla la tendencia (sus repeticiones pesan 15%).
+//   - DECAIMIENTO temporal: lo de hace 2 horas pesa mucho más que lo de
+//     ayer (exp(-edad/18h)) — tendencia = velocidad, no acumulado.
+//   - PICO: si un tema hace en 6h lo que normalmente hace en días, sube
+//     aunque su volumen total sea pequeño (detecta lo que está explotando).
+//   - DIVERSIDAD: máximo 2 tarjetas por categoría en Tendencias.
+//   - PARA TI: sección personalizada por el historial del usuario (sus
+//     categorías y palabras clave) — para visitantes queda "Preguntando
+//     ahora".
+// Mientras el volumen real es bajo, las semillas curadas rellenan; los
+// datos reales las desplazan solos. Los contadores ("N personas hoy") solo
+// se muestran cuando son personas reales distintas y superan el umbral.
 // ============================================================================
 
 export type FeedCard = {
   prompt: string;
   categoryId: string;
   categoryLabel: string;
-  /** Conteo real de las últimas 48h; null = sin volumen suficiente (semilla) */
+  /** Personas distintas en 48h; null = sin volumen suficiente (semilla) */
   count: number | null;
 };
 
@@ -24,11 +34,21 @@ export type FeedRecentItem = {
   minutesAgo: number | null; // null = semilla, no mostrar tiempo
 };
 
+export type FeedForYouItem = {
+  prompt: string;
+  categoryId: string;
+  categoryLabel: string;
+  /** "tuyo" = retomar algo que el usuario preguntó; "afin" = recomendado */
+  reason: "tuyo" | "afin";
+};
+
 export type PublicFeed = {
   featured: FeedCard;
   trending: FeedCard[];
   nearYou: { city: string | null; prompts: string[] };
   recent: FeedRecentItem[];
+  /** Solo usuarios con historial; null => el cliente muestra "Preguntando ahora" */
+  forYou: { items: FeedForYouItem[] } | null;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -41,11 +61,20 @@ const CATEGORY_LABELS: Record<string, string> = {
   general: "Popular",
 };
 
-// Mínimo de repeticiones reales para mostrar contador / destronar semillas.
-const MIN_REAL_COUNT = 3;
-const TRENDING_CARDS = 4;
+// Umbral de PERSONAS distintas (48h) para mostrar contador / destronar semillas.
+const MIN_REAL_PEOPLE = 3;
+const TRENDING_CARDS = 8;
 const RECENT_ITEMS = 3;
 const NEARBY_PROMPTS = 4;
+const FORYOU_ITEMS = 4;
+const MAX_PER_CATEGORY = 2;
+
+// Parámetros del ranking.
+const DECAY_TAU_HOURS = 18; // vida media efectiva del interés
+const REPEAT_WEIGHT = 0.15; // peso de los envíos repetidos del mismo usuario
+const ANON_WEIGHT = 0.4; // peso de eventos anónimos (no podemos distinguirlos)
+const ANON_CAP = 1.5; // tope de contribución anónima por tema
+const SPIKE_BONUS = 0.35; // hasta +105% (spike capped 3x)
 
 // Semillas curadas (cold start) ----------------------------------------------
 const SEED_FEATURED: FeedCard = {
@@ -98,8 +127,6 @@ const SEED_RECENT: FeedRecentItem[] = [
 ];
 
 // Sanitizado ------------------------------------------------------------------
-// El feed muestra texto escrito por usuarios: filtramos datos personales,
-// enlaces, groserías comunes y textos demasiado cortos o largos.
 const BLOCKED_PATTERNS = [
   /https?:\/\//i,
   /www\./i,
@@ -114,7 +141,6 @@ export function sanitizePrompt(raw: string): string | null {
   for (const pattern of BLOCKED_PATTERNS) {
     if (pattern.test(collapsed)) return null;
   }
-  // Capitalizar la primera letra; respetar signos de apertura.
   const first = collapsed.search(/[a-záéíóúñ]/i);
   if (first === -1) return null;
   return (
@@ -134,11 +160,35 @@ function normalizeKey(prompt: string): string {
     .trim();
 }
 
+function normalizeCity(city: string | null): string | null {
+  if (!city) return null;
+  const c = city.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  return c || null;
+}
+
+// Palabras clave para la afinidad de "Para ti" (sin stopwords comunes).
+const STOPWORDS = new Set([
+  "para", "como", "donde", "cuando", "cuanto", "cuanta", "esta", "este", "esto",
+  "estan", "puedo", "hacer", "tiene", "tengo", "sobre", "cerca", "ahora", "saber",
+  "cual", "cuales", "quien", "porque", "entre", "desde", "hasta", "mejor", "mejores",
+  "venezuela", "caracas", "maracay", "valencia", "zona", "hoy",
+]);
+
+function keywordsOf(prompt: string): Set<string> {
+  const words = normalizeKey(prompt).split(" ");
+  const out = new Set<string>();
+  for (const w of words) {
+    if (w.length >= 4 && !STOPWORDS.has(w)) out.add(w);
+  }
+  return out;
+}
+
 type EventRow = {
   prompt: string;
   category_id: string | null;
   city: string | null;
   created_at: string;
+  user_id: string | null;
 };
 
 function labelFor(categoryId: string | null): { id: string; label: string } {
@@ -146,77 +196,162 @@ function labelFor(categoryId: string | null): { id: string; label: string } {
   return { id, label: CATEGORY_LABELS[id] };
 }
 
-// Agregación ------------------------------------------------------------------
-export async function getPublicFeed(visitorCity: string | null): Promise<PublicFeed> {
-  const supabase = createClient();
-  const since48h = new Date(Date.now() - 48 * 3600_000).toISOString();
-  const since7d = new Date(Date.now() - 7 * 86_400_000).toISOString();
+// Tema agregado (agrupación por texto normalizado — la fase 2 lo hará con IA).
+type Topic = {
+  key: string;
+  prompt: string;
+  categoryId: string;
+  categoryLabel: string;
+  score: number;
+  /** personas distintas con actividad en 48h (anónimos cuentan máx. 1) */
+  people48h: number;
+  cities: Map<string, number>; // ciudad normalizada -> peso
+  keywords: Set<string>;
+  lastAt: number;
+};
 
-  const { data } = await supabase
-    .from("query_events")
-    .select("prompt, category_id, city, created_at")
-    .gte("created_at", since7d)
-    .order("created_at", { ascending: false })
-    .limit(2000);
+function buildTopics(events: EventRow[], now: number): Map<string, Topic> {
+  const topics = new Map<string, Topic>();
+  // por tema: peso ya aportado por cada usuario (para descontar repetidos)
+  const perTopicUsers = new Map<string, Map<string, number>>();
+  const perTopicAnon = new Map<string, number>();
+  const people48hSets = new Map<string, Set<string>>();
+  const recentWeight = new Map<string, number>(); // últimas 6h (pico)
+  const olderWeight = new Map<string, number>(); // resto de la semana
 
-  const events: EventRow[] = data ?? [];
-  const recent48h = events.filter((e) => e.created_at >= since48h);
-
-  // Agrupar las últimas 48h por texto normalizado (solo prompts publicables)
-  const groups = new Map<string, FeedCard>();
-  for (const e of recent48h) {
+  for (const e of events) {
     const clean = sanitizePrompt(e.prompt);
     if (!clean) continue;
     const key = normalizeKey(clean);
-    const existing = groups.get(key);
-    if (existing) {
-      existing.count = (existing.count ?? 0) + 1;
-    } else {
+    const ageHours = (now - new Date(e.created_at).getTime()) / 3_600_000;
+    if (ageHours < 0 || ageHours > 7 * 24) continue;
+
+    let topic = topics.get(key);
+    if (!topic) {
       const { id, label } = labelFor(e.category_id);
-      groups.set(key, { prompt: clean, categoryId: id, categoryLabel: label, count: 1 });
+      topic = {
+        key,
+        prompt: clean,
+        categoryId: id,
+        categoryLabel: label,
+        score: 0,
+        people48h: 0,
+        cities: new Map(),
+        keywords: keywordsOf(clean),
+        lastAt: 0,
+      };
+      topics.set(key, topic);
+      perTopicUsers.set(key, new Map());
+      perTopicAnon.set(key, 0);
+      people48hSets.set(key, new Set());
     }
+    // Si algún evento del tema trae categoría real, adoptarla (los typed van sin ella).
+    if (topic.categoryId === "general" && e.category_id && CATEGORY_LABELS[e.category_id]) {
+      topic.categoryId = e.category_id;
+      topic.categoryLabel = CATEGORY_LABELS[e.category_id];
+    }
+
+    const decay = Math.exp(-ageHours / DECAY_TAU_HOURS);
+    let weight: number;
+    if (e.user_id) {
+      const users = perTopicUsers.get(key)!;
+      const prior = users.get(e.user_id) ?? 0;
+      weight = decay * (prior > 0 ? REPEAT_WEIGHT : 1);
+      users.set(e.user_id, prior + 1);
+      if (ageHours <= 48) people48hSets.get(key)!.add(e.user_id);
+    } else {
+      const used = perTopicAnon.get(key)!;
+      weight = Math.min(decay * ANON_WEIGHT, Math.max(0, ANON_CAP - used));
+      perTopicAnon.set(key, used + weight);
+      if (ageHours <= 48) people48hSets.get(key)!.add("__anon__");
+    }
+
+    topic.score += weight;
+    if (ageHours <= 6) recentWeight.set(key, (recentWeight.get(key) ?? 0) + weight);
+    else olderWeight.set(key, (olderWeight.get(key) ?? 0) + weight);
+
+    const city = normalizeCity(e.city);
+    if (city) topic.cities.set(city, (topic.cities.get(city) ?? 0) + weight);
+    const ts = new Date(e.created_at).getTime();
+    if (ts > topic.lastAt) topic.lastAt = ts;
   }
 
-  const ranked = [...groups.values()].sort((a, b) => (b.count ?? 0) - (a.count ?? 0));
+  // Bonus de pico: ritmo de las últimas 6h vs. el ritmo medio previo.
+  for (const [key, topic] of topics) {
+    const recent = recentWeight.get(key) ?? 0;
+    const older = olderWeight.get(key) ?? 0;
+    const baseline = older / 27 + 0.25; // 27 ventanas de 6h restantes en 7d
+    const spike = Math.min(recent / baseline, 3);
+    topic.score *= 1 + SPIKE_BONUS * spike;
+    topic.people48h = people48hSets.get(key)!.size;
+  }
+  return topics;
+}
 
-  // Destacado: el prompt más repetido SI tiene volumen real; si no, semilla.
-  const realFeatured = ranked[0] && (ranked[0].count ?? 0) >= MIN_REAL_COUNT ? ranked[0] : null;
-  const featured = realFeatured ?? SEED_FEATURED;
+// Agregación ------------------------------------------------------------------
+export async function getPublicFeed(
+  visitorCity: string | null,
+  userId: string | null = null
+): Promise<PublicFeed> {
+  const supabase = createClient();
+  const now = Date.now();
+  const since7d = new Date(now - 7 * 86_400_000).toISOString();
 
-  // Tendencias: reales con volumen primero, completadas con semillas.
+  const { data } = await supabase
+    .from("query_events")
+    .select("prompt, category_id, city, created_at, user_id")
+    .gte("created_at", since7d)
+    .order("created_at", { ascending: false })
+    .limit(3000);
+
+  const events: EventRow[] = data ?? [];
+  const topics = buildTopics(events, now);
+  const ranked = [...topics.values()].sort((a, b) => b.score - a.score);
+  const qualifying = ranked.filter((t) => t.people48h >= MIN_REAL_PEOPLE);
+
+  const toCard = (t: Topic): FeedCard => ({
+    prompt: t.prompt,
+    categoryId: t.categoryId,
+    categoryLabel: t.categoryLabel,
+    count: t.people48h >= MIN_REAL_PEOPLE ? t.people48h : null,
+  });
+
+  // Destacado: el tema con más score SI tiene personas reales; si no, semilla.
+  const featured = qualifying[0] ? toCard(qualifying[0]) : SEED_FEATURED;
+
+  // Tendencias: reales calificados con tope por categoría, semillas rellenan.
   const usedPrompts = new Set([normalizeKey(featured.prompt)]);
+  const categoryCount = new Map<string, number>();
   const trending: FeedCard[] = [];
-  for (const card of ranked) {
+  for (const t of qualifying) {
     if (trending.length >= TRENDING_CARDS) break;
-    if ((card.count ?? 0) < MIN_REAL_COUNT) break;
-    const key = normalizeKey(card.prompt);
-    if (usedPrompts.has(key)) continue;
-    usedPrompts.add(key);
-    trending.push(card);
+    if (usedPrompts.has(t.key)) continue;
+    const inCat = categoryCount.get(t.categoryId) ?? 0;
+    if (inCat >= MAX_PER_CATEGORY) continue; // diversidad
+    usedPrompts.add(t.key);
+    categoryCount.set(t.categoryId, inCat + 1);
+    trending.push(toCard(t));
   }
+  // Las semillas solo rellenan hasta 4 tarjetas (los temas reales pueden
+  // llegar a 8): una fila llena de semillas se vería inflada artificialmente.
   for (const seed of SEED_TRENDING) {
-    if (trending.length >= TRENDING_CARDS) break;
+    if (trending.length >= 4) break;
     const key = normalizeKey(seed.prompt);
     if (usedPrompts.has(key)) continue;
     usedPrompts.add(key);
     trending.push(seed);
   }
 
-  // Cerca de ti: prompts reales de la ciudad del visitante (7 días); si no
+  // Cerca de ti: temas con peso en la ciudad del visitante, por score; si no
   // alcanza, completar con semillas de esa ciudad (o genéricas).
+  const cityNorm = normalizeCity(visitorCity);
   const cityKey = visitorCity && SEED_NEARBY[visitorCity] ? visitorCity : null;
   const nearbyReal: string[] = [];
-  if (visitorCity) {
-    const seen = new Set<string>();
-    for (const e of events) {
+  if (cityNorm) {
+    for (const t of ranked) {
       if (nearbyReal.length >= NEARBY_PROMPTS) break;
-      if (!e.city || e.city.toLowerCase() !== visitorCity.toLowerCase()) continue;
-      const clean = sanitizePrompt(e.prompt);
-      if (!clean) continue;
-      const key = normalizeKey(clean);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      nearbyReal.push(clean);
+      if (!t.cities.has(cityNorm)) continue;
+      nearbyReal.push(t.prompt);
     }
   }
   const nearbySeeds = SEED_NEARBY[cityKey ?? "default"] ?? SEED_NEARBY.default;
@@ -227,8 +362,7 @@ export async function getPublicFeed(visitorCity: string | null): Promise<PublicF
     nearYouPrompts.push(seed);
   }
 
-  // Preguntando ahora: las últimas preguntas reales publicables; completar
-  // con semillas (sin marca de tiempo) si hay pocas.
+  // Preguntando ahora: últimas preguntas reales publicables + semillas.
   const recentReal: FeedRecentItem[] = [];
   const seenRecent = new Set<string>();
   for (const e of events) {
@@ -241,7 +375,7 @@ export async function getPublicFeed(visitorCity: string | null): Promise<PublicF
     recentReal.push({
       prompt: clean,
       city: e.city,
-      minutesAgo: Math.max(1, Math.round((Date.now() - new Date(e.created_at).getTime()) / 60_000)),
+      minutesAgo: Math.max(1, Math.round((now - new Date(e.created_at).getTime()) / 60_000)),
     });
   }
   const recent = [...recentReal];
@@ -251,10 +385,75 @@ export async function getPublicFeed(visitorCity: string | null): Promise<PublicF
     recent.push(seed);
   }
 
+  // Para ti: según el historial del usuario (sus categorías y palabras clave).
+  let forYou: PublicFeed["forYou"] = null;
+  if (userId) {
+    const since30d = new Date(now - 30 * 86_400_000).toISOString();
+    const { data: mine } = await supabase
+      .from("query_events")
+      .select("prompt, category_id, created_at")
+      .eq("user_id", userId)
+      .gte("created_at", since30d)
+      .order("created_at", { ascending: false })
+      .limit(200);
+
+    const myEvents = mine ?? [];
+    if (myEvents.length > 0) {
+      // Perfil de interés: categorías que ha tocado + palabras de sus preguntas.
+      const myCategories = new Map<string, number>();
+      const myKeywords = new Set<string>();
+      const myKeys = new Set<string>();
+      const myOwn: { prompt: string; categoryId: string }[] = [];
+      for (const e of myEvents) {
+        const clean = sanitizePrompt(e.prompt);
+        if (!clean) continue;
+        const key = normalizeKey(clean);
+        if (e.category_id && CATEGORY_LABELS[e.category_id]) {
+          myCategories.set(e.category_id, (myCategories.get(e.category_id) ?? 0) + 1);
+        }
+        for (const w of keywordsOf(clean)) myKeywords.add(w);
+        if (!myKeys.has(key)) {
+          myKeys.add(key);
+          myOwn.push({ prompt: clean, categoryId: e.category_id ?? "general" });
+        }
+      }
+
+      // Candidatos: temas globales afines que el usuario NO ha preguntado.
+      const scored: { t: Topic; s: number }[] = [];
+      for (const t of ranked) {
+        if (myKeys.has(t.key)) continue;
+        let affinity = 0;
+        if (myCategories.has(t.categoryId)) affinity += 0.8;
+        let overlap = 0;
+        for (const w of t.keywords) if (myKeywords.has(w)) overlap++;
+        affinity += Math.min(overlap, 2) * 0.5;
+        if (affinity <= 0) continue; // solo lo realmente afín
+        scored.push({ t, s: t.score * (1 + affinity) + affinity });
+      }
+      scored.sort((a, b) => b.s - a.s);
+
+      const items: FeedForYouItem[] = [];
+      for (const { t } of scored) {
+        if (items.length >= FORYOU_ITEMS) break;
+        const { id, label } = labelFor(t.categoryId);
+        items.push({ prompt: t.prompt, categoryId: id, categoryLabel: label, reason: "afin" });
+      }
+      // Retomar lo suyo: su pregunta distinta más reciente (si hay espacio).
+      for (const own of myOwn.slice(0, 2)) {
+        if (items.length >= FORYOU_ITEMS + 1) break;
+        const { id, label } = labelFor(own.categoryId);
+        items.push({ prompt: own.prompt, categoryId: id, categoryLabel: label, reason: "tuyo" });
+      }
+
+      if (items.length >= 2) forYou = { items };
+    }
+  }
+
   return {
     featured,
     trending,
     nearYou: { city: visitorCity ?? cityKey, prompts: nearYouPrompts },
     recent,
+    forYou,
   };
 }
