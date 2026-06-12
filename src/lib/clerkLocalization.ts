@@ -9,9 +9,10 @@ const branded = JSON.parse(
   JSON.stringify(esES).replaceAll("{{applicationName}}", "VeChat")
 ) as typeof esES;
 
-// Hueco de esES: el placeholder del campo de contraseña del registro queda
-// en inglés ("Create a password").
-(branded as Record<string, unknown>).formFieldInputPlaceholder__password =
+// Hueco de esES: el placeholder del password del REGISTRO no existe en la
+// localización (clave formFieldInputPlaceholder__signUpPassword) y queda el
+// default en inglés "Create a password".
+(branded as Record<string, unknown>).formFieldInputPlaceholder__signUpPassword =
   "Crea una contraseña";
 
 export const vechatLocalization = branded;
