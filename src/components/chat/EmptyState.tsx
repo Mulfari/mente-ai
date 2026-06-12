@@ -216,15 +216,13 @@ export default function EmptyState(props: Props) {
       </div>
 
       {/* Feed de tendencias — asoma justo debajo del input y scrollea en su
-          propia zona (el hero no se entera). El desvanecido superior hace
-          que las tarjetas entren/salgan suave por el borde, sin rayas ni
-          superposiciones. */}
+          propia zona (el hero no se entera). El borde superior suave lo
+          ponen los títulos de sección fijados (SectionHeader en
+          TrendingFeed): fondo sólido + tira degradada bajo el título. */}
       <section
         ref={feedScrollRef}
         className={`flex-1 min-h-0 overflow-y-auto ${feedShown ? "gentle-fade" : "opacity-0"}`}
         style={{
-          maskImage: "linear-gradient(to bottom, transparent 0, black 28px)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0, black 28px)",
           touchAction: "pan-y",
           ...leaveStyle,
         }}

@@ -45,6 +45,30 @@ const ICONS = {
   trendingUp: "M3 17l6-6 4 4 8-8m0 0v5m0-5h-5",
 };
 
+// Título de sección fijado (patrón lista de iOS): se queda pegado arriba
+// del área de scroll mientras su sección está a la vista; cuando llega la
+// siguiente sección, su título lo empuja hacia afuera y se fija él (el
+// empuje lo hace el navegador — sticky acotado al <section> padre).
+// Fondo SÓLIDO + tira degradada: las tarjetas se disuelven al pasar por
+// debajo, sin transparencias legibles.
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="sticky top-0 z-10">
+      <div
+        className="flex items-center gap-2 pt-1 pb-2.5"
+        style={{ backgroundColor: "var(--background)" }}
+      >
+        {children}
+      </div>
+      <div
+        aria-hidden
+        className="h-4 -mb-4"
+        style={{ background: "linear-gradient(to bottom, var(--background), transparent)" }}
+      />
+    </div>
+  );
+}
+
 function TrendCard({ card, onAsk }: { card: FeedCard; onAsk: (p: string) => void }) {
   const style = categoryStyle(card.categoryId);
   return (
@@ -99,14 +123,19 @@ export default function TrendingFeed({
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-3">
+      {/* Cada sección es el límite del sticky de su título: al terminar la
+          sección, el título saliente es empujado por el entrante. El
+          espaciado entre secciones vive DENTRO (pb-8) para que el título
+          siga fijado durante el hueco, hasta que llegue el siguiente. */}
+      <section className="relative pb-8">
+      <SectionHeader>
         <Icon d={ICONS.flame} size={17} color="#D85A30" />
         <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
           Tendencias ahora
         </h2>
-      </div>
+      </SectionHeader>
 
-      <div className="grid gap-2.5 mb-8" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+      <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
         <button
           onClick={() => onAsk(feed.featured.prompt)}
           className="text-left rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[150px] transition-transform duration-150 hover:-translate-y-0.5 cursor-pointer"
@@ -137,8 +166,10 @@ export default function TrendingFeed({
           <TrendCard key={card.prompt} card={card} onAsk={onAsk} />
         ))}
       </div>
+      </section>
 
-      <div className="flex items-center gap-2 mb-2.5">
+      <section className="relative pb-8">
+      <SectionHeader>
         <Icon d={ICONS.mapPin} size={16} color="var(--primary)" />
         <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
           Cerca de ti
@@ -151,8 +182,8 @@ export default function TrendingFeed({
             {feed.nearYou.city}
           </span>
         )}
-      </div>
-      <div className="flex flex-wrap gap-2 mb-8">
+      </SectionHeader>
+      <div className="flex flex-wrap gap-2">
         {feed.nearYou.prompts.map((p) => (
           <button
             key={p}
@@ -168,14 +199,16 @@ export default function TrendingFeed({
           </button>
         ))}
       </div>
+      </section>
 
-      <div className="flex items-center gap-2 mb-2.5">
+      <section className="relative">
+      <SectionHeader>
         <Icon d={ICONS.clock} size={16} color="var(--text-secondary)" />
         <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
           Preguntando ahora
         </h2>
         <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
-      </div>
+      </SectionHeader>
       <div
         className="rounded-2xl px-4"
         style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
@@ -204,6 +237,7 @@ export default function TrendingFeed({
           </button>
         ))}
       </div>
+      </section>
     </div>
   );
 }
