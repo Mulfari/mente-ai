@@ -55,27 +55,31 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
     <div className="sticky top-0 z-10">
       <div
-        className="flex items-center gap-2 pt-1 pb-2.5"
+        className="flex items-center gap-2 pt-1 pb-2"
         style={{ backgroundColor: "var(--background)" }}
       >
         {children}
       </div>
+      {/* Tira degradada EN FLUJO (sin margen negativo): en reposo es
+          invisible (fondo sobre fondo) y solo actúa cuando las tarjetas
+          scrollean por debajo del título fijado — antes pisaba los
+          primeros 16px del contenido todo el tiempo. */}
       <div
         aria-hidden
-        className="h-4 -mb-4"
+        className="h-4"
         style={{ background: "linear-gradient(to bottom, var(--background), transparent)" }}
       />
     </div>
   );
 }
 
-function TrendCard({ card, onAsk }: { card: FeedCard; onAsk: (p: string) => void }) {
+function TrendCard({ card, onAsk, delay = 0 }: { card: FeedCard; onAsk: (p: string) => void; delay?: number }) {
   const style = categoryStyle(card.categoryId);
   return (
     <button
       onClick={() => onAsk(card.prompt)}
-      className="text-left rounded-2xl p-3.5 transition-transform duration-150 hover:-translate-y-0.5 cursor-pointer"
-      style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
+      className="text-left rounded-2xl p-3.5 cursor-pointer feed-card gentle-fade-up-soft"
+      style={{ animationDelay: `${delay}ms` }}
     >
       <span
         className="inline-block text-[10px] font-medium px-2.5 py-0.5 rounded-full"
@@ -138,10 +142,11 @@ export default function TrendingFeed({
       <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
         <button
           onClick={() => onAsk(feed.featured.prompt)}
-          className="text-left rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[150px] transition-transform duration-150 hover:-translate-y-0.5 cursor-pointer"
+          className="text-left rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[150px] cursor-pointer feed-featured gentle-fade-up-soft"
           style={{
             gridRow: "span 2",
-            background: "linear-gradient(160deg, var(--primary), #0A6B54)",
+            background:
+              "radial-gradient(120% 90% at 85% -10%, rgba(255,255,255,0.18), transparent 50%), linear-gradient(160deg, var(--primary), #0A6B54)",
           }}
         >
           <span
@@ -162,8 +167,8 @@ export default function TrendingFeed({
             )}
           </div>
         </button>
-        {feed.trending.slice(0, 4).map((card) => (
-          <TrendCard key={card.prompt} card={card} onAsk={onAsk} />
+        {feed.trending.slice(0, 4).map((card, i) => (
+          <TrendCard key={card.prompt} card={card} onAsk={onAsk} delay={60 + i * 55} />
         ))}
       </div>
       </section>
@@ -184,16 +189,12 @@ export default function TrendingFeed({
         )}
       </SectionHeader>
       <div className="flex flex-wrap gap-2">
-        {feed.nearYou.prompts.map((p) => (
+        {feed.nearYou.prompts.map((p, i) => (
           <button
             key={p}
             onClick={() => onAsk(p)}
-            className="text-[12.5px] px-4 py-2 rounded-full transition-colors cursor-pointer hover:bg-[var(--surface-hover)]"
-            style={{
-              color: "var(--text-primary)",
-              backgroundColor: "var(--surface)",
-              border: "1px solid var(--border)",
-            }}
+            className="text-[12.5px] px-4 py-2 rounded-full cursor-pointer feed-chip gentle-fade-up-soft"
+            style={{ color: "var(--text-primary)", animationDelay: `${i * 45}ms` }}
           >
             {p}
           </button>
@@ -210,18 +211,18 @@ export default function TrendingFeed({
         <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
       </SectionHeader>
       <div
-        className="rounded-2xl px-4"
+        className="rounded-2xl px-2 gentle-fade-up-soft"
         style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
       >
         {feed.recent.map((item, i) => (
           <button
             key={item.prompt}
             onClick={() => onAsk(item.prompt)}
-            className="w-full flex items-center justify-between gap-4 py-3 text-left cursor-pointer group"
+            className="w-full flex items-center justify-between gap-4 py-3 px-2 my-0.5 rounded-xl text-left cursor-pointer group transition-colors hover:bg-[var(--surface-hover)]"
             style={{ borderTop: i === 0 ? "none" : "1px solid var(--border)" }}
           >
             <span
-              className="text-[13px] truncate group-hover:underline"
+              className="text-[13px] truncate"
               style={{ color: "var(--text-primary)" }}
             >
               “{item.prompt}”
@@ -238,6 +239,14 @@ export default function TrendingFeed({
         ))}
       </div>
       </section>
+
+      {/* Cierre del feed: remate suave en vez de un corte abrupto. */}
+      <p
+        className="text-center text-[11.5px] pt-9 pb-1"
+        style={{ color: "var(--text-tertiary)" }}
+      >
+        Esto se mueve solo — VeChat aprende de lo que la gente pregunta
+      </p>
     </div>
   );
 }

@@ -239,6 +239,43 @@ html[data-sidebar="closed"] .sidebar-desktop {
   background-color: var(--primary-hover);
 }
 
+/* ── Feed de tendencias: tarjetas, chips y destacado ──
+   El hover vive aquí (no inline) para poder cambiar border-color y sombra
+   junto con el lift. Tonos derivados con color-mix para servir igual en
+   tema claro y oscuro. */
+.feed-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.feed-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+}
+.feed-featured {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.feed-featured:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+.feed-chip {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.feed-chip:hover {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background-color: color-mix(in srgb, var(--primary) 7%, var(--surface));
+}
+@media (prefers-reduced-motion: reduce) {
+  .feed-card:hover,
+  .feed-featured:hover {
+    transform: none;
+  }
+}
+
 
 /* Typing cursor for streaming */
 .typing-cursor {
