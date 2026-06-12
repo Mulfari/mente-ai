@@ -32,13 +32,14 @@ export function resolveTheme(pref: ThemePreference): ResolvedTheme {
   return pref === "system" ? systemTheme() : pref;
 }
 
-// Marco del navegador móvil (barra de URL, zonas del sistema): debe ser
-// EXACTAMENTE el --background del tema o se ven bandas de otro color
-// alrededor de la página. El script inline del layout lo aplica pre-paint;
-// esto lo mantiene en sincronía cuando el tema cambia en caliente.
+// Marco del navegador móvil (barra de URL, barra de gestos): el script
+// inline del layout lo aplica pre-paint; esto lo mantiene en sincronía al
+// cambiar de tema. OJO: en oscuro va NEGRO PURO, no el --background
+// (#0B1418): ese tono azul-verdoso pintado en la barra de gestos del
+// teléfono se veía como una "raya verde" en el borde de abajo.
 const CHROME_COLORS: Record<ResolvedTheme, string> = {
   light: "#FBFBFA",
-  dark: "#0B1418",
+  dark: "#000000",
 };
 
 function syncBrowserChrome(resolved: ResolvedTheme) {
