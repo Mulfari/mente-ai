@@ -65,6 +65,19 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - El resto de tablas (coupons, knowledge*, query_events, places, etc.) tienen
   RLS ON sin policies: solo las rutas API con el service role key acceden.
 
+## Home pública y feed de tendencias
+- `/` deslogueado: `PublicHome` (claro, minimal) — hero 100dvh con el input
+  centrado y feed de tendencias bajo el fold
+- Feed dinámico en `src/lib/feed.ts`: agrega `query_events` (48h/7d) con
+  sanitizado de prompts (PII/groserías/longitud), ciudad por IP
+  (`x-vercel-ip-city`), y semillas curadas para cold start (los contadores
+  solo se muestran con volumen real ≥3)
+- Funnel: la pregunta del visitante se guarda en localStorage
+  (`vechat-pending-question`) → registro → ChatInterface la envía sola
+  (o la deja en el input si la cuenta está bloqueada)
+- Auth pages con `AuthShell` (claro, marca VeChat) + Clerk en español
+  (`@clerk/localizations` esES en el ClerkProvider)
+
 ## Modelo de negocio
 - Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
 - Admin activa cuentas / agrega semanas, o el usuario canjea cupón
