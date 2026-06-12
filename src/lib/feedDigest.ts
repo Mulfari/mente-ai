@@ -99,7 +99,10 @@ async function callLlm(prompt: string): Promise<string | null> {
         messages: [{ role: "user", content: prompt }],
       }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.error("[feed-digest] LLM (openai-compat)", res.status, (await res.text()).slice(0, 300));
+      return null;
+    }
     const data = await res.json();
     return data.choices?.[0]?.message?.content ?? null;
   }
@@ -123,9 +126,14 @@ async function callLlm(prompt: string): Promise<string | null> {
       messages: [{ role: "user", content: prompt }],
     }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.error("[feed-digest] LLM (anthropic)", res.status, (await res.text()).slice(0, 300));
+    return null;
+  }
   const data = await res.json();
-  return data.content?.[0]?.text ?? null;
+  const text = data.content?.[0]?.text ?? null;
+  if (!text) console.error("[feed-digest] LLM sin texto:", JSON.stringify(data).slice(0, 300));
+  return text;
 }
 
 export type DigestStats = {
@@ -206,7 +214,10 @@ export async function runFeedDigest(): Promise<DigestStats> {
         buildLlmPrompt(batch.map(([, v]) => v.prompt), existingArr.map(([, v]) => v.canonical))
       );
       const results = llmText ? extractJsonArray(llmText) : null;
-      if (!results) continue; // lote fallido: queda pendiente para la próxima corrida
+      if (!results) {
+        if (llmText) console.error("[feed-digest] respuesta no parseable:", llmText.slice(0, 300));
+        continue; // lote fallido: queda pendiente para la próxima corrida
+      }
 
       const newTopics: { canonical_key: string; canonical: string; category_id: string }[] = [];
       const newAliases: { key: string; topic_key: string }[] = [];
