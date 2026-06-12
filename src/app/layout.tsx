@@ -19,9 +19,9 @@ export const viewport: Viewport = {
   minimumScale: 1.0,
   userScalable: false,
   interactiveWidget: "overlays-content",
-  // El fondo llega hasta los bordes físicos (notch, home bar); los paddings
-  // con env(safe-area-inset-*) ya existen donde hace falta.
-  viewportFit: "cover",
+  // OJO: NO usar viewport-fit: cover — extiende la página por DETRÁS de la
+  // barra inferior translúcida del navegador móvil y el contenido/fondo se
+  // ve a través de ella como una raya de color al fondo de la pantalla.
 };
 
 export const metadata: Metadata = {
@@ -32,7 +32,8 @@ export const metadata: Metadata = {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
-  manifest: "/manifest.json",
+  // Sin manifest: el archivo no existe en /public y la referencia generaba
+  // un 404 en cada carga (si algún día se quiere PWA, crearlo de verdad).
   other: {
     "og:title": "VeChat",
     "og:description": "Tu asistente de IA personal",
