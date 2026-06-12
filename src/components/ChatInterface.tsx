@@ -1811,14 +1811,19 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
         {/* Messages */}
         <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}
-          style={{
-            // Soft fade at the bottom of the conversation so the edge
-            // between the last message and the input below dissolves
-            // instead of cutting sharply. The mask leaves the top 100%
-            // fully visible and only softens the last ~48px.
-            maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
-          }}>
+          style={
+            // Soft fade SOLO en conversación: difumina el borde entre el
+            // último mensaje y el input de abajo. En la home (empty state)
+            // NO va: no hay nada debajo de main y el fade borraba los
+            // últimos 48px del feed — se veía como una franja del color de
+            // fondo pegada al borde inferior en móvil y escritorio.
+            !activeConv?.id && !loadingConvId && messages.length === 0
+              ? undefined
+              : {
+                  maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
+                  WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
+                }
+          }>
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
