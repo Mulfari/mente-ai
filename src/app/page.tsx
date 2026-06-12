@@ -1,39 +1,22 @@
 import { auth } from "@clerk/nextjs/server";
-import { headers } from "next/headers";
 import ChatInterface from "@/components/ChatInterface";
-import PublicHome from "@/components/home/PublicHome";
 import { getOrCreateProfile } from "@/lib/profile";
-import { getPublicFeed } from "@/lib/feed";
 import { createClient } from "@/lib/supabase/server";
 
-// Ciudad del visitante por IP (header de Vercel, URL-encoded). Sirve para la
-// sección "Cerca de ti" del feed público.
-async function visitorCity(): Promise<string | null> {
-  const h = await headers();
-  const raw = h.get("x-vercel-ip-city");
-  if (!raw) return null;
-  try {
-    const city = decodeURIComponent(raw).trim();
-    return city ? city : null;
-  } catch {
-    return null;
-  }
-}
-
+// Un solo chat para todos: el visitante deslogueado ve exactamente la misma
+// interfaz (hero + input + feed de tendencias); interactuar lo lleva a crear
+// cuenta con su pregunta guardada. El logueado además tiene su historial.
 export default async function Home() {
   const { userId } = await auth();
 
   if (!userId) {
-    const city = await visitorCity();
-    const feed = await getPublicFeed(city);
-    return <PublicHome feed={feed} />;
+    return <ChatInterface userId="" initialIsLoggedIn={false} />;
   }
 
   const profile = await getOrCreateProfile(userId);
   if (!profile) {
-    // DB caída — mejor la home pública que un crash.
-    const feed = await getPublicFeed(null);
-    return <PublicHome feed={feed} />;
+    // DB caída — modo visitante antes que un crash.
+    return <ChatInterface userId="" initialIsLoggedIn={false} />;
   }
 
   const supabase = createClient();

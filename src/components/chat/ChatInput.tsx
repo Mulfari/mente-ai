@@ -495,7 +495,7 @@ export default function ChatInput({
           {/* Attach */}
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={attachments.length >= 3 || !block.canWrite || sending || isStreaming}
+            disabled={!isLoggedIn || attachments.length >= 3 || !block.canWrite || sending || isStreaming}
             className="shrink-0 w-12 h-12 rounded-full flex items-center justify-center transition-colors hover:bg-black/5 disabled:opacity-30"
             style={{ color: "var(--text-tertiary)" }}
             title="Adjuntar archivo"
@@ -547,7 +547,7 @@ export default function ChatInput({
           <div className="shrink-0">
             <button
               onClick={handleMicClick}
-              disabled={!isSupported || !block.canWrite || sending || isStreaming}
+              disabled={!isLoggedIn || !isSupported || !block.canWrite || sending || isStreaming}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
                 !isSupported
                   ? "opacity-30 cursor-not-allowed"

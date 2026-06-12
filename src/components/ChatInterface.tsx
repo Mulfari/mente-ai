@@ -11,7 +11,7 @@ import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import { OnboardingTour } from "./OnboardingTour";
-import { type TrendingSections } from "./chat/DiscoverSuggestions";
+import type { PublicFeed } from "@/lib/feed";
 
 type Message = {
   id: string;
@@ -95,9 +95,14 @@ export default function ChatInterface({
   const [mounted, setMounted] = useState(initialIsLoggedIn);
   const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
-  // Helper: redirect to Clerk sign-in instead of showing a custom modal.
-  const requireSignIn = useCallback(() => {
-    window.location.href = "/sign-in";
+  // Deslogueado: cualquier intento de interactuar guarda la pregunta (si la
+  // hay) y manda a crear cuenta; tras el registro se envía sola.
+  const requireSignIn = useCallback((pendingPrompt?: string) => {
+    try {
+      const q = (pendingPrompt ?? "").trim();
+      if (q) localStorage.setItem("vechat-pending-question", q);
+    } catch { /* storage bloqueado — el registro sigue valiendo */ }
+    window.location.href = "/sign-up";
   }, []);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -111,22 +116,8 @@ export default function ChatInterface({
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
-  const [trendingTopSubOptions, setTrendingTopSubOptions] = useState<TrendingSections>({
-    trending: [],
-    nearYou: [],
-    forYou: [],
-    recent: [],
-  });
-  // True until the first /api/trending fetch resolves. Lets the empty state
-  // show a skeleton of the same size as the real cards instead of flashing
-  // from the static fallback (6 cards) to the trending UI (4 cards) on mount.
-  const [trendingLoading, setTrendingLoading] = useState(true);
-  // Sub-option ids the user has already clicked in this conversation. Filtered
-  // out of the trending sections below so the same card doesn't reappear after
-  // the user sends a message. Reset on conversation change.
-  const [seenSubOptionIds, setSeenSubOptionIds] = useState<Set<string>>(new Set());
+  // Feed de tendencias compartido (mismo para deslogueado y logueado).
+  const [feed, setFeed] = useState<PublicFeed | null>(null);
   const notifTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
   const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null);
@@ -282,55 +273,18 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     return () => window.removeEventListener("popstate", onPop);
   }, [activeConv?.id, convIdFromUrl]);
 
-  // Load daily suggestions
-  function loadSuggestions() {
-    if (!isLoggedIn) return;
-    setSuggestionsLoading(true);
-    fetch("/api/suggestions")
-      .then(r => r.json())
-      .then(d => { if (d.suggestions) setSuggestions(d.suggestions); setSuggestionsLoading(false); })
-      .catch(() => setSuggestionsLoading(false));
+  // Feed de tendencias compartido — un solo endpoint para toda la app.
+  // Silencioso ante fallos (el componente muestra skeleton). Se refresca al
+  // cambiar de conversación para que el empty state esté al día.
+  function loadFeed() {
+    fetch("/api/feed")
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => { if (d) setFeed(d); })
+      .catch(() => {});
   }
   useEffect(() => {
-    loadSuggestions();
-  }, [isLoggedIn]);
-
-  // Load trending top sub-options. Silent on failure — the empty state
-  // falls back to static categories when the list is empty or the request
-  // errors. Re-fetched on conversation change so the chips reflect the
-  // latest aggregate when the user lands on a fresh empty state.
-  function loadTrending() {
-    setTrendingLoading(true);
-    fetch("/api/trending")
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d && d.sections) {
-          setTrendingTopSubOptions(d.sections);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setTrendingLoading(false));
-  }
-  useEffect(() => {
-    loadTrending();
-    setSeenSubOptionIds(new Set());
-  }, [activeConv?.id, isLoggedIn]);
-
-  // Drop sub-options the user has already clicked in this conversation so the
-  // empty state feels fresh. Server-side dedup (in /api/trending) handles
-  // overlap between sections; this handles overlap with the user's own
-  // session.
-  const visibleTrendingSections = React.useMemo<TrendingSections>(() => {
-    if (seenSubOptionIds.size === 0) return trendingTopSubOptions;
-    const filter = (items: TrendingSections["trending"]) =>
-      items.filter((it) => !seenSubOptionIds.has(it.id));
-    return {
-      trending: filter(trendingTopSubOptions.trending),
-      nearYou: filter(trendingTopSubOptions.nearYou),
-      forYou: filter(trendingTopSubOptions.forYou),
-      recent: filter(trendingTopSubOptions.recent),
-    };
-  }, [trendingTopSubOptions, seenSubOptionIds]);
+    loadFeed();
+  }, [activeConv?.id]);
 
   useEffect(() => {
     if (!isLoggedIn || !userId) return;
@@ -799,7 +753,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   }
 
   function getBlockReason(): { canSend: boolean; canWrite: boolean; reason: string } {
-    if (!isLoggedIn) return { canSend: false, canWrite: false, reason: "Inicia sesion para chatear" };
+    // Deslogueado: escribir está permitido — al enviar, la pregunta se guarda
+    // y el flujo sigue en /sign-up (ver requireSignIn).
+    if (!isLoggedIn) return { canSend: true, canWrite: true, reason: "" };
     if (profile && profile.status === "inactive") return { canSend: false, canWrite: false, reason: "Tu suscripcion esta inactiva" };
     const weeks = profile?.subscription_weeks ?? -1;
     if (weeks === 0) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar." };
@@ -829,7 +785,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setShowSidebar(false);
     loadConversations();
     window.history.pushState(null, "", "/");
-    loadSuggestions();
   }
 
   async function selectConv(conv: Conversation) {
@@ -931,21 +886,17 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
   ) {
     if (sending) return;
-    if (!isLoggedIn) { requireSignIn(); return; }
+    if (!isLoggedIn) { requireSignIn(s); return; }
+    // Cuenta bloqueada (0 semanas): en vez de fallar en el servidor, abrir
+    // el menú de cuenta donde está el botón de añadir tiempo.
+    if (!getBlockReason().canSend) {
+      setInput(s);
+      setShowAccountMenu(true);
+      return;
+    }
     setSending(true);
     const myStream = ++streamSeqRef.current;
-    setSuggestions([]);
     if (!activeConv) setConvLoaded(true);
-
-    // Mark this sub-option as seen so the empty state doesn't show it again
-    // for the rest of this conversation.
-    if (meta?.subOptionId) {
-      setSeenSubOptionIds((prev) => {
-        const next = new Set(prev);
-        next.add(meta.subOptionId!);
-        return next;
-      });
-    }
 
     // Fire-and-forget trending tracking. Silent on failure — never block the
     // user flow on the tracking request.
@@ -1236,8 +1187,11 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     const hasAttachments = attachments.length > 0;
     // Early returns before any async
     if (!inputVal && !hasAttachments) return;
+    // Deslogueado: guardar la pregunta y mandar a crear cuenta — tras el
+    // registro se envía sola (ver el efecto de vechat-pending-question).
+    if (!isLoggedIn) { requireSignIn(inputVal); return; }
     const block = getBlockReason();
-    if (!block.canSend) return;
+    if (!block.canSend) { setShowAccountMenu(true); return; }
     // Prevent double-submit: capture sending state BEFORE any state change
     const sendingNow = sending;
     if (sendingNow) return;
@@ -1665,62 +1619,74 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           the ViewportHeight client component) so the container shrinks
           with the on-screen keyboard instead of staying at the
           pre-keyboard height. */}
-      {/* Sidebar */}
-      <ConversationSidebar
-        conversations={conversations}
-        activeConv={activeConv}
-        userEmail={userEmail}
-        profile={profile}
-        onSelectConv={selectConv}
-        onDeleteConv={deleteConv}
-        onNewConversation={newConversation}
-        onShowAccountMenu={() => setShowAccountMenu(true)}
-        showMobile={showSidebar}
-        onCloseMobile={() => setShowSidebar(false)}
-        disabled={isDisabled}
-      />
+      {/* Sidebar — solo con sesión; el visitante ve el chat limpio */}
+      {isLoggedIn && (
+        <ConversationSidebar
+          conversations={conversations}
+          activeConv={activeConv}
+          userEmail={userEmail}
+          profile={profile}
+          onSelectConv={selectConv}
+          onDeleteConv={deleteConv}
+          onNewConversation={newConversation}
+          onShowAccountMenu={() => setShowAccountMenu(true)}
+          showMobile={showSidebar}
+          onCloseMobile={() => setShowSidebar(false)}
+          disabled={isDisabled}
+        />
+      )}
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Top bar — mobile only (md:hidden). Hamburger left, wordmark
-            centered, account chip right. No subscription indicator here —
-            it lives in the account menu modal where it belongs. */}
-        <header className="h-14 flex items-center justify-between px-4 shrink-0 md:hidden"
-          style={{
-            backgroundColor: "color-mix(in srgb, var(--surface) 92%, transparent)",
-            backdropFilter: "blur(20px)",
-            borderBottom: "1px solid var(--border)",
-          }}>
-          <button onClick={() => setShowSidebar(true)}
-            aria-label="Abrir menu"
-            className="p-2 rounded-lg transition-colors"
-            style={{ color: "var(--text-secondary)", backgroundColor: "transparent" }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "var(--surface-hover)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
-          {mounted ? (
-            isLoggedIn && userEmail ? (
+        {isLoggedIn ? (
+          /* Top bar — mobile only (md:hidden). Hamburger left, wordmark
+             centered, account chip right. */
+          <header className="h-14 flex items-center justify-between px-4 shrink-0 md:hidden"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--surface) 92%, transparent)",
+              backdropFilter: "blur(20px)",
+              borderBottom: "1px solid var(--border)",
+            }}>
+            <button onClick={() => setShowSidebar(true)}
+              aria-label="Abrir menu"
+              className="p-2 rounded-lg transition-colors hover:bg-[var(--surface-hover)]"
+              style={{ color: "var(--text-secondary)" }}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
+            {mounted && userEmail ? (
               <button onClick={() => setShowAccountMenu(true)}
                 aria-label="Cuenta"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold cursor-pointer transition-opacity hover:opacity-80"
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white cursor-pointer transition-opacity hover:opacity-80"
                 style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
                 {userEmail.charAt(0).toUpperCase()}
               </button>
             ) : (
-              <button onClick={() => requireSignIn()}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all hover:opacity-80"
-                style={{ background: "var(--surface-hover)", color: "var(--text-primary)" }}>
-                Entrar
-              </button>
-            )
-          ) : (
-            <div className="w-8 h-8" />
-          )}
-        </header>
+              <div className="w-8 h-8" />
+            )}
+          </header>
+        ) : (
+          /* Header público (deslogueado, todos los tamaños): marca + CTAs */
+          <header className="h-14 flex items-center justify-between px-5 sm:px-7 shrink-0">
+            <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              <span style={{ color: "var(--primary)" }}>V</span> VeChat
+            </span>
+            <div className="flex items-center gap-2.5">
+              <a href="/sign-in"
+                className="text-[13px] px-3 py-2 rounded-full transition-colors hover:bg-black/5"
+                style={{ color: "var(--text-secondary)" }}>
+                Iniciar sesión
+              </a>
+              <a href="/sign-up"
+                className="text-[13px] font-medium text-white px-4 py-2 rounded-full transition-opacity hover:opacity-90"
+                style={{ backgroundColor: "var(--primary)" }}>
+                Crear cuenta
+              </a>
+            </div>
+          </header>
+        )}
 
         {/* Messages */}
         <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}
@@ -1763,11 +1729,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             <EmptyState
               userName={userContext?.full_name}
               isLoggedIn={isLoggedIn}
-              suggestions={suggestions}
-              suggestionsLoading={suggestionsLoading}
+              feed={feed}
               getBlockReason={getBlockReason}
               submitSuggestion={submitSuggestion}
-              onShowAuthPrompt={() => requireSignIn()}
               onShowAccountMenu={() => setShowAccountMenu(true)}
               input={input}
               setInput={setInput}
@@ -1777,10 +1741,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
-              trendingTopSubOptions={visibleTrendingSections}
-              trendingLoading={trendingLoading}
-              convId={null}
-              isStreaming={false}
             />
           ) : (<MessageList
               messages={messages}
