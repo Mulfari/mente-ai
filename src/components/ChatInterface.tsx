@@ -61,6 +61,9 @@ export default function ChatInterface({
   } | null;
 }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  // false hasta que la primera carga del historial resuelve — el sidebar
+  // muestra skeleton mientras tanto (evita el flash de "sin conversaciones").
+  const [convsLoaded, setConvsLoaded] = useState(false);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -329,6 +332,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       .eq("user_id", uid)
       .order("updated_at", { ascending: false })
       .limit(20);
+    // Marcar como cargado incluso en error: mejor lista vacía que skeleton eterno.
+    setConvsLoaded(true);
     if (!data) return;
     // Filter out empty "Nueva conversación" placeholders (never had a message)
     const filtered = data.filter((c: any) => {
@@ -791,9 +796,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (!isLoggedIn) { requireSignIn(); return; }
     orphanActiveStream();
     currentConvIdRef.current = conv.id;
-    // Update updated_at in sidebar list so date label doesn't disappear
-    setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
-    setActiveConv({ ...conv, updated_at: new Date().toISOString() });
+    // OJO: NO tocar updated_at aquí — solo abrir una conversación no debe
+    // moverla al grupo "Hoy" del sidebar; eso pasa al enviar un mensaje.
+    setActiveConv(conv);
     setConvLoaded(false);
     setLoadingConvId(conv.id);
     window.history.pushState(null, "", `/chat/${conv.id}`);
@@ -813,6 +818,17 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       setConvLoaded(false);
       window.history.pushState(null, "", "/");
     }
+  }
+
+  async function renameConv(convId: string, title: string) {
+    const trimmed = title.trim().slice(0, 80);
+    if (!trimmed) return;
+    // Optimista: actualizar la UI primero, persistir después.
+    setConversations(prev => prev.map(c => c.id === convId ? { ...c, title: trimmed } : c));
+    if (activeConv?.id === convId) {
+      setActiveConv(prev => prev ? { ...prev, title: trimmed } : prev);
+    }
+    await supabase.from("conversations").update({ title: trimmed }).eq("id", convId);
   }
 
   async function copyMessage(content: string, msgId: string) {
@@ -1628,6 +1644,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           profile={profile}
           onSelectConv={selectConv}
           onDeleteConv={deleteConv}
+          onRenameConv={renameConv}
+          conversationsLoaded={convsLoaded}
           onNewConversation={newConversation}
           onShowAccountMenu={() => setShowAccountMenu(true)}
           showMobile={showSidebar}

@@ -60,6 +60,10 @@ type Props = {
   profile: ProfileData;
   onSelectConv: (conv: Conversation) => void;
   onDeleteConv: (convId: string) => void;
+  onRenameConv: (convId: string, title: string) => void;
+  // false mientras la primera carga del historial está en vuelo — la lista
+  // muestra un skeleton en vez del empty state (que sería mentira).
+  conversationsLoaded?: boolean;
   onNewConversation: () => void;
   onShowAccountMenu: () => void;
   // Mobile sheet
@@ -122,6 +126,18 @@ function DeleteIcon() {
   );
 }
 
+function EditIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z"
+      />
+    </svg>
+  );
+}
+
 function CheckIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -174,8 +190,9 @@ type RowProps = {
   isActive: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onRename: (title: string) => void;
   disabled: boolean;
-  // Touch (mobile sheet): hover no existe, el botón de borrar es siempre visible.
+  // Touch (mobile sheet): hover no existe, los botones son siempre visibles.
   alwaysShowDelete: boolean;
 };
 
@@ -184,6 +201,7 @@ function ConversationRow({
   isActive,
   onSelect,
   onDelete,
+  onRename,
   disabled,
   alwaysShowDelete,
 }: RowProps) {
@@ -191,6 +209,13 @@ function ConversationRow({
   // Se desarma solo a los 4s o al salir de la fila — nunca un modal.
   const [confirming, setConfirming] = React.useState(false);
   const resetTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Renombrar inline: lápiz → el título se vuelve input. Enter/blur guarda,
+  // Escape cancela. Una sola salida (blur) para no guardar dos veces.
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState(conv.title);
+  const editInputRef = React.useRef<HTMLInputElement>(null);
+  const cancelledRef = React.useRef(false);
 
   const disarm = React.useCallback(() => {
     if (resetTimer.current) clearTimeout(resetTimer.current);
@@ -204,6 +229,30 @@ function ConversationRow({
     resetTimer.current = setTimeout(() => setConfirming(false), 4000);
   };
 
+  const startEdit = () => {
+    disarm();
+    cancelledRef.current = false;
+    setDraft(conv.title);
+    setEditing(true);
+  };
+
+  React.useEffect(() => {
+    if (editing) {
+      editInputRef.current?.focus();
+      editInputRef.current?.select();
+    }
+  }, [editing]);
+
+  const finishEdit = () => {
+    setEditing(false);
+    if (cancelledRef.current) {
+      cancelledRef.current = false;
+      return;
+    }
+    const trimmed = draft.trim();
+    if (trimmed && trimmed !== conv.title) onRename(trimmed);
+  };
+
   React.useEffect(() => {
     return () => {
       if (resetTimer.current) clearTimeout(resetTimer.current);
@@ -213,12 +262,12 @@ function ConversationRow({
   return (
     <div
       role="button"
-      tabIndex={disabled ? -1 : 0}
+      tabIndex={disabled || editing ? -1 : 0}
       aria-current={isActive ? "true" : undefined}
-      title={conv.title}
-      onClick={disabled ? undefined : onSelect}
+      title={editing ? undefined : conv.title}
+      onClick={disabled || editing ? undefined : onSelect}
       onKeyDown={(e) => {
-        if (disabled) return;
+        if (disabled || editing) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onSelect();
@@ -236,15 +285,45 @@ function ConversationRow({
           style={{ backgroundColor: "var(--primary)" }}
         />
       )}
-      <span
-        className="flex-1 min-w-0 truncate text-[13px] font-medium"
-        style={{
-          color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
-        }}
-      >
-        {conv.title}
-      </span>
+      {editing ? (
+        <input
+          ref={editInputRef}
+          type="text"
+          value={draft}
+          maxLength={80}
+          aria-label="Nuevo título de la conversación"
+          onChange={(e) => setDraft(e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.currentTarget.blur();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              cancelledRef.current = true;
+              e.currentTarget.blur();
+            }
+          }}
+          onBlur={finishEdit}
+          className="flex-1 min-w-0 bg-transparent outline-none text-[13px] font-medium rounded-md px-1.5 -mx-1.5 h-7"
+          style={{
+            color: "var(--text-primary)",
+            boxShadow: "inset 0 0 0 1.5px var(--primary)",
+          }}
+        />
+      ) : (
+        <span
+          className="flex-1 min-w-0 truncate text-[13px] font-medium"
+          style={{
+            color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+          }}
+        >
+          {conv.title}
+        </span>
+      )}
       {!disabled &&
+        !editing &&
         (confirming ? (
           <div className="flex items-center gap-0.5 shrink-0">
             <button
@@ -278,20 +357,36 @@ function ConversationRow({
             </button>
           </div>
         ) : (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              arm();
-            }}
-            aria-label={`Eliminar "${conv.title}"`}
-            title="Eliminar"
-            className={`shrink-0 p-1 rounded-md transition-opacity duration-100 hover:text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)] focus-visible:opacity-100 ${
+          <div
+            className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-100 ${
               alwaysShowDelete ? "" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
             }`}
-            style={{ color: "var(--text-tertiary)" }}
           >
-            <DeleteIcon />
-          </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                startEdit();
+              }}
+              aria-label={`Renombrar "${conv.title}"`}
+              title="Renombrar"
+              className="p-1 rounded-md hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              <EditIcon />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                arm();
+              }}
+              aria-label={`Eliminar "${conv.title}"`}
+              title="Eliminar"
+              className="p-1 rounded-md hover:text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
+              style={{ color: "var(--text-tertiary)" }}
+            >
+              <DeleteIcon />
+            </button>
+          </div>
         ))}
     </div>
   );
@@ -306,6 +401,8 @@ type SidebarBodyProps = {
   profile: ProfileData;
   onSelectConv: (conv: Conversation) => void;
   onDeleteConv: (convId: string) => void;
+  onRenameConv: (convId: string, title: string) => void;
+  loaded: boolean;
   onNewConversation: () => void;
   onShowAccountMenu: () => void;
   expanded: boolean;
@@ -313,6 +410,36 @@ type SidebarBodyProps = {
   disabled: boolean;
   variant: "desktop" | "mobile";
 };
+
+// Skeleton del historial: barras con el ritmo visual de las filas reales
+// (etiqueta de grupo + filas de 36px) mientras llega la primera carga.
+function ConversationListSkeleton() {
+  const widths = [78, 56, 68, 44, 62];
+  return (
+    <div className="pb-3" aria-hidden="true">
+      <div className="px-2 pt-2 pb-1">
+        <div
+          className="h-2.5 w-14 rounded animate-pulse"
+          style={{ backgroundColor: "var(--surface-hover)" }}
+        />
+      </div>
+      <div className="space-y-0.5">
+        {widths.map((w, i) => (
+          <div key={i} className="flex items-center px-2.5 h-9">
+            <div
+              className="h-3 rounded animate-pulse"
+              style={{
+                width: `${w}%`,
+                backgroundColor: "var(--surface-hover)",
+                animationDelay: `${i * 120}ms`,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function SidebarBody({
   conversations,
@@ -323,6 +450,8 @@ function SidebarBody({
   profile,
   onSelectConv,
   onDeleteConv,
+  onRenameConv,
+  loaded,
   onNewConversation,
   onShowAccountMenu,
   expanded,
@@ -515,7 +644,9 @@ function SidebarBody({
           className="flex-1 overflow-y-auto px-1.5"
           style={{ touchAction: "pan-y" }}
         >
-          {filtered.length === 0 ? (
+          {!loaded ? (
+            <ConversationListSkeleton />
+          ) : filtered.length === 0 ? (
             <div className="py-10 px-4 text-center">
               {searchQuery ? (
                 <>
@@ -564,6 +695,7 @@ function SidebarBody({
                         isActive={activeConv?.id === conv.id}
                         onSelect={() => onSelectConv(conv)}
                         onDelete={() => onDeleteConv(conv.id)}
+                        onRename={(title) => onRenameConv(conv.id, title)}
                         disabled={disabled}
                         alwaysShowDelete={isMobile}
                       />
@@ -640,6 +772,8 @@ export default function ConversationSidebar({
   profile,
   onSelectConv,
   onDeleteConv,
+  onRenameConv,
+  conversationsLoaded,
   onNewConversation,
   onShowAccountMenu,
   showMobile,
@@ -720,6 +854,8 @@ export default function ConversationSidebar({
           profile={profile}
           onSelectConv={onSelectConv}
           onDeleteConv={onDeleteConv}
+          onRenameConv={onRenameConv}
+          loaded={conversationsLoaded !== false}
           onNewConversation={onNewConversation}
           onShowAccountMenu={onShowAccountMenu}
           expanded={expanded}
@@ -770,6 +906,8 @@ export default function ConversationSidebar({
           profile={profile}
           onSelectConv={onSelectConv}
           onDeleteConv={onDeleteConv}
+          onRenameConv={onRenameConv}
+          loaded={conversationsLoaded !== false}
           onNewConversation={onNewConversation}
           onShowAccountMenu={onShowAccountMenu}
           expanded={true}
