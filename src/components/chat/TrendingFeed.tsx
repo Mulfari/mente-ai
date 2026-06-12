@@ -51,7 +51,7 @@ const ICONS = {
 // empuje lo hace el navegador — sticky acotado al <section> padre).
 // Fondo SÓLIDO + tira degradada: las tarjetas se disuelven al pasar por
 // debajo, sin transparencias legibles.
-function SectionHeader({ children }: { children: React.ReactNode }) {
+function SectionHeader({ children, swipeHint = false }: { children: React.ReactNode; swipeHint?: boolean }) {
   return (
     <div className="sticky top-0 z-10">
       <div
@@ -59,6 +59,19 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
         style={{ backgroundColor: "var(--background)" }}
       >
         {children}
+        {swipeHint && (
+          <svg
+            className="ml-auto w-3.5 h-3.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            style={{ color: "var(--text-tertiary)" }}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        )}
       </div>
       {/* Tira degradada EN FLUJO (sin margen negativo): en reposo es
           invisible (fondo sobre fondo) y solo actúa cuando las tarjetas
@@ -78,7 +91,7 @@ function TrendCard({ card, onAsk, delay = 0 }: { card: FeedCard; onAsk: (p: stri
   return (
     <button
       onClick={() => onAsk(card.prompt)}
-      className="text-left rounded-2xl p-3.5 cursor-pointer feed-card gentle-fade-up-soft"
+      className="text-left rounded-2xl p-3.5 cursor-pointer feed-card gentle-fade-up-soft w-[168px] flex flex-col items-start"
       style={{ animationDelay: `${delay}ms` }}
     >
       <span
@@ -87,7 +100,7 @@ function TrendCard({ card, onAsk, delay = 0 }: { card: FeedCard; onAsk: (p: stri
       >
         {card.categoryLabel}
       </span>
-      <p className="text-[13px] font-medium mt-2 mb-1 leading-snug" style={{ color: "var(--text-primary)" }}>
+      <p className="text-[13px] font-medium mt-2 mb-1 leading-snug flex-1" style={{ color: "var(--text-primary)" }}>
         {card.prompt}
       </p>
       {card.count !== null && (
@@ -107,13 +120,14 @@ export default function TrendingFeed({
   onAsk: (prompt: string) => void;
 }) {
   if (!feed) {
-    // Skeleton ligero mientras carga /api/feed
+    // Skeleton ligero mientras carga /api/feed — con la forma de las filas
+    // deslizables reales.
     return (
-      <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+      <div className="feed-hrow" aria-hidden="true">
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="rounded-2xl h-[88px]"
+            className="rounded-2xl h-[140px] w-[168px]"
             style={{
               backgroundColor: "var(--surface)",
               border: "1px solid var(--border)",
@@ -132,19 +146,19 @@ export default function TrendingFeed({
           espaciado entre secciones vive DENTRO (pb-8) para que el título
           siga fijado durante el hueco, hasta que llegue el siguiente. */}
       <section className="relative pb-8">
-      <SectionHeader>
+      <SectionHeader swipeHint>
         <Icon d={ICONS.flame} size={17} color="#D85A30" />
         <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
           Tendencias ahora
         </h2>
       </SectionHeader>
 
-      <div className="grid gap-2.5" style={{ gridTemplateColumns: "repeat(2, 1fr)" }}>
+      {/* Fila deslizable: destacado + tendencias, con snap por tarjeta. */}
+      <div className="feed-hrow">
         <button
           onClick={() => onAsk(feed.featured.prompt)}
-          className="text-left rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[150px] cursor-pointer feed-featured gentle-fade-up-soft"
+          className="text-left rounded-2xl p-4 flex flex-col justify-between w-[230px] min-h-[150px] cursor-pointer feed-featured gentle-fade-up-soft"
           style={{
-            gridRow: "span 2",
             background:
               "radial-gradient(120% 90% at 85% -10%, rgba(255,255,255,0.18), transparent 50%), linear-gradient(160deg, var(--primary), #0A6B54)",
           }}
@@ -167,14 +181,14 @@ export default function TrendingFeed({
             )}
           </div>
         </button>
-        {feed.trending.slice(0, 4).map((card, i) => (
+        {feed.trending.slice(0, 8).map((card, i) => (
           <TrendCard key={card.prompt} card={card} onAsk={onAsk} delay={60 + i * 55} />
         ))}
       </div>
       </section>
 
       <section className="relative pb-8">
-      <SectionHeader>
+      <SectionHeader swipeHint>
         <Icon d={ICONS.mapPin} size={16} color="var(--primary)" />
         <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
           Cerca de ti
@@ -188,12 +202,13 @@ export default function TrendingFeed({
           </span>
         )}
       </SectionHeader>
-      <div className="flex flex-wrap gap-2">
+      {/* Chips en fila deslizable (sin wrap, sin snap — scroll libre). */}
+      <div className="feed-hrow feed-hrow-free">
         {feed.nearYou.prompts.map((p, i) => (
           <button
             key={p}
             onClick={() => onAsk(p)}
-            className="text-[12.5px] px-4 py-2 rounded-full cursor-pointer feed-chip gentle-fade-up-soft"
+            className="text-[12.5px] px-4 py-2 rounded-full cursor-pointer feed-chip gentle-fade-up-soft whitespace-nowrap"
             style={{ color: "var(--text-primary)", animationDelay: `${i * 45}ms` }}
           >
             {p}

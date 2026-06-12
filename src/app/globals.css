@@ -237,19 +237,44 @@ html[data-sidebar="closed"] .sidebar-desktop {
 .feed-card {
   background-color: var(--surface);
   border: 1px solid var(--border);
-  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease, border-color 0.15s ease;
 }
 .feed-card:hover {
   transform: translateY(-2px);
   border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
 }
 .feed-featured {
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  transition: transform 0.15s ease;
 }
 .feed-featured:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--primary) 28%, transparent);
+}
+
+/* Filas deslizables del feed (estilo app): scroll horizontal con snap.
+   El margen negativo sangra la fila hasta el borde del wrapper (px-4 =
+   16px) para que la última tarjeta visible quede CORTADA por el borde —
+   la señal universal de "desliza". El padding-block da aire al lift de
+   los hovers (overflow-x:auto recorta en vertical). touch-action propio:
+   el scroller vertical del feed declara pan-y y sin esto los deslizamientos
+   horizontales sobre las filas se ignorarían en táctil. */
+.feed-hrow {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  margin-inline: -16px;
+  padding-inline: 16px;
+  padding-block: 4px 6px;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 16px;
+  touch-action: pan-x pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+.feed-hrow > * {
+  scroll-snap-align: start;
+  flex: 0 0 auto;
+}
+.feed-hrow-free {
+  scroll-snap-type: none;
 }
 .feed-chip {
   background-color: var(--surface);
