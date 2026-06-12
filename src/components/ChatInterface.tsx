@@ -178,6 +178,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   // and we mark the message as `in_progress: false` with a "(detenido)" tag
   // so other devices see the partial response immediately.
   const streamAbortRef = useRef<AbortController | null>(null);
+  // Identidad del stream activo. Cada envío incrementa la secuencia y captura
+  // su valor; al abandonar la conversación (nuevo chat / cambiar de chat) se
+  // incrementa SIN abortar: el stream viejo sigue persistiendo su respuesta a
+  // la DB en background, pero sus callbacks de fin/error ya no tocan el estado
+  // global de UI (sending, streamingMsgId), que pertenece al contexto nuevo.
+  // Sin esto, "Nuevo chat" a mitad de una respuesta heredaba sending=true y
+  // dejaba el input deshabilitado hasta que el stream invisible terminara.
+  const streamSeqRef = useRef(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Throttle the per-chunk Supabase upsert — a long stream fires hundreds of
   // upserts otherwise. We coalesce to at most one per UPSERT_THROTTLE_MS.
@@ -787,8 +795,18 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
   
 
+  // Suelta el lock de UI del stream en curso sin abortarlo: la respuesta
+  // sigue guardándose en su conversación vieja (diseño multi-dispositivo),
+  // pero el input del contexto nuevo queda libre de inmediato.
+  function orphanActiveStream() {
+    streamSeqRef.current++;
+    setSending(false);
+    setStreamingMsgId(null);
+  }
+
   async function newConversation() {
     if (!isLoggedIn) { requireSignIn(); return; }
+    orphanActiveStream();
     currentConvIdRef.current = null;
     setActiveConv(null);
     setMessages([]);
@@ -803,6 +821,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
   async function selectConv(conv: Conversation) {
     if (!isLoggedIn) { requireSignIn(); return; }
+    orphanActiveStream();
     currentConvIdRef.current = conv.id;
     // Update updated_at in sidebar list so date label doesn't disappear
     setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, updated_at: new Date().toISOString() } : c));
@@ -901,6 +920,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (sending) return;
     if (!isLoggedIn) { requireSignIn(); return; }
     setSending(true);
+    const myStream = ++streamSeqRef.current;
     setSuggestions([]);
     if (!activeConv) setConvLoaded(true);
 
@@ -977,10 +997,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       if (!tokenRes.ok) {
         const err = await tokenRes.json();
         await supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
-        setMessages(prev => prev.filter(m => m.id !== msgId));
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
-        setSending(false);
-        setStreamingMsgId(null);
+        if (streamSeqRef.current === myStream) {
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
+          setSending(false);
+          setStreamingMsgId(null);
+        }
         return;
       }
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
@@ -1023,10 +1045,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         const errData = await streamRes.json().catch(() => ({}));
         const status = streamRes.status;
         await supabase.from('messages').update({ in_progress: false, content: errData.error || `Error de conexion (${status})` }).eq('id', msgId);
-        setMessages(prev => prev.filter(m => m.id !== msgId));
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || `Error de conexion (${status})`, created_at: new Date().toISOString() }]);
-        setSending(false);
-        setStreamingMsgId(null);
+        if (streamSeqRef.current === myStream) {
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || `Error de conexion (${status})`, created_at: new Date().toISOString() }]);
+          setSending(false);
+          setStreamingMsgId(null);
+        }
         return;
       }
 
@@ -1086,8 +1110,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           isDeep = data.is_deep ?? isDeep;
         } else if (currentEvent === 'error') {
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
-          setSending(false);
-          setStreamingMsgId(null);
+          if (streamSeqRef.current === myStream) {
+            setSending(false);
+            setStreamingMsgId(null);
+          }
         }
         currentEvent = '';
         currentData = '';
@@ -1114,18 +1140,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
           currentStreamReqRef.current = null;
-          setSending(false);
-          setStreamingMsgId(null);
           const now = new Date().toISOString();
           supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
           setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
-          setActiveConv({ ...conv!, updated_at: now });
-          if (queuedMsgRef.current) {
-            const q = queuedMsgRef.current as QueuedMsg;
-            queuedMsgRef.current = null;
-            setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
-          } else {
-            textareaRef.current?.focus();
+          // Solo si este stream sigue siendo el activo: si quedó huérfano
+          // (el usuario se fue a otro chat) no toca el estado global de UI
+          // ni regresa la vista a esta conversación.
+          if (streamSeqRef.current === myStream) {
+            setSending(false);
+            setStreamingMsgId(null);
+            setActiveConv({ ...conv!, updated_at: now });
+            if (queuedMsgRef.current) {
+              const q = queuedMsgRef.current as QueuedMsg;
+              queuedMsgRef.current = null;
+              setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
+            } else {
+              textareaRef.current?.focus();
+            }
           }
         } catch (e) {
           // AbortError = the user clicked Stop. Treat as a clean cancellation:
@@ -1149,14 +1180,18 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             });
           } catch {}
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalDisplay, _loading: false } : m));
-          setSending(false);
-          setStreamingMsgId(null);
-          textareaRef.current?.focus();
+          if (streamSeqRef.current === myStream) {
+            setSending(false);
+            setStreamingMsgId(null);
+            textareaRef.current?.focus();
+          }
         } finally {
-          // Always release the abort handle so the next sendMessage can install
-          // a fresh one. Without this the second stream would reuse a signal
-          // that's already aborted and fail immediately.
-          streamAbortRef.current = null;
+          // Solo el stream dueño libera el handle: si quedó huérfano y otro
+          // stream ya instaló su propio AbortController, no se lo pisamos
+          // (romperíamos el botón Stop del stream nuevo).
+          if (streamSeqRef.current === myStream) {
+            streamAbortRef.current = null;
+          }
         }
       };
 
@@ -1196,6 +1231,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
     // Now set sending — this is what disables the button
     setSending(true);
+    const myStream = ++streamSeqRef.current;
 
     console.log("[sendMessage] input:", inputVal.length, "attachments:", hasAttachments, "activeConv:", activeConv?.id, "block:", block);
 
@@ -1312,6 +1348,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       if (data) {
         setConversations([data, ...conversations]);
         conv = data;
+        // Marca esta conversación como la activa para los polls/fetches
+        // (submitSuggestion ya lo hacía; aquí faltaba).
+        currentConvIdRef.current = data.id;
         setActiveConv(data);
         setConvJustStarted(true);
         window.history.pushState(null, "", `/chat/${data.id}`);
@@ -1378,10 +1417,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       if (!tokenRes.ok) {
         const err = await tokenRes.json();
         await supabase.from('messages').update({ in_progress: false, content: err.error || 'Error de auth' }).eq('id', msgId);
-        setMessages(prev => prev.filter(m => m.id !== msgId));
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
-        setSending(false);
-        setStreamingMsgId(null);
+        if (streamSeqRef.current === myStream) {
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: err.error || 'Error de autenticacion', created_at: new Date().toISOString() }]);
+          setSending(false);
+          setStreamingMsgId(null);
+        }
         return;
       }
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
@@ -1423,15 +1464,17 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       if (!streamRes.ok) {
         const errData = await streamRes.json().catch(() => ({}));
         await supabase.from('messages').update({ in_progress: false, content: errData.error || 'Error de conexion' }).eq('id', msgId);
-        setMessages(prev => prev.filter(m => m.id !== msgId));
-        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || 'Error de conexion', created_at: new Date().toISOString() }]);
-        setSending(false);
-        setStreamingMsgId(null);
-        textareaRef.current?.focus();
-        if (queuedMsgRef.current) {
-          const q = queuedMsgRef.current as QueuedMsg;
-          queuedMsgRef.current = null;
-          setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 500);
+        if (streamSeqRef.current === myStream) {
+          setMessages(prev => prev.filter(m => m.id !== msgId));
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'assistant', content: errData.error || 'Error de conexion', created_at: new Date().toISOString() }]);
+          setSending(false);
+          setStreamingMsgId(null);
+          textareaRef.current?.focus();
+          if (queuedMsgRef.current) {
+            const q = queuedMsgRef.current as QueuedMsg;
+            queuedMsgRef.current = null;
+            setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 500);
+          }
         }
         return;
       }
@@ -1494,8 +1537,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           contextDelta = data.context_delta ?? null;
         } else if (currentEvent === 'error') {
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: data.message || 'Error', _loading: false } : m));
-          setSending(false);
-          setStreamingMsgId(null);
+          if (streamSeqRef.current === myStream) {
+            setSending(false);
+            setStreamingMsgId(null);
+          }
         }
         currentEvent = '';
         currentData = '';
@@ -1521,12 +1566,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           flushChunkUpsert();
           await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
-          setSending(false);
-          setStreamingMsgId(null);
           const now = new Date().toISOString();
           supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
           setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
-          setActiveConv(prev => prev ? { ...prev, updated_at: now } : prev);
           // Update user context with notes from the AI
           if (contextDelta?.add_notes && userContext) {
             const existing = userContext.custom_notes || '';
@@ -1537,12 +1579,19 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               setUserContext(prev => prev ? { ...prev, custom_notes: updated } : prev);
             }
           }
-          if (queuedMsgRef.current) {
-            const q = queuedMsgRef.current as QueuedMsg;
-            queuedMsgRef.current = null;
-            setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
-          } else {
-            textareaRef.current?.focus();
+          // Solo si este stream sigue siendo el activo (no quedó huérfano por
+          // un "Nuevo chat" o cambio de conversación) toca el estado de UI.
+          if (streamSeqRef.current === myStream) {
+            setSending(false);
+            setStreamingMsgId(null);
+            setActiveConv(prev => prev ? { ...prev, updated_at: now } : prev);
+            if (queuedMsgRef.current) {
+              const q = queuedMsgRef.current as QueuedMsg;
+              queuedMsgRef.current = null;
+              setTimeout(() => { setInput(q.text); setAttachments(q.files); setPreviewUrls(q.previews); autoResize(); sendMessage(); }, 100);
+            } else {
+              textareaRef.current?.focus();
+            }
           }
         } catch (e) {
           // AbortError = the user clicked Stop. Treat as a clean cancellation:
@@ -1566,15 +1615,19 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             });
           } catch {}
           setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalDisplay, _loading: false } : m));
-          setSending(false);
-          setStreamingMsgId(null);
-          // Re-focus the textarea so the user can immediately type a follow-up.
-          textareaRef.current?.focus();
+          if (streamSeqRef.current === myStream) {
+            setSending(false);
+            setStreamingMsgId(null);
+            // Re-focus the textarea so the user can immediately type a follow-up.
+            textareaRef.current?.focus();
+          }
         } finally {
-          // Always release the abort handle so the next sendMessage can install
-          // a fresh one. Without this the second stream would reuse a signal
-          // that's already aborted and fail immediately.
-          streamAbortRef.current = null;
+          // Solo el stream dueño libera el handle: si quedó huérfano y otro
+          // stream ya instaló su propio AbortController, no se lo pisamos
+          // (romperíamos el botón Stop del stream nuevo).
+          if (streamSeqRef.current === myStream) {
+            streamAbortRef.current = null;
+          }
         }
       };
 
