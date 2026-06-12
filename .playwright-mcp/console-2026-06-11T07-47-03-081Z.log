@@ -1,0 +1,5 @@
+[    1159ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.mulfai.com.ve/manifest.json:0
+[    1196ms] [ERROR] Manifest fetch from https://www.mulfai.com.ve/manifest.json failed, code 404 @ https://www.mulfai.com.ve/sign-in:0
+[    1540ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.mulfai.com.ve/manifest.json:0
+[    1588ms] [ERROR] Manifest fetch from https://www.mulfai.com.ve/manifest.json failed, code 404 @ https://www.mulfai.com.ve/sign-in:0
+[    2978ms] [VERBOSE] [DOM] Input elements should have autocomplete attributes (suggested: "current-password"): (More info: https://goo.gl/9p2vKq) %o @ https://www.mulfai.com.ve/sign-in:0

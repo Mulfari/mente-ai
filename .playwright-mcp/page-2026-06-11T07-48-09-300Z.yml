@@ -1,0 +1,28 @@
+- generic [ref=e1]:
+  - generic [ref=e54]:
+    - generic [ref=e55]:
+      - generic [ref=e57]:
+        - heading "Check your email" [level=1] [ref=e58]
+        - paragraph [ref=e59]: to continue to My Application
+        - paragraph [ref=e61]: test-migracion@mulfai.com.ve
+      - generic [ref=e62]:
+        - generic [ref=e63]:
+          - generic [ref=e65]:
+            - generic:
+              - group
+              - textbox "Enter verification code" [active] [ref=e66]
+          - button "Didn't receive a code? Resend (30)" [disabled]
+        - paragraph [ref=e69]: You're signing in from a new device. We're asking for verification to keep your account secure.
+        - generic [ref=e70]:
+          - button "Continue" [ref=e71] [cursor=pointer]:
+            - generic [ref=e72]:
+              - text: Continue
+              - img [ref=e73]
+          - link "Use another method" [ref=e76] [cursor=pointer]:
+            - /url: https://www.mulfai.com.ve/sign-in/client-trust
+    - generic [ref=e81]:
+      - paragraph [ref=e82]: Secured by
+      - link "Clerk logo" [ref=e83] [cursor=pointer]:
+        - /url: https://go.clerk.com/components
+        - img [ref=e84]
+  - alert [ref=e3]

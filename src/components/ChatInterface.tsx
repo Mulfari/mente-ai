@@ -221,8 +221,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         .then(({ data: p }) => { if (p) setProfile(p); });
       supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", userId).maybeSingle()
         .then(({ data: uc }) => { if (uc) setUserContext(uc); });
-      const seenV2 = localStorage.getItem("mulfai_tour_v2_seen");
-      if (!seenV2) setTimeout(() => setShowOnboarding(true), 300);
+      // Pregunta pendiente de la home pública: el visitante la escribió antes
+      // de registrarse. Si la cuenta puede chatear, se envía sola; si está
+      // bloqueada (0 semanas), queda puesta en el input para cuando active.
+      const pending = localStorage.getItem("vechat-pending-question");
+      if (pending) {
+        localStorage.removeItem("vechat-pending-question");
+        const weeks = initialProfile?.subscription_weeks ?? 0;
+        const canSendPending = initialProfile?.status !== "inactive" && weeks !== 0;
+        if (canSendPending) {
+          setTimeout(() => submitSuggestion(pending, { source: "typed" }), 600);
+        } else {
+          setInput(pending);
+        }
+      } else {
+        const seenV2 = localStorage.getItem("mulfai_tour_v2_seen");
+        if (!seenV2) setTimeout(() => setShowOnboarding(true), 300);
+      }
     } else if (!initialIsLoggedIn) {
       // With Clerk, if the server says we're logged out, we are. Clerk's
       // middleware handles the post-sign-in redirect. Nothing to re-check.

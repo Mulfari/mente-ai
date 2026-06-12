@@ -39,6 +39,16 @@ export async function POST(req: NextRequest) {
       city = ((ctx?.city ?? "").trim()) || null;
     }
   }
+  // Sin ciudad declarada (o visitante anónimo): usar la ciudad por IP que
+  // inyecta Vercel — alimenta la sección "Cerca de ti" del feed público.
+  if (!city) {
+    const ipCity = req.headers.get("x-vercel-ip-city");
+    if (ipCity) {
+      try {
+        city = decodeURIComponent(ipCity).trim() || null;
+      } catch { /* header malformado — sin ciudad */ }
+    }
+  }
 
   const { error } = await supabase.from("query_events").insert({
     user_id: internalUserId,

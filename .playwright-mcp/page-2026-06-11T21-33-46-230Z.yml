@@ -1,0 +1,80 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]:
+          - img [ref=e7]
+          - generic [ref=e9]: VeChat
+        - button "Colapsar sidebar" [ref=e10]:
+          - img [ref=e11]
+      - generic [ref=e13]:
+        - button "Nuevo chat" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - generic [ref=e17]: Nuevo chat
+        - generic [ref=e18]:
+          - img [ref=e19]
+          - textbox "Buscar conversaciones" [ref=e21]:
+            - /placeholder: Buscar...
+      - navigation "Conversaciones" [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e68]:
+            - generic [ref=e69]: Hoy
+            - generic [ref=e70]:
+              - button "Receta de arepas rellenas Confirmar eliminar \"Receta de arepas rellenas\" Cancelar" [ref=e113] [cursor=pointer]:
+                - generic [ref=e72]: Receta de arepas rellenas
+                - generic [ref=e114]:
+                  - button "Confirmar eliminar \"Receta de arepas rellenas\"" [ref=e115]:
+                    - img [ref=e116]
+                  - button "Cancelar" [ref=e118]:
+                    - img [ref=e119]
+              - button "Plan de viaje a Margarita Eliminar \"Plan de viaje a Margarita\"" [ref=e76] [cursor=pointer]:
+                - generic [ref=e77]: Plan de viaje a Margarita
+                - button "Eliminar \"Plan de viaje a Margarita\"" [ref=e78]:
+                  - img [ref=e79]
+          - generic [ref=e81]:
+            - generic [ref=e82]: Ayer
+            - button "Ayuda con tarea de matematicas Eliminar \"Ayuda con tarea de matematicas\"" [ref=e84] [cursor=pointer]:
+              - generic [ref=e85]: Ayuda con tarea de matematicas
+              - button "Eliminar \"Ayuda con tarea de matematicas\"" [ref=e86]:
+                - img [ref=e87]
+          - generic [ref=e89]:
+            - generic [ref=e90]: Últimos 7 días
+            - button "Ideas para emprender en Maracay Eliminar \"Ideas para emprender en Maracay\"" [ref=e92] [cursor=pointer]:
+              - generic [ref=e93]: Ideas para emprender en Maracay
+              - button "Eliminar \"Ideas para emprender en Maracay\"" [ref=e94]:
+                - img [ref=e95]
+          - generic [ref=e97]:
+            - generic [ref=e98]: Últimos 30 días
+            - button "Mejores restaurantes en Caracas con un titulo larguisimo que se trunca Eliminar \"Mejores restaurantes en Caracas con un titulo larguisimo que se trunca\"" [ref=e100] [cursor=pointer]:
+              - generic [ref=e101]: Mejores restaurantes en Caracas con un titulo larguisimo que se trunca
+              - button "Eliminar \"Mejores restaurantes en Caracas con un titulo larguisimo que se trunca\"" [ref=e102]:
+                - img [ref=e103]
+          - generic [ref=e105]:
+            - generic [ref=e106]: Más antiguo
+            - button "Consulta sobre tramites del Saime Eliminar \"Consulta sobre tramites del Saime\"" [ref=e108] [cursor=pointer]:
+              - generic [ref=e109]: Consulta sobre tramites del Saime
+              - button "Eliminar \"Consulta sobre tramites del Saime\"" [ref=e110]:
+                - img [ref=e111]
+      - button "T test-sidebar@mulfai.com.ve Sin suscripción" [ref=e31]:
+        - generic [ref=e32]: T
+        - generic [ref=e33]:
+          - paragraph [ref=e34]: test-sidebar@mulfai.com.ve
+          - paragraph [ref=e35]:
+            - generic [ref=e37]: Sin suscripción
+    - main [ref=e39]:
+      - generic [ref=e40]:
+        - heading "¿Qué te cuenta?" [level=1] [ref=e43]
+        - generic [ref=e47]:
+          - button "Adjuntar archivo" [disabled] [ref=e48]:
+            - img [ref=e49]
+          - textbox "Sin suscripcion activa..." [disabled] [ref=e51]
+          - button "Dictar mensaje" [disabled] [ref=e53]:
+            - img [ref=e54]
+          - button "Enviar" [disabled] [ref=e56]:
+            - img [ref=e57]
+        - generic [ref=e60]:
+          - img [ref=e62]
+          - paragraph [ref=e64]: Suscripción bloqueada
+          - paragraph [ref=e65]: Tu suscripcion ha expirado. Añade tiempo para continuar.
+          - button "Añadir tiempo" [ref=e66]
+  - alert [ref=e67]
