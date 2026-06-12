@@ -139,14 +139,45 @@ export default function EmptyState(props: Props) {
     };
   }, []);
 
+  // El bloque hero+input es sticky: arranca centrado (el espaciador de
+  // arriba lo empuja) y al scrollear sube hasta pegarse al tope, donde se
+  // queda mientras el feed sigue scrolleando por debajo. Para que el input
+  // quede centrado igual que siempre (borde inferior al 46% del alto), el
+  // espaciador mide 46% MENOS la altura real del bloque — medida en vivo
+  // (cambia entre visitante/logueado y cuando el textarea crece).
+  const heroRef = React.useRef<HTMLElement>(null);
+  const [heroH, setHeroH] = React.useState<number | null>(null);
+  React.useLayoutEffect(() => {
+    const el = heroRef.current;
+    if (!el) return;
+    const update = () => setHeroH(el.getBoundingClientRect().height);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const spacerHeight =
+    heroH === null
+      ? "max(0px, calc(46% - 190px))" // estimación pre-medida (un frame)
+      : `max(0px, calc(46% - ${Math.round(heroH)}px))`;
+
   return (
     <div className="h-full overflow-y-auto">
-      {/* Hero + input: el bloque ocupa la mitad superior y se ancla a su
-          fondo, así el input queda en el centro vertical de la pantalla y
-          el feed asoma justo debajo — visible sin scrollear. */}
+      {/* Espaciador scrolleable: empuja el hero+input al centro vertical al
+          cargar; al scrollear hacia el feed se consume y el bloque sticky
+          de abajo se pega al tope. */}
+      <div aria-hidden style={{ height: spacerHeight }} />
+
+      {/* Hero + input: sticky — sube con el scroll hasta el tope y se queda
+          ahí (vidrio esmerilado); el feed sigue scrolleando por debajo. */}
       <section
-        className="flex flex-col items-center justify-end"
-        style={{ minHeight: "46%" }}
+        ref={heroRef}
+        className="sticky top-0 z-10 flex flex-col items-center pt-3 pb-1"
+        style={{
+          backgroundColor: "color-mix(in srgb, var(--background) 86%, transparent)",
+          backdropFilter: "blur(16px) saturate(1.1)",
+          WebkitBackdropFilter: "blur(16px) saturate(1.1)",
+        }}
       >
         <header className={`text-center mb-6 px-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms", ...leaveStyle }}>
           <h1
