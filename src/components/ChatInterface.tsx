@@ -1809,21 +1809,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           </header>
         )}
 
-        {/* Messages */}
-        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}
-          style={
-            // Soft fade SOLO en conversación: difumina el borde entre el
-            // último mensaje y el input de abajo. En la home (empty state)
-            // NO va: no hay nada debajo de main y el fade borraba los
-            // últimos 48px del feed — se veía como una franja del color de
-            // fondo pegada al borde inferior en móvil y escritorio.
-            !activeConv?.id && !loadingConvId && messages.length === 0
-              ? undefined
-              : {
-                  maskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
-                  WebkitMaskImage: "linear-gradient(to bottom, black 0%, black calc(100% - 48px), transparent 100%)",
-                }
-          }>
+        {/* Messages. OJO: sin máscara de fade inferior — el desvanecido de
+            48px "comía" el final del contenido contra el fondo (las últimas
+            líneas del último mensaje quedaban ilegibles y se veía como una
+            franja de fondo tapando el chat abajo). El borde entre mensajes
+            e input queda limpio y completo. */}
+        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto py-6 ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "flex flex-col" : ""}`}>
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}
