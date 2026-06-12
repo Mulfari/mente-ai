@@ -46,3 +46,6 @@ next-env.d.ts
 vps/
 
 .env*.local
+
+# Playwright MCP debug artifacts
+.playwright-mcp/

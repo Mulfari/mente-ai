@@ -1,2 +1,0 @@
-[    1208ms] [ERROR] Failed to load resource: the server responded with a status of 404 () @ https://www.mulfai.com.ve/manifest.json:0
-[    1246ms] [ERROR] Manifest fetch from https://www.mulfai.com.ve/manifest.json failed, code 404 @ https://www.mulfai.com.ve/:0
