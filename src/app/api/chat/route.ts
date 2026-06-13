@@ -2,39 +2,28 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
+import { resolveTier, nextVenezuelaMidnightUTC } from "@/lib/plans";
+import { getAppConfig } from "@/lib/appConfig";
 
 const VPS_SECRET = process.env.VPS_SECRET || process.env.VPS_SHARED_SECRET || "";
 const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://localhost:3000";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
 const TIMEOUT_MS = 300_000;
-const HOURLY_LIMIT = 20;
-const COOLDOWN_MINUTES = 5;
-
-function validateProfile(profile: any, now: Date) {
-  if (profile.status !== "active") {
-    return { error: "Error 403. Por favor intente nuevamente.", code: 403 };
-  }
-  const resetAt = profile.weekly_reset_at ? new Date(profile.weekly_reset_at) : null;
-  if (resetAt && now >= resetAt) {
-    const weeks = profile.subscription_weeks ?? 0;
-    if (weeks <= 0) return { error: "Error 403. Por favor intente nuevamente.", code: 403 };
-  }
-  // Paid users (any nonzero subscription_weeks, including -1) skip hourly throttle.
-  const isPaid = (profile.subscription_weeks ?? 0) !== 0;
-  if (!isPaid) {
-    const hourlyResetAt = profile.hourly_reset_at ? new Date(profile.hourly_reset_at) : null;
-    if (hourlyResetAt && now >= hourlyResetAt) profile.hourly_msg_count = 0;
-    if (profile.hourly_msg_count >= HOURLY_LIMIT) {
-      const remainingSecs = hourlyResetAt
-        ? Math.ceil((hourlyResetAt.getTime() - now.getTime()) / 1000)
-        : COOLDOWN_MINUTES * 60;
-      return {
-        error: `Demasiados mensajes. Espera ${Math.ceil(remainingSecs / 60)}min para continuar.`,
-        code: 429,
-        remaining: remainingSecs,
-      };
-    }
+// Devuelve null si puede enviar; si no, el error. Cuando es free y tiene
+// cuota, NO incrementa aquí — el incremento es un paso aparte para no
+// consumir cuota si el envío falla antes de llamar al VPS.
+async function checkAccess(profile: any, now: Date) {
+  const tier = resolveTier(profile, now);
+  if (tier === "banned") return { error: "Tu cuenta está inactiva.", code: 403 as const };
+  if (tier === "unlimited" || tier === "paid") return null;
+  // tier === "free": aplica tope diario.
+  const cfg = await getAppConfig();
+  const resetAt = profile.daily_reset_at ? new Date(profile.daily_reset_at) : null;
+  const count = !resetAt || now >= resetAt ? 0 : (profile.daily_msg_count ?? 0);
+  if (count >= cfg.freeDailyLimit) {
+    const next = resetAt && now < resetAt ? resetAt : nextVenezuelaMidnightUTC(now);
+    return { error: "Llegaste a tu límite diario gratis.", code: 429 as const, resetAt: next.toISOString() };
   }
   return null;
 }
@@ -65,7 +54,7 @@ export async function POST(request: Request) {
     // Validate profile (clerk_user_id is the link)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, status, subscription_weeks, subscription_start, hourly_msg_count, hourly_reset_at, weekly_reset_at")
+      .select("id, status, subscription_weeks, subscription_end, plan, daily_msg_count, daily_reset_at")
       .eq("clerk_user_id", userId)
       .single();
 
@@ -73,12 +62,21 @@ export async function POST(request: Request) {
     const internalUserId = profile.id;
 
     const now = new Date();
-    const validation = validateProfile(profile, now);
-    if (validation) return NextResponse.json({ error: validation.error, code: validation.code, remaining: validation.remaining }, { status: validation.code });
+    const denied = await checkAccess(profile, now);
+    if (denied) return NextResponse.json(denied, { status: denied.code });
 
     const { message, conversation_id, mode, resume_message_id, message_id } = await request.json();
     if (!message?.trim()) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
+    }
+
+    if (resolveTier(profile, now) === "free") {
+      const resetAt = profile.daily_reset_at ? new Date(profile.daily_reset_at) : null;
+      const fresh = !resetAt || now >= resetAt;
+      await supabase.from("profiles").update({
+        daily_msg_count: fresh ? 1 : (profile.daily_msg_count ?? 0) + 1,
+        daily_reset_at: fresh ? nextVenezuelaMidnightUTC(now).toISOString() : profile.daily_reset_at,
+      }).eq("id", internalUserId);
     }
 
     // Load conversation history
