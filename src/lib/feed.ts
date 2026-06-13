@@ -435,30 +435,17 @@ export async function getPublicFeed(
   const ranked = [...topics.values()].sort((a, b) => b.score - a.score);
   const qualifying = ranked.filter((t) => t.people48h >= MIN_REAL_PEOPLE);
 
-  // Señal relativa (0–3) según la posición del tema entre los calificados:
-  // el más fuerte y su entorno = 3 barras, medio = 2, resto real = 1. Así el
-  // indicador siempre "vive" sin exponer números crudos, y con poco tráfico
-  // los temas reales muestran señal mientras las semillas no muestran nada.
-  const qN = qualifying.length;
-  const signalFor = (rank: number): 0 | 1 | 2 | 3 => {
-    if (rank < 0) return 0;
-    if (qN <= 1) return 3;
-    const ratio = rank / (qN - 1);
-    if (ratio <= 0.25) return 3;
-    if (ratio <= 0.6) return 2;
-    return 1;
-  };
-  const toCard = (t: Topic, rank: number): FeedCard => ({
+  const toCard = (t: Topic): FeedCard => ({
     prompt: t.prompt,
     categoryId: t.categoryId,
     categoryLabel: t.categoryLabel,
     count: t.people48h >= MIN_REAL_PEOPLE ? t.people48h : null,
-    signal: signalFor(rank),
+    signal: 0, // se asigna por posición más abajo
   });
-  const rankOf = new Map(qualifying.map((t, i) => [t.key, i]));
 
   // Destacado: el tema con más score SI tiene personas reales; si no, semilla.
-  const featured = qualifying[0] ? toCard(qualifying[0], 0) : SEED_FEATURED;
+  // Copia de la semilla: abajo se muta .signal y SEED_FEATURED es compartido.
+  const featured = qualifying[0] ? toCard(qualifying[0]) : { ...SEED_FEATURED };
 
   // Tendencias: reales calificados con tope por categoría, semillas rellenan.
   const usedPrompts = new Set([normalizeKey(featured.prompt)]);
@@ -471,7 +458,7 @@ export async function getPublicFeed(
     if (inCat >= MAX_PER_CATEGORY) continue; // diversidad
     usedPrompts.add(t.key);
     categoryCount.set(t.categoryId, inCat + 1);
-    trending.push(toCard(t, rankOf.get(t.key) ?? 0));
+    trending.push(toCard(t));
   }
   // Las semillas solo rellenan hasta 4 tarjetas (los temas reales pueden
   // llegar a 8): una fila llena de semillas se vería inflada artificialmente.
@@ -480,7 +467,16 @@ export async function getPublicFeed(
     const key = normalizeKey(seed.prompt);
     if (usedPrompts.has(key)) continue;
     usedPrompts.add(key);
-    trending.push(seed);
+    trending.push({ ...seed });
+  }
+
+  // Señal por POSICIÓN (no por conteo): el feed ya está ordenado por
+  // relevancia, así que las primeras tarjetas son las más fuertes. Es un
+  // indicador de prominencia relativa, SIEMPRE visible (nunca un número),
+  // que vive aunque el tráfico sea bajo. Destacado = 3 barras.
+  featured.signal = 3;
+  for (let i = 0; i < trending.length; i++) {
+    trending[i] = { ...trending[i], signal: i < 2 ? 3 : i < 5 ? 2 : 1 };
   }
 
   // Cerca de ti: LOCAL de verdad — temas con actividad real en la ciudad de
