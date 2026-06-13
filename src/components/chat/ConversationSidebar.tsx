@@ -606,10 +606,15 @@ function SidebarBody({
   }, [isSearching, hasMoreConvs, loadingMoreConvs, onLoadMoreConvs]);
   // Si el lote cargado no llena el área (pantalla alta), seguir trayendo
   // hasta llenar o agotar — si no, el usuario no podría disparar el scroll.
+  // OJO: medir en rAF (tras el layout); en el primer render clientHeight es 0
+  // y sin el guard `clientHeight > 0` el 0<=4 dispararía cargar TODO el historial.
   React.useEffect(() => {
     if (!expanded || isSearching || !hasMoreConvs || loadingMoreConvs) return;
-    const el = navRef.current;
-    if (el && el.scrollHeight <= el.clientHeight + 4) onLoadMoreConvs?.();
+    const id = requestAnimationFrame(() => {
+      const el = navRef.current;
+      if (el && el.clientHeight > 0 && el.scrollHeight <= el.clientHeight + 4) onLoadMoreConvs?.();
+    });
+    return () => cancelAnimationFrame(id);
   }, [conversations, expanded, isSearching, hasMoreConvs, loadingMoreConvs, onLoadMoreConvs]);
 
   const isMobile = variant === "mobile";
