@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { applyThemePreference, getThemePreference, type ThemePreference } from "@/lib/theme";
+import type { AppConfig } from "@/lib/appConfig";
 
 type Props = {
   userId: string;
@@ -17,11 +18,12 @@ type Props = {
   onClose: () => void;
   onProfileUpdate?: (updates: Partial<Props["profile"]>) => void;
   onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
+  appConfig?: AppConfig;
 };
 
 type Tab = "context" | "personalization" | "subscription" | "coupon";
 
-export default function AccountMenu({ userId, email, profile: profileProp, userContext, onSignOut, onClose, onSave }: Props) {
+export default function AccountMenu({ userId, email, profile: profileProp, userContext, onSignOut, onClose, onSave, appConfig }: Props) {
   const [tab, setTab] = useState<Tab>("context");
   const [tick, setTick] = useState(0);
   const [profile, setProfile] = useState(profileProp ?? null);
@@ -162,7 +164,7 @@ export default function AccountMenu({ userId, email, profile: profileProp, userC
           <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
             {tab === "context" ? <ContextTab userId={userId} userContext={userContext} onSave={onSave} /> :
              tab === "personalization" ? <PersonalizationTab /> :
-             tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} /> :
+             tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} appConfig={appConfig} /> :
              <CouponTab email={email} onClose={onClose} />}
           </div>
         </div>
@@ -553,7 +555,7 @@ function InterestChips() {
 }
 
 // --- Subscription Tab ---
-function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: number }) {
+function SubscriptionTab({ profile, tick, appConfig }: { profile: Props["profile"]; tick: number; appConfig?: AppConfig }) {
   const weeks = (profile?.subscription_weeks ?? 0) || 0;
   const isUnlimited = weeks < 0;
   const isActive = profile && (weeks > 0 || isUnlimited);
@@ -696,6 +698,24 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
           </>
         )}
       </div>
+
+      {appConfig && (
+        <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+          <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>Planes disponibles</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl p-4 text-center" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-secondary)" }}>Semanal</p>
+              <p className="text-lg font-bold" style={{ color: "var(--primary)" }}>${appConfig.priceWeeklyUsd}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{appConfig.planWeeklyDays} dias</p>
+            </div>
+            <div className="rounded-xl p-4 text-center" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-secondary)" }}>Mensual</p>
+              <p className="text-lg font-bold" style={{ color: "var(--primary)" }}>${appConfig.priceMonthlyUsd}</p>
+              <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{appConfig.planMonthlyDays} dias</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TODO(pagos): los datos de abajo son PLACEHOLDERS de ejemplo —
           reemplazar por los reales (Pago Móvil / Zelle / Binance / WhatsApp)

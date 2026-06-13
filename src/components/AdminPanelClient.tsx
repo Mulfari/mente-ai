@@ -46,9 +46,10 @@ type Coupon = {
 type CouponType = "trial" | "weekly" | "20weeks" | "unlimited";
 type CouponFilter = "all" | "available" | "used";
 
-type Tab = "users" | "coupons" | "places";
+type Tab = "users" | "coupons" | "places" | "config";
 type PlaceTab = "places" | "categories" | "knowledge" | "submissions";
 type Toast = { id: string; type: "success" | "error"; message: string };
+type ConfigForm = { free_daily_limit: string; price_weekly_usd: string; price_monthly_usd: string; plan_weekly_days: string; plan_monthly_days: string; whatsapp_number: string };
 
 export default function AdminPanel({ initialProfiles = [], initialCoupons = [], initialPlaces = [], initialCategories = [], initialCities = [], initialKnowledgeRules = [], initialKnowledge = [], fetchError, adminId }: Props) {
   const [users, setUsers] = useState<Profile[]>([]);
@@ -83,6 +84,9 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   const [placeForm, setPlaceForm] = useState({ name: "", address: "", description: "", specialty: "", phone: "", whatsapp: "", google_maps_url: "", waze_url: "", city_id: "", category_id: "", price_range: 2, featured: false, verified: false });
   const [categoryForm, setCategoryForm] = useState({ name: "", slug: "", icon: "", color: "#10A37F", sort_order: 0 });
   const [ruleForm, setRuleForm] = useState({ trigger_type: "keyword", trigger_value: "", response: "", priority: 10 });
+  const [configForm, setConfigForm] = useState<ConfigForm>({ free_daily_limit: "", price_weekly_usd: "", price_monthly_usd: "", plan_weekly_days: "", plan_monthly_days: "", whatsapp_number: "" });
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState(false);
 
   async function adminFetch(url: string, options?: RequestInit) {
     const res = await fetch(url, options);
@@ -214,6 +218,41 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       if (type === "category") setCategories(c => c.filter(x => x.id !== id));
       if (type === "knowledge-rule") setKnowledgeRules(r => r.filter(x => x.id !== id));
     } catch { showToast("error", "Error al eliminar"); }
+  }
+
+  async function loadConfig() {
+    setConfigLoading(true);
+    try {
+      const data = await adminFetch("/api/admin/data?type=config");
+      const rows: { key: string; value: string }[] = data.data || [];
+      const m = new Map(rows.map(r => [r.key, r.value]));
+      setConfigForm({
+        free_daily_limit: m.get("free_daily_limit") ?? "",
+        price_weekly_usd: m.get("price_weekly_usd") ?? "",
+        price_monthly_usd: m.get("price_monthly_usd") ?? "",
+        plan_weekly_days: m.get("plan_weekly_days") ?? "",
+        plan_monthly_days: m.get("plan_monthly_days") ?? "",
+        whatsapp_number: m.get("whatsapp_number") ?? "",
+      });
+    } catch {
+      showToast("error", "Error al cargar configuración");
+    }
+    setConfigLoading(false);
+  }
+
+  async function saveConfig() {
+    setConfigSaving(true);
+    try {
+      await adminFetch("/api/admin/data?type=config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ updates: { ...configForm } }),
+      });
+      showToast("success", "Configuración guardada");
+    } catch {
+      showToast("error", "Error al guardar configuración");
+    }
+    setConfigSaving(false);
   }
 
   async function activateUser(userId: string, weeks: number = 1) {
@@ -483,14 +522,14 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
         {/* Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div className="flex items-center gap-1.5 p-1.5 rounded-xl self-start sm:self-auto" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-            {(["users", "coupons", "places"] as const).map(t => (
-              <button key={t} onClick={() => setActiveTab(t)}
+            {(["users", "coupons", "places", "config"] as const).map(t => (
+              <button key={t} onClick={() => { setActiveTab(t); if (t === "config") loadConfig(); }}
                 className="px-4 py-2 rounded-lg text-xs font-semibold transition-all"
                 style={{
                   backgroundColor: activeTab === t ? "var(--primary)" : "transparent",
                   color: activeTab === t ? "white" : "var(--text-secondary)",
                 }}>
-                {t === "users" ? "Usuarios" : t === "coupons" ? "Cupones" : "Lugares"}
+                {t === "users" ? "Usuarios" : t === "coupons" ? "Cupones" : t === "places" ? "Lugares" : "Configuracion"}
               </button>
             ))}
           </div>
@@ -1241,6 +1280,71 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
                   )}
                 </div>
               </>
+            )}
+          </>
+        )}
+
+        {/* Config section */}
+        {activeTab === "config" && (
+          <>
+            {configLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <div className="flex items-center gap-3" style={{ color: "var(--text-secondary)" }}>
+                  <div className="w-5 h-5 border-2 rounded-full animate-spin"
+                    style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }} />
+                  <span className="text-sm">Cargando configuracion...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl p-6" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+                <div className="mb-5">
+                  <h3 className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Planes y limites</h3>
+                  <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Configura los precios, duraciones y limites del modelo freemium</p>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Mensajes gratis por dia</label>
+                    <input type="number" min="0" value={configForm.free_daily_limit} onChange={e => setConfigForm({ ...configForm, free_daily_limit: e.target.value })}
+                      className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Precio semanal (USD)</label>
+                      <input type="number" min="0" step="0.01" value={configForm.price_weekly_usd} onChange={e => setConfigForm({ ...configForm, price_weekly_usd: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Precio mensual (USD)</label>
+                      <input type="number" min="0" step="0.01" value={configForm.price_monthly_usd} onChange={e => setConfigForm({ ...configForm, price_monthly_usd: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Dias del plan semanal</label>
+                      <input type="number" min="1" value={configForm.plan_weekly_days} onChange={e => setConfigForm({ ...configForm, plan_weekly_days: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Dias del plan mensual</label>
+                      <input type="number" min="1" value={configForm.plan_monthly_days} onChange={e => setConfigForm({ ...configForm, plan_monthly_days: e.target.value })}
+                        className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium mb-1 block" style={{ color: "var(--text-secondary)" }}>Numero de WhatsApp</label>
+                    <input type="text" value={configForm.whatsapp_number} onChange={e => setConfigForm({ ...configForm, whatsapp_number: e.target.value })}
+                      placeholder="ej: 584141234567" className="w-full px-4 py-3 rounded-xl text-sm outline-none" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+                  </div>
+                </div>
+                <div className="mt-6">
+                  <button onClick={saveConfig} disabled={configSaving}
+                    className="px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:opacity-90 disabled:opacity-40"
+                    style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
+                    {configSaving ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
             )}
           </>
         )}
