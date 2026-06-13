@@ -75,7 +75,7 @@ export default function SharedConversation({ title, messages }: { title: string;
                   <p className="whitespace-pre-wrap">{m.content}</p>
                 </div>
               ) : (
-                <div className="text-sm leading-relaxed w-full prose prose-invert prose-sm max-w-none"
+                <div className="w-full prose max-w-none"
                   style={{ color: "var(--text-primary)", wordBreak: "break-word", overflowWrap: "anywhere" }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                     {m.content}

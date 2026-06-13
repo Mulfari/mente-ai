@@ -237,7 +237,7 @@ export default function MessageBubble({
               // Streaming Y final usan el MISMO render de markdown: el texto
               // se ve formateado desde el primer token. Mientras streamea,
               // `streaming-prose` añade el caret parpadeante al final (CSS).
-              <div className={`prose prose-invert prose-sm max-w-none${isStreaming ? " streaming-prose" : ""}`}>
+              <div className={`prose max-w-none${isStreaming ? " streaming-prose" : ""}`}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                   {displayedContent}
                 </ReactMarkdown>
