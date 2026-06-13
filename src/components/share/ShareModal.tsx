@@ -18,6 +18,7 @@ export default function ShareModal({
   onClose: () => void;
 }) {
   const [token, setToken] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -25,6 +26,13 @@ export default function ShareModal({
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const url = token ? `${origin}/c/${token}` : "";
   const prettyUrl = url.replace(/^https?:\/\//, "").replace(/^www\./, "");
+
+  // Horas reales que le quedan al enlace (caduca solo a las 24h).
+  const hoursLeft = expiresAt
+    ? Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 3_600_000))
+    : null;
+  const expiryLabel =
+    hoursLeft === null ? "" : hoursLeft >= 1 ? `Caduca en ${hoursLeft} h` : "Caduca pronto";
 
   // Al abrir: ¿ya hay enlace? Si lo hay, lo refrescamos en silencio para que la
   // foto quede al día (mismo token); si no, esperamos a "Crear enlace".
@@ -36,6 +44,7 @@ export default function ShareModal({
         if (cancelled) return;
         if (j.token) {
           setToken(j.token);
+          setExpiresAt(j.expiresAt ?? null);
           // refresco silencioso de la foto (no bloquea la UI)
           fetch("/api/share", {
             method: "POST",
@@ -64,7 +73,7 @@ export default function ShareModal({
         body: JSON.stringify({ conversationId }),
       });
       const j = await res.json();
-      if (j.token) setToken(j.token);
+      if (j.token) { setToken(j.token); setExpiresAt(j.expiresAt ?? null); }
     } catch { /* noop */ }
     setBusy(false);
   }
@@ -133,11 +142,18 @@ export default function ShareModal({
                 </svg>
                 Enviar por WhatsApp
               </a>
+
+              {expiryLabel && (
+                <p className="mt-3 text-center text-[11.5px] inline-flex items-center justify-center gap-1.5 w-full" style={{ color: "var(--text-tertiary)" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+                  {expiryLabel} · el enlace se desactiva solo
+                </p>
+              )}
             </>
           ) : (
             <>
               <p className="text-[12.5px] mb-4" style={{ color: "var(--text-secondary)" }}>
-                Se crea un enlace de <strong style={{ color: "var(--text-primary)" }}>solo lectura</strong>. Tu nombre no aparece.
+                Se crea un enlace de <strong style={{ color: "var(--text-primary)" }}>solo lectura</strong> que se desactiva solo a las <strong style={{ color: "var(--text-primary)" }}>24 h</strong>. Tu nombre no aparece.
               </p>
               <button onClick={createLink} disabled={busy}
                 className="w-full py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 inline-flex items-center justify-center gap-2"

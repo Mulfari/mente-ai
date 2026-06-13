@@ -50,12 +50,19 @@ export async function GET(req: NextRequest) {
   const supabase = createClient();
   const { data } = await supabase
     .from("shared_conversations")
-    .select("token")
+    .select("token, expires_at")
     .eq("conversation_id", conversationId)
     .eq("owner_id", ownerId)
     .maybeSingle();
-  return NextResponse.json({ token: data?.token ?? null });
+  // Un enlace vencido (>24h) se trata como inexistente.
+  const live = data && new Date(data.expires_at as string).getTime() > Date.now();
+  return NextResponse.json({
+    token: live ? (data!.token as string) : null,
+    expiresAt: live ? (data!.expires_at as string) : null,
+  });
 }
+
+const SHARE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
 
 export async function POST(req: NextRequest) {
   const ownerId = await ownerProfileId();
@@ -82,13 +89,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "La conversación está vacía" }, { status: 400 });
   }
 
-  // ¿Ya hay enlace? Conservar el token; si no, crear uno.
+  // ¿Ya hay enlace vivo? Conservar token Y su caducidad (reabrir refresca el
+  // contenido pero NO reinicia el reloj de 24h). Si no hay o ya venció, se
+  // acuña un token nuevo con 24h frescas (el URL viejo, ya vencido, muere).
   const { data: existing } = await supabase
     .from("shared_conversations")
-    .select("token")
+    .select("token, expires_at")
     .eq("conversation_id", conversationId)
     .maybeSingle();
-  const token = existing?.token ?? newToken();
+  const live = existing && new Date(existing.expires_at as string).getTime() > Date.now();
+  const token = live ? (existing!.token as string) : newToken();
+  const expiresAt = live
+    ? (existing!.expires_at as string)
+    : new Date(Date.now() + SHARE_TTL_MS).toISOString();
 
   const { error } = await supabase.from("shared_conversations").upsert(
     {
@@ -98,12 +111,13 @@ export async function POST(req: NextRequest) {
       title: owned.title,
       messages: snapshot,
       updated_at: new Date().toISOString(),
+      expires_at: expiresAt,
     },
-    { onConflict: "token" }
+    { onConflict: "conversation_id" }
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ token, updated: Boolean(existing) });
+  return NextResponse.json({ token, expiresAt });
 }
 
 export async function DELETE(req: NextRequest) {

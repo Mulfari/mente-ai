@@ -1,5 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runFeedDigest } from "@/lib/feedDigest";
+import { createClient } from "@/lib/supabase/server";
+
+// Barrido de enlaces compartidos vencidos (>24h). Best-effort: si falla no
+// tumba el digest. La correctitud ya la imponen los chequeos expires_at en
+// /api/share y /c/[token]; esto solo mantiene la tabla limpia.
+async function purgeExpiredShares() {
+  try {
+    await createClient()
+      .from("shared_conversations")
+      .delete()
+      .lt("expires_at", new Date().toISOString());
+  } catch { /* noop */ }
+}
 
 // GET /api/cron/feed-digest — canonicaliza preguntas nuevas con el LLM y
 // materializa los temas agregados en feed_cache. Lo dispara:
@@ -16,6 +29,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    await purgeExpiredShares();
     const stats = await runFeedDigest();
     return NextResponse.json({ ok: true, ...stats });
   } catch (e) {

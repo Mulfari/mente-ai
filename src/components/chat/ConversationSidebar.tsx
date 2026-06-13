@@ -227,10 +227,6 @@ function ConversationRow({
   // El menú abre Renombrar / Eliminar; el borrado confirma dentro del menú.
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
-  // ¿Está compartida? Se consulta perezosamente al abrir el menú (un solo GET,
-  // sin coste por fila). Si lo está, el menú ofrece "Dejar de compartir" —
-  // revocar vive aquí, fuera del modal de compartir (que es minimalista).
-  const [shared, setShared] = React.useState(false);
   const [menuPos, setMenuPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
   const kebabRef = React.useRef<HTMLButtonElement>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
@@ -246,26 +242,13 @@ function ConversationRow({
     const r = kebabRef.current?.getBoundingClientRect();
     if (!r) return;
     const MENU_W = 184;
-    const MENU_H = 140; // alto máximo (incluye "Dejar de compartir" si aplica)
+    const MENU_H = 92;
     const left = Math.max(8, r.right - MENU_W);
     let top = r.bottom + 6;
     if (top + MENU_H > window.innerHeight - 8) top = r.top - MENU_H - 6; // flip arriba
     setMenuPos({ top, left });
     setConfirmDelete(false);
     setMenuOpen(true);
-    // Estado de compartido (perezoso): si está compartida, ofrecer revocar.
-    setShared(false);
-    fetch(`/api/share?conversationId=${conv.id}`)
-      .then((res) => res.json())
-      .then((j) => setShared(!!j.token))
-      .catch(() => {});
-  };
-
-  const unshare = async () => {
-    closeMenu();
-    try {
-      await fetch(`/api/share?conversationId=${conv.id}`, { method: "DELETE" });
-    } catch { /* noop */ }
   };
   const closeMenu = React.useCallback(() => {
     setMenuOpen(false);
@@ -450,23 +433,8 @@ function ConversationRow({
                 style={{ color: "var(--text-primary)" }}
               >
                 <span style={{ color: "var(--text-tertiary)" }}><ShareIcon /></span>
-                {shared ? "Ver enlace" : "Compartir"}
+                Compartir
               </button>
-              {shared && (
-                <button
-                  role="menuitem"
-                  onClick={unshare}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-left transition-colors hover:bg-[var(--surface-hover)]"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  <span className="shrink-0" style={{ color: "var(--text-tertiary)" }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><path d="M12 2v10" /><line x1="3" y1="3" x2="21" y2="21" />
-                    </svg>
-                  </span>
-                  Dejar de compartir
-                </button>
-              )}
               <button
                 role="menuitem"
                 onClick={startEdit}

@@ -18,10 +18,12 @@ async function getShare(token: string): Promise<Share | null> {
   const supabase = createClient();
   const { data } = await supabase
     .from("shared_conversations")
-    .select("title, messages")
+    .select("title, messages, expires_at")
     .eq("token", token)
     .maybeSingle();
   if (!data) return null;
+  // Caducó (>24h): se trata como si el enlace ya no existiera.
+  if (new Date(data.expires_at as string).getTime() <= Date.now()) return null;
   return { title: data.title as string, messages: (data.messages as Share["messages"]) ?? [] };
 }
 

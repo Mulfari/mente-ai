@@ -133,30 +133,36 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   para lo que no se puede tokenizar (p. ej. syntax highlighting)
 
 ## Compartir conversaciones
-- Modelo "foto fija" (snapshot): al compartir se congela una copia de solo
-  lectura; volver a compartir re-snapshotea con el MISMO token; desactivar
-  borra. Tabla `shared_conversations` (token PK aleatorio base62, conversation_id
-  UNIQUE, owner_id, title, messages jsonb). RLS ON sin policies (solo API).
-- `/api/share` (GET estado / POST crea-actualiza snapshot / DELETE revoca);
-  valida que la conversación es del usuario; el snapshot excluye mensajes
-  `in_progress` o vacíos (OJO: `public.messages` NO tiene columna `private` —
-  esa pertenece a `realtime.messages`; pedirla en el select rompe el query).
+- Modelo "foto fija" (snapshot) EFÍMERA: al compartir se congela una copia de
+  solo lectura que CADUCA SOLA a las 24h. No hay "dejar de compartir" manual.
+  Tabla `shared_conversations` (token PK aleatorio base62, conversation_id
+  UNIQUE, owner_id, title, messages jsonb, `expires_at` = now()+24h). RLS ON
+  sin policies (solo API).
+- Caducidad: GET y la página pública tratan un enlace con `expires_at <= now()`
+  como inexistente (correctitud). El cron diario (`/api/cron/feed-digest`)
+  barre las filas vencidas (`purgeExpiredShares`, best-effort, solo higiene).
+- `/api/share` valida que la conversación es del usuario; el snapshot excluye
+  mensajes `in_progress` o vacíos (OJO: `public.messages` NO tiene columna
+  `private` — esa pertenece a `realtime.messages`; pedirla rompe el query).
+  - GET ?conversationId → { token, expiresAt } solo si está vivo, si no null.
+  - POST: si hay enlace VIVO reusa token Y conserva su `expires_at` (reabrir
+    refresca el contenido pero NO reinicia el reloj); si no hay o venció, acuña
+    token nuevo con 24h frescas. Upsert onConflict `conversation_id`.
+  - DELETE existe pero ya no lo usa la UI (la caducidad reemplaza al revoke).
 - Página pública `/c/[token]` (server, lee por token con service role; NO está
   en el middleware → pública, sin cuenta): solo lectura con los bubbles del
   chat (`SharedConversation`), marca VeChat + CTA "Pruébalo gratis" arriba y
   "Empieza tu propia conversación" abajo (embudo). `generateMetadata` con OG
-  para previews en WhatsApp/Telegram.
-- Entradas: item "Compartir" en el menú ⋮ del sidebar y botón flotante arriba
-  del chat abierto → `ShareModal`. El dueño nunca aparece en la página pública.
+  para previews en WhatsApp/Telegram. Su contenedor de scroll es propio
+  (`h-[100dvh]` + `overflow-y-auto`) porque el body global está bloqueado.
+- Entradas: item "Compartir" en el menú ⋮ del sidebar (solo Compartir/Renombrar/
+  Eliminar) y botón flotante arriba del chat → `ShareModal`. El dueño nunca
+  aparece en la página pública.
 - `ShareModal` MINIMALISTA (a propósito): una sola acción protagonista. Sin
-  enlace aún → botón "Crear enlace". Ya compartido → el enlace con "Copiar" y
-  un botón grande "Enviar por WhatsApp" (el canal real en VE). NADA más (sin
-  Telegram/X, sin "Actualizar"). La foto se pone al día sola al reabrir (POST
-  silencioso, mismo token), por eso no hay botón de actualizar.
-- Revocar NO está en el modal (para mantenerlo limpio): vive en el menú ⋮ del
-  sidebar como "Dejar de compartir", que aparece solo si esa conversación está
-  compartida (se consulta perezosamente con un GET /api/share al abrir el menú;
-  el item "Compartir" pasa a "Ver enlace"). DELETE /api/share revoca.
+  enlace aún → botón "Crear enlace" (avisa que caduca a las 24h). Ya compartido
+  → el enlace con "Copiar" + botón grande "Enviar por WhatsApp" (el canal real
+  en VE) + una línea gris con las horas que le quedan. NADA más (sin Telegram/X,
+  sin "Actualizar", sin "Desactivar"). La foto se pone al día sola al reabrir.
 
 ## Modelo de negocio
 - Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
