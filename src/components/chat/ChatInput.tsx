@@ -28,6 +28,8 @@ type Props = {
   /** Conversation id used to scope the localStorage draft. Pass null for the "new conversation" empty state. */
   convId?: string | null;
   autoFocus?: boolean;
+  quotaLeft?: number;
+  showQuota?: boolean;
 };
 
 // localStorage key prefix for per-conversation drafts. The empty state
@@ -90,6 +92,8 @@ export default function ChatInput({
   onStop,
   convId = null,
   autoFocus,
+  quotaLeft,
+  showQuota,
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -373,6 +377,14 @@ export default function ChatInput({
           (672 + 32 de padding propio) para que el despegue FLIP siga
           siendo un deslizamiento puro sin saltos de ancho. */}
       <div className="max-w-2xl mx-auto">
+        {showQuota && quotaLeft !== undefined && quotaLeft <= 3 && quotaLeft > 0 && (
+          <div className="flex justify-center mb-2">
+            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1 rounded-full"
+              style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}>
+              Te {quotaLeft === 1 ? "queda 1 mensaje" : `quedan ${quotaLeft} mensajes`} gratis hoy
+            </span>
+          </div>
+        )}
         {/* Pill de estado cuando está grabando — sobre el input. La ✕
             CANCELA (descarta el audio, no transcribe ni envía); para
             enviar lo dictado se toca el botón del mic (cuadrado rojo). */}

@@ -2,6 +2,7 @@
 
 import React from "react";
 import ChatInput from "./ChatInput";
+import LimitReachedCard from "./LimitReachedCard";
 import TrendingFeed from "./TrendingFeed";
 import type { PublicFeed } from "@/lib/feed";
 
@@ -45,6 +46,11 @@ type Props = ChatInputProps & {
       hero, microcopy y feed se desvanecen; el input queda visible y
       luego el padre lo anima deslizándose hasta el dock inferior. */
   leaving?: boolean;
+  limitReached?: boolean;
+  resetAt?: string | null;
+  onSeePlans?: () => void;
+  quotaLeft?: number;
+  showQuota?: boolean;
 };
 
 const OPENERS_NO_NAME = [
@@ -109,6 +115,11 @@ export default function EmptyState(props: Props) {
     getBlockReason,
     submitSuggestion,
     leaving = false,
+    limitReached,
+    resetAt,
+    onSeePlans,
+    quotaLeft,
+    showQuota,
     ...chatInputProps
   } = props;
 
@@ -174,14 +185,20 @@ export default function EmptyState(props: Props) {
             animación de despegue es un deslizamiento puro, sin saltos
             de ancho. */}
         <div className="w-full max-w-[704px]">
-          <ChatInput
-            {...chatInputProps}
-            autoFocus
-            getBlockReason={getBlockReason}
-            isLoggedIn={isLoggedIn}
-            convId={null}
-            isStreaming={false}
-          />
+          {limitReached ? (
+            <LimitReachedCard resetAt={resetAt ?? null} onSeePlans={onSeePlans!} onRedeem={onSeePlans!} />
+          ) : (
+            <ChatInput
+              {...chatInputProps}
+              autoFocus
+              getBlockReason={getBlockReason}
+              isLoggedIn={isLoggedIn}
+              convId={null}
+              isStreaming={false}
+              quotaLeft={quotaLeft}
+              showQuota={showQuota}
+            />
+          )}
         </div>
       </section>
 

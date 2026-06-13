@@ -11,6 +11,8 @@ import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
+import LimitReachedCard from "./chat/LimitReachedCard";
+import PlansModal from "./chat/PlansModal";
 import { OnboardingTour } from "./OnboardingTour";
 import type { PublicFeed } from "@/lib/feed";
 import { resolveTier } from "@/lib/plans";
@@ -174,6 +176,7 @@ export default function ChatInterface({
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   // Conversación cuyo modal de "Compartir" está abierto (null = cerrado).
   const [shareConv, setShareConv] = useState<Conversation | null>(null);
+  const [showPlans, setShowPlans] = useState(false);
   // Clerk hooks
   const { signOut: clerkSignOut, openSignIn, openSignUp } = useClerk();
   const { isSignedIn } = useAuth();
@@ -1819,6 +1822,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
   const isDisabled = !isLoggedIn;
 
+  const isFreeTier = isLoggedIn && resolveTier(profile ?? {}, new Date()) === "free";
+  const freeExhausted = isFreeTier && quotaLeft() <= 0;
+
   return (
     <div
       className="fixed top-0 left-0 right-0 flex bg-transparent"
@@ -1981,6 +1987,11 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
+              limitReached={freeExhausted}
+              resetAt={profile?.daily_reset_at ?? null}
+              onSeePlans={() => setShowPlans(true)}
+              quotaLeft={quotaLeft()}
+              showQuota={isFreeTier}
             />
           ) : (
             /* gentle-fade: la conversación recién nacida aparece en fundido
@@ -2010,21 +2021,27 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           className="w-full flex-none pt-2"
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         >
-          <ChatInput
-            input={input}
-            setInput={setInputFromUser}
-            sending={sending}
-            attachments={attachments}
-            previewUrls={previewUrls}
-            getBlockReason={getBlockReason}
-            isLoggedIn={isLoggedIn}
-            onSend={sendMessage}
-            onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
-            onRemoveAttachment={removeAttachment}
-            isStreaming={!!streamingMsgId}
-            onStop={stopStream}
-            convId={activeConv?.id}
-          />
+          {freeExhausted ? (
+            <LimitReachedCard resetAt={profile?.daily_reset_at ?? null} onSeePlans={() => setShowPlans(true)} onRedeem={() => setShowPlans(true)} />
+          ) : (
+            <ChatInput
+              input={input}
+              setInput={setInputFromUser}
+              sending={sending}
+              attachments={attachments}
+              previewUrls={previewUrls}
+              getBlockReason={getBlockReason}
+              isLoggedIn={isLoggedIn}
+              onSend={sendMessage}
+              onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+              onRemoveAttachment={removeAttachment}
+              isStreaming={!!streamingMsgId}
+              onStop={stopStream}
+              convId={activeConv?.id}
+              quotaLeft={quotaLeft()}
+              showQuota={isFreeTier}
+            />
+          )}
         </div>
         )}
       </div>
@@ -2044,6 +2061,13 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           conversationId={shareConv.id}
           title={shareConv.title}
           onClose={() => setShareConv(null)}
+        />
+      )}
+      {showPlans && (
+        <PlansModal
+          appConfig={appConfig}
+          onClose={() => setShowPlans(false)}
+          onActivated={() => { window.location.reload(); }}
         />
       )}
       {notification && (
