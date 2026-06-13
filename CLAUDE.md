@@ -131,14 +131,19 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   (default: sistema); script anti-flash en layout + `ThemeWatcher`; selector
   en AccountMenu → Personalización; `useResolvedTheme()` (src/lib/theme.ts)
   para lo que no se puede tokenizar (p. ej. syntax highlighting)
-- Claro = "verde menta": la PÁGINA (`--background` #EEF3F0) lleva un tono suave
-  con un toque del verde de marca y las SUPERFICIES (`--surface` #FFFFFF: sidebar,
-  tarjetas, burbujas, input) quedan blancas → flotan = profundidad; el texto no
-  es negro puro (`--text-primary` #18221E) para bajar el contraste hiriente. El
-  área central del chat NO pinta fondo: hereda `--background`, por eso el tono se
-  ve en todo. El color de la barra del navegador (theme-color, claro) está
-  hardcodeado y debe seguir a `--background`: layout.tsx (script anti-flash),
-  src/lib/theme.ts (CHROME_COLORS) y AuthShell.tsx.
+- Claro = "verde menta APAGADO" (bajo brillo, a propósito): la PÁGINA
+  (`--background` #DBE4DF) es un verde-gris apagado y las SUPERFICIES (`--surface`
+  #F0F5F2: sidebar, tarjetas, burbujas, input) son blanco-HUESO con tinte verde,
+  NO blanco puro (el blanco puro era la mayor fuente de brillo). Las superficies
+  siguen más claras que la página → profundidad; el texto es slate-verde oscuro
+  (`--text-primary` #1E2723), no negro. El área central del chat NO pinta fondo:
+  hereda `--background`, por eso el tono se ve en todo.
+- OJO con blancos hardcodeados: como `--surface` ya NO es blanco, cualquier
+  `#FFFFFF`/`bg-white` usado como superficie se vería más brillante que el tema.
+  El color claro vive en: globals.css (`:root`), el theme-color de la barra del
+  navegador (layout.tsx script anti-flash, src/lib/theme.ts CHROME_COLORS,
+  AuthShell.tsx) y la apariencia de Clerk (src/lib/clerkAppearance.ts). Si tocas
+  el tono claro, muévelos juntos.
 
 ## Compartir conversaciones
 - Modelo "foto fija" (snapshot) EFÍMERA: al compartir se congela una copia de

@@ -5,26 +5,28 @@
 :root {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  /* Claro "verde menta": la PÁGINA lleva un tono suave con un toque del verde
-     de VeChat y las SUPERFICIES (sidebar, tarjetas, burbujas, input) quedan en
-     blanco, así flotan = profundidad; el texto no es negro puro para bajar el
-     contraste hiriente. Menos brillo, menos fatiga visual. */
-  --background: #EEF3F0;
-  --surface: #FFFFFF;
-  --surface-hover: #E6EEEA;
-  --border: #DEE8E3;
-  --text-primary: #18221E;
-  --text-secondary: #5E6B65;
-  --text-tertiary: #8B958F;
+  /* Claro "verde menta APAGADO": baja la luminancia de TODO, no solo el tinte.
+     La PÁGINA es un verde-gris apagado (#DBE4DF) y las SUPERFICIES (sidebar,
+     tarjetas, burbujas, input) son blanco-HUESO con tinte verde (#F0F5F2), no
+     blanco puro — el blanco puro era la mayor fuente de brillo. Las superficies
+     siguen siendo más claras que la página → profundidad. Texto slate-verde
+     oscuro, no negro. Resultado: mucho menos brillo y fatiga visual. */
+  --background: #DBE4DF;
+  --surface: #F0F5F2;
+  --surface-hover: #E5EDE9;
+  --border: #CAD6D0;
+  --text-primary: #1E2723;
+  --text-secondary: #58645E;
+  --text-tertiary: #889089;
   --danger: #DC2626;
   --warning: #D97706;
   --success: #16A34A;
-  --user-bubble: #DFF1EA;
+  --user-bubble: #CDE9DE;
   --accent: #10A37F;
-  --code-bg: rgba(24,34,30,0.06);
-  --code-block-bg: #EDF2EF;
+  --code-bg: rgba(30,39,35,0.06);
+  --code-block-bg: #E5EDE9;
   --table-row-hover: rgba(16,163,127,0.05);
-  --table-head-bg: #EAF1ED;
+  --table-head-bg: #E2EBE6;
   --motion-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }
