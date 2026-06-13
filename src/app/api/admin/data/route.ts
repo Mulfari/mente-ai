@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
+import { activatePlan } from "@/lib/activatePlan";
+
+// Claves de app_config que el admin puede editar (whitelist anti-basura).
+const CONFIG_KEYS = [
+  "free_daily_limit", "price_weekly_usd", "price_monthly_usd",
+  "plan_weekly_days", "plan_monthly_days", "whatsapp_number",
+];
 
 // GET /api/admin/data?type=profiles | coupons | coupon-history&userId=xxx
 // Every handler is gatekept here with Clerk: only profiles.role === "admin".
@@ -56,6 +63,12 @@ export async function GET(request: Request) {
         .eq("used_by", userId)
         .order("used_at", { ascending: false });
       if (error) return NextResponse.json({ error: "Failed to fetch coupon history" }, { status: 500 });
+      return NextResponse.json({ data });
+    }
+
+    if (type === "config") {
+      const { data, error } = await supabase.from("app_config").select("key, value");
+      if (error) return NextResponse.json({ error: "Failed to fetch config" }, { status: 500 });
       return NextResponse.json({ data });
     }
 
@@ -185,6 +198,35 @@ export async function POST(request: Request) {
       const { error } = await supabase.from("coupons").insert(inserts);
       if (error) {
         return NextResponse.json({ error: `Supabase error: ${error.message}` }, { status: 500 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // Activación centralizada de un plan nominal (semanal/mensual) para un
+    // usuario. Único punto que escribe la vigencia vía activatePlan; mañana
+    // la pasarela llamará la misma función.
+    if (type === "activate-plan") {
+      const { userId, plan } = body;
+      if (!userId || (plan !== "weekly" && plan !== "monthly")) {
+        return NextResponse.json({ error: "userId y plan (weekly|monthly) requeridos" }, { status: 400 });
+      }
+      const supabase = createClient();
+      const { subscriptionEnd } = await activatePlan(supabase, userId, plan, new Date());
+      return NextResponse.json({ success: true, subscriptionEnd });
+    }
+
+    // Editar app_config (precios, límite diario, días, WhatsApp).
+    if (type === "config") {
+      const { updates } = body;
+      if (!updates || typeof updates !== "object") {
+        return NextResponse.json({ error: "updates requerido" }, { status: 400 });
+      }
+      const supabase = createClient();
+      for (const [key, value] of Object.entries(updates)) {
+        if (!CONFIG_KEYS.includes(key)) continue;
+        await supabase.from("app_config")
+          .update({ value: String(value), updated_at: new Date().toISOString() })
+          .eq("key", key);
       }
       return NextResponse.json({ success: true });
     }

@@ -70,11 +70,14 @@ export async function POST(request: Request) {
       newStatus = "active";
     }
 
-    // Actualizar perfil
+    // Actualizar perfil. Sincronizamos `plan` (tier informativo) según la
+    // duración del cupón: >= 28 días lo tratamos como mensual, si no semanal;
+    // ilimitado = unlimited. La vigencia real la sigue dando subscription_end.
     await supabase.from("profiles").update({
       subscription_weeks: newWeeks,
       subscription_end: subscriptionEnd,
       status: newStatus,
+      plan: coupon.is_unlimited ? "unlimited" : ((coupon.duration_days ?? 7) >= 28 ? "monthly" : "weekly"),
       used_coupon_label: label,
       used_coupon_color: color,
     }).eq("id", profile.id);
