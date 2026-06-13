@@ -139,7 +139,8 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   UNIQUE, owner_id, title, messages jsonb). RLS ON sin policies (solo API).
 - `/api/share` (GET estado / POST crea-actualiza snapshot / DELETE revoca);
   valida que la conversación es del usuario; el snapshot excluye mensajes
-  `private`/`in_progress`/vacíos.
+  `in_progress` o vacíos (OJO: `public.messages` NO tiene columna `private` —
+  esa pertenece a `realtime.messages`; pedirla en el select rompe el query).
 - Página pública `/c/[token]` (server, lee por token con service role; NO está
   en el middleware → pública, sin cuenta): solo lectura con los bubbles del
   chat (`SharedConversation`), marca VeChat + CTA "Pruébalo gratis" arriba y
