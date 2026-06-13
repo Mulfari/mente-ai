@@ -24,8 +24,13 @@ export type FeedCard = {
   prompt: string;
   categoryId: string;
   categoryLabel: string;
-  /** Personas distintas en 48h; null = sin volumen suficiente (semilla) */
+  /** Personas distintas en 48h; null = sin volumen suficiente (semilla).
+      Se mantiene internamente para derivar `signal`, pero el cliente ya NO
+      lo muestra como número crudo ("15 personas") — usa la señal de barras. */
   count: number | null;
+  /** Nivel de intensidad para el indicador de señal: 0 = semilla (sin
+      barras), 1/2/3 = relativo dentro de los temas reales del feed. */
+  signal: 0 | 1 | 2 | 3;
 };
 
 export type FeedRecentItem = {
@@ -82,15 +87,16 @@ const SEED_FEATURED: FeedCard = {
   categoryId: "general",
   categoryLabel: "Popular",
   count: null,
+  signal: 0,
 };
 
 const SEED_TRENDING: FeedCard[] = [
-  { prompt: "Cita en el Saime paso a paso", categoryId: "tramites", categoryLabel: "Trámites", count: null },
-  { prompt: "¿Qué delivery está abierto ahora?", categoryId: "comida", categoryLabel: "Comida", count: null },
-  { prompt: "¿En qué emprender con poco capital?", categoryId: "negocios", categoryLabel: "Negocios", count: null },
-  { prompt: "Farmacias de turno cerca de mí", categoryId: "salud", categoryLabel: "Salud", count: null },
-  { prompt: "¿Dónde reparan teléfonos en mi zona?", categoryId: "servicios", categoryLabel: "Servicios", count: null },
-  { prompt: "Promociones 2x1 en comida hoy", categoryId: "ofertas", categoryLabel: "Ofertas", count: null },
+  { prompt: "Cita en el Saime paso a paso", categoryId: "tramites", categoryLabel: "Trámites", count: null, signal: 0 },
+  { prompt: "¿Qué delivery está abierto ahora?", categoryId: "comida", categoryLabel: "Comida", count: null, signal: 0 },
+  { prompt: "¿En qué emprender con poco capital?", categoryId: "negocios", categoryLabel: "Negocios", count: null, signal: 0 },
+  { prompt: "Farmacias de turno cerca de mí", categoryId: "salud", categoryLabel: "Salud", count: null, signal: 0 },
+  { prompt: "¿Dónde reparan teléfonos en mi zona?", categoryId: "servicios", categoryLabel: "Servicios", count: null, signal: 0 },
+  { prompt: "Promociones 2x1 en comida hoy", categoryId: "ofertas", categoryLabel: "Ofertas", count: null, signal: 0 },
 ];
 
 const SEED_NEARBY: Record<string, string[]> = {
@@ -181,6 +187,49 @@ export function keywordsOf(prompt: string): Set<string> {
     if (w.length >= 4 && !STOPWORDS.has(w)) out.add(w);
   }
   return out;
+}
+
+// Extracción barata de tags de interés de una pregunta: devuelve la clave
+// normalizada (para deduplicar/agrupar) + una etiqueta legible (la palabra
+// original capitalizada). Es el aprendizaje "en vivo" — el cron del feed lo
+// pule luego con IA (junta sinónimos, mejora las etiquetas).
+export function extractTags(prompt: string): { tag: string; label: string }[] {
+  const original = prompt.replace(/[¿?¡!.,;:"'()]/g, " ").replace(/\s+/g, " ").trim();
+  const seen = new Set<string>();
+  const out: { tag: string; label: string }[] = [];
+  for (const word of original.split(" ")) {
+    const tag = normalizeKey(word);
+    if (tag.length < 4 || STOPWORDS.has(tag) || seen.has(tag)) continue;
+    seen.add(tag);
+    const label = word.charAt(0).toLocaleUpperCase("es") + word.slice(1).toLocaleLowerCase("es");
+    out.push({ tag, label });
+    if (out.length >= 4) break; // máx. 4 tags por búsqueda
+  }
+  return out;
+}
+
+// Top tags de interés de un usuario como lista de etiquetas (pinned primero,
+// luego por weight). Se materializa en user_context.interests para que el
+// chat (que lee esa columna) reciba el perfil, y para mostrar en "Mi contexto".
+export async function materializeInterests(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  limit = 10
+): Promise<string> {
+  const { data } = await supabase
+    .from("user_interests")
+    .select("label, pinned, weight")
+    .eq("user_id", userId)
+    .order("pinned", { ascending: false })
+    .order("weight", { ascending: false })
+    .limit(limit);
+  const labels = (data ?? []).map((r) => (r.label as string).trim()).filter(Boolean);
+  const joined = labels.join(", ");
+  await supabase
+    .from("user_context")
+    .update({ interests: joined, updated_at: new Date().toISOString() })
+    .eq("user_id", userId);
+  return joined;
 }
 
 export type EventRow = {
@@ -374,15 +423,30 @@ export async function getPublicFeed(
   const ranked = [...topics.values()].sort((a, b) => b.score - a.score);
   const qualifying = ranked.filter((t) => t.people48h >= MIN_REAL_PEOPLE);
 
-  const toCard = (t: Topic): FeedCard => ({
+  // Señal relativa (0–3) según la posición del tema entre los calificados:
+  // el más fuerte y su entorno = 3 barras, medio = 2, resto real = 1. Así el
+  // indicador siempre "vive" sin exponer números crudos, y con poco tráfico
+  // los temas reales muestran señal mientras las semillas no muestran nada.
+  const qN = qualifying.length;
+  const signalFor = (rank: number): 0 | 1 | 2 | 3 => {
+    if (rank < 0) return 0;
+    if (qN <= 1) return 3;
+    const ratio = rank / (qN - 1);
+    if (ratio <= 0.25) return 3;
+    if (ratio <= 0.6) return 2;
+    return 1;
+  };
+  const toCard = (t: Topic, rank: number): FeedCard => ({
     prompt: t.prompt,
     categoryId: t.categoryId,
     categoryLabel: t.categoryLabel,
     count: t.people48h >= MIN_REAL_PEOPLE ? t.people48h : null,
+    signal: signalFor(rank),
   });
+  const rankOf = new Map(qualifying.map((t, i) => [t.key, i]));
 
   // Destacado: el tema con más score SI tiene personas reales; si no, semilla.
-  const featured = qualifying[0] ? toCard(qualifying[0]) : SEED_FEATURED;
+  const featured = qualifying[0] ? toCard(qualifying[0], 0) : SEED_FEATURED;
 
   // Tendencias: reales calificados con tope por categoría, semillas rellenan.
   const usedPrompts = new Set([normalizeKey(featured.prompt)]);
@@ -395,7 +459,7 @@ export async function getPublicFeed(
     if (inCat >= MAX_PER_CATEGORY) continue; // diversidad
     usedPrompts.add(t.key);
     categoryCount.set(t.categoryId, inCat + 1);
-    trending.push(toCard(t));
+    trending.push(toCard(t, rankOf.get(t.key) ?? 0));
   }
   // Las semillas solo rellenan hasta 4 tarjetas (los temas reales pueden
   // llegar a 8): una fila llena de semillas se vería inflada artificialmente.
@@ -407,8 +471,13 @@ export async function getPublicFeed(
     trending.push(seed);
   }
 
-  // Cerca de ti: temas con peso en la ciudad del visitante, por score; si no
-  // alcanza, completar con semillas de esa ciudad (o genéricas).
+  // Cerca de ti: LOCAL de verdad — temas con actividad real en la ciudad de
+  // la persona (no "Venezuela"). Prioridad:
+  //   1) temas reales atados a SU ciudad (por score);
+  //   2) si faltan, las semillas curadas de ESA ciudad;
+  //   3) solo si NO hubo ningún tema real local, las semillas "cerca de mí"
+  //      (genéricas pero localmente enmarcadas) — para no dejar el bloque
+  //      vacío en cold-start. Si ya hay reales, NO se diluye con genéricas.
   const cityNorm = normalizeCity(visitorCity);
   const cityKey = visitorCity && SEED_NEARBY[visitorCity] ? visitorCity : null;
   const nearbyReal: string[] = [];
@@ -419,9 +488,11 @@ export async function getPublicFeed(
       nearbyReal.push(t.prompt);
     }
   }
-  const nearbySeeds = SEED_NEARBY[cityKey ?? "default"] ?? SEED_NEARBY.default;
   const nearYouPrompts = [...nearbyReal];
-  for (const seed of nearbySeeds) {
+  // Padding: semillas de la ciudad si existen; genéricas solo en cold-start.
+  const citySeeds = cityKey ? SEED_NEARBY[cityKey] : null;
+  const padSeeds = citySeeds ?? (nearbyReal.length === 0 ? SEED_NEARBY.default : []);
+  for (const seed of padSeeds) {
     if (nearYouPrompts.length >= NEARBY_PROMPTS) break;
     if (nearYouPrompts.some((p) => normalizeKey(p) === normalizeKey(seed))) continue;
     nearYouPrompts.push(seed);
@@ -460,11 +531,9 @@ export async function getPublicFeed(
     const dedupeKey = topicKey ?? key;
     if (seenRecent.has(dedupeKey)) continue;
     seenRecent.add(dedupeKey);
-    recentReal.push({
-      prompt: canonical,
-      city: e.city,
-      minutesAgo: Math.max(1, Math.round((now - new Date(e.created_at).getTime()) / 60_000)),
-    });
+    // "Preguntando ahora" se muestra limpio: solo la pregunta (sin tiempo ni
+    // ciudad), así que no calculamos esos campos.
+    recentReal.push({ prompt: canonical, city: null, minutesAgo: null });
   }
   const recent = [...recentReal];
   for (const seed of SEED_RECENT) {
@@ -473,23 +542,34 @@ export async function getPublicFeed(
     recent.push(seed);
   }
 
-  // Para ti: según el historial del usuario (sus categorías y palabras clave).
+  // Para ti: según el PERFIL DE INTERESES del usuario — sus tags aprendidos
+  // (user_interests, que se actualizan en vivo y se pulen con IA) + su
+  // historial reciente. Recomienda temas afines que aún no ha preguntado.
   let forYou: PublicFeed["forYou"] = null;
   if (userId) {
     const since30d = new Date(now - 30 * 86_400_000).toISOString();
-    const { data: mine } = await supabase
-      .from("query_events")
-      .select("prompt, category_id, created_at")
-      .eq("user_id", userId)
-      .gte("created_at", since30d)
-      .order("created_at", { ascending: false })
-      .limit(200);
+    const [{ data: mine }, { data: myTags }] = await Promise.all([
+      supabase
+        .from("query_events")
+        .select("prompt, category_id, created_at")
+        .eq("user_id", userId)
+        .gte("created_at", since30d)
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabase
+        .from("user_interests")
+        .select("tag, weight")
+        .eq("user_id", userId)
+        .order("weight", { ascending: false })
+        .limit(40),
+    ]);
 
     const myEvents = mine ?? [];
-    if (myEvents.length > 0) {
-      // Perfil de interés: categorías que ha tocado + palabras de sus preguntas.
+    const interestTags = (myTags ?? []).map((r) => r.tag as string);
+    if (myEvents.length > 0 || interestTags.length > 0) {
+      // Perfil de interés: tags aprendidos + categorías y palabras del historial.
       const myCategories = new Map<string, number>();
-      const myKeywords = new Set<string>();
+      const myKeywords = new Set<string>(interestTags); // los tags persistentes pesan
       const myKeys = new Set<string>();
       const myOwn: { prompt: string; categoryId: string }[] = [];
       for (const e of myEvents) {

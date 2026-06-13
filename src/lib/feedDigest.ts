@@ -142,6 +142,19 @@ async function callLlm(prompt: string): Promise<string | null> {
   return text;
 }
 
+function stripJsonArray(text: string): unknown[] | null {
+  const stripped = text.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  const start = stripped.indexOf("[");
+  const end = stripped.lastIndexOf("]");
+  if (start === -1 || end <= start) return null;
+  try {
+    const arr = JSON.parse(stripped.slice(start, end + 1));
+    return Array.isArray(arr) ? arr : null;
+  } catch {
+    return null;
+  }
+}
+
 export type DigestStats = {
   eventsScanned: number;
   newPrompts: number;
@@ -149,8 +162,84 @@ export type DigestStats = {
   topicsCreated: number;
   aliasesCreated: number;
   cachedTopics: number;
+  interestsUsersRefined: number;
+  interestsTagsGrouped: number;
   llmAvailable: boolean;
 };
+
+// Refinamiento de intereses con IA: para los usuarios que aprendieron tags
+// nuevos hace poco, agrupa sus tags crudos 'learned' en hashtags limpios
+// (junta sinónimos, mejora etiquetas, descarta ruido). NO toca los chips
+// manuales/fijados del usuario. Acotado por corrida para mantener el costo bajo.
+async function refineUserInterests(
+  supabase: ReturnType<typeof createClient>,
+  stats: DigestStats
+): Promise<void> {
+  if (!stats.llmAvailable) return;
+  const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
+  const { data: recentUsers } = await supabase
+    .from("user_interests")
+    .select("user_id")
+    .eq("source", "learned")
+    .gte("updated_at", since)
+    .limit(400);
+  const userIds = [...new Set((recentUsers ?? []).map((r) => r.user_id as string))].slice(0, 15);
+
+  for (const userId of userIds) {
+    const { data: rows } = await supabase
+      .from("user_interests")
+      .select("tag, label, weight, source, pinned")
+      .eq("user_id", userId)
+      .order("weight", { ascending: false })
+      .limit(40);
+    const learned = (rows ?? []).filter((r) => r.source === "learned" && !r.pinned);
+    if (learned.length < 5) continue; // no vale la llamada todavía
+
+    const list = learned.map((r, i) => `${i + 1}. ${r.label}`).join("\n");
+    const prompt = `Estos son los intereses crudos de un usuario (palabras sueltas extraídas de sus búsquedas en un asistente IA venezolano):
+
+${list}
+
+Agrúpalos en TEMAS limpios en español (junta sinónimos y variantes: p.ej. "python","javascript","programar" → "Programación"). Descarta palabras sin valor temático. Devuelve SOLO un array JSON, sin texto extra:
+[{"label":"Programación","members":[1,3,7]}, ...]
+- "label": nombre del tema, 1-2 palabras, capitalizado, en español.
+- "members": números (de la lista de arriba) que caen en ese tema.
+Máximo 8 grupos. No inventes temas que no estén respaldados por las palabras.`;
+
+    const llmText = await callLlm(prompt);
+    const groups = llmText ? (stripJsonArray(llmText) as { label?: string; members?: number[] }[] | null) : null;
+    if (!groups) continue;
+
+    let grouped = 0;
+    for (const g of groups) {
+      const label = (g.label ?? "").trim().slice(0, 40);
+      const members = (g.members ?? [])
+        .map((n) => learned[n - 1])
+        .filter(Boolean);
+      if (!label || members.length === 0) continue;
+      const tag = normalizeKey(label);
+      if (!tag) continue;
+      const weight = members.reduce((s, m) => s + (m.weight as number), 0);
+
+      // Upsert del tema canónico y borrado de los miembros distintos.
+      await supabase.from("user_interests").upsert(
+        { user_id: userId, tag, label, weight, source: "learned", updated_at: new Date().toISOString() },
+        { onConflict: "user_id,tag" }
+      );
+      const toDelete = members.map((m) => m.tag as string).filter((t) => t !== tag);
+      if (toDelete.length > 0) {
+        await supabase.from("user_interests").delete().eq("user_id", userId).in("tag", toDelete);
+        grouped += toDelete.length;
+      }
+    }
+    if (grouped > 0) {
+      stats.interestsTagsGrouped += grouped;
+      stats.interestsUsersRefined++;
+      const { materializeInterests } = await import("@/lib/feed");
+      await materializeInterests(supabase, userId);
+    }
+  }
+}
 
 export async function runFeedDigest(): Promise<DigestStats> {
   const supabase = createClient();
@@ -164,6 +253,8 @@ export async function runFeedDigest(): Promise<DigestStats> {
     topicsCreated: 0,
     aliasesCreated: 0,
     cachedTopics: 0,
+    interestsUsersRefined: 0,
+    interestsTagsGrouped: 0,
     llmAvailable: Boolean(
       (process.env.FEED_LLM_URL && process.env.FEED_LLM_KEY) || process.env.ANTHROPIC_API_KEY
     ),
@@ -296,6 +387,14 @@ export async function runFeedDigest(): Promise<DigestStats> {
     { onConflict: "id" }
   );
   if (cacheErr) throw new Error(`feed_cache: ${cacheErr.message}`);
+
+  // 7) Refinar los intereses aprendidos de usuarios activos (agrupar con IA).
+  //    Best-effort: si falla, el feed ya quedó materializado arriba.
+  try {
+    await refineUserInterests(supabase, stats);
+  } catch (e) {
+    console.error("[feed-digest] refineUserInterests:", e instanceof Error ? e.message : e);
+  }
 
   return stats;
 }

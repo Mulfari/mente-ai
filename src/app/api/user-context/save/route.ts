@@ -20,12 +20,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  const trimmed = {
-    full_name: (full_name ?? "").trim(),
-    city:      (city          ?? "").trim(),
-    custom_notes: (custom_notes ?? "").trim(),
-    interests: (interests ?? "").trim(),
-  };
+  // Solo se actualizan los campos PROVISTOS. `interests` es ahora una columna
+  // materializada por los chips de interés (ver /api/user-context/interests);
+  // guardar nombre/ciudad NO debe borrarla, así que no se toca si no viene.
+  const fields: Record<string, string> = {};
+  if (typeof full_name === "string") fields.full_name = full_name.trim();
+  if (typeof city === "string") fields.city = city.trim();
+  if (typeof custom_notes === "string") fields.custom_notes = custom_notes.trim();
+  if (typeof interests === "string") fields.interests = interests.trim();
 
   const { data: existing } = await supabase
     .from("user_context")
@@ -38,13 +40,13 @@ export async function POST(req: NextRequest) {
   if (existing) {
     const { error: e } = await supabase
       .from("user_context")
-      .update({ ...trimmed, updated_at: new Date().toISOString() })
+      .update({ ...fields, updated_at: new Date().toISOString() })
       .eq("id", existing.id);
     if (e) err = e.message;
   } else {
     const { error: e } = await supabase
       .from("user_context")
-      .insert({ user_id: profile.id, ...trimmed });
+      .insert({ user_id: profile.id, ...fields });
     if (e) err = e.message;
   }
 

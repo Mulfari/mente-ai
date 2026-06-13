@@ -21,8 +21,6 @@ type Props = {
 
 type Tab = "context" | "personalization" | "subscription" | "coupon";
 
-const MAX_CHARS = 2000;
-
 export default function AccountMenu({ userId, email, profile: profileProp, userContext, onSignOut, onClose, onSave }: Props) {
   const [tab, setTab] = useState<Tab>("context");
   const [tick, setTick] = useState(0);
@@ -267,7 +265,7 @@ function PersonalizationTab() {
 }
 
 // --- Context Tab ---
-function ContextTab({ userId, userContext, onSave }: {
+function ContextTab({ userContext, onSave }: {
   userId: string;
   userContext: { full_name: string; city: string; custom_notes: string; interests: string } | null;
   onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
@@ -275,8 +273,6 @@ function ContextTab({ userId, userContext, onSave }: {
   const [data, setData] = useState(() => ({
     full_name: userContext?.full_name || "",
     city: userContext?.city || "",
-    custom_notes: userContext?.custom_notes || "",
-    interests: userContext?.interests || "",
   }));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -284,19 +280,23 @@ function ContextTab({ userId, userContext, onSave }: {
   const [locating, setLocating] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const total = data.full_name.length + data.city.length + data.custom_notes.length + data.interests.length;
+  const emitSave = (city: string) =>
+    onSave?.({
+      full_name: data.full_name.trim(),
+      city: city.trim(),
+      custom_notes: userContext?.custom_notes ?? "",
+      interests: userContext?.interests ?? "",
+    });
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    console.log("[AccountMenu] handleSave called, userId:", JSON.stringify(userId), "length:", userId?.length);
-    if (total > MAX_CHARS) { setError(`Maximo ${MAX_CHARS} caracteres`); return; }
+    if (data.full_name.length > 60) { setError("El nombre es muy largo"); return; }
     setSaving(true); setError(""); setSaved(false);
-
     try {
       const res = await fetch("/api/user-context/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ full_name: data.full_name, city: data.city, custom_notes: data.custom_notes, interests: data.interests }),
+        body: JSON.stringify({ full_name: data.full_name, city: data.city }),
       });
       const result = await res.json();
       if (!res.ok || result.error) {
@@ -304,13 +304,11 @@ function ContextTab({ userId, userContext, onSave }: {
       } else {
         setSaved(true);
         setTimeout(() => setSaved(false), 2500);
-        if (onSave) onSave({ full_name: data.full_name.trim(), city: data.city.trim(), custom_notes: data.custom_notes.trim(), interests: data.interests.trim() });
+        emitSave(data.city);
       }
-    } catch (err) {
+    } catch {
       setError("Error al guardar: Intenta de nuevo");
-      console.error("[AccountMenu] handleSave fetch error:", err);
     }
-
     setSaving(false);
   }
 
@@ -337,19 +335,15 @@ function ContextTab({ userId, userContext, onSave }: {
           if (city) {
             setData(d => ({ ...d, city }));
             try {
-              const apiRes = await fetch("/api/user-context/save", {
+              await fetch("/api/user-context/save", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ full_name: data.full_name, city, custom_notes: data.custom_notes, interests: data.interests }),
+                body: JSON.stringify({ city }),
               });
-              const apiJson = await apiRes.json();
-              if (apiJson.error) console.error("[AccountMenu] doDetectCity API error:", apiJson.error);
-            } catch (e) {
-              console.error("[AccountMenu] doDetectCity fetch error:", e);
-            }
+            } catch { /* el guardado de ciudad es best-effort */ }
             setSaved(true);
             setTimeout(() => setSaved(false), 2000);
-            if (onSave) onSave({ full_name: data.full_name, city: city.trim(), custom_notes: data.custom_notes, interests: data.interests });
+            emitSave(city);
           }
         } catch {
           // ignore
@@ -362,12 +356,12 @@ function ContextTab({ userId, userContext, onSave }: {
   }
 
   return (
-    <form onSubmit={handleSave} className="px-5 sm:px-8 py-6 space-y-5">
+    <form onSubmit={handleSave} className="px-5 sm:px-8 py-6 space-y-6">
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Tu nombre</label>
           <input type="text" value={data.full_name} onChange={e => setData(d => ({ ...d, full_name: e.target.value }))}
-            placeholder="Ej: Juan Perez" className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+            placeholder="Ej: Juan Perez" maxLength={60} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
             style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
             onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
             onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
@@ -392,6 +386,7 @@ function ContextTab({ userId, userContext, onSave }: {
               {locating ? "..." : data.city ? "Actualizar" : "Detectar"}
             </button>
           </div>
+          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Mejora las recomendaciones locales de tu feed.</p>
 
           {showConfirm && (
             <div className="flex items-center gap-2 mt-2">
@@ -411,45 +406,149 @@ function ContextTab({ userId, userContext, onSave }: {
             </div>
           )}
         </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Intereses</label>
-          <input type="text" value={data.interests} onChange={e => setData(d => ({ ...d, interests: e.target.value }))}
-            placeholder="Ej: programacion, musica, viajes, idiomas"
-            className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
-            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-            onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
-          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Lista los temas que te interesan, separados por comas.</p>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Notas personalizadas</label>
-            <span className="text-xs" style={{ color: total > MAX_CHARS ? "var(--danger)" : "var(--text-tertiary)" }}>
-              {total}/{MAX_CHARS}
-            </span>
-          </div>
-          <textarea value={data.custom_notes} onChange={e => setData(d => ({ ...d, custom_notes: e.target.value }))}
-            placeholder="Agrega contexto adicional sobre ti: hobbies, profesion, temas que te interesan, situaciones relevantes..."
-            rows={6}
-            className="w-full px-4 py-2.5 rounded-xl text-sm outline-none resize-none transition-all"
-            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-            onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
-          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Completa tu perfil para respuestas mas precisas. Limite: {MAX_CHARS} caracteres.</p>
-        </div>
       </div>
 
       {error && <ErrorBanner message={error} />}
       {saved && <SuccessBanner message="Guardado correctamente" />}
 
-      <button type="submit" disabled={saving || total > MAX_CHARS}
+      <button type="submit" disabled={saving}
         className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all hover:opacity-90"
         style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
-        {saving ? "Guardando..." : "Guardar contexto"}
+        {saving ? "Guardando..." : "Guardar"}
       </button>
+
+      {/* Intereses como chips: manuales + aprendidos de tus búsquedas. Guardan
+          al instante (no dependen del botón de arriba). */}
+      <div className="pt-2" style={{ borderTop: "1px solid var(--border)" }} onClick={(e) => e.preventDefault()}>
+        <InterestChips />
+      </div>
     </form>
+  );
+}
+
+// --- Interest Chips (Mi contexto) ---
+type Chip = { tag: string; label: string; source: string; pinned: boolean };
+
+function InterestChips() {
+  const [chips, setChips] = useState<Chip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    try {
+      const res = await fetch("/api/user-context/interests");
+      const json = await res.json();
+      setChips(Array.isArray(json.chips) ? json.chips : []);
+    } catch { /* deja la lista como está */ }
+    setLoading(false);
+  }
+  useEffect(() => { load(); }, []);
+
+  async function act(body: Record<string, string>) {
+    setBusy(true);
+    try {
+      await fetch("/api/user-context/interests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      await load();
+    } catch { /* best-effort */ }
+    setBusy(false);
+  }
+
+  function addDraft() {
+    const label = draft.trim();
+    if (!label) return;
+    setDraft("");
+    act({ action: "add", label });
+  }
+
+  return (
+    <div className="space-y-2.5">
+      <div>
+        <label className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Tus temas e intereses</label>
+        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+          VeChat aprende de lo que buscas. Toca un tema detectado para fijarlo, o quita los que no quieras.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDraft(); } }}
+          placeholder="Agrega un tema (ej: programacion)"
+          maxLength={40}
+          className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
+          style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--primary)"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
+        />
+        <button type="button" onClick={addDraft} disabled={busy || !draft.trim()}
+          className="px-4 py-2.5 rounded-xl text-sm font-medium shrink-0 disabled:opacity-50 transition-all text-white"
+          style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
+          Añadir
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex flex-wrap gap-2">
+          {[44, 60, 52].map((w, i) => (
+            <div key={i} className="h-7 rounded-full animate-pulse" style={{ width: w, backgroundColor: "var(--surface-hover)" }} />
+          ))}
+        </div>
+      ) : chips.length === 0 ? (
+        <p className="text-xs py-2" style={{ color: "var(--text-tertiary)" }}>
+          Aún no hay temas. Escribe uno arriba o haz preguntas y VeChat irá aprendiendo solo.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {chips.map((c) => {
+            const isAuto = c.source === "learned" && !c.pinned;
+            return (
+              <span
+                key={c.tag}
+                className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full text-[12.5px] transition-colors"
+                style={{
+                  backgroundColor: isAuto ? "var(--background)" : "color-mix(in srgb, var(--primary) 10%, transparent)",
+                  border: `1px solid ${isAuto ? "var(--border)" : "color-mix(in srgb, var(--primary) 35%, var(--border))"}`,
+                  color: "var(--text-primary)",
+                }}
+              >
+                {isAuto ? (
+                  <button
+                    type="button"
+                    onClick={() => act({ action: "pin", tag: c.tag })}
+                    title="Detectado de tu actividad — toca para fijarlo"
+                    aria-label={`Fijar ${c.label}`}
+                    className="w-1.5 h-1.5 rounded-full shrink-0"
+                    style={{ backgroundColor: "var(--primary)" }}
+                  />
+                ) : null}
+                <span>{c.label}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChips((prev) => prev.filter((x) => x.tag !== c.tag)); // optimista
+                    act({ action: "remove", tag: c.tag });
+                  }}
+                  aria-label={`Quitar ${c.label}`}
+                  className="w-5 h-5 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)]"
+                  style={{ color: "var(--text-tertiary)" }}
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -598,12 +697,21 @@ function SubscriptionTab({ profile, tick }: { profile: Props["profile"]; tick: n
         )}
       </div>
 
+      {/* TODO(pagos): los datos de abajo son PLACEHOLDERS de ejemplo —
+          reemplazar por los reales (Pago Móvil / Zelle / Binance / WhatsApp)
+          antes de cobrar de verdad. El usuario los proveerá. */}
       {showPaymentInfo && (
         <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
           <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Paga con metodo local</p>
-          <p className="text-xs mb-4" style={{ color: "var(--text-secondary)" }}>
+          <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
             Envianos el comprobante y activamos tu cuenta en menos de 24h.
           </p>
+          <div className="flex items-start gap-2 mb-4 px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
+            <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--warning)" }}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.5 0L3.18 16.25A2 2 0 005 19z" />
+            </svg>
+            <span className="text-[11px]" style={{ color: "var(--warning)" }}>Datos de ejemplo — pendientes de configurar.</span>
+          </div>
           <div className="space-y-2">
             <PaymentRow label="Pago Movil" detail="Banco: 0102 (Venezuela) · Tel: 0414-1234567 · CI: J12345678 · Titular: Mulfari C.A." copyable onCopy={copyToClipboard} copied={copied} />
             <PaymentRow label="Zelle" detail="pagos@mulfai.com.ve" copyable onCopy={copyToClipboard} copied={copied} />
@@ -720,17 +828,6 @@ function CouponTab({ email, onClose }: { email: string; onClose: () => void }) {
         {loading ? "Aplicando..." : "Aplicar cupon"}
       </button>
     </form>
-  );
-}
-
-function LoadingState() {
-  return (
-    <div className="flex items-center justify-center h-64">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-8 h-8 rounded-full animate-spin" style={{ border: "2px solid var(--border)", borderTopColor: "var(--primary)" }} />
-        <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Cargando...</p>
-      </div>
-    </div>
   );
 }
 

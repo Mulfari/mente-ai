@@ -101,6 +101,27 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   - LLM agnóstico: FEED_LLM_URL/KEY/MODEL (OpenAI-compatible; hoy MiniMax
     M3 vía api.minimax.io/v1 — OJO: razonador, mete <think> en el content
     y el parser lo limpia) con fallback ANTHROPIC_API_KEY/BASE_URL
+  - SEÑAL, no número: las tarjetas NO muestran "N personas" sino un
+    indicador de 3 barras (`SignalBars`) con nivel relativo 0–3 (`FeedCard.
+    signal`, derivado del rank entre temas calificados). "Cerca de ti" es
+    local de verdad (solo temas con actividad en la ciudad; no se diluye
+    con genéricos si hay reales). "Preguntando ahora" va limpio (sin punto
+    parpadeante, sin tiempo ni ciudad). Chevron de swipe solo en móvil.
+- Intereses aprendidos (chips de "Mi contexto" + sección "Para ti"):
+  - Tabla `user_interests` (user_id, tag, label, weight, source
+    learned|manual, pinned). RLS ON sin policies (solo rutas API).
+  - EN VIVO: `/api/track-query` extrae tags baratos de cada búsqueda
+    (`extractTags`), los bombea con decaimiento vía RPC `bump_user_interests`
+    (weight*exp(-Δt/14d)+1, poda a 60/usuario) y re-materializa el top en
+    `user_context.interests` (la columna que el chat ya envía al VPS).
+  - IA: el cron del feed (`refineUserInterests` en feedDigest) agrupa los
+    tags 'learned' en hashtags limpios (junta sinónimos, descarta ruido).
+  - UI: `/api/user-context/interests` (GET con backfill perezoso desde el
+    texto viejo; POST add/remove/pin/unpin). En AccountMenu → ContextTab,
+    un solo grupo de chips (los aprendidos con puntito; tocar = fijar). Se
+    eliminó el textarea de notas libres. `/api/user-context/save` ahora solo
+    actualiza los campos provistos (no pisa `interests` al guardar nombre/ciudad).
+  - "Para ti" del feed se nutre de `user_interests` (no solo del historial).
 - NO recrear páginas/landings paralelas ni segundos empty states — cualquier
   cambio de la home va en EmptyState/TrendingFeed
 - Auth en español (`@clerk/localizations` esES en el ClerkProvider); el

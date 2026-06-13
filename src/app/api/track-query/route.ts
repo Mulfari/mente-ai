@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { getProfileByClerkId } from "@/lib/profile";
+import { extractTags, materializeInterests } from "@/lib/feed";
 
 // POST /api/track-query — record a query event (chip click or typed prompt).
 // Anonymous events (no session) are allowed and inserted with user_id: null.
@@ -62,5 +63,24 @@ export async function POST(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  // Aprendizaje de intereses EN VIVO (solo usuarios logueados): extraer tags
+  // baratos de la pregunta, bombearlos con decaimiento en user_interests y
+  // re-materializar el perfil en user_context.interests. Todo SQL, sin IA;
+  // el cron del feed los pule después. No bloquea: si algo falla, el track
+  // ya quedó guardado.
+  if (internalUserId) {
+    try {
+      const tags = extractTags(body.prompt);
+      if (tags.length > 0) {
+        await supabase.rpc("bump_user_interests", {
+          p_user: internalUserId,
+          p_tags: tags,
+        });
+        await materializeInterests(supabase, internalUserId);
+      }
+    } catch { /* el aprendizaje es best-effort; el evento ya se registró */ }
+  }
+
   return NextResponse.json({ success: true });
 }

@@ -61,8 +61,10 @@ function SectionHeader({ children, swipeHint = false }: { children: React.ReactN
       >
         {children}
         {swipeHint && (
+          // Pista de "desliza" — solo en móvil (en escritorio es grilla, no
+          // hay scroll horizontal que sugerir).
           <svg
-            className="ml-auto w-3.5 h-3.5"
+            className="ml-auto w-3.5 h-3.5 md:hidden"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -87,6 +89,34 @@ function SectionHeader({ children, swipeHint = false }: { children: React.ReactN
   );
 }
 
+// Indicador de señal (reemplaza el conteo crudo): 3 barras ascendentes tipo
+// señal de celular. `level` 1/2/3 = intensidad relativa del tema en el feed;
+// 0 = sin datos reales (semilla) → no se renderiza nada. NUNCA un número.
+function SignalBars({ level, on = "var(--primary)" }: { level: 0 | 1 | 2 | 3; on?: string }) {
+  if (level <= 0) return null;
+  const heights = [5, 8, 11];
+  return (
+    <span
+      className="inline-flex items-end gap-[2px]"
+      role="img"
+      aria-label={`Intensidad ${level} de 3`}
+      title={level === 3 ? "Muy buscado" : level === 2 ? "En alza" : "Activo"}
+    >
+      {heights.map((h, i) => (
+        <span
+          key={i}
+          style={{
+            width: 3,
+            height: h,
+            borderRadius: 1,
+            backgroundColor: i < level ? on : "color-mix(in srgb, currentColor 22%, transparent)",
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
 function TrendCard({ card, onAsk, delay = 0 }: { card: FeedCard; onAsk: (p: string) => void; delay?: number }) {
   const style = categoryStyle(card.categoryId);
   return (
@@ -104,9 +134,9 @@ function TrendCard({ card, onAsk, delay = 0 }: { card: FeedCard; onAsk: (p: stri
       <p className="text-[13px] font-medium mt-2 mb-1 leading-snug flex-1" style={{ color: "var(--text-primary)" }}>
         {card.prompt}
       </p>
-      {card.count !== null && (
-        <span className="text-[11px] flex items-center gap-1" style={{ color: "var(--text-tertiary)" }}>
-          <Icon d={ICONS.trendingUp} size={12} color="var(--primary)" /> {card.count} hoy
+      {card.signal > 0 && (
+        <span className="mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+          <SignalBars level={card.signal} />
         </span>
       )}
     </button>
@@ -171,10 +201,10 @@ export default function TrendingFeed({
             <p className="text-[15px] sm:text-[17px] font-semibold text-white leading-snug mb-1.5">
               “{feed.featured.prompt}”
             </p>
-            {feed.featured.count !== null && (
-              <span className="text-[11.5px] flex items-center gap-1.5" style={{ color: "#C7F3E6" }}>
-                <Icon d={ICONS.trendingUp} size={13} color="#C7F3E6" />
-                {feed.featured.count} personas hoy
+            {feed.featured.signal > 0 && (
+              <span className="text-[11.5px] flex items-center gap-2" style={{ color: "#C7F3E6" }}>
+                <SignalBars level={feed.featured.signal} on="#C7F3E6" />
+                Lo más buscado
               </span>
             )}
           </div>
@@ -264,8 +294,9 @@ export default function TrendingFeed({
           <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
             Preguntando ahora
           </h2>
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: "var(--primary)" }} />
         </SectionHeader>
+        {/* Limpio: solo la pregunta (sin punto parpadeante, sin "hace X min"
+            ni ciudad — esos no aportan y ensuciaban la lista). */}
         <div
           className="rounded-2xl px-2 gentle-fade-up-soft"
           style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}
@@ -274,22 +305,14 @@ export default function TrendingFeed({
             <button
               key={item.prompt}
               onClick={() => onAsk(item.prompt)}
-              className="w-full flex items-center justify-between gap-4 py-3 px-2 my-0.5 rounded-xl text-left cursor-pointer group transition-colors hover:bg-[var(--surface-hover)]"
+              className="w-full flex items-center gap-3 py-3 px-2 my-0.5 rounded-xl text-left cursor-pointer group transition-colors hover:bg-[var(--surface-hover)]"
               style={{ borderTop: i === 0 ? "none" : "1px solid var(--border)" }}
             >
-              <span
-                className="text-[13px] truncate"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" aria-hidden="true" style={{ color: "var(--text-tertiary)" }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <span className="text-[13px] truncate" style={{ color: "var(--text-primary)" }}>
                 “{item.prompt}”
-              </span>
-              <span className="text-[11px] shrink-0" style={{ color: "var(--text-tertiary)" }}>
-                {item.minutesAgo !== null
-                  ? item.minutesAgo < 60
-                    ? `hace ${item.minutesAgo} min`
-                    : `hace ${Math.round(item.minutesAgo / 60)} h`
-                  : "popular"}
-                {item.city ? ` · ${item.city}` : ""}
               </span>
             </button>
           ))}
