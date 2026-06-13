@@ -131,17 +131,19 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   (default: sistema); script anti-flash en layout + `ThemeWatcher`; selector
   en AccountMenu → Personalización; `useResolvedTheme()` (src/lib/theme.ts)
   para lo que no se puede tokenizar (p. ej. syntax highlighting)
-- Claro = "verde menta APAGADO" (bajo brillo, a propósito): la PÁGINA
-  (`--background` #DBE4DF) es un verde-gris apagado y las SUPERFICIES (`--surface`
-  #F0F5F2: sidebar, tarjetas, burbujas, input) son blanco-HUESO con tinte verde,
-  NO blanco puro (el blanco puro era la mayor fuente de brillo). Las superficies
-  siguen más claras que la página → profundidad; el texto es slate-verde oscuro
-  (`--text-primary` #1E2723), no negro. El área central del chat NO pinta fondo:
-  hereda `--background`, por eso el tono se ve en todo.
-- OJO con blancos hardcodeados: como `--surface` ya NO es blanco, cualquier
-  `#FFFFFF`/`bg-white` usado como superficie se vería más brillante que el tema.
-  El color claro vive en: globals.css (`:root`), el theme-color de la barra del
-  navegador (layout.tsx script anti-flash, src/lib/theme.ts CHROME_COLORS,
+- Claro = "papel cálido + verde esmeralda": el principio es CALIDEZ, no oscuridad
+  (un gris-verde frío y apagado quedaba "nublado/triste"; el blanco puro frío
+  "pega a la vista"). La PÁGINA es papel cálido (`--background` #F1ECE3, greige
+  tibio = menos luz azul, acogedor) y las SUPERFICIES son marfil cálido casi
+  blanco (`--surface` #FBF8F2: crujientes y luminosas = vida + profundidad, pero
+  cálidas, no pinchan). Texto espresso cálido (`--text-primary` #2A2521), no
+  negro. El verde de marca (`--primary` #10A37F) se mantiene VIVO en los acentos
+  (botones, burbujas `--user-bubble` #DCEFE5, enlaces) para dar energía. El área
+  central del chat NO pinta fondo: hereda `--background`.
+- OJO con blancos hardcodeados: como `--surface` NO es blanco, cualquier
+  `#FFFFFF`/`bg-white` usado como superficie se vería más frío/brillante que el
+  tema. El color claro vive en: globals.css (`:root`), el theme-color de la barra
+  del navegador (layout.tsx script anti-flash, src/lib/theme.ts CHROME_COLORS,
   AuthShell.tsx) y la apariencia de Clerk (src/lib/clerkAppearance.ts). Si tocas
   el tono claro, muévelos juntos.
 

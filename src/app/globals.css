@@ -5,28 +5,30 @@
 :root {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  /* Claro "verde menta APAGADO": baja la luminancia de TODO, no solo el tinte.
-     La PÁGINA es un verde-gris apagado (#DBE4DF) y las SUPERFICIES (sidebar,
-     tarjetas, burbujas, input) son blanco-HUESO con tinte verde (#F0F5F2), no
-     blanco puro — el blanco puro era la mayor fuente de brillo. Las superficies
-     siguen siendo más claras que la página → profundidad. Texto slate-verde
-     oscuro, no negro. Resultado: mucho menos brillo y fatiga visual. */
-  --background: #DBE4DF;
-  --surface: #F0F5F2;
-  --surface-hover: #E5EDE9;
-  --border: #CAD6D0;
-  --text-primary: #1E2723;
-  --text-secondary: #58645E;
-  --text-tertiary: #889089;
+  /* Claro "papel cálido + verde esmeralda": el secreto para que sea suave a la
+     vista PERO con vida es CALIDEZ, no oscuridad. La PÁGINA es un papel cálido
+     (#F1ECE3, greige tibio: menos luz azul que el blanco frío → cansa menos y
+     se siente acogedor, no "nublado"). Las SUPERFICIES son marfil cálido casi
+     blanco (#FBF8F2): crujientes y luminosas (vida + profundidad), pero cálidas
+     así que no "pinchan" como el blanco puro frío. Texto espresso cálido, no
+     negro. El verde de VeChat se mantiene VIVO en los acentos (botones,
+     burbujas, enlaces) para dar energía. Resultado: claro, descansado y vivo. */
+  --background: #F1ECE3;
+  --surface: #FBF8F2;
+  --surface-hover: #F0EADF;
+  --border: #E6DFD2;
+  --text-primary: #2A2521;
+  --text-secondary: #6E655A;
+  --text-tertiary: #9B9183;
   --danger: #DC2626;
-  --warning: #D97706;
+  --warning: #C2710C;
   --success: #16A34A;
-  --user-bubble: #CDE9DE;
+  --user-bubble: #DCEFE5;
   --accent: #10A37F;
-  --code-bg: rgba(30,39,35,0.06);
-  --code-block-bg: #E5EDE9;
+  --code-bg: rgba(42,37,33,0.06);
+  --code-block-bg: #F0EADF;
   --table-row-hover: rgba(16,163,127,0.05);
-  --table-head-bg: #E2EBE6;
+  --table-head-bg: #EFE9DF;
   --motion-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }

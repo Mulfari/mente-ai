@@ -38,7 +38,7 @@ export function resolveTheme(pref: ThemePreference): ResolvedTheme {
 // (#0B1418): ese tono azul-verdoso pintado en la barra de gestos del
 // teléfono se veía como una "raya verde" en el borde de abajo.
 const CHROME_COLORS: Record<ResolvedTheme, string> = {
-  light: "#DBE4DF",
+  light: "#F1ECE3",
   dark: "#000000",
 };
 
