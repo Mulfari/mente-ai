@@ -250,6 +250,27 @@ html[data-sidebar="closed"] .sidebar-desktop {
   transform: translateY(-2px);
 }
 
+/* Spotlight de Tendencias: ecualizador animado (el toque "vivo") + crossfade
+   de la pregunta al rotar. Ambos se desactivan con prefers-reduced-motion. */
+@keyframes eqPulse {
+  0%, 100% { height: 5px; }
+  50%      { height: 13px; }
+}
+.eq-bar {
+  animation: eqPulse 1.05s ease-in-out infinite;
+}
+@keyframes heroSwap {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.hero-swap {
+  animation: heroSwap 0.45s cubic-bezier(0.2, 0, 0, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar { animation: none; }
+  .hero-swap { animation: none; }
+}
+
 /* Layout responsive del feed: en MÓVIL filas deslizables estilo app
    (scroll horizontal con snap, sangrado hasta el borde para que la última
    tarjeta quede cortada e invite a deslizar, touch-action propio porque el

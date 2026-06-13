@@ -117,25 +117,132 @@ function SignalBars({ level, on = "var(--primary)" }: { level: 0 | 1 | 2 | 3; on
   );
 }
 
-function TrendCard({ card, onAsk, delay = 0 }: { card: FeedCard; onAsk: (p: string) => void; delay?: number }) {
-  const style = categoryStyle(card.categoryId);
+function usePrefersReducedMotion() {
+  const [reduce, setReduce] = React.useState(false);
+  React.useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const on = () => setReduce(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return reduce;
+}
+
+// Barras de ecualizador animadas — el toque "vivo" del spotlight. Suben y
+// bajan en loop (CSS), escalonadas. En reposo (reduced-motion) quedan fijas.
+function EqualizerBars({ on = "#C7F3E6", animate = true }: { on?: string; animate?: boolean }) {
+  return (
+    <span className="inline-flex items-end gap-[3px]" aria-hidden="true" style={{ height: 14 }}>
+      {[0, 1, 2, 3].map((i) => (
+        <span
+          key={i}
+          className={animate ? "eq-bar" : ""}
+          style={{
+            width: 3,
+            height: animate ? 6 : [6, 11, 8, 13][i],
+            borderRadius: 1.5,
+            backgroundColor: on,
+            animationDelay: `${i * 140}ms`,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
+// Spotlight: una sola tarjeta grande que ROTA entre las top tendencias con
+// crossfade cada 5s (pausa al hover/focus). Es la "B" pero viva.
+function SpotlightHero({ items, onAsk }: { items: FeedCard[]; onAsk: (p: string) => void }) {
+  const [idx, setIdx] = React.useState(0);
+  const [paused, setPaused] = React.useState(false);
+  const reduce = usePrefersReducedMotion();
+  const n = items.length;
+
+  React.useEffect(() => {
+    if (reduce || paused || n <= 1) return;
+    const t = setInterval(() => setIdx((i) => (i + 1) % n), 5000);
+    return () => clearInterval(t);
+  }, [reduce, paused, n]);
+
+  const card = items[Math.min(idx, n - 1)] ?? items[0];
+
   return (
     <button
       onClick={() => onAsk(card.prompt)}
-      className="text-left rounded-2xl p-3.5 cursor-pointer feed-card gentle-fade-up-soft flex flex-col items-start"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+      aria-label={`Tendencia: ${card.prompt}`}
+      className="w-full text-left rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[150px] sm:min-h-[160px] cursor-pointer feed-featured gentle-fade-up-soft"
+      style={{
+        background:
+          "radial-gradient(120% 90% at 85% -10%, rgba(255,255,255,0.18), transparent 50%), linear-gradient(160deg, var(--primary), #0A6B54)",
+      }}
+    >
+      <div className="flex items-center justify-between">
+        <span
+          className="text-[10.5px] font-medium px-2.5 py-1 rounded-full"
+          style={{ color: "#C7F3E6", backgroundColor: "rgba(255,255,255,0.16)" }}
+        >
+          {idx === 0 ? "#1 en Venezuela" : card.categoryLabel}
+        </span>
+        {n > 1 && (
+          <span className="flex items-center gap-1.5" aria-hidden="true">
+            {items.map((_, i) => (
+              <span
+                key={i}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width: i === idx ? 16 : 6,
+                  height: 6,
+                  backgroundColor: i === idx ? "#fff" : "rgba(255,255,255,0.42)",
+                }}
+              />
+            ))}
+          </span>
+        )}
+      </div>
+
+      <p key={idx} className="hero-swap text-[16px] sm:text-[19px] font-semibold text-white leading-snug my-3">
+        “{card.prompt}”
+      </p>
+
+      <div className="flex items-center justify-between">
+        <EqualizerBars animate={!reduce} />
+        <span className="text-[11.5px]" style={{ color: "#C7F3E6" }}>
+          {idx === 0 ? "Lo más buscado" : "En tendencia"}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+// Fila compacta del ranking debajo del spotlight: posición + pregunta +
+// categoría + señal. Reemplaza la cuadrícula de cajas (más liviano).
+function TrendRow({ card, rank, onAsk, delay = 0 }: { card: FeedCard; rank: number; onAsk: (p: string) => void; delay?: number }) {
+  const cat = categoryStyle(card.categoryId);
+  return (
+    <button
+      onClick={() => onAsk(card.prompt)}
+      className="w-full flex items-center gap-3 py-2.5 px-2 my-0.5 rounded-xl text-left cursor-pointer transition-colors hover:bg-[var(--surface-hover)] gentle-fade-up-soft"
       style={{ animationDelay: `${delay}ms` }}
     >
+      <span className="text-[14px] font-semibold w-5 text-center shrink-0" style={{ color: "var(--text-tertiary)" }}>
+        {rank}
+      </span>
+      <span className="text-[13px] flex-1 min-w-0 truncate" style={{ color: "var(--text-primary)" }}>
+        {card.prompt}
+      </span>
       <span
-        className="inline-block text-[10px] font-medium px-2.5 py-0.5 rounded-full"
-        style={{ color: style.color, backgroundColor: style.bg }}
+        className="hidden sm:inline-block text-[9.5px] font-medium px-2 py-0.5 rounded-full shrink-0"
+        style={{ color: cat.color, backgroundColor: cat.bg }}
       >
         {card.categoryLabel}
       </span>
-      <p className="text-[13px] font-medium mt-2 mb-1 leading-snug flex-1" style={{ color: "var(--text-primary)" }}>
-        {card.prompt}
-      </p>
       {card.signal > 0 && (
-        <span className="mt-0.5" style={{ color: "var(--text-tertiary)" }}>
+        <span className="shrink-0" style={{ color: "var(--text-tertiary)" }}>
           <SignalBars level={card.signal} />
         </span>
       )}
@@ -172,48 +279,39 @@ export default function TrendingFeed({
           sección, el título saliente es empujado por el entrante. El
           espaciado entre secciones vive DENTRO (pb-8) para que el título
           siga fijado durante el hueco, hasta que llegue el siguiente. */}
-      <section className="relative pb-8">
-      <SectionHeader swipeHint>
-        <Icon d={ICONS.flame} size={17} color="#D85A30" />
-        <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
-          Tendencias ahora
-        </h2>
-      </SectionHeader>
+      {(() => {
+        // Pool = destacado + tendencias (sin duplicados, feed.ts ya lo
+        // garantiza). El spotlight rota las primeras; el resto va en lista.
+        const pool = [feed.featured, ...feed.trending];
+        const heroItems = pool.slice(0, 4);
+        const listItems = pool.slice(4, 9);
+        return (
+          <section className="relative pb-8">
+          <SectionHeader>
+            <Icon d={ICONS.flame} size={17} color="#D85A30" />
+            <h2 className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>
+              Tendencias ahora
+            </h2>
+          </SectionHeader>
 
-      {/* Móvil: fila deslizable con snap; escritorio: cuadrícula 2 col
-          (el ancho de cada tarjeta lo decide .feed-row-trending en CSS). */}
-      <div className="feed-row-trending">
-        <button
-          onClick={() => onAsk(feed.featured.prompt)}
-          className="text-left rounded-2xl p-4 sm:p-5 flex flex-col justify-between min-h-[150px] cursor-pointer feed-featured gentle-fade-up-soft"
-          style={{
-            background:
-              "radial-gradient(120% 90% at 85% -10%, rgba(255,255,255,0.18), transparent 50%), linear-gradient(160deg, var(--primary), #0A6B54)",
-          }}
-        >
-          <span
-            className="self-start text-[10.5px] font-medium px-2.5 py-1 rounded-full"
-            style={{ color: "#C7F3E6", backgroundColor: "rgba(255,255,255,0.16)" }}
-          >
-            #1 en Venezuela
-          </span>
-          <div>
-            <p className="text-[15px] sm:text-[17px] font-semibold text-white leading-snug mb-1.5">
-              “{feed.featured.prompt}”
-            </p>
-            {feed.featured.signal > 0 && (
-              <span className="text-[11.5px] flex items-center gap-2" style={{ color: "#C7F3E6" }}>
-                <SignalBars level={feed.featured.signal} on="#C7F3E6" />
-                Lo más buscado
-              </span>
-            )}
-          </div>
-        </button>
-        {feed.trending.slice(0, 8).map((card, i) => (
-          <TrendCard key={card.prompt} card={card} onAsk={onAsk} delay={60 + i * 55} />
-        ))}
-      </div>
-      </section>
+          <SpotlightHero items={heroItems} onAsk={onAsk} />
+
+          {listItems.length > 0 && (
+            <div className="mt-3">
+              {listItems.map((card, i) => (
+                <TrendRow
+                  key={card.prompt}
+                  card={card}
+                  rank={i + heroItems.length + 1}
+                  onAsk={onAsk}
+                  delay={80 + i * 55}
+                />
+              ))}
+            </div>
+          )}
+          </section>
+        );
+      })()}
 
       <section className="relative pb-8">
       <SectionHeader swipeHint>
