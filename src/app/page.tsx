@@ -2,21 +2,22 @@ import { auth } from "@clerk/nextjs/server";
 import ChatInterface from "@/components/ChatInterface";
 import { getOrCreateProfile } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
+import { getAppConfig } from "@/lib/appConfig";
 
 // Un solo chat para todos: el visitante deslogueado ve exactamente la misma
 // interfaz (hero + input + feed de tendencias); interactuar lo lleva a crear
 // cuenta con su pregunta guardada. El logueado además tiene su historial.
 export default async function Home() {
-  const { userId } = await auth();
+  const [{ userId }, appConfig] = await Promise.all([auth(), getAppConfig()]);
 
   if (!userId) {
-    return <ChatInterface userId="" initialIsLoggedIn={false} />;
+    return <ChatInterface userId="" initialIsLoggedIn={false} appConfig={appConfig} />;
   }
 
   const profile = await getOrCreateProfile(userId);
   if (!profile) {
     // DB caída — modo visitante antes que un crash.
-    return <ChatInterface userId="" initialIsLoggedIn={false} />;
+    return <ChatInterface userId="" initialIsLoggedIn={false} appConfig={appConfig} />;
   }
 
   const supabase = createClient();
@@ -33,6 +34,7 @@ export default async function Home() {
       initialUserEmail={profile.email}
       initialFullName={uc?.full_name ?? null}
       initialProfile={profile}
+      appConfig={appConfig}
     />
   );
 }

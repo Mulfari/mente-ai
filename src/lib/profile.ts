@@ -14,6 +14,9 @@ export type Profile = {
   used_coupon_color?: string;
   last_message_at?: string;
   weekly_reset_at?: string;
+  plan?: string;
+  daily_msg_count?: number;
+  daily_reset_at?: string;
 };
 
 // Resolve the internal profile for a Clerk user. The Clerk webhook

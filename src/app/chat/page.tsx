@@ -2,9 +2,10 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateProfile, type Profile } from "@/lib/profile";
 import ChatInterface from "@/components/ChatInterface";
+import { getAppConfig } from "@/lib/appConfig";
 
 export default async function ChatPage() {
-  const { userId } = await auth();
+  const [{ userId }, appConfig] = await Promise.all([auth(), getAppConfig()]);
 
   let internalUserId = "";
   let userEmail = "";
@@ -35,6 +36,7 @@ export default async function ChatPage() {
       initialUserEmail={userEmail}
       initialFullName={initialFullName}
       initialProfile={initialProfile}
+      appConfig={appConfig}
     />
   );
 }

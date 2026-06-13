@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { getOrCreateProfile, type Profile } from "@/lib/profile";
 import ChatInterface from "@/components/ChatInterface";
+import { getAppConfig } from "@/lib/appConfig";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -9,7 +10,7 @@ interface Props {
 
 export default async function ChatConvPage({ params }: Props) {
   const { id } = await params;
-  const { userId } = await auth();
+  const [{ userId }, appConfig] = await Promise.all([auth(), getAppConfig()]);
 
   let internalUserId = "";
   let userEmail = "";
@@ -41,6 +42,7 @@ export default async function ChatConvPage({ params }: Props) {
       initialUserEmail={userEmail}
       initialFullName={initialFullName}
       initialProfile={initialProfile}
+      appConfig={appConfig}
     />
   );
 }

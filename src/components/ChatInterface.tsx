@@ -13,6 +13,8 @@ import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import { OnboardingTour } from "./OnboardingTour";
 import type { PublicFeed } from "@/lib/feed";
+import { resolveTier } from "@/lib/plans";
+import type { AppConfig } from "@/lib/appConfig";
 
 type Message = {
   id: string;
@@ -54,6 +56,7 @@ export default function ChatInterface({
   initialUserEmail = "",
   initialFullName = null,
   initialProfile = null,
+  appConfig,
 }: {
   userId: string;
   convIdFromUrl?: string;
@@ -69,7 +72,11 @@ export default function ChatInterface({
     used_coupon_color?: string;
     last_message_at?: string;
     weekly_reset_at?: string;
+    plan?: string;
+    daily_msg_count?: number;
+    daily_reset_at?: string;
   } | null;
+  appConfig: AppConfig;
 }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   // false hasta que la primera carga del historial resuelve — el sidebar
@@ -206,7 +213,7 @@ export default function ChatInterface({
     } catch { /* sin sessionStorage igual recargamos una vez */ }
     window.location.reload();
   }, [isSignedIn, isLoggedIn]);
-  const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string} | null>(initialProfile);
+  const [profile, setProfile] = useState<{status?: string; subscription_weeks?: number; subscription_start?: string; subscription_end?: string; used_coupon_label?: string; used_coupon_color?: string; last_message_at?: string; weekly_reset_at?: string; plan?: string; daily_msg_count?: number; daily_reset_at?: string} | null>(initialProfile);
   const [userContext, setUserContext] = useState<{full_name: string; city: string; interests: string; custom_notes: string} | null>(
     initialFullName ? { full_name: initialFullName, city: "", interests: "", custom_notes: "" } : null
   );
@@ -303,7 +310,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       // pick up any changes since SSR, but do NOT touch isLoggedIn /
       // userEmail — they were already seeded from the server.
       loadConversations(userId);
-      supabase.from("profiles").select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at").eq("id", userId).maybeSingle()
+      supabase.from("profiles").select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at, plan, daily_msg_count, daily_reset_at").eq("id", userId).maybeSingle()
         .then(({ data: p }) => { if (p) setProfile(p); });
       supabase.from("user_context").select("full_name, city, interests, custom_notes").eq("user_id", userId).maybeSingle()
         .then(({ data: uc }) => { if (uc) setUserContext(uc); });
@@ -388,7 +395,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (!isLoggedIn || !userId) return;
     supabase
       .from("profiles")
-      .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at")
+      .select("status, subscription_weeks, subscription_start, subscription_end, used_coupon_label, used_coupon_color, last_message_at, weekly_reset_at, plan, daily_msg_count, daily_reset_at")
       .eq("id", userId)
       .single()
       .then(({ data }) => { if (data) setProfile(data); });
@@ -861,13 +868,22 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
   }
 
+  function quotaLeft(): number {
+    if (!profile) return appConfig.freeDailyLimit;
+    const now = new Date();
+    const resetAt = profile.daily_reset_at ? new Date(profile.daily_reset_at) : null;
+    const count = !resetAt || now >= resetAt ? 0 : (profile.daily_msg_count ?? 0);
+    return Math.max(0, appConfig.freeDailyLimit - count);
+  }
+
   function getBlockReason(): { canSend: boolean; canWrite: boolean; reason: string } {
-    // Deslogueado: escribir está permitido — al enviar, la pregunta se guarda
-    // y el flujo sigue en /sign-up (ver requireSignIn).
     if (!isLoggedIn) return { canSend: true, canWrite: true, reason: "" };
-    if (profile && profile.status === "inactive") return { canSend: false, canWrite: false, reason: "Tu suscripcion esta inactiva" };
-    const weeks = profile?.subscription_weeks ?? -1;
-    if (weeks === 0) return { canSend: false, canWrite: false, reason: "Tu suscripcion ha expirado. Añade tiempo para continuar." };
+    const tier = resolveTier(profile ?? {}, new Date());
+    if (tier === "banned") return { canSend: false, canWrite: false, reason: "Tu cuenta está inactiva." };
+    if (tier === "unlimited" || tier === "paid") return { canSend: true, canWrite: true, reason: "" };
+    // free: la conversación sigue visible (canWrite true); el bloqueo de envío y
+    // la tarjeta los maneja la UI según quotaLeft().
+    if (quotaLeft() <= 0) return { canSend: false, canWrite: true, reason: "limit-daily" };
     return { canSend: true, canWrite: true, reason: "" };
   }
 
@@ -1103,7 +1119,18 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       .from("messages")
       .insert({ conversation_id: convId, role: "user", content: s, attachments: [] })
       .select().single();
-    if (inserted) setMessages(prev => [...prev, inserted]);
+    if (inserted) {
+      setMessages(prev => [...prev, inserted]);
+      // Reflejo optimista local del contador diario (tier free).
+      setProfile(p => {
+        if (!p) return p;
+        if (resolveTier(p, new Date()) !== "free") return p;
+        const now = Date.now();
+        const reset = p.daily_reset_at ? new Date(p.daily_reset_at).getTime() : 0;
+        const fresh = !reset || now >= reset;
+        return { ...p, daily_msg_count: fresh ? 1 : (p.daily_msg_count ?? 0) + 1 };
+      });
+    }
 
     try {
       const reqParams = { message: s, conversationId: convId, contentParts: [], mode: "deep" };
@@ -1515,6 +1542,15 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       .single();
     if (inserted) {
       setMessages(prev => [...prev, { ...inserted, _previewUrls: savedPreviews }]);
+      // Reflejo optimista local del contador diario (tier free).
+      setProfile(p => {
+        if (!p) return p;
+        if (resolveTier(p, new Date()) !== "free") return p;
+        const now = Date.now();
+        const reset = p.daily_reset_at ? new Date(p.daily_reset_at).getTime() : 0;
+        const fresh = !reset || now >= reset;
+        return { ...p, daily_msg_count: fresh ? 1 : (p.daily_msg_count ?? 0) + 1 };
+      });
     }
 
     // Fetch new messages from other devices — respond after a short delay
