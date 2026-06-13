@@ -68,14 +68,14 @@ export async function POST(req: NextRequest) {
   const owned = await ownsConversation(supabase, conversationId, ownerId);
   if (!owned) return NextResponse.json({ error: "Conversación no encontrada" }, { status: 404 });
 
-  // Snapshot de los mensajes publicables (sin privados ni en progreso).
+  // Snapshot de los mensajes publicables (sin los que quedaron en progreso).
   const { data: msgs } = await supabase
     .from("messages")
-    .select("role, content, created_at, private, in_progress")
+    .select("role, content, created_at, in_progress")
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
   const snapshot = (msgs ?? [])
-    .filter((m) => !m.private && !m.in_progress && typeof m.content === "string" && m.content.trim())
+    .filter((m) => !m.in_progress && typeof m.content === "string" && m.content.trim())
     .map((m) => ({ role: m.role as string, content: m.content as string }));
 
   if (snapshot.length === 0) {
