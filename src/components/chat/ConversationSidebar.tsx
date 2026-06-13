@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { createPortal } from "react-dom";
 
 type Conversation = {
   id: string;
@@ -138,10 +139,12 @@ function EditIcon() {
   );
 }
 
-function CheckIcon() {
+function KebabIcon() {
   return (
-    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+      <circle cx="12" cy="5" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="12" cy="19" r="1.6" />
     </svg>
   );
 }
@@ -205,32 +208,64 @@ function ConversationRow({
   disabled,
   alwaysShowDelete,
 }: RowProps) {
-  // Borrado en dos pasos: basurero → confirmar (✓) / cancelar (✕).
-  // Se desarma solo a los 4s o al salir de la fila — nunca un modal.
-  const [confirming, setConfirming] = React.useState(false);
-  const resetTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Acciones por fila: un menú "⋮" (kebab) UNIFICADO en móvil y escritorio
+  // (en escritorio aparece al hover; en móvil siempre, pero es UN solo ícono).
+  // El menú abre Renombrar / Eliminar; el borrado confirma dentro del menú.
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [menuPos, setMenuPos] = React.useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const kebabRef = React.useRef<HTMLButtonElement>(null);
+  const menuRef = React.useRef<HTMLDivElement>(null);
 
-  // Renombrar inline: lápiz → el título se vuelve input. Enter/blur guarda,
+  // Renombrar inline: el título se vuelve input. Enter/blur guarda,
   // Escape cancela. Una sola salida (blur) para no guardar dos veces.
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(conv.title);
   const editInputRef = React.useRef<HTMLInputElement>(null);
   const cancelledRef = React.useRef(false);
 
-  const disarm = React.useCallback(() => {
-    if (resetTimer.current) clearTimeout(resetTimer.current);
-    resetTimer.current = null;
-    setConfirming(false);
+  const openMenu = () => {
+    const r = kebabRef.current?.getBoundingClientRect();
+    if (!r) return;
+    const MENU_W = 184;
+    const MENU_H = 92;
+    let left = Math.max(8, r.right - MENU_W);
+    let top = r.bottom + 6;
+    if (top + MENU_H > window.innerHeight - 8) top = r.top - MENU_H - 6; // flip arriba
+    setMenuPos({ top, left });
+    setConfirmDelete(false);
+    setMenuOpen(true);
+  };
+  const closeMenu = React.useCallback(() => {
+    setMenuOpen(false);
+    setConfirmDelete(false);
   }, []);
 
-  const arm = () => {
-    setConfirming(true);
-    if (resetTimer.current) clearTimeout(resetTimer.current);
-    resetTimer.current = setTimeout(() => setConfirming(false), 4000);
-  };
+  // Cerrar el menú al hacer click fuera, Escape, o scroll/resize.
+  React.useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node;
+      if (menuRef.current?.contains(t) || kebabRef.current?.contains(t)) return;
+      closeMenu();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeMenu(); };
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("touchstart", onDown);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", closeMenu, true);
+    window.addEventListener("resize", closeMenu);
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("touchstart", onDown);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", closeMenu, true);
+      window.removeEventListener("resize", closeMenu);
+    };
+  }, [menuOpen, closeMenu]);
 
   const startEdit = () => {
-    disarm();
+    closeMenu();
     cancelledRef.current = false;
     setDraft(conv.title);
     setEditing(true);
@@ -253,12 +288,6 @@ function ConversationRow({
     if (trimmed && trimmed !== conv.title) onRename(trimmed);
   };
 
-  React.useEffect(() => {
-    return () => {
-      if (resetTimer.current) clearTimeout(resetTimer.current);
-    };
-  }, []);
-
   return (
     <div
       role="button"
@@ -273,7 +302,6 @@ function ConversationRow({
           onSelect();
         }
       }}
-      onMouseLeave={disarm}
       className="group relative w-full text-left rounded-lg cursor-pointer flex items-center gap-2 px-2.5 h-9 transition-colors duration-150 hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
       style={{
         backgroundColor: isActive ? "var(--surface-hover)" : undefined,
@@ -322,72 +350,91 @@ function ConversationRow({
           {conv.title}
         </span>
       )}
-      {!disabled &&
-        !editing &&
-        (confirming ? (
-          <div className="flex items-center gap-0.5 shrink-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                disarm();
-                onDelete();
-              }}
-              aria-label={`Confirmar eliminar "${conv.title}"`}
-              title="Confirmar"
-              className="p-1 rounded-md"
-              style={{
-                color: "var(--danger)",
-                backgroundColor:
-                  "color-mix(in srgb, var(--danger) 14%, transparent)",
-              }}
-            >
-              <CheckIcon />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                disarm();
-              }}
-              aria-label="Cancelar"
-              title="Cancelar"
-              className="p-1 rounded-md hover:bg-[var(--surface-hover)]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              <XSmallIcon />
-            </button>
-          </div>
-        ) : (
-          <div
-            className={`flex items-center gap-0.5 shrink-0 transition-opacity duration-100 ${
-              alwaysShowDelete ? "" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
-            }`}
-          >
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                startEdit();
-              }}
-              aria-label={`Renombrar "${conv.title}"`}
-              title="Renombrar"
-              className="p-1 rounded-md hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              <EditIcon />
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                arm();
-              }}
-              aria-label={`Eliminar "${conv.title}"`}
-              title="Eliminar"
-              className="p-1 rounded-md hover:text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_12%,transparent)]"
-              style={{ color: "var(--text-tertiary)" }}
-            >
-              <DeleteIcon />
-            </button>
-          </div>
-        ))}
+      {!disabled && !editing && (
+        <button
+          ref={kebabRef}
+          onClick={(e) => {
+            e.stopPropagation();
+            menuOpen ? closeMenu() : openMenu();
+          }}
+          aria-label={`Opciones de "${conv.title}"`}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          title="Opciones"
+          className={`shrink-0 p-1 rounded-md transition-opacity duration-100 hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:opacity-100 ${
+            alwaysShowDelete || menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+          }`}
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          <KebabIcon />
+        </button>
+      )}
+
+      {/* Menú vía portal: nunca lo recorta el scroll del sidebar. */}
+      {menuOpen && createPortal(
+        <div
+          ref={menuRef}
+          role="menu"
+          className="fixed z-[100] rounded-xl py-1 animate-fade-in"
+          style={{
+            top: menuPos.top,
+            left: menuPos.left,
+            width: 184,
+            backgroundColor: "var(--surface)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 12px 32px rgba(0,0,0,0.18)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {confirmDelete ? (
+            <>
+              <p className="px-3 pt-1.5 pb-2 text-[12px]" style={{ color: "var(--text-secondary)" }}>
+                ¿Eliminar esta conversación?
+              </p>
+              <div className="flex items-center gap-1.5 px-2 pb-1">
+                <button
+                  role="menuitem"
+                  onClick={() => { closeMenu(); onDelete(); }}
+                  className="flex-1 py-1.5 rounded-lg text-[12.5px] font-medium text-white"
+                  style={{ backgroundColor: "var(--danger)" }}
+                >
+                  Eliminar
+                </button>
+                <button
+                  role="menuitem"
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 py-1.5 rounded-lg text-[12.5px] font-medium hover:bg-[var(--surface-hover)]"
+                  style={{ color: "var(--text-secondary)", border: "1px solid var(--border)" }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button
+                role="menuitem"
+                onClick={startEdit}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-left transition-colors hover:bg-[var(--surface-hover)]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                <span style={{ color: "var(--text-tertiary)" }}><EditIcon /></span>
+                Renombrar
+              </button>
+              <button
+                role="menuitem"
+                onClick={() => setConfirmDelete(true)}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-left transition-colors hover:bg-[color-mix(in_srgb,var(--danger)_10%,transparent)]"
+                style={{ color: "var(--danger)" }}
+              >
+                <DeleteIcon />
+                Eliminar
+              </button>
+            </>
+          )}
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
