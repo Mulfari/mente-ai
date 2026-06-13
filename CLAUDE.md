@@ -147,8 +147,16 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   "Empieza tu propia conversación" abajo (embudo). `generateMetadata` con OG
   para previews en WhatsApp/Telegram.
 - Entradas: item "Compartir" en el menú ⋮ del sidebar y botón flotante arriba
-  del chat abierto → `ShareModal` (copiar enlace, WhatsApp/Telegram/X,
-  actualizar, desactivar). El dueño nunca aparece en la página pública.
+  del chat abierto → `ShareModal`. El dueño nunca aparece en la página pública.
+- `ShareModal` MINIMALISTA (a propósito): una sola acción protagonista. Sin
+  enlace aún → botón "Crear enlace". Ya compartido → el enlace con "Copiar" y
+  un botón grande "Enviar por WhatsApp" (el canal real en VE). NADA más (sin
+  Telegram/X, sin "Actualizar"). La foto se pone al día sola al reabrir (POST
+  silencioso, mismo token), por eso no hay botón de actualizar.
+- Revocar NO está en el modal (para mantenerlo limpio): vive en el menú ⋮ del
+  sidebar como "Dejar de compartir", que aparece solo si esa conversación está
+  compartida (se consulta perezosamente con un GET /api/share al abrir el menú;
+  el item "Compartir" pasa a "Ver enlace"). DELETE /api/share revoca.
 
 ## Modelo de negocio
 - Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
