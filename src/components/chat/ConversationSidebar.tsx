@@ -356,9 +356,13 @@ function ConversationRow({
         />
       ) : (
         <span
-          className="flex-1 min-w-0 truncate text-[13px] font-medium"
+          className="flex-1 min-w-0 truncate text-[13.5px]"
           style={{
-            color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
+            // Legibilidad: los títulos van en el texto principal (espresso),
+            // no en el gris apagado; el activo se distingue por peso + el
+            // fondo y la barra de la izquierda, no por desteñir los demás.
+            color: "var(--text-primary)",
+            fontWeight: isActive ? 600 : 450,
           }}
         >
           {conv.title}
@@ -754,8 +758,8 @@ function SidebarBody({
               {grouped.order.map((label) => (
                 <div key={label} className="mb-1">
                   <div
-                    className="px-2 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider"
-                    style={{ color: "var(--text-tertiary)" }}
+                    className="px-2 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide"
+                    style={{ color: "var(--text-secondary)" }}
                   >
                     {label}
                   </div>
