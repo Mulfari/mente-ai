@@ -6,6 +6,7 @@ import { useClerk, useAuth } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AccountMenu from "./AccountMenu";
+import ShareModal from "./share/ShareModal";
 import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
@@ -148,6 +149,8 @@ export default function ChatInterface({
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  // Conversación cuyo modal de "Compartir" está abierto (null = cerrado).
+  const [shareConv, setShareConv] = useState<Conversation | null>(null);
   // Clerk hooks
   const { signOut: clerkSignOut, openSignIn, openSignUp } = useClerk();
   const { isSignedIn } = useAuth();
@@ -1744,6 +1747,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onSelectConv={selectConv}
           onDeleteConv={deleteConv}
           onRenameConv={renameConv}
+          onShareConv={(c) => setShareConv(c)}
           conversationsLoaded={convsLoaded}
           onNewConversation={newConversation}
           onShowAccountMenu={() => setShowAccountMenu(true)}
@@ -1755,6 +1759,28 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
       {/* Main area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Botón "Compartir" flotante — visible con una conversación abierta
+            (debajo del header en móvil, arriba a la derecha en escritorio). */}
+        {isLoggedIn && activeConv?.id && (
+          <button
+            onClick={() => setShareConv(activeConv)}
+            title="Compartir conversación"
+            aria-label="Compartir conversación"
+            className="absolute right-3 top-[3.75rem] md:top-3 z-20 flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[12.5px] font-medium transition-colors hover:bg-[var(--surface-hover)]"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--surface) 90%, transparent)",
+              border: "1px solid var(--border)",
+              color: "var(--text-secondary)",
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+            </svg>
+            <span className="hidden sm:inline">Compartir</span>
+          </button>
+        )}
         {isLoggedIn ? (
           /* Top bar — mobile only (md:hidden). Hamburger left, wordmark
              centered, account chip right. */
@@ -1916,6 +1942,13 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onSave={(data) => { setUserContext(prev => prev ? { ...prev, ...data } : prev); }}
           onSignOut={async () => { await clerkSignOut(); window.location.href = "/"; }}
           onClose={() => setShowAccountMenu(false)}
+        />
+      )}
+      {shareConv && (
+        <ShareModal
+          conversationId={shareConv.id}
+          title={shareConv.title}
+          onClose={() => setShareConv(null)}
         />
       )}
       {notification && (

@@ -132,6 +132,23 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   en AccountMenu → Personalización; `useResolvedTheme()` (src/lib/theme.ts)
   para lo que no se puede tokenizar (p. ej. syntax highlighting)
 
+## Compartir conversaciones
+- Modelo "foto fija" (snapshot): al compartir se congela una copia de solo
+  lectura; volver a compartir re-snapshotea con el MISMO token; desactivar
+  borra. Tabla `shared_conversations` (token PK aleatorio base62, conversation_id
+  UNIQUE, owner_id, title, messages jsonb). RLS ON sin policies (solo API).
+- `/api/share` (GET estado / POST crea-actualiza snapshot / DELETE revoca);
+  valida que la conversación es del usuario; el snapshot excluye mensajes
+  `private`/`in_progress`/vacíos.
+- Página pública `/c/[token]` (server, lee por token con service role; NO está
+  en el middleware → pública, sin cuenta): solo lectura con los bubbles del
+  chat (`SharedConversation`), marca VeChat + CTA "Pruébalo gratis" arriba y
+  "Empieza tu propia conversación" abajo (embudo). `generateMetadata` con OG
+  para previews en WhatsApp/Telegram.
+- Entradas: item "Compartir" en el menú ⋮ del sidebar y botón flotante arriba
+  del chat abierto → `ShareModal` (copiar enlace, WhatsApp/Telegram/X,
+  actualizar, desactivar). El dueño nunca aparece en la página pública.
+
 ## Modelo de negocio
 - Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
 - Admin activa cuentas / agrega semanas, o el usuario canjea cupón

@@ -62,6 +62,7 @@ type Props = {
   onSelectConv: (conv: Conversation) => void;
   onDeleteConv: (convId: string) => void;
   onRenameConv: (convId: string, title: string) => void;
+  onShareConv: (conv: Conversation) => void;
   // false mientras la primera carga del historial está en vuelo — la lista
   // muestra un skeleton en vez del empty state (que sería mentira).
   conversationsLoaded?: boolean;
@@ -149,6 +150,17 @@ function KebabIcon() {
   );
 }
 
+function ShareIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24">
+      <circle cx="18" cy="5" r="3" />
+      <circle cx="6" cy="12" r="3" />
+      <circle cx="18" cy="19" r="3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+    </svg>
+  );
+}
+
 function XSmallIcon() {
   return (
     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -194,8 +206,9 @@ type RowProps = {
   onSelect: () => void;
   onDelete: () => void;
   onRename: (title: string) => void;
+  onShare: () => void;
   disabled: boolean;
-  // Touch (mobile sheet): hover no existe, los botones son siempre visibles.
+  // Touch (mobile sheet): hover no existe, el kebab es siempre visible.
   alwaysShowDelete: boolean;
 };
 
@@ -205,6 +218,7 @@ function ConversationRow({
   onSelect,
   onDelete,
   onRename,
+  onShare,
   disabled,
   alwaysShowDelete,
 }: RowProps) {
@@ -414,6 +428,15 @@ function ConversationRow({
             <>
               <button
                 role="menuitem"
+                onClick={() => { closeMenu(); onShare(); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-left transition-colors hover:bg-[var(--surface-hover)]"
+                style={{ color: "var(--text-primary)" }}
+              >
+                <span style={{ color: "var(--text-tertiary)" }}><ShareIcon /></span>
+                Compartir
+              </button>
+              <button
+                role="menuitem"
                 onClick={startEdit}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-[13px] text-left transition-colors hover:bg-[var(--surface-hover)]"
                 style={{ color: "var(--text-primary)" }}
@@ -449,6 +472,7 @@ type SidebarBodyProps = {
   onSelectConv: (conv: Conversation) => void;
   onDeleteConv: (convId: string) => void;
   onRenameConv: (convId: string, title: string) => void;
+  onShareConv: (conv: Conversation) => void;
   loaded: boolean;
   onNewConversation: () => void;
   onShowAccountMenu: () => void;
@@ -498,6 +522,7 @@ function SidebarBody({
   onSelectConv,
   onDeleteConv,
   onRenameConv,
+  onShareConv,
   loaded,
   onNewConversation,
   onShowAccountMenu,
@@ -743,6 +768,7 @@ function SidebarBody({
                         onSelect={() => onSelectConv(conv)}
                         onDelete={() => onDeleteConv(conv.id)}
                         onRename={(title) => onRenameConv(conv.id, title)}
+                        onShare={() => onShareConv(conv)}
                         disabled={disabled}
                         alwaysShowDelete={isMobile}
                       />
@@ -820,6 +846,7 @@ export default function ConversationSidebar({
   onSelectConv,
   onDeleteConv,
   onRenameConv,
+  onShareConv,
   conversationsLoaded,
   onNewConversation,
   onShowAccountMenu,
@@ -902,6 +929,7 @@ export default function ConversationSidebar({
           onSelectConv={onSelectConv}
           onDeleteConv={onDeleteConv}
           onRenameConv={onRenameConv}
+          onShareConv={onShareConv}
           loaded={conversationsLoaded !== false}
           onNewConversation={onNewConversation}
           onShowAccountMenu={onShowAccountMenu}
@@ -954,6 +982,7 @@ export default function ConversationSidebar({
           onSelectConv={onSelectConv}
           onDeleteConv={onDeleteConv}
           onRenameConv={onRenameConv}
+          onShareConv={onShareConv}
           loaded={conversationsLoaded !== false}
           onNewConversation={onNewConversation}
           onShowAccountMenu={onShowAccountMenu}
