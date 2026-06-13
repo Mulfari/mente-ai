@@ -108,12 +108,32 @@ El gating y la UI de precios leen de aquí; el admin los edita desde `/admin`.
 El contador de cuota restante se muestra en la UI (ej. "Te quedan 3 hoy") de
 forma sutil; se nutre del mismo `daily_msg_count` que devuelve el perfil.
 
-## Conversión (al toparse el límite)
+## Conversión (cómo se le muestra el límite)
 
-**Bloqueo suave.** El input se deshabilita con un mensaje cálido — *"Llegaste a
-tus 10 de hoy 👏 Vuelve mañana, o pásate a ilimitado"* — y un botón que abre el
-**modal de planes**. No se borra ni se expulsa nada; la conversación queda
-visible, solo no puede enviar más hasta el reset o hasta pagar.
+Dos momentos, ambos cálidos (nunca un error rojo):
+
+### 1. Aviso anticipado (le quedan pocos)
+
+Cuando la cuota restante del día baja a **≤3**, aparece una píldora sutil
+(verde de marca) **sobre el input**: *"Te quedan 3 mensajes gratis hoy"*. Antes
+de ese umbral **no se muestra nada** — no abrumamos; el aviso aparece justo
+cuando empieza a importar y siembra la idea de pasar a ilimitado. La cuota
+restante se deriva de `free_daily_limit - daily_msg_count`.
+
+### 2. Cupo agotado (bloqueo suave)
+
+Al consumir el mensaje número (límite+1) del día, el input deja de aceptar
+envíos y **se reemplaza por una tarjeta cálida** (no se borra ni se expulsa
+nada; la conversación queda visible). La tarjeta contiene:
+
+- Felicitación, no regaño: *"Llegaste a tus 10 mensajes de hoy"* con tono criollo
+  (un emoji 🎉/ícono de confeti).
+- **Cuenta regresiva** al próximo reset, derivada de `daily_reset_at`
+  (ej. *"Se renuevan en 6 h 23 min"*). Es honesto y baja la ansiedad.
+- Dos salidas: **"Ver planes"** (botón primario → modal de planes) y
+  **"Tengo un cupón"** (→ flujo de canje existente).
+
+El gating real lo impone `/api/chat` (429); esta tarjeta es el reflejo en UI.
 
 ### Modal de planes
 
