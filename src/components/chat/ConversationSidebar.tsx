@@ -66,6 +66,12 @@ type Props = {
   // false mientras la primera carga del historial está en vuelo — la lista
   // muestra un skeleton en vez del empty state (que sería mentira).
   conversationsLoaded?: boolean;
+  // Paginación: hay más lotes por traer / se está trayendo uno / dispara el
+  // siguiente (scroll infinito). Búsqueda al servidor (todo el historial).
+  hasMoreConvs?: boolean;
+  loadingMoreConvs?: boolean;
+  onLoadMoreConvs?: () => void;
+  onSearchConversations?: (q: string) => Promise<Conversation[]>;
   onNewConversation: () => void;
   onShowAccountMenu: () => void;
   // Mobile sheet
@@ -478,6 +484,10 @@ type SidebarBodyProps = {
   onRenameConv: (convId: string, title: string) => void;
   onShareConv: (conv: Conversation) => void;
   loaded: boolean;
+  hasMoreConvs: boolean;
+  loadingMoreConvs: boolean;
+  onLoadMoreConvs?: () => void;
+  onSearchConversations?: (q: string) => Promise<Conversation[]>;
   onNewConversation: () => void;
   onShowAccountMenu: () => void;
   expanded: boolean;
@@ -528,6 +538,10 @@ function SidebarBody({
   onRenameConv,
   onShareConv,
   loaded,
+  hasMoreConvs,
+  loadingMoreConvs,
+  onLoadMoreConvs,
+  onSearchConversations,
   onNewConversation,
   onShowAccountMenu,
   expanded,
@@ -535,16 +549,12 @@ function SidebarBody({
   disabled,
   variant,
 }: SidebarBodyProps) {
-  const filtered = React.useMemo(() => {
-    if (!searchQuery.trim()) return conversations;
-    const q = searchQuery.toLowerCase();
-    return conversations.filter((c) => c.title.toLowerCase().includes(q));
-  }, [conversations, searchQuery]);
-
+  // Agrupar el historial cargado por fecha (Hoy / Ayer / Últimos 7 / 30 días /
+  // Más antiguas). La búsqueda NO filtra esto: va por separado al servidor.
   const grouped = React.useMemo(() => {
     const order: string[] = [];
     const map = new Map<string, Conversation[]>();
-    for (const conv of filtered) {
+    for (const conv of conversations) {
       const label = formatDateLabel(conv);
       if (!map.has(label)) {
         map.set(label, []);
@@ -553,7 +563,54 @@ function SidebarBody({
       map.get(label)!.push(conv);
     }
     return { order, map };
-  }, [filtered]);
+  }, [conversations]);
+
+  // Búsqueda al SERVIDOR (todo el historial, no solo lo cargado), con debounce.
+  const isSearching = searchQuery.trim().length > 0;
+  const [searchResults, setSearchResults] = React.useState<Conversation[] | null>(null);
+  const [searchPending, setSearchPending] = React.useState(false);
+  React.useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || !onSearchConversations) { setSearchResults(null); setSearchPending(false); return; }
+    setSearchPending(true);
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const res = await onSearchConversations(q);
+      if (!cancelled) { setSearchResults(res); setSearchPending(false); }
+    }, 250);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [searchQuery, onSearchConversations]);
+
+  // Grupos plegables — estado recordado en localStorage por etiqueta.
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Set<string>>(() => {
+    try {
+      const raw = typeof window !== "undefined" ? localStorage.getItem("vechat-sidebar-collapsed") : null;
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
+  const toggleGroup = React.useCallback((label: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label); else next.add(label);
+      try { localStorage.setItem("vechat-sidebar-collapsed", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }, []);
+
+  // Scroll infinito: al acercarse al final, pedir el siguiente lote.
+  const navRef = React.useRef<HTMLElement>(null);
+  const onNavScroll = React.useCallback(() => {
+    const el = navRef.current;
+    if (!el || isSearching || !hasMoreConvs || loadingMoreConvs) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 240) onLoadMoreConvs?.();
+  }, [isSearching, hasMoreConvs, loadingMoreConvs, onLoadMoreConvs]);
+  // Si el lote cargado no llena el área (pantalla alta), seguir trayendo
+  // hasta llenar o agotar — si no, el usuario no podría disparar el scroll.
+  React.useEffect(() => {
+    if (!expanded || isSearching || !hasMoreConvs || loadingMoreConvs) return;
+    const el = navRef.current;
+    if (el && el.scrollHeight <= el.clientHeight + 4) onLoadMoreConvs?.();
+  }, [conversations, expanded, isSearching, hasMoreConvs, loadingMoreConvs, onLoadMoreConvs]);
 
   const isMobile = variant === "mobile";
   const avatarLetter = (userEmail || "U").charAt(0).toUpperCase();
@@ -716,70 +773,120 @@ function SidebarBody({
       {/* Conversation list — only in expanded mode */}
       {expanded && (
         <nav
+          ref={navRef}
+          onScroll={onNavScroll}
           aria-label="Conversaciones"
           className="flex-1 overflow-y-auto px-1.5"
           style={{ touchAction: "pan-y" }}
         >
           {!loaded ? (
             <ConversationListSkeleton />
-          ) : filtered.length === 0 ? (
+          ) : isSearching ? (
+            // ── Búsqueda: resultados del servidor (TODO el historial) ──
+            searchPending && searchResults === null ? (
+              <div className="py-10 px-4 text-center">
+                <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>Buscando…</p>
+              </div>
+            ) : (searchResults?.length ?? 0) === 0 ? (
+              <div className="py-10 px-4 text-center">
+                <p className="text-[13px] font-medium mb-1" style={{ color: "var(--text-secondary)" }}>Sin resultados</p>
+                <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Prueba con otro término</p>
+              </div>
+            ) : (
+              <div className="pb-3 pt-1 space-y-0.5">
+                {searchResults!.map((conv) => (
+                  <ConversationRow
+                    key={conv.id}
+                    conv={conv}
+                    isActive={activeConv?.id === conv.id}
+                    onSelect={() => onSelectConv(conv)}
+                    onDelete={() => onDeleteConv(conv.id)}
+                    onRename={(title) => onRenameConv(conv.id, title)}
+                    onShare={() => onShareConv(conv)}
+                    disabled={disabled}
+                    alwaysShowDelete={isMobile}
+                  />
+                ))}
+              </div>
+            )
+          ) : conversations.length === 0 ? (
             <div className="py-10 px-4 text-center">
-              {searchQuery ? (
-                <>
-                  <p className="text-[13px] font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
-                    Sin resultados
-                  </p>
-                  <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                    Prueba con otro término
-                  </p>
-                </>
-              ) : (
-                <>
-                  <div
-                    className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
-                    style={{
-                      backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)",
-                      color: "var(--primary)",
-                    }}
-                  >
-                    <NewChatIcon />
-                  </div>
-                  <p className="text-[13px] font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
-                    Tu primera conversación
-                  </p>
-                  <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                    Escribe abajo para empezar
-                  </p>
-                </>
-              )}
+              <div
+                className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center"
+                style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", color: "var(--primary)" }}
+              >
+                <NewChatIcon />
+              </div>
+              <p className="text-[13px] font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
+                Tu primera conversación
+              </p>
+              <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                Escribe abajo para empezar
+              </p>
             </div>
           ) : (
             <div className="pb-3">
-              {grouped.order.map((label) => (
-                <div key={label} className="mb-1">
-                  <div
-                    className="px-2 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {label}
+              {grouped.order.map((label) => {
+                const isCollapsed = collapsedGroups.has(label);
+                const rows = grouped.map.get(label)!;
+                return (
+                  <div key={label} className="mb-1">
+                    {/* Encabezado del grupo: plegable (recuerda el estado) */}
+                    <button
+                      onClick={() => toggleGroup(label)}
+                      aria-expanded={!isCollapsed}
+                      className="w-full flex items-center gap-1 px-2 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wide rounded-md transition-colors hover:bg-[var(--surface-hover)]"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      <svg
+                        width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
+                        className="shrink-0 transition-transform duration-150"
+                        style={{ transform: isCollapsed ? "rotate(-90deg)" : "none", opacity: 0.7 }}
+                      >
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                      <span className="flex-1 text-left truncate">{label}</span>
+                      <span className="text-[10px] tabular-nums font-medium" style={{ color: "var(--text-tertiary)" }}>
+                        {rows.length}
+                      </span>
+                    </button>
+                    {!isCollapsed && (
+                      <div className="space-y-0.5">
+                        {rows.map((conv) => (
+                          <ConversationRow
+                            key={conv.id}
+                            conv={conv}
+                            isActive={activeConv?.id === conv.id}
+                            onSelect={() => onSelectConv(conv)}
+                            onDelete={() => onDeleteConv(conv.id)}
+                            onRename={(title) => onRenameConv(conv.id, title)}
+                            onShare={() => onShareConv(conv)}
+                            disabled={disabled}
+                            alwaysShowDelete={isMobile}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <div className="space-y-0.5">
-                    {grouped.map.get(label)!.map((conv) => (
-                      <ConversationRow
-                        key={conv.id}
-                        conv={conv}
-                        isActive={activeConv?.id === conv.id}
-                        onSelect={() => onSelectConv(conv)}
-                        onDelete={() => onDeleteConv(conv.id)}
-                        onRename={(title) => onRenameConv(conv.id, title)}
-                        onShare={() => onShareConv(conv)}
-                        disabled={disabled}
-                        alwaysShowDelete={isMobile}
-                      />
-                    ))}
-                  </div>
+                );
+              })}
+
+              {/* Pie del scroll infinito: cargando / fin del historial */}
+              {loadingMoreConvs && (
+                <div className="flex items-center justify-center gap-2 py-3" aria-label="Cargando más conversaciones">
+                  <span
+                    className="w-3.5 h-3.5 rounded-full border-2 animate-spin"
+                    style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }}
+                  />
+                  <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Cargando…</span>
                 </div>
-              ))}
+              )}
+              {!hasMoreConvs && !loadingMoreConvs && conversations.length > 8 && (
+                <p className="text-center text-[10.5px] py-3" style={{ color: "var(--text-tertiary)" }}>
+                  Has visto todo tu historial
+                </p>
+              )}
             </div>
           )}
         </nav>
@@ -852,6 +959,10 @@ export default function ConversationSidebar({
   onRenameConv,
   onShareConv,
   conversationsLoaded,
+  hasMoreConvs,
+  loadingMoreConvs,
+  onLoadMoreConvs,
+  onSearchConversations,
   onNewConversation,
   onShowAccountMenu,
   showMobile,
@@ -935,6 +1046,10 @@ export default function ConversationSidebar({
           onRenameConv={onRenameConv}
           onShareConv={onShareConv}
           loaded={conversationsLoaded !== false}
+          hasMoreConvs={!!hasMoreConvs}
+          loadingMoreConvs={!!loadingMoreConvs}
+          onLoadMoreConvs={onLoadMoreConvs}
+          onSearchConversations={onSearchConversations}
           onNewConversation={onNewConversation}
           onShowAccountMenu={onShowAccountMenu}
           expanded={expanded}
@@ -988,6 +1103,10 @@ export default function ConversationSidebar({
           onRenameConv={onRenameConv}
           onShareConv={onShareConv}
           loaded={conversationsLoaded !== false}
+          hasMoreConvs={!!hasMoreConvs}
+          loadingMoreConvs={!!loadingMoreConvs}
+          onLoadMoreConvs={onLoadMoreConvs}
+          onSearchConversations={onSearchConversations}
           onNewConversation={onNewConversation}
           onShowAccountMenu={onShowAccountMenu}
           expanded={true}

@@ -37,6 +37,16 @@ type Conversation = {
   updated_at: string;
 };
 
+// Tamaño de lote del historial: nunca se piden todas las conversaciones de
+// golpe, sino lotes paginados por cursor (updated_at) al hacer scroll.
+const CONV_PAGE = 25;
+
+// Descarta los placeholders "Nueva conversación" vacíos (sin ningún mensaje).
+function isRealConversation(c: any): boolean {
+  const msgs = c.messages as any[];
+  return (msgs && msgs.length > 0 && (msgs[0]?.count ?? 0) > 0) || c.title !== "Nueva conversación";
+}
+
 export default function ChatInterface({
   userId,
   convIdFromUrl,
@@ -65,6 +75,12 @@ export default function ChatInterface({
   // false hasta que la primera carga del historial resuelve — el sidebar
   // muestra skeleton mientras tanto (evita el flash de "sin conversaciones").
   const [convsLoaded, setConvsLoaded] = useState(false);
+  // Paginación del historial (scroll infinito): se cargan lotes de CONV_PAGE
+  // por cursor (updated_at), nunca todas de golpe. hasMore = el último lote
+  // vino lleno; el cursor es el updated_at de la fila más vieja cargada.
+  const [hasMoreConvs, setHasMoreConvs] = useState(false);
+  const [loadingMoreConvs, setLoadingMoreConvs] = useState(false);
+  const convsCursorRef = useRef<string | null>(null);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -410,17 +426,56 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       .select("id, title, created_at, updated_at, messages(count)")
       .eq("user_id", uid)
       .order("updated_at", { ascending: false })
-      .limit(20);
+      .limit(CONV_PAGE);
     // Marcar como cargado incluso en error: mejor lista vacía que skeleton eterno.
     setConvsLoaded(true);
-    if (!data) return;
-    // Filter out empty "Nueva conversación" placeholders (never had a message)
-    const filtered = data.filter((c: any) => {
-      const msgs = c.messages as any[];
-      return (msgs && msgs.length > 0 && (msgs[0]?.count ?? 0) > 0) || c.title !== "Nueva conversación";
-    });
-    setConversations(filtered);
+    if (!data) { setHasMoreConvs(false); return; }
+    // El cursor avanza sobre las filas CRUDAS (antes de filtrar placeholders),
+    // si no la paginación se quedaría atascada saltándose filtradas.
+    convsCursorRef.current = data.length ? (data[data.length - 1] as any).updated_at : null;
+    setHasMoreConvs(data.length === CONV_PAGE);
+    setConversations(data.filter(isRealConversation));
   }
+
+  // Trae el siguiente lote (más viejas que el cursor) y lo añade al final.
+  const loadMoreConversations = useCallback(async () => {
+    if (!userId || loadingMoreConvs || !hasMoreConvs || !convsCursorRef.current) return;
+    setLoadingMoreConvs(true);
+    const { data } = await supabase
+      .from("conversations")
+      .select("id, title, created_at, updated_at, messages(count)")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .lt("updated_at", convsCursorRef.current)
+      .limit(CONV_PAGE);
+    if (data) {
+      convsCursorRef.current = data.length ? (data[data.length - 1] as any).updated_at : convsCursorRef.current;
+      setHasMoreConvs(data.length === CONV_PAGE);
+      setConversations((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        return [...prev, ...data.filter(isRealConversation).filter((c: any) => !seen.has(c.id))];
+      });
+    } else {
+      setHasMoreConvs(false);
+    }
+    setLoadingMoreConvs(false);
+  }, [userId, loadingMoreConvs, hasMoreConvs]);
+
+  // Búsqueda en el SERVIDOR (no solo lo ya cargado): encuentra cualquier
+  // conversación por título aunque no esté en pantalla.
+  const searchConversations = useCallback(async (q: string): Promise<Conversation[]> => {
+    const term = q.trim();
+    if (!userId || !term) return [];
+    const { data } = await supabase
+      .from("conversations")
+      .select("id, title, created_at, updated_at, messages(count)")
+      .eq("user_id", userId)
+      .ilike("title", `%${term}%`)
+      .order("updated_at", { ascending: false })
+      .limit(30);
+    if (!data) return [];
+    return data.filter(isRealConversation) as Conversation[];
+  }, [userId]);
 
   async function loadMessages(conversationId: string) {
     // Dedup: two useEffects (URL-load + auth-ready) can both fire on initial
@@ -1749,6 +1804,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onRenameConv={renameConv}
           onShareConv={(c) => setShareConv(c)}
           conversationsLoaded={convsLoaded}
+          hasMoreConvs={hasMoreConvs}
+          loadingMoreConvs={loadingMoreConvs}
+          onLoadMoreConvs={loadMoreConversations}
+          onSearchConversations={searchConversations}
           onNewConversation={newConversation}
           onShowAccountMenu={() => setShowAccountMenu(true)}
           showMobile={showSidebar}
