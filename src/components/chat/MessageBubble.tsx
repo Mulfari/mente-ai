@@ -33,6 +33,58 @@ type Props = {
   formatTime: (date: string) => string;
 };
 
+// Revelado suave del streaming: la red entrega el texto en ráfagas
+// irregulares (a veces 1 palabra, a veces 20). Este hook desacopla la
+// velocidad de APARICIÓN de la de la red — revela el texto a ritmo parejo
+// con requestAnimationFrame, alcanzando las ráfagas sin saltos. Al terminar
+// (o con prefers-reduced-motion) muestra el texto completo de inmediato.
+function useSmoothReveal(full: string, active: boolean): string {
+  const [shown, setShown] = React.useState(full);
+  const shownLenRef = React.useRef(full.length);
+  const fullRef = React.useRef(full);
+  fullRef.current = full;
+
+  const reduce = React.useMemo(
+    () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    []
+  );
+
+  React.useEffect(() => {
+    if (!active || reduce) return;
+    if (shownLenRef.current > full.length) shownLenRef.current = full.length; // mensaje nuevo / reset
+    let raf = 0;
+    let last = 0;
+    const tick = (ts: number) => {
+      const target = fullRef.current;
+      // ~30fps: suficiente para verse fluido sin re-parsear el markdown a 60fps
+      if (ts - last >= 28) {
+        last = ts;
+        const cur = shownLenRef.current;
+        if (cur < target.length) {
+          // Paso adaptativo: avanza más rápido cuanto más texto haya
+          // pendiente (alcanza las ráfagas), suave al final.
+          const step = Math.max(1, Math.min(28, Math.ceil((target.length - cur) / 9)));
+          shownLenRef.current = cur + step;
+          setShown(target.slice(0, shownLenRef.current));
+        }
+      }
+      raf = requestAnimationFrame(tick); // sigue corriendo para alcanzar nuevos tokens
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [active, reduce, full.length === 0]);
+
+  // Al terminar el streaming (o si no aplica), mostrar el texto completo.
+  React.useEffect(() => {
+    if (!active || reduce) {
+      shownLenRef.current = full.length;
+      setShown(full);
+    }
+  }, [active, reduce, full]);
+
+  return active && !reduce ? shown : full;
+}
+
 export default function MessageBubble({
   message,
   streamingMsgId,
@@ -41,6 +93,8 @@ export default function MessageBubble({
 }: Props) {
   const isStreaming = message._loading || message.id === streamingMsgId || retryMode === message.id;
   const isUser = message.role === "user";
+  // Texto revelado suavemente (solo respuestas en streaming).
+  const displayedContent = useSmoothReveal(message.content, isStreaming && !isUser);
   // Tema resuelto (claro/oscuro) — decide el estilo del syntax highlighting.
   const resolvedTheme = useResolvedTheme();
 
@@ -163,8 +217,8 @@ export default function MessageBubble({
               overflowWrap: "anywhere",
             }}
           >
-            {isStreaming && !message.content ? (
-              // Aún sin texto: indicador "pensando".
+            {isStreaming && !displayedContent ? (
+              // Aún sin texto visible: indicador "pensando".
               <div className="flex items-center min-h-[24px]">
                 <span className="thinking inline-flex items-center gap-1.5" aria-label="VeChat está pensando">
                   <span className="thinking-dot" />
@@ -185,7 +239,7 @@ export default function MessageBubble({
               // `streaming-prose` añade el caret parpadeante al final (CSS).
               <div className={`prose prose-invert prose-sm max-w-none${isStreaming ? " streaming-prose" : ""}`}>
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
-                  {message.content}
+                  {displayedContent}
                 </ReactMarkdown>
               </div>
             )}
