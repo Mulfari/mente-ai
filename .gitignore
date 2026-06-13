@@ -49,3 +49,7 @@ vps/
 
 # Playwright MCP debug artifacts
 .playwright-mcp/
+
+# Mockups sueltos de otros proyectos / artefactos de pruebas
+demo-*.png
+.playwright-mcp/
