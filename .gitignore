@@ -53,3 +53,10 @@ vps/
 # Mockups sueltos de otros proyectos / artefactos de pruebas
 demo-*.png
 .playwright-mcp/
+
+# Screenshots de verificacion (no son del proyecto)
+read-*.png
+theme-*.png
+modal-*.png
+scroll-*.png
+share-*.png
