@@ -52,6 +52,45 @@ export default function MessageBubble({
   const { speak, stop, isSpeaking, isLoading, currentText, isSupported, progress } = useSpeechSynthesisServer();
   const isThisSpeaking = isSpeaking && currentText === message.content;
 
+  // Componentes de markdown — compartidos por el streaming Y el render final,
+  // así la respuesta se ve FORMATEADA desde el primer token (no como texto
+  // crudo con los símbolos del markdown que luego "salta" a la versión bonita).
+  const mdComponents = {
+    code({ className, children }: { className?: string; children?: React.ReactNode }) {
+      const match = /language-(\w+)/.exec(className || "");
+      const code = String(children).replace(/\n$/, "");
+      if (!match) {
+        return <code className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ backgroundColor: "var(--code-bg)", color: "var(--primary)" }}>{code}</code>;
+      }
+      return (
+        <div className="relative group rounded-xl overflow-hidden my-2" style={{ maxWidth: "100%" }}>
+          <div className="flex items-center justify-between px-4 py-2"
+            style={{ backgroundColor: "color-mix(in srgb, var(--surface) 80%, transparent)", borderBottom: "1px solid var(--border)" }}>
+            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
+              {match[1]}
+            </span>
+            <button onClick={() => navigator.clipboard.writeText(code)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
+              style={{ backgroundColor: "var(--code-bg)", color: "var(--text-secondary)" }}>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copiar
+            </button>
+          </div>
+          <SyntaxHighlighter
+            style={(resolvedTheme === "dark" ? vscDarkPlus : oneLight) as any}
+            language={match[1]}
+            PreTag="div"
+            customStyle={{ margin: 0, borderRadius: 0, fontSize: "13px", backgroundColor: "transparent" }}
+          >
+            {code}
+          </SyntaxHighlighter>
+        </div>
+      );
+    },
+  };
+
   return (
     <div
       className={`flex gap-3 mb-7 animate-fade-in group ${isUser ? "justify-end" : "justify-start"}`}
@@ -124,20 +163,14 @@ export default function MessageBubble({
               overflowWrap: "anywhere",
             }}
           >
-            {isStreaming ? (
+            {isStreaming && !message.content ? (
+              // Aún sin texto: indicador "pensando".
               <div className="flex items-center min-h-[24px]">
-                {message.content ? (
-                  <span className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", wordBreak: "break-word" }}>
-                    {message.content}
-                    <span className="typing-cursor ml-0.5" />
-                  </span>
-                ) : (
-                  <span className="thinking inline-flex items-center gap-1.5" aria-label="VeChat está pensando">
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                    <span className="thinking-dot" />
-                  </span>
-                )}
+                <span className="thinking inline-flex items-center gap-1.5" aria-label="VeChat está pensando">
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                  <span className="thinking-dot" />
+                </span>
               </div>
             ) : message.content && /^(Error|Conexion)/.test(message.content) && !message._retryReq ? (
               <div className="flex items-center gap-2" style={{ color: "var(--danger)" }}>
@@ -147,45 +180,13 @@ export default function MessageBubble({
                 <span className="text-sm">{message.content}</span>
               </div>
             ) : (
-              <div className="prose prose-invert prose-sm max-w-none">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    code({ className, children }) {
-                      const match = /language-(\w+)/.exec(className || "");
-                      const code = String(children).replace(/\n$/, "");
-                      if (!match) {
-                        return <code className="px-1.5 py-0.5 rounded-md text-xs font-mono" style={{ backgroundColor: "var(--code-bg)", color: "var(--primary)" }}>{code}</code>;
-                      }
-                      return (
-                        <div className="relative group rounded-xl overflow-hidden my-2" style={{ maxWidth: "100%" }}>
-                          <div className="flex items-center justify-between px-4 py-2"
-                            style={{ backgroundColor: "color-mix(in srgb, var(--surface) 80%, transparent)", borderBottom: "1px solid var(--border)" }}>
-                            <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>
-                              {match[1]}
-                            </span>
-                            <button onClick={() => navigator.clipboard.writeText(code)}
-                              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs transition-colors"
-                              style={{ backgroundColor: "var(--code-bg)", color: "var(--text-secondary)" }}>
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                              Copiar
-                            </button>
-                          </div>
-                          <SyntaxHighlighter
-                            style={(resolvedTheme === "dark" ? vscDarkPlus : oneLight) as any}
-                            language={match[1]}
-                            PreTag="div"
-                            customStyle={{ margin: 0, borderRadius: 0, fontSize: "13px", backgroundColor: "transparent" }}
-                          >
-                            {code}
-                          </SyntaxHighlighter>
-                        </div>
-                      );
-                    }
-                  }}
-                >{message.content}</ReactMarkdown>
+              // Streaming Y final usan el MISMO render de markdown: el texto
+              // se ve formateado desde el primer token. Mientras streamea,
+              // `streaming-prose` añade el caret parpadeante al final (CSS).
+              <div className={`prose prose-invert prose-sm max-w-none${isStreaming ? " streaming-prose" : ""}`}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                  {message.content}
+                </ReactMarkdown>
               </div>
             )}
           </div>

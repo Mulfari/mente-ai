@@ -388,6 +388,21 @@ html[data-sidebar="closed"] .sidebar-desktop {
   50% { opacity: 0; }
 }
 
+/* Caret de streaming INLINE: se pega al final del último bloque de la
+   respuesta que se está formateando en vivo (::after del último hijo del
+   prose), así parpadea justo donde va apareciendo el texto. */
+.streaming-prose > :last-child::after {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 1.05em;
+  border-radius: 2px;
+  margin-left: 3px;
+  background-color: var(--primary);
+  vertical-align: text-bottom;
+  animation: blink 1s ease-in-out infinite;
+}
+
 /* === PROSE / MARKDOWN === */
 .prose {
   color: var(--text-primary);
