@@ -225,10 +225,22 @@ export async function materializeInterests(
     .limit(limit);
   const labels = (data ?? []).map((r) => (r.label as string).trim()).filter(Boolean);
   const joined = labels.join(", ");
-  await supabase
+  // Upsert manual (user_context.user_id no tiene unique constraint): si la
+  // fila existe se actualiza, si no se crea — un usuario nuevo puede no tener
+  // contexto todavía y el chat lee esta columna.
+  const { data: existing } = await supabase
     .from("user_context")
-    .update({ interests: joined, updated_at: new Date().toISOString() })
-    .eq("user_id", userId);
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (existing) {
+    await supabase
+      .from("user_context")
+      .update({ interests: joined, updated_at: new Date().toISOString() })
+      .eq("id", existing.id);
+  } else {
+    await supabase.from("user_context").insert({ user_id: userId, interests: joined });
+  }
   return joined;
 }
 
