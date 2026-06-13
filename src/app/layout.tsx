@@ -57,7 +57,7 @@ export default function RootLayout({
               sin bandas de otro color alrededor de la barra de URL, sin
               brinco del input. */}
           <script dangerouslySetInnerHTML={{
-            __html: `(function(){try{var p=localStorage.getItem('vechat-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(p==='light'||p==='dark')?p:(d?'dark':'light');document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',t==='dark'?'#000000':'#FBFBFA');var s=localStorage.getItem('vechat-sidebar-open');document.documentElement.setAttribute('data-sidebar',s==='false'?'closed':'open');}catch(e){}})()`
+            __html: `(function(){try{var p=localStorage.getItem('vechat-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;var t=(p==='light'||p==='dark')?p:(d?'dark':'light');document.documentElement.setAttribute('data-theme',t);var m=document.querySelector('meta[name="theme-color"]');if(!m){m=document.createElement('meta');m.setAttribute('name','theme-color');document.head.appendChild(m);}m.setAttribute('content',t==='dark'?'#000000':'#EEF3F0');var s=localStorage.getItem('vechat-sidebar-open');document.documentElement.setAttribute('data-sidebar',s==='false'?'closed':'open');}catch(e){}})()`
           }} />
         </head>
         <body className="antialiased">

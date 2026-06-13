@@ -5,22 +5,26 @@
 :root {
   --primary: #10A37F;
   --primary-hover: #0D8B6A;
-  --background: #FBFBFA;
+  /* Claro "verde menta": la PÁGINA lleva un tono suave con un toque del verde
+     de VeChat y las SUPERFICIES (sidebar, tarjetas, burbujas, input) quedan en
+     blanco, así flotan = profundidad; el texto no es negro puro para bajar el
+     contraste hiriente. Menos brillo, menos fatiga visual. */
+  --background: #EEF3F0;
   --surface: #FFFFFF;
-  --surface-hover: #F3F4F6;
-  --border: #E8EAED;
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --text-tertiary: #9CA3AF;
+  --surface-hover: #E6EEEA;
+  --border: #DEE8E3;
+  --text-primary: #18221E;
+  --text-secondary: #5E6B65;
+  --text-tertiary: #8B958F;
   --danger: #DC2626;
   --warning: #D97706;
   --success: #16A34A;
-  --user-bubble: #E8F6F1;
+  --user-bubble: #DFF1EA;
   --accent: #10A37F;
-  --code-bg: rgba(17,24,39,0.06);
-  --code-block-bg: #F6F7F8;
+  --code-bg: rgba(24,34,30,0.06);
+  --code-block-bg: #EDF2EF;
   --table-row-hover: rgba(16,163,127,0.05);
-  --table-head-bg: #F9FAFB;
+  --table-head-bg: #EAF1ED;
   --motion-standard: cubic-bezier(0.2, 0, 0, 1);
   --motion-quick: cubic-bezier(0.3, 0, 1, 1);
 }

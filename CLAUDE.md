@@ -131,6 +131,14 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   (default: sistema); script anti-flash en layout + `ThemeWatcher`; selector
   en AccountMenu → Personalización; `useResolvedTheme()` (src/lib/theme.ts)
   para lo que no se puede tokenizar (p. ej. syntax highlighting)
+- Claro = "verde menta": la PÁGINA (`--background` #EEF3F0) lleva un tono suave
+  con un toque del verde de marca y las SUPERFICIES (`--surface` #FFFFFF: sidebar,
+  tarjetas, burbujas, input) quedan blancas → flotan = profundidad; el texto no
+  es negro puro (`--text-primary` #18221E) para bajar el contraste hiriente. El
+  área central del chat NO pinta fondo: hereda `--background`, por eso el tono se
+  ve en todo. El color de la barra del navegador (theme-color, claro) está
+  hardcodeado y debe seguir a `--background`: layout.tsx (script anti-flash),
+  src/lib/theme.ts (CHROME_COLORS) y AuthShell.tsx.
 
 ## Compartir conversaciones
 - Modelo "foto fija" (snapshot) EFÍMERA: al compartir se congela una copia de
