@@ -49,51 +49,48 @@ export default function MessageBubble({
   // que useSpeechSynthesis: speak(), stop(), isSpeaking, progress (0-1),
   // charIndex (para resaltar la palabra actual). El charIndex ahora se
   // estima del progreso de tiempo del audio, no del evento `boundary`.
-  const { speak, stop, isSpeaking, isLoading, currentText, isSupported, progress, charIndex } = useSpeechSynthesisServer();
+  const { speak, stop, isSpeaking, isLoading, currentText, isSupported, progress } = useSpeechSynthesisServer();
   const isThisSpeaking = isSpeaking && currentText === message.content;
-
-  // Resaltar la palabra actual durante TTS. Dividimos el contenido por
-  // caracteres hasta charIndex y aplicamos estilos diferentes a la
-  // parte "leída" vs "por leer". Esto da el efecto karaoke.
-  function renderWithHighlight(content: string): React.ReactNode {
-    if (!isThisSpeaking || charIndex <= 0) {
-      return <span style={{ color: "var(--text-primary)" }}>{content}</span>;
-    }
-    const upTo = content.slice(0, charIndex);
-    const from = content.slice(charIndex);
-    return (
-      <>
-        <span style={{ color: "var(--text-primary)" }}>{upTo}</span>
-        <span style={{ color: "var(--text-tertiary)" }}>{from}</span>
-      </>
-    );
-  }
 
   return (
     <div
-      className={`flex mb-6 animate-fade-in group ${isUser ? "justify-end" : "justify-start"}`}
-      style={{ paddingLeft: isUser ? "12%" : 0, paddingRight: isUser ? 0 : "12%" }}
+      className={`flex gap-3 mb-7 animate-fade-in group ${isUser ? "justify-end" : "justify-start"}`}
     >
-      <div className={`flex flex-col min-w-0 ${isUser ? "max-w-[78%] items-end" : "w-full"}`}>
-        {/* Sender label */}
-        <div className="flex items-center gap-1.5 mb-1.5">
-          <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-            {isUser ? "Tú" : "VeChat"}
-          </span>
-          {!isUser && message._isDeep && (
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a78bfa" }}>
-              <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
-              <path d="M9 18h6"/>
-              <path d="M10 21h4"/>
-            </svg>
-          )}
+      {/* Avatar de VeChat — da identidad a la respuesta (estándar de los
+          buenos chats). El usuario no lleva avatar: basta con la burbuja
+          alineada a la derecha. */}
+      {!isUser && (
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-0.5"
+          style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M4 5l8 14L20 5" />
+          </svg>
         </div>
+      )}
 
-        {/* Body — left/right accented card style. Each bubble has a 3px
-            colored stripe on the side facing the screen edge (teal for
-            assistant on the left, white for user on the right) + a thin
-            neutral outline. No fill, no blur — the topographic background
-            stays fully visible through the message. */}
+      <div className={`flex flex-col min-w-0 ${isUser ? "max-w-[80%] items-end" : "flex-1 items-start"}`}>
+        {/* Nombre solo en la respuesta (el avatar ya identifica); el usuario
+            se sobreentiende por la alineación. */}
+        {!isUser && (
+          <div className="flex items-center gap-1.5 mb-1 h-7">
+            <span className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
+              VeChat
+            </span>
+            {message._isDeep && (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: "#a78bfa" }}>
+                <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/>
+                <path d="M9 18h6"/>
+                <path d="M10 21h4"/>
+              </svg>
+            )}
+          </div>
+        )}
+
+        {/* Pregunta del usuario: burbuja limpia, rellena y con esquina-cola
+            (sin franja ni doble borde). La respuesta: SIN caja — el texto
+            fluye y deja respirar el markdown/código (como ChatGPT/Claude). */}
         {isUser ? (
           <div
             className="text-sm leading-relaxed"
@@ -102,9 +99,9 @@ export default function MessageBubble({
               wordBreak: "break-word",
               overflowWrap: "anywhere",
               backgroundColor: "var(--user-bubble)",
-              boxShadow: "inset -3px 0 0 0 var(--primary), inset 0 0 0 1px var(--border)",
-              borderRadius: "12px",
-              padding: "12px 16px",
+              border: "1px solid color-mix(in srgb, var(--primary) 14%, transparent)",
+              borderRadius: "18px 18px 6px 18px",
+              padding: "10px 15px",
             }}
           >
             {message._previewUrls && (
@@ -116,33 +113,29 @@ export default function MessageBubble({
                 ))}
               </div>
             )}
-            <p className="whitespace-pre-wrap font-medium">{message.content}</p>
+            <p className="whitespace-pre-wrap">{message.content}</p>
           </div>
         ) : (
           <div
-            className="text-sm leading-relaxed"
+            className="text-sm leading-relaxed w-full"
             style={{
               color: "var(--text-primary)",
               wordBreak: "break-word",
               overflowWrap: "anywhere",
-              backgroundColor: "transparent",
-              boxShadow: "inset 3px 0 0 0 var(--primary), inset 0 0 0 1px rgba(255, 255, 255, 0.10)",
-              borderRadius: "12px",
-              padding: "14px 18px",
             }}
           >
             {isStreaming ? (
-              <div className="flex items-center gap-2 min-h-[24px]">
+              <div className="flex items-center min-h-[24px]">
                 {message.content ? (
                   <span className="text-sm leading-relaxed" style={{ color: "var(--text-primary)", wordBreak: "break-word" }}>
                     {message.content}
                     <span className="typing-cursor ml-0.5" />
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1.5">
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
-                    <span className="typing-dot" />
+                  <span className="thinking inline-flex items-center gap-1.5" aria-label="VeChat está pensando">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
                   </span>
                 )}
               </div>

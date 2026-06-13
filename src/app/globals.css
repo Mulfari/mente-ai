@@ -183,6 +183,27 @@ html[data-sidebar="closed"] .sidebar-desktop {
   50% { box-shadow: 0 0 0 3px #EF4444, 0 0 22px rgba(239,68,68,0.7); }
 }
 
+/* Indicador "pensando": tres puntos con onda suave (translateY), tintados
+   con el verde de marca. Reemplaza los puntos planos genéricos. */
+.thinking { color: var(--primary); }
+@keyframes thinkingWave {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
+  30%           { transform: translateY(-4px); opacity: 1; }
+}
+.thinking-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: thinkingWave 1.3s ease-in-out infinite;
+}
+.thinking-dot:nth-child(2) { animation-delay: 0.15s; }
+.thinking-dot:nth-child(3) { animation-delay: 0.30s; }
+@media (prefers-reduced-motion: reduce) {
+  .thinking-dot { animation: none; opacity: 0.5; }
+}
+
 @keyframes typingDot {
   0%, 100% { opacity: 0.15; transform: scale(0.7); }
   30%, 60% { opacity: 1; transform: scale(1); }
@@ -350,13 +371,15 @@ html[data-sidebar="closed"] .sidebar-desktop {
 }
 
 
-/* Typing cursor for streaming */
+/* Cursor de streaming: caret redondeado en verde, con parpadeo suave
+   (opacity) en vez del corte duro anterior. */
 .typing-cursor {
   display: inline-block;
-  width: 2px;
-  height: 1em;
+  width: 3px;
+  height: 1.05em;
+  border-radius: 2px;
   background-color: var(--primary);
-  animation: blink 0.8s step-end infinite;
+  animation: blink 1s ease-in-out infinite;
   vertical-align: text-bottom;
   margin-left: 2px;
 }
