@@ -71,9 +71,12 @@ export default async function SharePage({ params }: Props) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--background)" }}>
+    // El body global es height:100dvh; overflow:hidden (app shell), así que
+    // esta página necesita SU PROPIO contenedor de scroll: header fijo arriba
+    // y la conversación + footer en un área desplazable.
+    <div className="h-[100dvh] flex flex-col" style={{ backgroundColor: "var(--background)" }}>
       {/* Header: marca + CTA */}
-      <header className="sticky top-0 z-10 h-14 flex items-center justify-between px-5 sm:px-7"
+      <header className="shrink-0 h-14 flex items-center justify-between px-5 sm:px-7"
         style={{ backgroundColor: "color-mix(in srgb, var(--background) 92%, transparent)", backdropFilter: "blur(16px)", borderBottom: "1px solid var(--border)" }}>
         <Link href="/"><Brand /></Link>
         <Link href="/sign-up" className="text-[13px] font-medium text-white px-4 py-2 rounded-full transition-opacity hover:opacity-90" style={{ backgroundColor: "var(--primary)" }}>
@@ -81,23 +84,25 @@ export default async function SharePage({ params }: Props) {
         </Link>
       </header>
 
-      <main className="flex-1">
-        <SharedConversation title={share.title} messages={share.messages} />
-      </main>
+      <div className="flex-1 overflow-y-auto" style={{ overscrollBehavior: "contain", WebkitOverflowScrolling: "touch" }}>
+        <main>
+          <SharedConversation title={share.title} messages={share.messages} />
+        </main>
 
-      {/* Footer CTA — embudo de registro */}
-      <footer className="px-4 py-10 text-center" style={{ borderTop: "1px solid var(--border)" }}>
-        <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>
-          Esta conversación se creó con VeChat.
-        </p>
-        <p className="text-[13px] mb-5" style={{ color: "var(--text-tertiary)" }}>
-          La IA que sí sabe de Venezuela — gratis para empezar.
-        </p>
-        <Link href="/" className="inline-block px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-          Empieza tu propia conversación →
-        </Link>
-      </footer>
+        {/* Footer CTA — embudo de registro */}
+        <footer className="px-4 py-10 text-center" style={{ borderTop: "1px solid var(--border)" }}>
+          <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>
+            Esta conversación se creó con VeChat.
+          </p>
+          <p className="text-[13px] mb-5" style={{ color: "var(--text-tertiary)" }}>
+            La IA que sí sabe de Venezuela — gratis para empezar.
+          </p>
+          <Link href="/" className="inline-block px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
+            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+            Empieza tu propia conversación →
+          </Link>
+        </footer>
+      </div>
     </div>
   );
 }
