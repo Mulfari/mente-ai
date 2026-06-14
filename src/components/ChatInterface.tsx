@@ -301,6 +301,16 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const loadingConvRef = useRef<string | null>(null); // dedup: skip concurrent loadMessages() for the same conv
   const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null); // reveal-on-load timer (must survive effect re-runs)
   const fastPollRef = useRef<ReturnType<typeof setTimeout> | null>(null); // fast polling when remote stream detected
+  // "La pregunta sube" (estilo Gemini): al enviar un follow-up, la nueva
+  // pregunta se ANCLA arriba del viewport y la respuesta se escribe debajo. Un
+  // spacer al final da el espacio para que la pregunta pueda llegar al tope; se
+  // encoge solo a medida que la respuesta llena la pantalla.
+  const [bottomSpacer, setBottomSpacer] = useState(0);
+  const bottomSpacerRef = useRef(0);
+  const setSpacer = useCallback((n: number) => { bottomSpacerRef.current = n; setBottomSpacer(n); }, []);
+  const pendingPinRef = useRef<string | null>(null);        // id de pregunta a anclar al tope
+  const pinnedMsgIdRef = useRef<string | null>(null);       // pregunta anclada activa (mientras streamea)
+  const pendingPinScrollRef = useRef<number | null>(null);  // scrollTop objetivo, tras aplicar el spacer
 
   // Auth init — if the server already provided the auth state (via initial
   // props), trust it and skip the getSession() round-trip. Calling
@@ -789,8 +799,46 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   useLayoutEffect(() => {
     const el = mainScrollRef.current;
     if (!el) return;
+
+    // Helper: alto del contenido REAL (sin el spacer) que queda DEBAJO de la
+    // pregunta anclada, y el spacer necesario para que pueda llegar al tope.
+    const PIN_GAP = 16;
+    const measurePin = (pinId: string) => {
+      const userEl = el.querySelector(`[data-message-id="${pinId}"]`) as HTMLElement | null;
+      if (!userEl) return null;
+      const userTop = userEl.getBoundingClientRect().top - el.getBoundingClientRect().top + el.scrollTop;
+      const contentBelow = (el.scrollHeight - bottomSpacerRef.current) - userTop;
+      const needed = Math.max(0, el.clientHeight - PIN_GAP - contentBelow);
+      return { userTop, needed };
+    };
+
+    // (A) Acabamos de enviar un follow-up → anclar esa pregunta arriba: crecer
+    //     el spacer lo justo y luego (efecto [bottomSpacer]) subir la pregunta.
+    if (pendingPinRef.current) {
+      const pinId = pendingPinRef.current;
+      pendingPinRef.current = null;
+      const m = measurePin(pinId);
+      if (m) {
+        pinnedMsgIdRef.current = pinId;
+        pendingPinScrollRef.current = Math.max(0, m.userTop - PIN_GAP);
+        setSpacer(m.needed);
+        return;
+      }
+    }
+
     const force = initialScrollPendingRef.current;
     if (force) initialScrollPendingRef.current = false;
+
+    // (B) Mientras la pregunta sigue anclada y la respuesta crece, encoger el
+    //     spacer (sin mover el scroll) para que no quede un hueco enorme.
+    if (!force && pinnedMsgIdRef.current) {
+      const m = measurePin(pinnedMsgIdRef.current);
+      if (m) {
+        if (Math.abs(m.needed - bottomSpacerRef.current) > 1) setSpacer(m.needed);
+        return; // no arrastrar al fondo mientras está anclada (como Gemini)
+      }
+    }
+
     if (!force) {
       const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
       const NEAR_BOTTOM_PX = 120;
@@ -820,8 +868,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }, 600);
   }, [messages, sending]);
 
+  // Tras crecer el spacer (efecto A de arriba), subir la pregunta al tope con
+  // un scroll suave: como ya hay espacio debajo, la pregunta "sube" sola.
+  useLayoutEffect(() => {
+    if (pendingPinScrollRef.current == null) return;
+    const el = mainScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: pendingPinScrollRef.current, behavior: "smooth" });
+    pendingPinScrollRef.current = null;
+  }, [bottomSpacer]);
+
   // Cancel any pending reveal when the user navigates to a different conv.
+  // También suelta el anclaje y el spacer (cada conversación arranca limpia).
   useEffect(() => {
+    pendingPinRef.current = null;
+    pinnedMsgIdRef.current = null;
+    pendingPinScrollRef.current = null;
+    setSpacer(0);
     return () => {
       if (revealTimerRef.current) {
         clearTimeout(revealTimerRef.current);
@@ -1086,6 +1149,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setSending(true);
     const myStream = ++streamSeqRef.current;
     if (!activeConv) setConvLoaded(true);
+    // ¿Es un follow-up dentro de una conversación con historial? Entonces la
+    // nueva pregunta se anclará arriba (la del PRIMER mensaje no, ahí manda la
+    // animación de arranque y el reveal).
+    const wasFollowUp = !!activeConv && messages.length > 0;
 
     // Fire-and-forget trending tracking. Silent on failure — never block the
     // user flow on the tracking request.
@@ -1124,6 +1191,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       .select().single();
     if (inserted) {
       setMessages(prev => [...prev, inserted]);
+      if (wasFollowUp) pendingPinRef.current = inserted.id;
       // Reflejo optimista local del contador diario (tier free).
       setProfile(p => {
         if (!p) return p;
@@ -1404,6 +1472,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
 
     console.log("[sendMessage] input:", inputVal.length, "attachments:", hasAttachments, "activeConv:", activeConv?.id, "block:", block);
 
+    // Follow-up (conversación con historial) → la nueva pregunta se ancla arriba.
+    const wasFollowUp = !!activeConv && messages.length > 0;
+
     let conv = activeConv;
     const queuedMsg = queuedMsgRef.current;
     queuedMsgRef.current = null;
@@ -1545,6 +1616,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       .single();
     if (inserted) {
       setMessages(prev => [...prev, { ...inserted, _previewUrls: savedPreviews }]);
+      if (wasFollowUp) pendingPinRef.current = inserted.id;
       // Reflejo optimista local del contador diario (tier free).
       setProfile(p => {
         if (!p) return p;
@@ -2002,6 +2074,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 streamingMsgId={streamingMsgId}
                 retryMode={retryMode}
                 formatTime={formatTime}
+                bottomSpacer={bottomSpacer}
               />
             </div>
           )}

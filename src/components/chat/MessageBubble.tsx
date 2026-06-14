@@ -147,6 +147,7 @@ export default function MessageBubble({
 
   return (
     <div
+      data-message-id={message.id}
       className={`flex gap-3 mb-7 animate-fade-in group ${isUser ? "justify-end" : "justify-start"}`}
     >
       {/* Avatar de VeChat — da identidad a la respuesta (estándar de los

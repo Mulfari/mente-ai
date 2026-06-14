@@ -26,6 +26,10 @@ type Props = {
   streamingMsgId: string | null;
   retryMode: string | null;
   formatTime: (date: string) => string;
+  // Espacio reservado bajo la última pregunta para que pueda "subir" al tope
+  // del viewport (estilo Gemini). Lo controla ChatInterface; se encoge solo a
+  // medida que la respuesta llena la pantalla.
+  bottomSpacer?: number;
 };
 
 export default function MessageList({
@@ -33,6 +37,7 @@ export default function MessageList({
   streamingMsgId,
   retryMode,
   formatTime,
+  bottomSpacer = 0,
 }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +52,7 @@ export default function MessageList({
           formatTime={formatTime}
         />
       ))}
+      <div aria-hidden style={{ height: bottomSpacer }} />
       <div ref={messagesEndRef} />
     </div>
   );
