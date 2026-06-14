@@ -4,134 +4,155 @@ import Reveal from "./Reveal";
 import LivePhone from "./LivePhone";
 import type { AppConfig } from "@/lib/appConfig";
 
-// ── Landing OSCURA para el visitante deslogueado (su propia identidad, libre del
-// tema claro del producto). Construida con la skill design-taste-frontend:
-// concepto con punto de vista, mockups REALES del app (screenshots en public/
-// landing), ritmo roto (sin "3 pasos" ni marquee de relleno), una sola estética
-// bloqueada en oscuro. Contenedor de scroll propio (el body global está
-// bloqueado). Acento: verde de marca, que sobre el oscuro brilla.
+// ── Landing EDITORIAL ("criollo", concepto 1): papel limpio, tipografía grande
+// de medios (Archivo), un solo acento bermellón, hairlines en vez de cards,
+// índice tipo revista, el producto como FIGURA (incluye demo en vivo). Tema
+// bloqueado en claro (página print-emulating editorial). Contenedor de scroll
+// propio porque el body global está bloqueado.
 
-function Mark({ size = 20 }: { size?: number }) {
+const ED = {
+  "--ed-bg": "#F4F2EC",
+  "--ed-surface": "#FAF9F4",
+  "--ed-ink": "#1A1813",
+  "--ed-ink-2": "#56524A",
+  "--ed-ink-3": "#8E887A",
+  "--ed-line": "#E2DED3",
+  "--ed-accent": "#E14318",
+  backgroundColor: "var(--ed-bg)",
+  color: "var(--ed-ink)",
+} as React.CSSProperties;
+
+function Mark({ size = 18 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.25} strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--lp-accent)" }}>
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--ed-accent)" }}>
       <path d="M4 5l8 14L20 5" />
     </svg>
   );
 }
-function ArrowRight() {
-  return <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
-}
-function Spark() {
-  return <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ color: "var(--lp-accent)" }}><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5L18 18M18 6l-2.5 2.5M8.5 15.5L6 18" /></svg>;
-}
-function Check() {
-  return <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" className="shrink-0" style={{ color: "var(--lp-accent)" }}><path d="M20 6L9 17l-5-5" /></svg>;
+function Arrow({ c = "var(--ed-accent)" }: { c?: string }) {
+  return <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg>;
 }
 
-const LP_STYLE = {
-  "--lp-bg": "#0E110F",
-  "--lp-surface": "#171C18",
-  "--lp-surface-2": "#1E241F",
-  "--lp-line": "rgba(244,243,238,0.10)",
-  "--lp-accent": "#1EC98A",
-  "--lp-accent-soft": "rgba(30,201,138,0.13)",
-  "--lp-text": "#F3F3EE",
-  "--lp-text-2": "#A6ABA2",
-  "--lp-text-3": "#6E726B",
-  backgroundColor: "var(--lp-bg)",
-  color: "var(--lp-text)",
-} as React.CSSProperties;
-
-// Botón primario: pill verde brillante con texto casi negro (contraste alto).
-function Primary({ href, children, className = "" }: { href: string; children: React.ReactNode; className?: string }) {
+function Button({ href, children, dark = false }: { href: string; children: React.ReactNode; dark?: boolean }) {
   return (
-    <Link href={href} className={`group inline-flex items-center gap-2 rounded-full font-semibold text-[15px] px-6 py-3.5 lp-ease transition-transform duration-300 active:scale-[0.97] ${className}`} style={{ backgroundColor: "var(--lp-accent)", color: "#06140D", boxShadow: "0 18px 50px -16px rgba(30,201,138,0.5)" }}>
+    <Link href={href} className="group inline-flex items-center gap-2 font-semibold text-[15px] px-5 py-3 lp-ease transition-transform duration-300 active:scale-[0.97]" style={{ backgroundColor: "var(--ed-accent)", color: "#FBF1EC", borderRadius: 9 }}>
       {children}
-      <span className="lp-ease transition-transform duration-300 group-hover:translate-x-0.5"><ArrowRight /></span>
+      <span className="lp-ease transition-transform duration-300 group-hover:translate-x-0.5"><Arrow c="#FBF1EC" /></span>
     </Link>
   );
+}
+
+function Caption({ children }: { children: React.ReactNode }) {
+  return <p className="mt-3 text-[12.5px] tracking-wide" style={{ color: "var(--ed-ink-3)" }}>{children}</p>;
 }
 
 export default function Landing({ appConfig }: { appConfig: AppConfig }) {
   const { freeDailyLimit, priceWeeklyUsd, priceMonthlyUsd } = appConfig;
 
   return (
-    <div className="lp-body h-[100dvh] overflow-y-auto" style={{ ...LP_STYLE, overscrollBehavior: "contain" }}>
-      <div className="lp-grain-dark" aria-hidden />
+    <div className="lp-body h-[100dvh] overflow-y-auto" style={{ ...ED, overscrollBehavior: "contain" }}>
+      <div className="ed-grain" aria-hidden />
 
-      {/* ── Nav ─────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 px-4 pt-4">
-        <nav className="mx-auto w-full max-w-[1080px] flex items-center justify-between rounded-full pl-5 pr-2 py-2.5" style={{ backgroundColor: "color-mix(in srgb, var(--lp-surface) 72%, transparent)", backdropFilter: "blur(20px) saturate(1.4)", WebkitBackdropFilter: "blur(20px) saturate(1.4)", border: "1px solid var(--lp-line)" }}>
-        <span className="inline-flex items-center gap-2 font-semibold tracking-tight text-[16px]"><Mark size={19} /> VeChat</span>
-        <div className="flex items-center gap-1 sm:gap-3">
-          <Link href="/sign-in" className="hidden sm:inline-flex text-[14px] font-medium px-3 py-2 rounded-full lp-ease transition-colors" style={{ color: "var(--lp-text-2)" }}>Iniciar sesión</Link>
-          <Link href="/sign-up" className="inline-flex items-center text-[14px] font-semibold px-4 py-2.5 rounded-full lp-ease transition-transform active:scale-[0.97]" style={{ backgroundColor: "var(--lp-accent)", color: "#06140D" }}>Empieza gratis</Link>
+      {/* ── Masthead ────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30" style={{ backgroundColor: "color-mix(in srgb, var(--ed-bg) 88%, transparent)", backdropFilter: "blur(8px)", borderBottom: "1px solid var(--ed-line)" }}>
+        <div className="max-w-[1160px] mx-auto px-5 sm:px-8 h-16 flex items-center justify-between">
+          <span className="inline-flex items-center gap-2 font-semibold tracking-tight text-[17px]"><Mark size={18} /> VeChat</span>
+          <div className="flex items-center gap-5">
+            <Link href="/sign-in" className="text-[14px]" style={{ color: "var(--ed-ink-2)" }}>Entrar</Link>
+            <Link href="/sign-up" className="text-[14px] font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--ed-accent)" }}>Empieza gratis <Arrow /></Link>
+          </div>
         </div>
-        </nav>
       </header>
 
-      {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
-        <div className="absolute pointer-events-none" aria-hidden style={{ top: "-10%", right: "-5%", width: "70%", height: "120%", background: "radial-gradient(50% 50% at 70% 30%, var(--lp-accent-soft), transparent 70%)", filter: "blur(20px)" }} />
-        <div className="relative max-w-[1180px] mx-auto px-5 sm:px-8 pt-14 sm:pt-20 pb-16 grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+      {/* ── Hero (type-led) ─────────────────────────────────────────────── */}
+      <section className="max-w-[1160px] mx-auto px-5 sm:px-8 pt-16 sm:pt-24 pb-16">
+        <Reveal>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] mb-7" style={{ color: "var(--ed-ink-3)" }}>La IA hecha en Venezuela</p>
+          <h1 className="ed-display font-bold text-[3rem] leading-[1.0] sm:text-[5rem] lg:text-[5.6rem] max-w-[14ch]">
+            Lo que pasa en el país, VeChat <span style={{ color: "var(--ed-accent)" }}>lo sabe</span>.
+          </h1>
+          <div className="mt-9 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-7">
+            <p className="text-[17px] sm:text-[18px] leading-relaxed max-w-[44ch]" style={{ color: "var(--ed-ink-2)" }}>
+              Del dólar a los trámites, de las hallacas a tu negocio. Pregúntale como le hablas a un pana.
+            </p>
+            <Link href="/sign-up" className="group inline-flex items-center gap-2.5 font-semibold text-[16px] shrink-0 pb-1.5" style={{ borderBottom: "2px solid var(--ed-accent)" }}>
+              Crea tu cuenta gratis
+              <span className="lp-ease transition-transform duration-300 group-hover:translate-x-0.5"><Arrow /></span>
+            </Link>
+          </div>
+        </Reveal>
+        {/* Índice tipo revista */}
+        <Reveal delay={120}>
+          <div className="mt-12 pt-5 flex flex-wrap gap-x-8 gap-y-2 text-[13px]" style={{ borderTop: "1px solid var(--ed-line)", color: "var(--ed-ink-2)" }}>
+            <span>Dólar y bolívares</span><span>Trámites del SAIME</span><span>Recetas criollas</span><span>Estudio y trabajo</span><span>Tu negocio</span>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ── Statement (la tesis) ────────────────────────────────────────── */}
+      <section className="py-16 sm:py-24" style={{ borderTop: "1px solid var(--ed-line)", borderBottom: "1px solid var(--ed-line)" }}>
+        <div className="max-w-[1160px] mx-auto px-5 sm:px-8">
           <Reveal>
-            <p className="inline-flex items-center gap-2 text-[12.5px] font-medium px-3.5 py-1.5 rounded-full mb-7" style={{ backgroundColor: "var(--lp-surface)", border: "1px solid var(--lp-line)", color: "var(--lp-text-2)" }}>
-              <Spark /> La IA hecha para Venezuela
+            <p className="ed-display font-medium text-[1.7rem] sm:text-[2.5rem] leading-[1.18] max-w-[24ch]">
+              Las otras IA te mandan a <span style={{ color: "var(--ed-ink-3)" }}>&ldquo;consultar una fuente oficial&rdquo;</span>. VeChat <span style={{ color: "var(--ed-accent)" }}>te resuelve</span>, con lo de aquí.
             </p>
-            <h1 className="lp-display font-bold text-[2.8rem] leading-[1.02] sm:text-[3.7rem] lg:text-[4.1rem]">
-              Por fin, una IA<br />que es <span style={{ color: "var(--lp-accent)" }}>de aquí</span>.
-            </h1>
-            <p className="mt-6 text-[17px] leading-relaxed max-w-[40ch]" style={{ color: "var(--lp-text-2)" }}>
-              Pregúntale del dólar, los trámites o las hallacas. Te responde como un pana, al instante.
+          </Reveal>
+        </div>
+      </section>
+
+      {/* ── El producto como figura ─────────────────────────────────────── */}
+      <section className="max-w-[1160px] mx-auto px-5 sm:px-8 py-16 sm:py-24">
+        <div className="grid lg:grid-cols-[0.85fr_1.15fr] gap-12 lg:gap-16 items-center">
+          <Reveal>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.18em] mb-5" style={{ color: "var(--ed-ink-3)" }}>Por dentro</p>
+            <h2 className="ed-display font-bold text-[1.9rem] sm:text-[2.6rem] leading-[1.06]">
+              Tu historial, a la mano. En el teléfono o la computadora.
+            </h2>
+            <p className="mt-5 text-[16px] leading-relaxed max-w-[40ch]" style={{ color: "var(--ed-ink-2)" }}>
+              Tus temas, tus respuestas guardadas y tus conversaciones de siempre. Sin perder el hilo.
             </p>
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Primary href="/sign-up">Crea tu cuenta gratis</Primary>
-              <Link href="/sign-in" className="inline-flex items-center text-[15px] font-semibold px-5 py-3.5 rounded-full lp-ease transition-colors" style={{ color: "var(--lp-text)", border: "1px solid var(--lp-line)" }}>Iniciar sesión</Link>
+            {/* Teléfono en vivo, como figura framed */}
+            <div className="mt-9 inline-block">
+              <div className="rounded-[40px] p-2" style={{ backgroundColor: "#16140F", boxShadow: "0 30px 60px -34px rgba(26,24,19,0.5)", width: 250 }}>
+                <LivePhone />
+              </div>
+              <Caption>En el teléfono, respondiendo en vivo.</Caption>
             </div>
           </Reveal>
 
-          {/* Mockup REAL del teléfono */}
-          <Reveal delay={140}>
-            <div className="relative mx-auto" style={{ width: 290 }}>
-              <div className="absolute -inset-12 rounded-full" aria-hidden style={{ background: "radial-gradient(circle, var(--lp-accent-soft), transparent 70%)", filter: "blur(34px)" }} />
-              <div className="relative rounded-[46px] p-2.5" style={{ backgroundColor: "#0A0D0B", border: "1px solid var(--lp-line)", boxShadow: "0 50px 90px -28px rgba(0,0,0,0.75)" }}>
-                <LivePhone />
+          <Reveal delay={120}>
+            <div>
+              <div className="overflow-hidden rounded-[12px]" style={{ border: "1px solid var(--ed-line)", boxShadow: "0 40px 80px -44px rgba(26,24,19,0.45)" }}>
+                <Image src="/landing/app-desktop.png" alt="VeChat en el escritorio" width={1340} height={840} className="w-full h-auto block" />
               </div>
+              <Caption>El escritorio, con tu historial al lado.</Caption>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* ── El concepto: la diferencia (versus) ─────────────────────────── */}
-      <section className="max-w-[1180px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
+      {/* ── Índice de lo que sabe (lista editorial, numerada) ───────────── */}
+      <section className="max-w-[1160px] mx-auto px-5 sm:px-8 py-16 sm:py-24" style={{ borderTop: "1px solid var(--ed-line)" }}>
         <Reveal>
-          <h2 className="lp-display font-bold text-[2.1rem] sm:text-[2.9rem] max-w-[20ch]">
-            No es lo mismo preguntarle a cualquiera.
+          <h2 className="ed-display font-bold text-[1.9rem] sm:text-[2.7rem] mb-10 max-w-[16ch]">
+            Sabe de lo que aquí importa.
           </h2>
-          <p className="mt-4 text-[16.5px] leading-relaxed max-w-[52ch]" style={{ color: "var(--lp-text-2)" }}>
-            Las IA del mundo te mandan a "consultar una fuente oficial". VeChat te resuelve, con lo de aquí.
-          </p>
         </Reveal>
-
-        <div className="mt-12 grid gap-5">
+        <div className="grid md:grid-cols-2 gap-x-16">
           {[
-            { q: "¿Qué papeles pide el SAIME para el pasaporte?", bad: "Los requisitos varían según el país. Te recomiendo revisar el sitio oficial de inmigración.", good: "Cédula vigente, la planilla del sistema y el pago del arancel. Te guío para sacar la cita en saime.gob.ve." },
-            { q: "¿A cuánto está el dólar hoy?", bad: "No tengo acceso a datos financieros en tiempo real. Consulta una fuente actualizada.", good: "Te traigo el BCV y el paralelo del día y te lo convierto a la cantidad que necesites." },
-          ].map((row, i) => (
-            <Reveal key={i} delay={i * 90}>
-              <div className="rounded-[24px] p-6 sm:p-8" style={{ backgroundColor: "var(--lp-surface)", border: "1px solid var(--lp-line)" }}>
-                <p className="text-[15px] font-semibold mb-5" style={{ color: "var(--lp-text)" }}>
-                  Tú: <span style={{ color: "var(--lp-text-2)" }}>{row.q}</span>
-                </p>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="rounded-2xl p-5" style={{ backgroundColor: "color-mix(in srgb, var(--lp-bg) 60%, transparent)", border: "1px solid var(--lp-line)" }}>
-                    <span className="text-[12px] font-semibold uppercase tracking-wide" style={{ color: "var(--lp-text-3)" }}>Una IA cualquiera</span>
-                    <p className="mt-2.5 text-[14.5px] leading-relaxed" style={{ color: "var(--lp-text-3)" }}>{row.bad}</p>
-                  </div>
-                  <div className="rounded-2xl p-5" style={{ backgroundColor: "var(--lp-accent-soft)", border: "1px solid color-mix(in srgb, var(--lp-accent) 35%, transparent)" }}>
-                    <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold uppercase tracking-wide" style={{ color: "var(--lp-accent)" }}><Mark size={13} /> VeChat</span>
-                    <p className="mt-2.5 text-[14.5px] leading-relaxed" style={{ color: "var(--lp-text)" }}>{row.good}</p>
-                  </div>
+            { n: "01", t: "Dólar y bolívares", d: "Tasas del día y conversiones al toque." },
+            { n: "02", t: "Trámites del Estado", d: "SAIME, SENIAT, RIF, pasaporte, citas." },
+            { n: "03", t: "Recetas criollas", d: "Tequeños, hallacas, cachapas, pabellón." },
+            { n: "04", t: "Estudio y trabajo", d: "Resume, redacta, traduce, hasta código." },
+            { n: "05", t: "Tu negocio", d: "Precios, costos, cuentas e ideas para vender." },
+            { n: "06", t: "Te lo explica fácil", d: "En tu idioma, las veces que haga falta." },
+          ].map((it, i) => (
+            <Reveal key={it.n} delay={(i % 2) * 60}>
+              <div className="flex gap-5 py-5" style={{ borderTop: "1px solid var(--ed-line)" }}>
+                <span className="ed-display text-[15px] font-semibold pt-1" style={{ color: "var(--ed-accent)" }}>{it.n}</span>
+                <div>
+                  <h3 className="ed-display text-[1.3rem] font-semibold leading-tight">{it.t}</h3>
+                  <p className="mt-1.5 text-[14.5px] leading-relaxed" style={{ color: "var(--ed-ink-2)" }}>{it.d}</p>
                 </div>
               </div>
             </Reveal>
@@ -139,128 +160,69 @@ export default function Landing({ appConfig }: { appConfig: AppConfig }) {
         </div>
       </section>
 
-      {/* ── Showcase de producto: mockup REAL de escritorio ─────────────── */}
-      <section className="relative overflow-hidden py-16 sm:py-24" style={{ borderTop: "1px solid var(--lp-line)", borderBottom: "1px solid var(--lp-line)", backgroundColor: "color-mix(in srgb, var(--lp-surface) 35%, transparent)" }}>
-        <div className="max-w-[1180px] mx-auto px-5 sm:px-8 text-center">
-          <Reveal>
-            <h2 className="lp-display font-bold text-[2.1rem] sm:text-[2.9rem] max-w-[22ch] mx-auto">
-              Tus conversaciones, todas en un solo lugar.
-            </h2>
-            <p className="mt-4 text-[16px] leading-relaxed max-w-[50ch] mx-auto" style={{ color: "var(--lp-text-2)" }}>
-              Tu historial guardado y a la mano, en el teléfono o en la computadora.
-            </p>
-          </Reveal>
-          <Reveal delay={120}>
-            <div className="relative mt-12 max-w-[980px] mx-auto">
-              <div className="absolute -inset-8 sm:-inset-16 rounded-full" aria-hidden style={{ background: "radial-gradient(circle, var(--lp-accent-soft), transparent 68%)", filter: "blur(40px)" }} />
-              <div className="relative rounded-[18px] overflow-hidden" style={{ border: "1px solid var(--lp-line)", boxShadow: "0 70px 130px -45px rgba(0,0,0,0.85)" }}>
-                <Image src="/landing/app-desktop.png" alt="VeChat en el escritorio" width={1340} height={840} className="w-full h-auto block" />
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── Lo que sabe (lista editorial, no cards genéricas) ───────────── */}
-      <section className="max-w-[1180px] mx-auto px-5 sm:px-8 py-20 sm:py-28">
-        <div className="grid lg:grid-cols-[0.9fr_1.1fr] gap-12 lg:gap-16 items-start">
-          <Reveal>
-            <h2 className="lp-display font-bold text-[2.1rem] sm:text-[2.9rem] leading-[1.05]">
-              Sabe de lo que aquí importa.
-            </h2>
-            <p className="mt-5 text-[16px] leading-relaxed max-w-[40ch]" style={{ color: "var(--lp-text-2)" }}>
-              No un chatbot genérico: conoce los trámites, la jerga, los precios y el día a día.
-            </p>
-          </Reveal>
-          <Reveal delay={100}>
-            <div className="grid sm:grid-cols-2 gap-x-10">
-              {[
-                { t: "Dólar y bolívares", d: "Tasas del día y conversiones al toque." },
-                { t: "Trámites del Estado", d: "SAIME, SENIAT, RIF, pasaporte, citas." },
-                { t: "Recetas criollas", d: "Tequeños, hallacas, cachapas, pabellón." },
-                { t: "Estudio y trabajo", d: "Resume, redacta, traduce, hasta código." },
-                { t: "Tu negocio", d: "Precios, costos, cuentas e ideas para vender." },
-                { t: "Te lo explica fácil", d: "En tu idioma, las veces que haga falta." },
-              ].map((it) => (
-                <div key={it.t} className="flex gap-3 py-4" style={{ borderBottom: "1px solid var(--lp-line)" }}>
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: "var(--lp-accent)" }} />
-                  <div>
-                    <h3 className="text-[15.5px] font-semibold" style={{ color: "var(--lp-text)" }}>{it.t}</h3>
-                    <p className="text-[13.5px] mt-0.5 leading-relaxed" style={{ color: "var(--lp-text-2)" }}>{it.d}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── Precios ─────────────────────────────────────────────────────── */}
-      <section className="max-w-[1180px] mx-auto px-5 sm:px-8 py-16 sm:py-24">
+      {/* ── Precios (rate card editorial) ───────────────────────────────── */}
+      <section className="max-w-[1160px] mx-auto px-5 sm:px-8 py-16 sm:py-24" style={{ borderTop: "1px solid var(--ed-line)" }}>
         <Reveal>
-          <h2 className="lp-display font-bold text-[2.1rem] sm:text-[2.9rem] text-center">
-            Empieza gratis. Mejora cuando quieras.
-          </h2>
-          <p className="mt-4 text-[15.5px] text-center" style={{ color: "var(--lp-text-2)" }}>
-            Pagas con Pago Móvil, Zelle o un cupón. Sin contratos.
-          </p>
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-12">
+            <h2 className="ed-display font-bold text-[1.9rem] sm:text-[2.7rem] max-w-[16ch]">Empieza gratis. Mejora cuando quieras.</h2>
+            <p className="text-[14px]" style={{ color: "var(--ed-ink-2)" }}>Pagas con Pago Móvil, Zelle o un cupón.</p>
+          </div>
         </Reveal>
-        <div className="mt-14 grid md:grid-cols-3 gap-5 items-stretch">
-          <Reveal><PlanCard name="Gratis" price="$0" cadence="para siempre" features={[`${freeDailyLimit} mensajes al día`, "Conoce a Venezuela", "Tu historial guardado"]} /></Reveal>
-          <Reveal delay={70}><PlanCard name="Semanal" price={`$${priceWeeklyUsd}`} cadence="por semana" features={["Mensajes ilimitados", "Respuestas más largas", "Para una semana fuerte"]} /></Reveal>
-          <Reveal delay={140}><PlanCard name="Mensual" price={`$${priceMonthlyUsd}`} cadence="por mes" featured features={["Mensajes ilimitados", "El mejor precio por día", "Para usarlo a diario"]} /></Reveal>
+        <div className="grid md:grid-cols-3">
+          {[
+            { name: "Gratis", price: "$0", cad: "para siempre", f: [`${freeDailyLimit} mensajes al día`, "Conoce a Venezuela", "Historial guardado"], featured: false },
+            { name: "Semanal", price: `$${priceWeeklyUsd}`, cad: "por semana", f: ["Mensajes ilimitados", "Respuestas más largas", "Para una semana fuerte"], featured: false },
+            { name: "Mensual", price: `$${priceMonthlyUsd}`, cad: "por mes", f: ["Mensajes ilimitados", "El mejor precio por día", "Para usarlo a diario"], featured: true },
+          ].map((p, i) => (
+            <Reveal key={p.name} delay={i * 70}>
+              <div className="h-full px-0 md:px-7 py-7 flex flex-col" style={{ borderTop: "1px solid var(--ed-line)", borderLeft: i === 0 ? undefined : "1px solid var(--ed-line)" }}>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="ed-display text-[1.25rem] font-semibold">{p.name}</h3>
+                  {p.featured && <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--ed-accent)" }}>Recomendado</span>}
+                </div>
+                <div className="mt-3 flex items-baseline gap-1.5">
+                  <span className="ed-display text-[2.4rem] font-bold">{p.price}</span>
+                  <span className="text-[13px]" style={{ color: "var(--ed-ink-3)" }}>{p.cad}</span>
+                </div>
+                <ul className="mt-6 space-y-2.5 flex-1">
+                  {p.f.map((x) => (
+                    <li key={x} className="text-[14px]" style={{ color: "var(--ed-ink-2)" }}>{x}</li>
+                  ))}
+                </ul>
+                <Link href="/sign-up" className="group mt-7 inline-flex items-center gap-2 text-[14.5px] font-semibold" style={{ color: p.featured ? "var(--ed-accent)" : "var(--ed-ink)", borderBottom: `2px solid ${p.featured ? "var(--ed-accent)" : "var(--ed-line)"}`, paddingBottom: 3, alignSelf: "flex-start" }}>
+                  Elegir <span className="lp-ease transition-transform duration-300 group-hover:translate-x-0.5"><Arrow c={p.featured ? "var(--ed-accent)" : "var(--ed-ink)"} /></span>
+                </Link>
+              </div>
+            </Reveal>
+          ))}
         </div>
       </section>
 
-      {/* ── Cierre ──────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden px-5 sm:px-8 pb-20 sm:pb-28">
-        <div className="relative max-w-[1180px] mx-auto rounded-[32px] px-8 py-20 sm:py-28 text-center overflow-hidden" style={{ backgroundColor: "var(--lp-surface)", border: "1px solid var(--lp-line)" }}>
-          <div className="absolute pointer-events-none inset-0" aria-hidden style={{ background: "radial-gradient(60% 80% at 50% 0%, var(--lp-accent-soft), transparent 70%)" }} />
-          <Reveal>
-            <h2 className="lp-display font-bold text-[2.3rem] sm:text-[3.2rem] leading-[1.05] relative">
+      {/* ── Cierre (contraportada oscura, único bloque invertido) ───────── */}
+      <section className="px-4 sm:px-8 pb-6 pt-2">
+        <Reveal>
+          <div className="max-w-[1160px] mx-auto rounded-[16px] px-8 py-20 sm:py-28 text-center" style={{ backgroundColor: "#16140F", color: "#F4F2EC" }}>
+            <h2 className="ed-display font-bold text-[2.3rem] sm:text-[3.4rem] leading-[1.04]">
               Tu pana digital<br />te está esperando.
             </h2>
-            <div className="mt-9 flex justify-center relative">
-              <Primary href="/sign-up">Crea tu cuenta gratis</Primary>
+            <div className="mt-9 flex justify-center">
+              <Button href="/sign-up">Crea tu cuenta gratis</Button>
             </div>
-          </Reveal>
-        </div>
+          </div>
+        </Reveal>
       </section>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      <footer className="px-5 sm:px-8 pb-10" style={{ borderTop: "1px solid var(--lp-line)" }}>
-        <div className="max-w-[1180px] mx-auto pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <span className="inline-flex items-center gap-2 font-semibold tracking-tight"><Mark size={17} /> VeChat</span>
-          <div className="flex items-center gap-5 text-[13.5px]" style={{ color: "var(--lp-text-2)" }}>
-            <Link href="/sign-in" className="hover:opacity-80">Iniciar sesión</Link>
-            <Link href="/sign-up" className="hover:opacity-80">Crear cuenta</Link>
+      <footer className="px-5 sm:px-8 py-8">
+        <div className="max-w-[1160px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-[13px]" style={{ color: "var(--ed-ink-2)" }}>
+          <span className="inline-flex items-center gap-2 font-semibold tracking-tight" style={{ color: "var(--ed-ink)" }}><Mark size={16} /> VeChat</span>
+          <div className="flex items-center gap-5">
+            <Link href="/sign-in" className="hover:opacity-70">Entrar</Link>
+            <Link href="/sign-up" className="hover:opacity-70">Crear cuenta</Link>
           </div>
-          <p className="text-[12.5px]" style={{ color: "var(--lp-text-3)" }}>VeChat. La IA que sí sabe de Venezuela.</p>
+          <span style={{ color: "var(--ed-ink-3)" }}>La IA que sí sabe de Venezuela.</span>
         </div>
       </footer>
-    </div>
-  );
-}
-
-function PlanCard({ name, price, cadence, features, featured = false }: { name: string; price: string; cadence: string; features: string[]; featured?: boolean }) {
-  return (
-    <div className="h-full rounded-[24px] p-7 flex flex-col" style={{ backgroundColor: featured ? "var(--lp-surface-2)" : "var(--lp-surface)", border: featured ? "1.5px solid var(--lp-accent)" : "1px solid var(--lp-line)", boxShadow: featured ? "0 40px 80px -40px rgba(30,201,138,0.35)" : "none" }}>
-      <div className="flex items-center justify-between">
-        <h3 className="lp-display text-[1.3rem] font-semibold">{name}</h3>
-        {featured && <span className="text-[11.5px] font-semibold px-2.5 py-1 rounded-full" style={{ backgroundColor: "var(--lp-accent)", color: "#06140D" }}>Recomendado</span>}
-      </div>
-      <div className="mt-4 flex items-baseline gap-1.5">
-        <span className="lp-display text-[2.5rem] font-bold">{price}</span>
-        <span className="text-[14px]" style={{ color: "var(--lp-text-3)" }}>{cadence}</span>
-      </div>
-      <ul className="mt-6 space-y-3 flex-1">
-        {features.map((f) => (
-          <li key={f} className="flex items-start gap-2.5 text-[14.5px]" style={{ color: "var(--lp-text-2)" }}><Check /> <span>{f}</span></li>
-        ))}
-      </ul>
-      <Link href="/sign-up" className="mt-7 inline-flex w-full items-center justify-center text-[14.5px] font-semibold py-3 rounded-full lp-ease transition-transform active:scale-[0.98]" style={featured ? { backgroundColor: "var(--lp-accent)", color: "#06140D" } : { border: "1px solid var(--lp-line)", color: "var(--lp-text)" }}>
-        Crear cuenta
-      </Link>
     </div>
   );
 }

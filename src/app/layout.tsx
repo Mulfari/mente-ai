@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Bricolage_Grotesque, Plus_Jakarta_Sans, Archivo } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { vechatAppearance } from "@/lib/clerkAppearance";
 import { vechatLocalization } from "@/lib/clerkLocalization";
@@ -27,6 +27,14 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-landing",
   display: "swap",
+});
+
+// Titulares editoriales de la landing: grotesca de medios, sobria y con carácter.
+const archivo = Archivo({
+  subsets: ["latin"],
+  variable: "--font-editorial",
+  display: "swap",
+  weight: ["500", "600", "700"],
 });
 
 export const viewport: Viewport = {
@@ -66,7 +74,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={vechatLocalization} appearance={vechatAppearance}>
-      <html lang="es" className={`${inter.variable} ${bricolage.variable} ${jakarta.variable}`} suppressHydrationWarning>
+      <html lang="es" className={`${inter.variable} ${bricolage.variable} ${jakarta.variable} ${archivo.variable}`} suppressHydrationWarning>
         <head>
           {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema), el
               color del marco del navegador móvil (theme-color) y el estado del
