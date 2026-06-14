@@ -780,6 +780,14 @@ textarea.chat-input-field {
 }
 [data-theme="dark"] .lp-grain { mix-blend-mode: screen; opacity: 0.05; }
 
+/* Grano fijo para la landing OSCURA (no depende del tema de la app, que puede
+   estar en claro mientras la landing es siempre oscura). */
+.lp-grain-dark {
+  position: fixed; inset: 0; z-index: 40; pointer-events: none;
+  opacity: 0.055; mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
 /* Curva premium reutilizable para hovers. */
 .lp-ease { transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1); }
 
