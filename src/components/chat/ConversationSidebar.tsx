@@ -46,14 +46,6 @@ function formatDateLabel(conv: Conversation): string {
   return "Más antiguo";
 }
 
-function planStatus(profile: ProfileData): { label: string; color: string } {
-  const weeks = profile?.subscription_weeks ?? 0;
-  if (weeks === -1) return { label: "Acceso ilimitado", color: "#8b5cf6" };
-  if (profile?.status === "active" && weeks > 0)
-    return { label: "Plan activo", color: "var(--primary)" };
-  return { label: "Sin suscripción", color: "var(--text-tertiary)" };
-}
-
 type Props = {
   conversations: Conversation[];
   activeConv: Conversation | null;
@@ -620,7 +612,6 @@ function SidebarBody({
   const isMobile = variant === "mobile";
   const avatarLetter = (userEmail || "U").charAt(0).toUpperCase();
   const canInteract = !disabled;
-  const plan = planStatus(profile);
 
   // Al expandir desde el icono de búsqueda del rail colapsado, el input
   // recibe el foco apenas existe — expandir sin foco dejaría el gesto a medias.
@@ -900,7 +891,7 @@ function SidebarBody({
       {/* Spacer when collapsed — pushes the avatar to the bottom */}
       {!expanded && <div className="flex-1" />}
 
-      {/* Account chip — avatar + email + estado del plan */}
+      {/* Account chip — avatar + email (sin etiqueta de plan debajo) */}
       <div className="shrink-0 px-2 pt-2 pb-3">
         {expanded ? (
           <button
@@ -922,13 +913,6 @@ function SidebarBody({
                 style={{ color: "var(--text-primary)" }}
               >
                 {userEmail || "Cuenta"}
-              </p>
-              <p className="flex items-center gap-1.5 text-[11px] leading-tight" style={{ color: "var(--text-tertiary)" }}>
-                <span
-                  className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-                  style={{ backgroundColor: plan.color }}
-                />
-                <span className="truncate">{plan.label}</span>
               </p>
             </div>
           </button>
