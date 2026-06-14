@@ -17,7 +17,8 @@ const ED = {
   "--ed-ink-2": "#56524A",
   "--ed-ink-3": "#8E887A",
   "--ed-line": "#E2DED3",
-  "--ed-accent": "#E14318",
+  "--ed-accent": "#10A37F",
+  "--ed-accent-ink": "#0A7355",
   backgroundColor: "var(--ed-bg)",
   color: "var(--ed-ink)",
 } as React.CSSProperties;
@@ -59,7 +60,7 @@ export default function Landing({ appConfig }: { appConfig: AppConfig }) {
           <span className="inline-flex items-center gap-2 font-semibold tracking-tight text-[17px]"><Mark size={18} /> VeChat</span>
           <div className="flex items-center gap-5">
             <Link href="/sign-in" className="text-[14px]" style={{ color: "var(--ed-ink-2)" }}>Entrar</Link>
-            <Link href="/sign-up" className="text-[14px] font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--ed-accent)" }}>Empieza gratis <Arrow /></Link>
+            <Link href="/sign-up" className="text-[14px] font-semibold inline-flex items-center gap-1.5" style={{ color: "var(--ed-accent-ink)" }}>Empieza gratis <Arrow c="var(--ed-accent-ink)" /></Link>
           </div>
         </div>
       </header>
@@ -149,7 +150,7 @@ export default function Landing({ appConfig }: { appConfig: AppConfig }) {
           ].map((it, i) => (
             <Reveal key={it.n} delay={(i % 2) * 60}>
               <div className="flex gap-5 py-5" style={{ borderTop: "1px solid var(--ed-line)" }}>
-                <span className="ed-display text-[15px] font-semibold pt-1" style={{ color: "var(--ed-accent)" }}>{it.n}</span>
+                <span className="ed-display text-[15px] font-semibold pt-1" style={{ color: "var(--ed-accent-ink)" }}>{it.n}</span>
                 <div>
                   <h3 className="ed-display text-[1.3rem] font-semibold leading-tight">{it.t}</h3>
                   <p className="mt-1.5 text-[14.5px] leading-relaxed" style={{ color: "var(--ed-ink-2)" }}>{it.d}</p>
@@ -178,7 +179,7 @@ export default function Landing({ appConfig }: { appConfig: AppConfig }) {
               <div className="h-full px-0 md:px-7 py-7 flex flex-col" style={{ borderTop: "1px solid var(--ed-line)", borderLeft: i === 0 ? undefined : "1px solid var(--ed-line)" }}>
                 <div className="flex items-center gap-2.5">
                   <h3 className="ed-display text-[1.25rem] font-semibold">{p.name}</h3>
-                  {p.featured && <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--ed-accent)" }}>Recomendado</span>}
+                  {p.featured && <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--ed-accent-ink)" }}>Recomendado</span>}
                 </div>
                 <div className="mt-3 flex items-baseline gap-1.5">
                   <span className="ed-display text-[2.4rem] font-bold">{p.price}</span>
@@ -189,8 +190,8 @@ export default function Landing({ appConfig }: { appConfig: AppConfig }) {
                     <li key={x} className="text-[14px]" style={{ color: "var(--ed-ink-2)" }}>{x}</li>
                   ))}
                 </ul>
-                <Link href="/sign-up" className="group mt-7 inline-flex items-center gap-2 text-[14.5px] font-semibold" style={{ color: p.featured ? "var(--ed-accent)" : "var(--ed-ink)", borderBottom: `2px solid ${p.featured ? "var(--ed-accent)" : "var(--ed-line)"}`, paddingBottom: 3, alignSelf: "flex-start" }}>
-                  Elegir <span className="lp-ease transition-transform duration-300 group-hover:translate-x-0.5"><Arrow c={p.featured ? "var(--ed-accent)" : "var(--ed-ink)"} /></span>
+                <Link href="/sign-up" className="group mt-7 inline-flex items-center gap-2 text-[14.5px] font-semibold" style={{ color: p.featured ? "var(--ed-accent-ink)" : "var(--ed-ink)", borderBottom: `2px solid ${p.featured ? "var(--ed-accent-ink)" : "var(--ed-line)"}`, paddingBottom: 3, alignSelf: "flex-start" }}>
+                  Elegir <span className="lp-ease transition-transform duration-300 group-hover:translate-x-0.5"><Arrow c={p.featured ? "var(--ed-accent-ink)" : "var(--ed-ink)"} /></span>
                 </Link>
               </div>
             </Reveal>
