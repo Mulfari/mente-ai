@@ -27,7 +27,7 @@ export default function LimitReachedCard({ resetAt, onSeePlans, onRedeem }: {
           Llegaste a tus mensajes de hoy
         </p>
         <p className="text-[13px] mb-3.5" style={{ color: "var(--text-secondary)" }}>
-          {left ? `Se renuevan en ${left} · o pásate a ilimitado` : "Vuelve mañana · o pásate a ilimitado"}
+          {left ? `Se renuevan en ${left} · o hazte VeChat Plus` : "Vuelve mañana · o hazte VeChat Plus"}
         </p>
         <div className="flex gap-2 justify-center flex-wrap">
           <button onClick={onSeePlans}

@@ -94,7 +94,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
         >
           <div>
             <h2 className="text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-              Hazte ilimitado
+              Hazte VeChat Plus
             </h2>
             <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
               Elige tu plan y chatea sin limites

@@ -71,6 +71,11 @@ type Props = {
   onCloseMobile: () => void;
   // Disabled (logged-out) state — fades the sidebar and blocks clicks
   disabled?: boolean;
+  // Upsell de conversión (solo free): cuota del día + CTA a VeChat Plus.
+  showUpgrade?: boolean;
+  quotaUsed?: number;
+  quotaTotal?: number;
+  onUpgrade?: () => void;
 };
 
 function VeChatMark({ size = 16 }: { size?: number }) {
@@ -486,6 +491,10 @@ type SidebarBodyProps = {
   onToggleExpanded: () => void;
   disabled: boolean;
   variant: "desktop" | "mobile";
+  showUpgrade: boolean;
+  quotaUsed: number;
+  quotaTotal: number;
+  onUpgrade?: () => void;
 };
 
 // Skeleton del historial: barras con el ritmo visual de las filas reales
@@ -540,6 +549,10 @@ function SidebarBody({
   onToggleExpanded,
   disabled,
   variant,
+  showUpgrade,
+  quotaUsed,
+  quotaTotal,
+  onUpgrade,
 }: SidebarBodyProps) {
   // Agrupar el historial cargado por fecha (Hoy / Ayer / Últimos 7 / 30 días /
   // Más antiguas). La búsqueda NO filtra esto: va por separado al servidor.
@@ -891,6 +904,47 @@ function SidebarBody({
       {/* Spacer when collapsed — pushes the avatar to the bottom */}
       {!expanded && <div className="flex-1" />}
 
+      {/* Upsell VeChat Plus — solo free y expandido. Conversión pasiva:
+          cuota del día + barra + CTA al modal de planes. No toca el chip. */}
+      {showUpgrade && expanded && (
+        <div className="shrink-0 px-2 pt-2">
+          <div
+            className="rounded-xl p-3"
+            style={{
+              backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
+            }}
+          >
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <VeChatMark size={13} />
+              <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
+                VeChat Plus
+              </span>
+            </div>
+            <p className="text-[11px] mb-1.5" style={{ color: "var(--text-secondary)" }}>
+              {quotaUsed} de {quotaTotal} mensajes hoy
+            </p>
+            <div className="h-1.5 rounded-full overflow-hidden mb-2.5" style={{ backgroundColor: "var(--surface-hover)" }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${quotaTotal > 0 ? Math.min(100, Math.round((quotaUsed / quotaTotal) * 100)) : 0}%`,
+                  backgroundColor: "var(--primary)",
+                }}
+              />
+            </div>
+            <button
+              onClick={onUpgrade}
+              disabled={!canInteract}
+              className="w-full h-8 rounded-lg text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: "var(--primary)" }}
+            >
+              Hazte Plus
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Account chip — avatar + email (sin etiqueta de plan debajo) */}
       <div className="shrink-0 px-2 pt-2 pb-3">
         {expanded ? (
@@ -957,6 +1011,10 @@ export default function ConversationSidebar({
   showMobile,
   onCloseMobile,
   disabled,
+  showUpgrade,
+  quotaUsed,
+  quotaTotal,
+  onUpgrade,
 }: Props) {
   // La búsqueda es estado interno del sidebar — el resto de la app no la usa.
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -1045,6 +1103,10 @@ export default function ConversationSidebar({
           onToggleExpanded={onToggleExpanded}
           disabled={!!disabled}
           variant="desktop"
+          showUpgrade={!!showUpgrade}
+          quotaUsed={quotaUsed ?? 0}
+          quotaTotal={quotaTotal ?? 0}
+          onUpgrade={onUpgrade}
         />
         </div>
       </div>
@@ -1102,6 +1164,10 @@ export default function ConversationSidebar({
           onToggleExpanded={onCloseMobile}
           disabled={!!disabled}
           variant="mobile"
+          showUpgrade={!!showUpgrade}
+          quotaUsed={quotaUsed ?? 0}
+          quotaTotal={quotaTotal ?? 0}
+          onUpgrade={onUpgrade}
         />
       </div>
     </>

@@ -648,7 +648,7 @@ function SubscriptionTab({ profile, tick, appConfig }: { profile: Props["profile
               className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-[1.01]"
               style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)" }}
             >
-              {showPaymentInfo ? "Ocultar metodos de pago" : "Upgrade a ilimitado"}
+              {showPaymentInfo ? "Ocultar metodos de pago" : "Hazte VeChat Plus"}
             </button>
           </div>
         ) : !cd || cd.expired ? (
@@ -701,7 +701,7 @@ function SubscriptionTab({ profile, tick, appConfig }: { profile: Props["profile
 
       {appConfig && (
         <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>Planes disponibles</p>
+          <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>VeChat Plus</p>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-xl p-4 text-center" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
               <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-secondary)" }}>Semanal</p>

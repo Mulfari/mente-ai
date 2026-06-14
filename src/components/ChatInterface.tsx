@@ -1927,6 +1927,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           showMobile={showSidebar}
           onCloseMobile={() => setShowSidebar(false)}
           disabled={isDisabled}
+          showUpgrade={isFreeTier}
+          quotaUsed={Math.max(0, appConfig.freeDailyLimit - quotaLeft())}
+          quotaTotal={appConfig.freeDailyLimit}
+          onUpgrade={() => setShowPlans(true)}
         />
       )}
 
