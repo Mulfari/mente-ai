@@ -179,8 +179,37 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   en VE) + una línea gris con las horas que le quedan. NADA más (sin Telegram/X,
   sin "Actualizar", sin "Desactivar"). La foto se pone al día sola al reabrir.
 
-## Modelo de negocio
-- Registro libre, pero cuenta nueva queda con `subscription_weeks = 0` (bloqueada para chatear)
-- Admin activa cuentas / agrega semanas, o el usuario canjea cupón
-- Límite horario para no-pagos: 20 msg/hora
-- Sin freemium — un solo plan semanal
+## Modelo de negocio (FREEMIUM)
+- Spec/plan: `docs/superpowers/specs/2026-06-13-modelo-negocio-design.md` +
+  `docs/superpowers/plans/2026-06-13-modelo-negocio-freemium.md`
+- Tiers resueltos por `resolveTier()` (src/lib/plans.ts, función PURA
+  isomórfica usada por server y cliente) sobre (status, subscription_weeks,
+  subscription_end): **banned** (status!='active'), **unlimited** (weeks=-1,
+  admin), **paid** (subscription_end > now), **free** (todo lo demás).
+- **Gratis**: toda cuenta nueva nace `plan='free'` (ya NO bloqueada) y chatea
+  con tope diario (`free_daily_limit`, default 10) que se reinicia a
+  medianoche Venezuela (04:00 UTC, ver `nextVenezuelaMidnightUTC`). Conteo en
+  `profiles.daily_msg_count` + `daily_reset_at`.
+- **Planes pago** (chat ilimitado mientras vigentes): Semanal y Mensual.
+  Al **vencer** caen a free (NO bloqueo total; "sin acceso" solo si el admin
+  pone `status='inactive'`).
+- **Gating REAL en `/api/auth/vps-token`** (helper `src/lib/dailyGate.ts`:
+  `checkDailyAccess` + `consumeDailyQuota`). OJO: el chat NO pasa por
+  `/api/chat` — el cliente pide token a vps-token (1 por envío) y llama a
+  `/api/stream`. vps-token devuelve 403/429 y consume cuota; `/api/chat`
+  conserva el gate (sin consumo) por si algún path legacy lo usa.
+- **UI**: píldora "Te quedan N" cuando quota ≤3 (ChatInput); al agotar,
+  `LimitReachedCard` (cuenta regresiva al reset) reemplaza el input y abre
+  `PlansModal` (precios desde config + WhatsApp + canje de cupón).
+  `getBlockReason`/`quotaLeft` en ChatInterface usan `resolveTier`; `appConfig`
+  llega por props desde los server components (page.tsx, chat/*).
+- **Cobro MIXTO**: cupones (canje en `/api/coupons/apply`, sincroniza `plan`)
+  + WhatsApp manual; activación centralizada en `src/lib/activatePlan.ts`
+  (la usa el admin vía `POST /api/admin/data?type=activate-plan`; mañana la
+  pasarela). Pasarela automática = fuera de alcance (solo la costura lista).
+- **Config editable** sin redeploy: tabla `app_config` (free_daily_limit,
+  price_weekly_usd=2, price_monthly_usd=6, plan_weekly_days=7,
+  plan_monthly_days=30, whatsapp_number). Lectura server: `getAppConfig()`
+  (src/lib/appConfig.ts, con defaults). Admin la edita en `/admin` →
+  Configuración (`GET/POST /api/admin/data?type=config`).
+- Límite horario viejo (20/hora) ELIMINADO (era código muerto).
