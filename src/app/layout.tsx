@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Bricolage_Grotesque } from "next/font/google";
+import { Inter, Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { vechatAppearance } from "@/lib/clerkAppearance";
 import { vechatLocalization } from "@/lib/clerkLocalization";
@@ -20,6 +20,13 @@ const bricolage = Bricolage_Grotesque({
   variable: "--font-display",
   display: "swap",
   weight: ["500", "600", "700"],
+});
+
+// Cuerpo de la landing (la skill high-end prohíbe Inter para marketing premium).
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-landing",
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -59,7 +66,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={vechatLocalization} appearance={vechatAppearance}>
-      <html lang="es" className={`${inter.variable} ${bricolage.variable}`} suppressHydrationWarning>
+      <html lang="es" className={`${inter.variable} ${bricolage.variable} ${jakarta.variable}`} suppressHydrationWarning>
         <head>
           {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema), el
               color del marco del navegador móvil (theme-color) y el estado del

@@ -74,12 +74,8 @@ export default function HeroDemo() {
 
   return (
     <div
-      className="w-full rounded-[26px] p-4 sm:p-5"
-      style={{
-        backgroundColor: "var(--surface)",
-        border: "1px solid var(--border)",
-        boxShadow: "0 30px 70px -30px rgba(42,37,33,0.35)",
-      }}
+      className="w-full h-full p-5 sm:p-6"
+      style={{ backgroundColor: "var(--surface)", borderRadius: 28 }}
     >
       {/* Encabezado del panel: marca del producto */}
       <div className="flex items-center justify-between pb-3 mb-3" style={{ borderBottom: "1px solid var(--border)" }}>
