@@ -2,32 +2,13 @@ import { auth } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import * as jose from "jose";
-import { resolveTier, nextVenezuelaMidnightUTC } from "@/lib/plans";
-import { getAppConfig } from "@/lib/appConfig";
+import { checkDailyAccess } from "@/lib/dailyGate";
 
 const VPS_SECRET = process.env.VPS_SECRET || process.env.VPS_SHARED_SECRET || "";
 const VPS_URL = process.env.VPS_ORCHESTRATOR_URL || "http://localhost:3000";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 5000;
 const TIMEOUT_MS = 300_000;
-// Devuelve null si puede enviar; si no, el error. Cuando es free y tiene
-// cuota, NO incrementa aquí — el incremento es un paso aparte para no
-// consumir cuota si el envío falla antes de llamar al VPS.
-async function checkAccess(profile: any, now: Date) {
-  const tier = resolveTier(profile, now);
-  if (tier === "banned") return { error: "Tu cuenta está inactiva.", code: 403 as const };
-  if (tier === "unlimited" || tier === "paid") return null;
-  // tier === "free": aplica tope diario.
-  const cfg = await getAppConfig();
-  const resetAt = profile.daily_reset_at ? new Date(profile.daily_reset_at) : null;
-  const count = !resetAt || now >= resetAt ? 0 : (profile.daily_msg_count ?? 0);
-  if (count >= cfg.freeDailyLimit) {
-    const next = resetAt && now < resetAt ? resetAt : nextVenezuelaMidnightUTC(now);
-    return { error: "Llegaste a tu límite diario gratis.", code: 429 as const, resetAt: next.toISOString() };
-  }
-  return null;
-}
-
 function historyToText(messages: { role: string; content: any[] }[]): string {
   return messages
     .map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content.map((p: any) => p.text || "").join(" ")}`)
@@ -62,21 +43,15 @@ export async function POST(request: Request) {
     const internalUserId = profile.id;
 
     const now = new Date();
-    const denied = await checkAccess(profile, now);
+    // Gate compartido (sin consumir cuota: el consumo real ocurre en
+    // /api/auth/vps-token, que es por donde pasa el flujo de chat). Esto deja
+    // /api/chat protegido por si algún path legacy lo usa.
+    const denied = await checkDailyAccess(profile, now);
     if (denied) return NextResponse.json(denied, { status: denied.code });
 
     const { message, conversation_id, mode, resume_message_id, message_id } = await request.json();
     if (!message?.trim()) {
       return NextResponse.json({ error: "Mensaje vacío" }, { status: 400 });
-    }
-
-    if (resolveTier(profile, now) === "free") {
-      const resetAt = profile.daily_reset_at ? new Date(profile.daily_reset_at) : null;
-      const fresh = !resetAt || now >= resetAt;
-      await supabase.from("profiles").update({
-        daily_msg_count: fresh ? 1 : (profile.daily_msg_count ?? 0) + 1,
-        daily_reset_at: fresh ? nextVenezuelaMidnightUTC(now).toISOString() : profile.daily_reset_at,
-      }).eq("id", internalUserId);
     }
 
     // Load conversation history
