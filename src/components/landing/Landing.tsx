@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import Reveal from "./Reveal";
+import LivePhone from "./LivePhone";
 import type { AppConfig } from "@/lib/appConfig";
 
 // ── Landing OSCURA para el visitante deslogueado (su propia identidad, libre del
@@ -94,7 +95,7 @@ export default function Landing({ appConfig }: { appConfig: AppConfig }) {
             <div className="relative mx-auto" style={{ width: 290 }}>
               <div className="absolute -inset-12 rounded-full" aria-hidden style={{ background: "radial-gradient(circle, var(--lp-accent-soft), transparent 70%)", filter: "blur(34px)" }} />
               <div className="relative rounded-[46px] p-2.5" style={{ backgroundColor: "#0A0D0B", border: "1px solid var(--lp-line)", boxShadow: "0 50px 90px -28px rgba(0,0,0,0.75)" }}>
-                <Image src="/landing/app-phone.png" alt="VeChat en el teléfono" width={390} height={844} priority className="rounded-[36px] w-full h-auto block" />
+                <LivePhone />
               </div>
             </div>
           </Reveal>
