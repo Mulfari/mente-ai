@@ -1,23 +1,23 @@
 import { auth } from "@clerk/nextjs/server";
 import ChatInterface from "@/components/ChatInterface";
+import Landing from "@/components/landing/Landing";
 import { getOrCreateProfile } from "@/lib/profile";
 import { createClient } from "@/lib/supabase/server";
 import { getAppConfig } from "@/lib/appConfig";
 
-// Un solo chat para todos: el visitante deslogueado ve exactamente la misma
-// interfaz (hero + input + feed de tendencias); interactuar lo lleva a crear
-// cuenta con su pregunta guardada. El logueado además tiene su historial.
+// Deslogueado → landing de venta (muestra el producto y empuja a registrarse).
+// Logueado → el chat con su historial. El chat ya NO es la home del visitante.
 export default async function Home() {
   const [{ userId }, appConfig] = await Promise.all([auth(), getAppConfig()]);
 
   if (!userId) {
-    return <ChatInterface userId="" initialIsLoggedIn={false} appConfig={appConfig} />;
+    return <Landing appConfig={appConfig} />;
   }
 
   const profile = await getOrCreateProfile(userId);
   if (!profile) {
-    // DB caída — modo visitante antes que un crash.
-    return <ChatInterface userId="" initialIsLoggedIn={false} appConfig={appConfig} />;
+    // DB caída — landing antes que un crash.
+    return <Landing appConfig={appConfig} />;
   }
 
   const supabase = createClient();

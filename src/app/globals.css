@@ -744,3 +744,53 @@ html[data-sidebar="closed"] .sidebar-desktop {
 textarea.chat-input-field {
   transition: height 0.15s var(--motion-standard);
 }
+
+/* ===========================================================================
+   LANDING (página de venta para el visitante deslogueado). Usa los MISMOS
+   tokens del tema (papel cálido + verde) para heredar claro/oscuro y marca.
+   Prefijo .lp- para no chocar con el resto de la app.
+   =========================================================================== */
+.lp-display { font-family: var(--font-display), var(--font-inter), system-ui, sans-serif; }
+
+/* Revelado al entrar en viewport (lo dispara IntersectionObserver en Reveal). */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal-in { opacity: 1; transform: none; }
+
+/* Caret del demo del hero mientras "escribe". */
+.lp-caret::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  border-radius: 2px;
+  background: var(--primary);
+  animation: lp-blink 1s steps(1) infinite;
+}
+@keyframes lp-blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+
+/* Marquee de preguntas (una sola por página). Pausa al hover. */
+.lp-marquee { display: flex; width: max-content; animation: lp-scroll 42s linear infinite; }
+.lp-marquee:hover { animation-play-state: paused; }
+.lp-marquee-rev { animation-direction: reverse; animation-duration: 50s; }
+@keyframes lp-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Halo suave detrás del hero/CTA, tintado al verde de marca. */
+.lp-halo {
+  background:
+    radial-gradient(60% 60% at 70% 30%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 70%),
+    radial-gradient(50% 50% at 20% 80%, color-mix(in srgb, var(--primary) 10%, transparent), transparent 70%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .lp-marquee { animation: none; }
+  .lp-caret::after { animation: none; }
+}

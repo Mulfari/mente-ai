@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Bricolage_Grotesque } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { vechatAppearance } from "@/lib/clerkAppearance";
 import { vechatLocalization } from "@/lib/clerkLocalization";
@@ -10,6 +10,16 @@ import ThemeWatcher from "@/components/ThemeWatcher";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+});
+
+// Fuente display SOLO para la landing (titulares): grotesca cálida y con
+// carácter, para que la página de venta no se sienta genérica. El chat sigue
+// en Inter.
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+  weight: ["500", "600", "700"],
 });
 
 export const viewport: Viewport = {
@@ -49,7 +59,7 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider localization={vechatLocalization} appearance={vechatAppearance}>
-      <html lang="es" className={inter.variable} suppressHydrationWarning>
+      <html lang="es" className={`${inter.variable} ${bricolage.variable}`} suppressHydrationWarning>
         <head>
           {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema), el
               color del marco del navegador móvil (theme-color) y el estado del

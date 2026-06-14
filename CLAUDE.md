@@ -74,14 +74,23 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - El resto de tablas (coupons, knowledge*, query_events, places, etc.) tienen
   RLS ON sin policies: solo las rutas API con el service role key acceden.
 
-## UN SOLO CHAT (arquitectura de la home)
-- `ChatInterface` es LA única superficie para todos: deslogueado y logueado
-  ven exactamente lo mismo (hero criollo + input centrado a pantalla
-  completa + feed de tendencias bajo el fold con scroll interno)
-- Deslogueado: sin sidebar, header con marca y CTAs; `getBlockReason`
-  permite escribir y `sendMessage`/`submitSuggestion` abren el modal de
-  registro guardando la pregunta (`vechat-pending-question` en localStorage),
-  que tras autenticarse se teclea sola en el input (typeAndSubmit) y se envía
+## Home: LANDING (deslogueado) + CHAT (logueado)
+- OJO (cambio de arquitectura): el visitante DESLOGUEADO ya NO ve el chat.
+  `page.tsx` renderiza `src/components/landing/Landing.tsx` (página de venta)
+  cuando no hay `userId`; el chat (`ChatInterface`) es solo para logueados.
+- `Landing` (server component) usa los MISMOS tokens del tema (papel cálido +
+  verde) → hereda claro/oscuro y marca. Su propio contenedor de scroll
+  (`h-[100dvh] overflow-y-auto`) porque el body global está bloqueado. Fuente
+  display SOLO aquí: Bricolage Grotesque (`--font-display`, cargada en layout;
+  el chat sigue en Inter). Secciones: hero (split + demo real de chat animado
+  `HeroDemo`), bento de casos de uso, 3 pasos, marquee de preguntas, precios
+  (de `appConfig`: gratis/semanal/mensual), CTA final, footer. Motion con
+  `Reveal` (IntersectionObserver, respeta reduced-motion) + CSS. Todos los CTA
+  van a `/sign-up` (Crear cuenta) o `/sign-in`. Hecha con la skill de diseño
+  `design-taste-frontend` (sin deps nuevas: SVG a mano, convención del repo).
+- `ChatInterface` sigue siendo LA única superficie del LOGUEADO (hero criollo
+  + input + feed). El visitante deslogueado del chat (p.ej. vía link a /chat)
+  todavía existe como fallback, pero la home `/` deslogueada es la landing.
 - Logueado: sidebar con historial; los clicks del feed envían directo;
   cuenta bloqueada (0 semanas) abre el AccountMenu
 - Feed: `TrendingFeed` (componente único) + `GET /api/feed` (único endpoint;
