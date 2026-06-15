@@ -22,6 +22,7 @@ type Message = {
   _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
   mode?: string;
   _isDeep?: boolean;
+  _status?: "searching";
   _feedbackGiven?: boolean;
   feedback_vote?: boolean | null;
 };
@@ -225,14 +226,26 @@ export default function MessageBubble({
             }}
           >
             {isStreaming && !displayedContent ? (
-              // Aún sin texto visible: indicador "pensando".
-              <div className="flex items-center min-h-[24px]">
-                <span className="thinking inline-flex items-center gap-1.5" aria-label="VeChat está pensando">
-                  <span className="thinking-dot" />
-                  <span className="thinking-dot" />
-                  <span className="thinking-dot" />
-                </span>
-              </div>
+              message._status === "searching" ? (
+                // Buscando fuentes en internet antes de responder (pregunta de actualidad).
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
+                  style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", color: "var(--primary)" }}>
+                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" />
+                    <path className="opacity-75" d="M12 2a10 10 0 0 1 10 10" />
+                  </svg>
+                  <span className="text-[13px] font-medium">Buscando en internet…</span>
+                </div>
+              ) : (
+                // Aún sin texto visible: indicador "pensando".
+                <div className="flex items-center min-h-[24px]">
+                  <span className="thinking inline-flex items-center gap-1.5" aria-label="VeChat está pensando">
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                    <span className="thinking-dot" />
+                  </span>
+                </div>
+              )
             ) : message.content && /^(Error|Conexion)/.test(message.content) && !message._retryReq ? (
               <div className="flex items-center gap-2" style={{ color: "var(--danger)" }}>
                 <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
