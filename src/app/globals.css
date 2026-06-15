@@ -396,19 +396,20 @@ html[data-sidebar="closed"] .sidebar-desktop {
   50% { opacity: 0; }
 }
 
-/* Caret de streaming INLINE: se pega al final del último bloque de la
-   respuesta que se está formateando en vivo (::after del último hijo del
-   prose), así parpadea justo donde va apareciendo el texto. */
-.streaming-prose > :last-child::after {
-  content: "";
-  display: inline-block;
-  width: 3px;
-  height: 1.05em;
-  border-radius: 2px;
-  margin-left: 3px;
-  background-color: var(--primary);
-  vertical-align: text-bottom;
-  animation: blink 1s ease-in-out infinite;
+/* Efecto "char blur" al escribir: cada palabra (envuelta en .cb-w por el plugin
+   rehypeBlurWords, SOLO durante el streaming) aparece desenfocada y se nitidiza.
+   Reemplaza al caret de typewriter. `both` deja nítidas las palabras ya
+   animadas; solo las nuevas que aparecen corren la animación. Respeta
+   reduced-motion (sin animación). */
+.streaming-prose .cb-w {
+  animation: cb-blur 0.5s ease both;
+}
+@keyframes cb-blur {
+  from { filter: blur(8px); opacity: 0; }
+  to { filter: blur(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .streaming-prose .cb-w { animation: none; }
 }
 
 /* === PROSE / MARKDOWN === */

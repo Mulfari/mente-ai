@@ -39,6 +39,32 @@ type Props = {
 // velocidad de APARICIÓN de la de la red — revela el texto a ritmo parejo
 // con requestAnimationFrame, alcanzando las ráfagas sin saltos. Al terminar
 // (o con prefers-reduced-motion) muestra el texto completo de inmediato.
+// Plugin rehype: envuelve cada PALABRA del texto en <span class="cb-w"> para
+// poder animarlas (blur-in) una a una mientras se streamea. Solo se aplica
+// durante el streaming; el render final va sin él (markdown limpio). No toca
+// code/pre (no romper bloques de código). Los espacios quedan como texto
+// suelto para preservar el wrapping y el copiar/pegar.
+function rehypeBlurWords() {
+  const wrap = (node: any) => {
+    if (!node || !Array.isArray(node.children)) return;
+    const out: any[] = [];
+    for (const child of node.children) {
+      if (child.type === "text") {
+        for (const part of String(child.value).split(/(\s+)/)) {
+          if (part === "") continue;
+          if (/^\s+$/.test(part)) out.push({ type: "text", value: part });
+          else out.push({ type: "element", tagName: "span", properties: { className: ["cb-w"] }, children: [{ type: "text", value: part }] });
+        }
+      } else {
+        if (child.type === "element" && child.tagName !== "code" && child.tagName !== "pre") wrap(child);
+        out.push(child);
+      }
+    }
+    node.children = out;
+  };
+  return (tree: any) => wrap(tree);
+}
+
 function useSmoothReveal(full: string, active: boolean): string {
   const [shown, setShown] = React.useState(full);
   const shownLenRef = React.useRef(full.length);
@@ -65,8 +91,18 @@ function useSmoothReveal(full: string, active: boolean): string {
           // Paso adaptativo: avanza más rápido cuanto más texto haya
           // pendiente (alcanza las ráfagas), suave al final.
           const step = Math.max(1, Math.min(28, Math.ceil((target.length - cur) / 9)));
-          shownLenRef.current = cur + step;
-          setShown(target.slice(0, shownLenRef.current));
+          let next = cur + step;
+          // Avanzar SOLO hasta un límite de palabra: así el blur-in anima cada
+          // palabra completa una vez (si cortáramos a media palabra, el span
+          // activo se re-animaría en cada frame).
+          if (next < target.length) {
+            const sp = target.indexOf(" ", next);
+            const nl = target.indexOf("\n", next);
+            const bound = Math.min(sp === -1 ? Infinity : sp, nl === -1 ? Infinity : nl);
+            next = bound === Infinity ? target.length : bound + 1;
+          }
+          shownLenRef.current = next;
+          setShown(target.slice(0, next));
         }
       }
       raf = requestAnimationFrame(tick); // sigue corriendo para alcanzar nuevos tokens
@@ -258,7 +294,7 @@ export default function MessageBubble({
               // se ve formateado desde el primer token. Mientras streamea,
               // `streaming-prose` añade el caret parpadeante al final (CSS).
               <div className={`prose max-w-none${isStreaming ? " streaming-prose" : ""}`}>
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={isStreaming ? [rehypeBlurWords] : []} components={mdComponents}>
                   {displayedContent}
                 </ReactMarkdown>
               </div>
