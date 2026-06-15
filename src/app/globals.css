@@ -399,17 +399,56 @@ html[data-sidebar="closed"] .sidebar-desktop {
 /* Efecto "char blur" al escribir: cada palabra (envuelta en .cb-w por el plugin
    rehypeBlurWords, SOLO durante el streaming) aparece desenfocada y se nitidiza.
    Reemplaza al caret de typewriter. `both` deja nítidas las palabras ya
-   animadas; solo las nuevas que aparecen corren la animación. Respeta
-   reduced-motion (sin animación). */
+   animadas; solo las nuevas que aparecen corren la animación. Afinado: blur más
+   sutil (6px) y curva ease-out un poco más rápida para que se sienta ágil pero
+   suave. Respeta reduced-motion. */
 .streaming-prose .cb-w {
-  animation: cb-blur 0.5s ease both;
+  animation: cb-blur 0.42s cubic-bezier(0.2, 0, 0, 1) both;
 }
 @keyframes cb-blur {
-  from { filter: blur(8px); opacity: 0; }
-  to { filter: blur(0); opacity: 1; }
+  from { filter: blur(6px); opacity: 0; }
+  60%  { opacity: 1; }
+  to   { filter: blur(0); opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .streaming-prose .cb-w { animation: none; }
+}
+
+/* Indicador "Buscando en internet": globo girando + texto con shimmer, en línea
+   (sin caja), acorde al estilo de respuesta sin burbuja. */
+.cb-searching { color: var(--primary); font-size: 13.5px; font-weight: 500; }
+.cb-globe { animation: cb-globe-spin 3.2s linear infinite; flex-shrink: 0; }
+@keyframes cb-globe-spin { to { transform: rotate(360deg); } }
+.cb-searching-text {
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--primary) 40%, var(--text-tertiary)) 30%,
+    var(--primary) 50%,
+    color-mix(in srgb, var(--primary) 40%, var(--text-tertiary)) 70%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent;
+  animation: cb-shimmer 1.7s linear infinite;
+}
+@keyframes cb-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .cb-globe { animation: none; }
+  .cb-searching-text { animation: none; -webkit-text-fill-color: var(--primary); color: var(--primary); }
+}
+
+/* Sello "con fuentes" + chips de dominios bajo respuestas aterrizadas. */
+.cb-sources { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.cb-sources-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; color: var(--primary); }
+.cb-source-chip {
+  font-size: 11.5px; color: var(--text-secondary);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 2px 9px; text-decoration: none;
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.cb-source-chip:hover {
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
 }
 
 /* === PROSE / MARKDOWN === */

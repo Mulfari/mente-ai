@@ -23,6 +23,8 @@ type Message = {
   mode?: string;
   _isDeep?: boolean;
   _status?: "searching";
+  _grounded?: boolean;
+  _sources?: { title: string; url: string }[];
   _feedbackGiven?: boolean;
   feedback_vote?: boolean | null;
 };
@@ -263,14 +265,16 @@ export default function MessageBubble({
           >
             {isStreaming && !displayedContent ? (
               message._status === "searching" ? (
-                // Buscando fuentes en internet antes de responder (pregunta de actualidad).
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
-                  style={{ backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)", color: "var(--primary)" }}>
-                  <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" />
-                    <path className="opacity-75" d="M12 2a10 10 0 0 1 10 10" />
+                // Buscando en internet: globo que gira + texto con shimmer (sin
+                // caja, en línea con la respuesta sin burbuja). Se mantiene hasta
+                // que llega el primer token (no vuelve a los 3 puntos).
+                <div className="cb-searching inline-flex items-center gap-2 min-h-[24px]" aria-label="Buscando en internet">
+                  <svg className="cb-globe" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" />
+                    <path d="M3 12h18" />
+                    <path d="M12 3c2.6 2.4 4 5.6 4 9s-1.4 6.6-4 9c-2.6-2.4-4-5.6-4-9s1.4-6.6 4-9z" />
                   </svg>
-                  <span className="text-[13px] font-medium">Buscando en internet…</span>
+                  <span className="cb-searching-text">Buscando en internet</span>
                 </div>
               ) : (
                 // Aún sin texto visible: indicador "pensando".
@@ -299,6 +303,28 @@ export default function MessageBubble({
                 </ReactMarkdown>
               </div>
             )}
+          </div>
+        )}
+
+        {/* Sello "con fuentes": solo en respuestas aterrizadas (web search).
+            Refuerza el posicionamiento "IA venezolana que sabe lo de aquí" y da
+            confianza. Las fuentes son las REALES de la búsqueda (no las que el
+            modelo citó), así que son fiables. Client-only (se ve en la sesión). */}
+        {!isUser && !isStreaming && message._grounded && message._sources && message._sources.length > 0 && (
+          <div className="cb-sources">
+            <span className="cb-sources-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" /><path d="M3 12h18" /><path d="M12 3c2.6 2.4 4 5.6 4 9s-1.4 6.6-4 9c-2.6-2.4-4-5.6-4-9s1.4-6.6 4-9z" />
+              </svg>
+              Con fuentes
+            </span>
+            {message._sources.slice(0, 4).map((s, i) => {
+              let host = s.url;
+              try { host = new URL(s.url).hostname.replace(/^www\./, ""); } catch {}
+              return (
+                <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="cb-source-chip" title={s.title}>{host}</a>
+              );
+            })}
           </div>
         )}
 

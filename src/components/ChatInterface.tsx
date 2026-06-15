@@ -35,6 +35,8 @@ type Message = {
   mode?: string;
   _isDeep?: boolean;
   _status?: "searching";
+  _grounded?: boolean;
+  _sources?: { title: string; url: string }[];
 };
 
 type Conversation = {
@@ -1482,6 +1484,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       });
       const data = res.ok ? await res.json() : { used: false, sources: [] };
       if (data.used && Array.isArray(data.sources) && data.sources.length > 0) {
+        // Aterrizado: guarda las fuentes para el sello "con fuentes" + footer.
+        const srcs = (data.sources as WebSource[]).map((s) => ({ title: s.title, url: s.url }));
+        setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _grounded: true, _sources: srcs } : m));
         return buildGroundedQuestion(originalQuestion, data.sources as WebSource[], typeof data.answer === "string" ? data.answer : undefined);
       }
       // Buscamos pero no hubo fuentes: si la pregunta es sensible al tiempo
@@ -1490,9 +1495,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       return buildUngroundedNotice(originalQuestion);
     } catch {
       return buildUngroundedNotice(originalQuestion);
-    } finally {
-      setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _status: undefined } : m));
     }
+    // OJO: _status NO se limpia aquí a propósito. El indicador "Buscando…" se
+    // mantiene hasta que llega el primer token (el texto lo reemplaza en el
+    // render), para que NO reaparezcan los 3 puntos entre buscar y responder.
   }
 
   async function sendMessage() {
