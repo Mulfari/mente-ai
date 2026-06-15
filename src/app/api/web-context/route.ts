@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { shouldSearchWeb, isNewsQuery, searchIntent, type WebSource } from "@/lib/webSearch";
 import { getWebDomains } from "@/lib/appConfig";
+import { fetchDolarRates, buildDolarContext } from "@/lib/dolar";
 
 export const runtime = "nodejs";
 
@@ -57,6 +58,19 @@ export async function POST(req: NextRequest) {
   // Trámites → restringido a dominios .gob.ve (autoritativo).
   const news = isNewsQuery(question);
   const intent = searchIntent(question);
+
+  // Dólar: primero la fuente ESTRUCTURADA (el número real de DolarAPI), mucho
+  // más confiable que esperar que una búsqueda web pesque el dato. Si la API
+  // falla o expira, caemos al flujo de búsqueda web normal de abajo.
+  if (intent === "dolar") {
+    const rates = await fetchDolarRates();
+    if (rates.length) {
+      const ctx = buildDolarContext(rates);
+      cacheSet(key, ctx);
+      return NextResponse.json({ used: true, sources: ctx.sources, answer: ctx.answer });
+    }
+  }
+
   const domainsMap = await getWebDomains();
   const includeDomains = intent ? domainsMap[intent] : undefined;
   // El dólar es del DÍA: forzamos recencia (topic news + ventana corta) aunque
