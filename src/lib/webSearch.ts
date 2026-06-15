@@ -26,6 +26,26 @@ export function shouldSearchWeb(question: string): boolean {
   return SEARCH_SIGNALS.some((re) => re.test(q));
 }
 
+// ¿Es una pregunta de ACTUALIDAD (noticias/eventos)? Para estas usamos el
+// topic "news" de Tavily + ventana de recencia, que trae resultados frescos y
+// relevantes (clave para "¿quién ganó?", "¿clasificó?", elecciones, etc.).
+const NEWS_SIGNALS: RegExp[] = [
+  /\b(mundial|eliminatorias|clasific|resultado|marcador|qui[ée]n\s+gan[óo]|gan[óo])\b/i,
+  /\b(noticia|pas[óo]|ocurri[óo]|sucedi[óo]|elecci[óo]n|elecciones|estren[óo])\b/i,
+  /\b(hoy|ayer|reciente|último|ultima|esta\s+semana|este\s+(mes|a[ñn]o))\b/i,
+];
+export function isNewsQuery(question: string): boolean {
+  return NEWS_SIGNALS.some((re) => re.test(question || ""));
+}
+
+// Para trámites oficiales conviene RESTRINGIR a dominios .gob.ve (fuente
+// autoritativa). En el resto NO restringimos (sesgamos por country en la ruta).
+const TRAMITE_RE = /\b(saime|seniat|pasaporte|c[ée]dula\b|rif\b|cita|tr[áa]mite|requisitos|gob\.ve)\b/i;
+export function includeDomainsFor(question: string): string[] | undefined {
+  if (TRAMITE_RE.test(question || "")) return ["saime.gob.ve", "seniat.gob.ve", "gob.ve"];
+  return undefined;
+}
+
 // Recorta un snippet para acotar el tamaño del prompt aumentado.
 function trimSnippet(s: string, max = 320): string {
   const t = (s || "").replace(/\s+/g, " ").trim();
@@ -33,19 +53,29 @@ function trimSnippet(s: string, max = 320): string {
 }
 
 // Construye el `question` aumentado. El usuario NO ve esto; solo el modelo.
-export function buildGroundedQuestion(question: string, sources: WebSource[]): string {
+// `summary` es la síntesis que Tavily arma de las fuentes (include_answer):
+// dársela al modelo hace que responda más tajante (no se queda en "no es
+// concluyente" cuando las fuentes sí lo dicen), pero igual debe citar y no
+// inventar.
+export function buildGroundedQuestion(question: string, sources: WebSource[], summary?: string): string {
   if (!sources || sources.length === 0) return question;
   const today = new Date().toLocaleDateString("es-VE", { year: "numeric", month: "long", day: "numeric" });
   const list = sources
     .map((s, i) => `${i + 1}. ${s.title} — ${trimSnippet(s.snippet)}\n   Fuente: ${s.url}`)
     .join("\n");
-  return [
-    `INSTRUCCIONES: Para datos actuales o factuales responde USANDO SOLO la información de internet de abajo. Cita las fuentes relevantes con enlaces markdown [título](url). Si la información no alcanza para responder, dilo claramente y NO inventes.`,
+  const parts = [
+    `INSTRUCCIONES: Para datos actuales o factuales responde USANDO SOLO la información de internet de abajo. Da una respuesta directa y clara cuando las fuentes la sustenten. Cita las fuentes relevantes con enlaces markdown [título](url). Si la información de verdad no alcanza, dilo y NO inventes.`,
     ``,
+  ];
+  if (summary && summary.trim()) {
+    parts.push(`RESUMEN DE FUENTES (síntesis automática; contrástalo con las fuentes citadas):`, trimSnippet(summary, 700), ``);
+  }
+  parts.push(
     `INFORMACIÓN DE INTERNET (consultada el ${today}):`,
     list,
     ``,
     `PREGUNTA DEL USUARIO:`,
     question,
-  ].join("\n");
+  );
+  return parts.join("\n");
 }

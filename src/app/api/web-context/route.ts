@@ -1,26 +1,27 @@
 // src/app/api/web-context/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { shouldSearchWeb, type WebSource } from "@/lib/webSearch";
+import { shouldSearchWeb, isNewsQuery, includeDomainsFor, type WebSource } from "@/lib/webSearch";
 
 export const runtime = "nodejs";
 
 const TAVILY_URL = "https://api.tavily.com/search";
-const MAX_RESULTS = 5;
-const TIMEOUT_MS = 4000;
+const MAX_RESULTS = 6;
+const TIMEOUT_MS = 8000; // advanced + síntesis tarda más que basic
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 // Caché best-effort en memoria del proceso (por instancia de función). No es
 // global pero corta el costo de queries repetidas dentro de una instancia.
-const cache = new Map<string, { at: number; sources: WebSource[] }>();
-function cacheGet(key: string): WebSource[] | null {
+type CacheEntry = { sources: WebSource[]; answer: string };
+const cache = new Map<string, { at: number; data: CacheEntry }>();
+function cacheGet(key: string): CacheEntry | null {
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.sources;
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data;
   if (hit) cache.delete(key);
   return null;
 }
-function cacheSet(key: string, sources: WebSource[]) {
-  cache.set(key, { at: Date.now(), sources });
+function cacheSet(key: string, data: CacheEntry) {
+  cache.set(key, { at: Date.now(), data });
   if (cache.size > 500) cache.delete(cache.keys().next().value as string);
 }
 
@@ -47,7 +48,24 @@ export async function POST(req: NextRequest) {
 
   const key = question.trim().toLowerCase().slice(0, 200);
   const cached = cacheGet(key);
-  if (cached) return NextResponse.json({ used: cached.length > 0, sources: cached });
+  if (cached) return NextResponse.json({ used: cached.sources.length > 0, sources: cached.sources, answer: cached.answer });
+
+  // Afinado de fuentes: noticias/eventos → topic "news" + ventana reciente;
+  // el resto → topic "general" sesgado a Venezuela. search_depth "advanced" y
+  // include_answer "advanced" para una síntesis que el modelo usa de base.
+  // Trámites → restringido a dominios .gob.ve (autoritativo).
+  const news = isNewsQuery(question);
+  const includeDomains = includeDomainsFor(question);
+  const tavilyBody: Record<string, unknown> = {
+    query: question,
+    max_results: MAX_RESULTS,
+    search_depth: "advanced",
+    include_answer: "advanced",
+    topic: news ? "news" : "general",
+  };
+  if (news) tavilyBody.days = 30;
+  else tavilyBody.country = "venezuela";
+  if (includeDomains) tavilyBody.include_domains = includeDomains;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
@@ -55,12 +73,7 @@ export async function POST(req: NextRequest) {
     const res = await fetch(TAVILY_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        query: question,
-        max_results: MAX_RESULTS,
-        search_depth: "basic",
-        include_answer: false,
-      }),
+      body: JSON.stringify(tavilyBody),
       signal: controller.signal,
     });
     if (!res.ok) return NextResponse.json({ used: false, sources: [] });
@@ -69,8 +82,9 @@ export async function POST(req: NextRequest) {
       .slice(0, MAX_RESULTS)
       .map((r: any) => ({ title: r.title || r.url, url: r.url, snippet: r.content || "" }))
       .filter((s: WebSource) => s.url);
-    cacheSet(key, sources);
-    return NextResponse.json({ used: sources.length > 0, sources });
+    const answer = typeof data.answer === "string" ? data.answer : "";
+    cacheSet(key, { sources, answer });
+    return NextResponse.json({ used: sources.length > 0, sources, answer });
   } catch {
     // Timeout o error de red → sin grounding, el chat sigue.
     return NextResponse.json({ used: false, sources: [] });

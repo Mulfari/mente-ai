@@ -1482,7 +1482,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       });
       const data = res.ok ? await res.json() : { used: false, sources: [] };
       if (data.used && Array.isArray(data.sources) && data.sources.length > 0) {
-        return buildGroundedQuestion(originalQuestion, data.sources as WebSource[]);
+        return buildGroundedQuestion(originalQuestion, data.sources as WebSource[], typeof data.answer === "string" ? data.answer : undefined);
       }
       return originalQuestion;
     } catch {
