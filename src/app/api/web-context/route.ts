@@ -1,7 +1,8 @@
 // src/app/api/web-context/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { shouldSearchWeb, isNewsQuery, includeDomainsFor, type WebSource } from "@/lib/webSearch";
+import { shouldSearchWeb, isNewsQuery, searchIntent, type WebSource } from "@/lib/webSearch";
+import { getWebDomains } from "@/lib/appConfig";
 
 export const runtime = "nodejs";
 
@@ -55,7 +56,9 @@ export async function POST(req: NextRequest) {
   // include_answer "advanced" para una síntesis que el modelo usa de base.
   // Trámites → restringido a dominios .gob.ve (autoritativo).
   const news = isNewsQuery(question);
-  const includeDomains = includeDomainsFor(question);
+  const intent = searchIntent(question);
+  const domainsMap = await getWebDomains();
+  const includeDomains = intent ? domainsMap[intent] : undefined;
   const tavilyBody: Record<string, unknown> = {
     query: question,
     max_results: MAX_RESULTS,
@@ -65,7 +68,7 @@ export async function POST(req: NextRequest) {
   };
   if (news) tavilyBody.days = 30;
   else tavilyBody.country = "venezuela";
-  if (includeDomains) tavilyBody.include_domains = includeDomains;
+  if (includeDomains && includeDomains.length) tavilyBody.include_domains = includeDomains;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);

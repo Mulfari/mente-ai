@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_INTENT_DOMAINS } from "@/lib/webSearch";
 
 export type AppConfig = {
   freeDailyLimit: number;
@@ -43,3 +44,32 @@ export async function getAppConfig(): Promise<AppConfig> {
 }
 
 export { DEFAULTS as APP_CONFIG_DEFAULTS };
+
+// Dominios por intención para la búsqueda web (include_domains de Tavily).
+// Editable SIN redeploy: fila `web_domains` en app_config con un JSON
+// {intención: [dominios]}; cae a DEFAULT_INTENT_DOMAINS si falta o falla.
+// Cacheado en memoria del proceso (TTL 5 min) para no leer la BD en cada
+// búsqueda. Para editar: actualizar esa fila (admin o SQL).
+let _webDomainsCache: { at: number; v: Record<string, string[]> } | null = null;
+export async function getWebDomains(): Promise<Record<string, string[]>> {
+  if (_webDomainsCache && Date.now() - _webDomainsCache.at < 5 * 60 * 1000) {
+    return _webDomainsCache.v;
+  }
+  let v: Record<string, string[]> = { ...DEFAULT_INTENT_DOMAINS };
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.from("app_config").select("value").eq("key", "web_domains").maybeSingle();
+    if (data?.value) {
+      const parsed = JSON.parse(data.value);
+      if (parsed && typeof parsed === "object") {
+        for (const [k, arr] of Object.entries(parsed)) {
+          if (Array.isArray(arr)) v[k] = arr.filter((d): d is string => typeof d === "string");
+        }
+      }
+    }
+  } catch {
+    // sin fila / JSON inválido / error de red → defaults
+  }
+  _webDomainsCache = { at: Date.now(), v };
+  return v;
+}

@@ -44,13 +44,30 @@ export function isNewsQuery(question: string): boolean {
   return NEWS_SIGNALS.some((re) => re.test(question || ""));
 }
 
-// Para trámites oficiales conviene RESTRINGIR a dominios .gob.ve (fuente
-// autoritativa). En el resto NO restringimos (sesgamos por country en la ruta).
-const TRAMITE_RE = /\b(saime|seniat|pasaporte|c[ée]dula\b|rif\b|cita|tr[áa]mite|requisitos|gob\.ve)\b/i;
-export function includeDomainsFor(question: string): string[] | undefined {
-  if (TRAMITE_RE.test(question || "")) return ["saime.gob.ve", "seniat.gob.ve", "gob.ve"];
-  return undefined;
+// Intención de la búsqueda → permite curar dominios por tema (configurable sin
+// redeploy desde app_config; ver getWebDomains). Solo TRÁMITES restringe a
+// .gob.ve por defecto (fuente autoritativa); dólar/deportes quedan abiertos por
+// defecto (no restringir de más) pero se les pueden añadir dominios en config.
+export type SearchIntent = "tramites" | "dolar" | "deportes";
+const INTENT_RE: Record<SearchIntent, RegExp> = {
+  tramites: /\b(saime|seniat|pasaporte|c[ée]dula|rif\b|cita|tr[áa]mite|requisitos|pr[óo]rroga|gob\.ve)\b/i,
+  dolar: /\b(d[óo]lar|d[óo]lares|tasa|bcv|paralelo|euro|cambio|bol[íi]var|petro)\b/i,
+  deportes: /\b(f[úu]tbol|b[ée]isbol|mundial|eliminatorias|liga|partido|vinotinto|leones|magallanes|nba|mlb|champions|s[ée]rie\s+del\s+caribe)\b/i,
+};
+export function searchIntent(question: string): SearchIntent | null {
+  const s = question || "";
+  // Orden de prioridad: trámites primero (el más específico/útil para restringir).
+  for (const k of ["tramites", "dolar", "deportes"] as SearchIntent[]) {
+    if (INTENT_RE[k].test(s)) return k;
+  }
+  return null;
 }
+// Defaults en código (fallback si no hay fila web_domains en app_config).
+export const DEFAULT_INTENT_DOMAINS: Record<SearchIntent, string[]> = {
+  tramites: ["saime.gob.ve", "seniat.gob.ve", "gob.ve"],
+  dolar: [],
+  deportes: [],
+};
 
 // Recorta un snippet para acotar el tamaño del prompt aumentado.
 function trimSnippet(s: string, max = 320): string {
