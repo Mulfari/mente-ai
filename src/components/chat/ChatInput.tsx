@@ -181,20 +181,30 @@ export default function ChatInput({
     ta.style.height = `${next}px`;
   }, [input, isExpanded]);
 
-  // Hydrate the draft when the conversation changes. The parent owns the
-  // `input` state, so we push the draft into it via setInput. We guard with
-  // a ref so we don't fight with the parent's own state updates.
+  // Sincroniza el input con el borrador de la conversación activa. El padre es
+  // dueño del estado `input`; lo empujamos vía setInput.
+  //
+  // Al CAMBIAR de conversación (abrir otra o "Nuevo chat") ponemos el input al
+  // borrador del destino — y a CADENA VACÍA si no tiene — para no ARRASTRAR
+  // texto sin enviar de la superficie anterior: newConversation/selectConv NO
+  // limpian el input ellos mismos, así que sin esto el texto a medio escribir
+  // de un chat aparecía en el siguiente. En el PRIMER montaje solo restauramos
+  // si hay borrador, para no pisar un valor inicial que el padre haya puesto
+  // (p. ej. la pregunta pendiente que se reenvía sola tras el login).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const convChanged = lastConvIdRef.current !== convId;
-    if (!convChanged && hydratedRef.current) return;
+    const firstRun = !hydratedRef.current;
+    if (!convChanged && !firstRun) return;
     lastConvIdRef.current = convId;
     hydratedRef.current = true;
     const draft = readDraft(convId);
-    // Only restore if the input is currently empty — we never want to
-    // clobber something the user just typed in another tab or that the
-    // parent is mid-updating.
-    if (draft) {
+    if (convChanged && !firstRun) {
+      // Cambio de superficie: sincroniza al destino (vacío si no hay borrador).
+      restoringRef.current = true;
+      setInput(draft);
+    } else if (draft) {
+      // Primer montaje con borrador: restáuralo sin pisar el valor inicial.
       restoringRef.current = true;
       setInput(draft);
     }
