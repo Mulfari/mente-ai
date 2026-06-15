@@ -318,13 +318,23 @@ export default function MessageBubble({
               </svg>
               Con fuentes
             </span>
-            {message._sources.slice(0, 4).map((s, i) => {
-              let host = s.url;
-              try { host = new URL(s.url).hostname.replace(/^www\./, ""); } catch {}
-              return (
-                <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="cb-source-chip" title={s.title}>{host}</a>
-              );
-            })}
+            {(() => {
+              // Dedup por dominio: Tavily suele traer varios resultados del
+              // mismo sitio; mostramos un chip por dominio (máx 4).
+              const seen = new Set<string>();
+              const uniq: { url: string; title: string; host: string }[] = [];
+              for (const s of message._sources!) {
+                let host = s.url;
+                try { host = new URL(s.url).hostname.replace(/^www\./, ""); } catch {}
+                if (seen.has(host)) continue;
+                seen.add(host);
+                uniq.push({ url: s.url, title: s.title, host });
+                if (uniq.length >= 4) break;
+              }
+              return uniq.map((s, i) => (
+                <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="cb-source-chip" title={s.title}>{s.host}</a>
+              ));
+            })()}
           </div>
         )}
 
