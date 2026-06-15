@@ -17,7 +17,7 @@ import { OnboardingTour } from "./OnboardingTour";
 import type { PublicFeed } from "@/lib/feed";
 import { resolveTier } from "@/lib/plans";
 import type { AppConfig } from "@/lib/appConfig";
-import { clearDraft } from "@/lib/chatDraft";
+import { clearDraft, readDraft } from "@/lib/chatDraft";
 
 type Message = {
   id: string;
@@ -382,10 +382,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         currentConvIdRef.current = null;
         setActiveConv(null);
         setMessages([]);
+        setInput(readDraft(null));
         return;
       }
       if (effectiveId === activeConv?.id) return;
       currentConvIdRef.current = effectiveId;
+      setInput(readDraft(effectiveId));
       loadMessages(effectiveId);
     };
     window.addEventListener("popstate", onPop);
@@ -971,6 +973,11 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     currentConvIdRef.current = null;
     setActiveConv(null);
     setMessages([]);
+    // Sincroniza el input al borrador del empty state ("new") o lo vacía. Sin
+    // esto, el texto sin enviar de la conversación anterior se ARRASTRABA al
+    // chat nuevo (cambiar de superficie remonta el ChatInput, que con el input
+    // del padre intacto mostraba lo de antes).
+    setInput(readDraft(null));
     setConvLoaded(false);
     setLoadingConvId(null);
     setIsLoadingMsgs(false);
@@ -986,6 +993,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     // OJO: NO tocar updated_at aquí — solo abrir una conversación no debe
     // moverla al grupo "Hoy" del sidebar; eso pasa al enviar un mensaje.
     setActiveConv(conv);
+    // Restaura el borrador de ESTA conversación (o vacía el input). Sin esto, el
+    // texto sin enviar de la superficie anterior se arrastraba a esta vista.
+    setInput(readDraft(conv.id));
     setConvLoaded(false);
     setLoadingConvId(conv.id);
     window.history.pushState(null, "", `/chat/${conv.id}`);

@@ -181,30 +181,22 @@ export default function ChatInput({
     ta.style.height = `${next}px`;
   }, [input, isExpanded]);
 
-  // Sincroniza el input con el borrador de la conversación activa. El padre es
-  // dueño del estado `input`; lo empujamos vía setInput.
-  //
-  // Al CAMBIAR de conversación (abrir otra o "Nuevo chat") ponemos el input al
-  // borrador del destino — y a CADENA VACÍA si no tiene — para no ARRASTRAR
-  // texto sin enviar de la superficie anterior: newConversation/selectConv NO
-  // limpian el input ellos mismos, así que sin esto el texto a medio escribir
-  // de un chat aparecía en el siguiente. En el PRIMER montaje solo restauramos
-  // si hay borrador, para no pisar un valor inicial que el padre haya puesto
-  // (p. ej. la pregunta pendiente que se reenvía sola tras el login).
+  // Hidrata el borrador al montar / cambiar de conversación. El padre es dueño
+  // del estado `input`; lo empujamos vía setInput. OJO: el borrado del texto
+  // ARRASTRADO al cambiar de superficie lo hace el PADRE (selectConv /
+  // newConversation hacen setInput(readDraft(destino))), porque cambiar de
+  // conversación REMONTA este componente (empty state ↔ conversación son dos
+  // <ChatInput> distintos) y aquí no podríamos distinguir un remonte por
+  // navegación de la carga inicial con pregunta pendiente. Aquí solo
+  // restauramos si hay borrador, para no pisar un valor inicial del padre.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const convChanged = lastConvIdRef.current !== convId;
-    const firstRun = !hydratedRef.current;
-    if (!convChanged && !firstRun) return;
+    if (!convChanged && hydratedRef.current) return;
     lastConvIdRef.current = convId;
     hydratedRef.current = true;
     const draft = readDraft(convId);
-    if (convChanged && !firstRun) {
-      // Cambio de superficie: sincroniza al destino (vacío si no hay borrador).
-      restoringRef.current = true;
-      setInput(draft);
-    } else if (draft) {
-      // Primer montaje con borrador: restáuralo sin pisar el valor inicial.
+    if (draft) {
       restoringRef.current = true;
       setInput(draft);
     }
