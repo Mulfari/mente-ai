@@ -17,6 +17,12 @@ const SEARCH_SIGNALS: RegExp[] = [
   /\b(noticia|pas[óo]|ocurri[óo]|sucedi[óo]|estren[óo])\b/i,
   /\b(cu[áa]ndo|qu[ée]\s+d[íi]a|fecha\s+de)\b/i,
   /\b(saime|seniat|cita|tr[áa]mite|requisitos)\b/i,
+  // Actualidad/política y eventos sobre personas — señales de alta precisión
+  // (preguntas factuales que la lista de arriba se saltaba, ej. "presidente").
+  /\b(presidente|gobierno|ministro|gobernador|alcalde|diputad|elecci[óo]n|elecciones)\b/i,
+  /\b(qui[ée]n\s+(es|fue|ser[áa]|murió|muri[óo]|falleci[óo]|renunci[óo]))\b/i,
+  /\b(qu[ée]\s+(le\s+)?pas[óa]\s+(con|a|el|la)|qu[ée]\s+fue\s+de)\b/i,
+  /\b(falleci[óo]|muri[óo]|detenid|arrestad|renunci[óo]|nombrad|gan[óo]\s+el)\b/i,
   /\b20(2[4-9]|3\d)\b/, // años 2024..2039
 ];
 
@@ -64,7 +70,7 @@ export function buildGroundedQuestion(question: string, sources: WebSource[], su
     .map((s, i) => `${i + 1}. ${s.title} — ${trimSnippet(s.snippet)}\n   Fuente: ${s.url}`)
     .join("\n");
   const parts = [
-    `INSTRUCCIONES: Para datos actuales o factuales responde USANDO SOLO la información de internet de abajo. Da una respuesta directa y clara cuando las fuentes la sustenten. Cita las fuentes relevantes con enlaces markdown [título](url). Si la información de verdad no alcanza, dilo y NO inventes.`,
+    `INSTRUCCIONES: Para datos actuales o factuales responde USANDO SOLO la información de internet de abajo. Da una respuesta directa y clara cuando las fuentes la sustenten. Cita las fuentes relevantes con enlaces markdown [título](url). Si la información de verdad no alcanza, dilo y NO inventes. IMPORTANTE: si las fuentes tratan sobre una persona o tema DISTINTO al que se pregunta (p. ej. un nombre parecido pero no idéntico, o en otro idioma), acláralo y di que no encontraste información sobre lo preguntado — NO asumas que un resultado de nombre similar es la respuesta.`,
     ``,
   ];
   if (summary && summary.trim()) {
