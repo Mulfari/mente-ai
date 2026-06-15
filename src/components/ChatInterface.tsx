@@ -17,6 +17,7 @@ import { OnboardingTour } from "./OnboardingTour";
 import type { PublicFeed } from "@/lib/feed";
 import { resolveTier } from "@/lib/plans";
 import type { AppConfig } from "@/lib/appConfig";
+import { clearDraft } from "@/lib/chatDraft";
 
 type Message = {
   id: string;
@@ -1476,6 +1477,11 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     const wasFollowUp = !!activeConv && messages.length > 0;
 
     let conv = activeConv;
+    // Clave del borrador donde se ESCRIBIÓ este mensaje (la conversación de
+    // origen, o "new" si es el empty state). La capturamos ANTES de crear la
+    // conversación nueva, porque al crearla el convId cambia y el borrador
+    // viejo quedaría huérfano y reaparecería en el input — ver chatDraft.ts.
+    const draftKeyConvId = activeConv?.id ?? null;
     const queuedMsg = queuedMsgRef.current;
     queuedMsgRef.current = null;
     const userMsg = queuedMsg ? queuedMsg.text : inputVal;
@@ -1502,6 +1508,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       const category = researchMatch[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').substring(0, 20);
 
       setInput("");
+      clearDraft(draftKeyConvId);
       autoResize();
 
       // Add user message
@@ -1553,6 +1560,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         const pendingCat = localStorage.getItem(`mulfai-research-pending-${lastMsg.id}`);
         if (pendingCat) {
           setInput("");
+          clearDraft(draftKeyConvId);
           setSending(true);
           const saveMsgId = Date.now().toString();
           setMessages(prev => [...prev, {
@@ -1601,6 +1609,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (!conv) { setSending(false); return; }
 
     setInput("");
+    clearDraft(draftKeyConvId);
     setAttachments([]);
     setPreviewUrls({});
     autoResize();

@@ -3,6 +3,7 @@
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from "react";
 import { useSpeechRecognitionServer } from "@/lib/voice-server";
 import ExpandInputModal from "./ExpandInputModal";
+import { readDraft, writeDraft, DRAFT_SAVE_DEBOUNCE_MS } from "@/lib/chatDraft";
 
 type BlockReason = {
   canWrite: boolean;
@@ -32,50 +33,9 @@ type Props = {
   showQuota?: boolean;
 };
 
-// localStorage key prefix for per-conversation drafts. The empty state
-// (no active conversation yet) shares a single "new" key.
-const DRAFT_KEY = (convId: string | null | undefined) =>
-  `vechat:draft:${convId ?? "new"}`;
-const DRAFT_SAVE_DEBOUNCE_MS = 400;
-const MAX_DRAFT_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days — drafts older than this are ignored
-
-type StoredDraft = { v: string; t: number };
-function readDraft(convId: string | null | undefined): string {
-  if (typeof window === "undefined") return "";
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY(convId));
-    if (!raw) return "";
-    const parsed = JSON.parse(raw) as StoredDraft;
-    if (typeof parsed?.v !== "string") return "";
-    if (typeof parsed?.t !== "number") return parsed.v;
-    if (Date.now() - parsed.t > MAX_DRAFT_AGE_MS) {
-      localStorage.removeItem(DRAFT_KEY(convId));
-      return "";
-    }
-    return parsed.v;
-  } catch {
-    return "";
-  }
-}
-function writeDraft(convId: string | null | undefined, value: string) {
-  if (typeof window === "undefined") return;
-  try {
-    if (!value) {
-      localStorage.removeItem(DRAFT_KEY(convId));
-      return;
-    }
-    const payload: StoredDraft = { v: value, t: Date.now() };
-    localStorage.setItem(DRAFT_KEY(convId), JSON.stringify(payload));
-  } catch {
-    // Quota exceeded or private mode — silently ignore, draft just won't persist.
-  }
-}
-function clearDraft(convId: string | null | undefined) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.removeItem(DRAFT_KEY(convId));
-  } catch {}
-}
+// Los helpers de borrador (readDraft/writeDraft/clearDraft) viven en
+// @/lib/chatDraft para que el camino de envío en ChatInterface pueda limpiar
+// el borrador de la conversación de origen (ver el comentario de ese módulo).
 
 export default function ChatInput({
   input,
@@ -256,11 +216,12 @@ export default function ChatInput({
     return () => clearTimeout(handle);
   }, [input, convId]);
 
-  // Clear the draft when the user successfully sends. Called from the
-  // parent's onSend via a side-effect: the parent calls setInput("")
-  // synchronously, our save effect above would still write the empty
-  // string after the debounce — which IS what we want (empty = clear).
-  // So we don't need an extra hook here.
+  // Limpieza del borrador al enviar: en una conversación EXISTENTE basta con
+  // que el padre haga setInput("") — el efecto de guardado de arriba escribe
+  // "" (que borra el borrador). Pero cuando el envío CREA una conversación
+  // nueva, el convId cambia antes de ese "", así que el padre además borra el
+  // borrador de la conversación de origen explícitamente con clearDraft()
+  // (ver ChatInterface.sendMessage y @/lib/chatDraft).
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
