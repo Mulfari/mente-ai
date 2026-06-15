@@ -143,6 +143,12 @@ export default function MessageBubble({
         </div>
       );
     },
+    // Las tablas anchas se contienen en su propia caja con scroll horizontal
+    // (.md-table-wrap) para que NO arrastren toda la página de lado en móvil:
+    // solo la tabla se desliza, dentro de sus límites. Ver globals.css.
+    table({ children }: { children?: React.ReactNode }) {
+      return <div className="md-table-wrap"><table>{children}</table></div>;
+    },
   };
 
   return (

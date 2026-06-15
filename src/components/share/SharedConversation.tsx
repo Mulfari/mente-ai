@@ -38,6 +38,11 @@ export default function SharedConversation({ title, messages }: { title: string;
         </div>
       );
     },
+    // Tabla ancha contenida en su propia caja con scroll horizontal (igual que
+    // en el chat) para que no arrastre la página de lado en móvil.
+    table({ children }: { children?: React.ReactNode }) {
+      return <div className="md-table-wrap"><table>{children}</table></div>;
+    },
   };
 
   return (

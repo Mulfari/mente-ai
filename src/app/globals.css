@@ -467,18 +467,33 @@ html[data-sidebar="closed"] .sidebar-desktop {
 .prose li > ul, .prose li > ol { margin: 0.3em 0; }
 
 /* === TABLE STYLING === */
-.prose table {
-  width: 100%;
+/* Caja contenedora: la tabla vive aquí dentro y SOLO ella se desliza en
+   horizontal. Así una tabla ancha no arrastra toda la página de lado en
+   móvil (el bug que reportó el usuario). El marco (borde redondeado + sombra)
+   vive en el wrapper; el recorte de la columna cortada a la derecha es la
+   pista natural de "hay más, desliza". */
+.prose .md-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  margin: 1.5em 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  overscroll-behavior-x: contain;
+}
+.prose .md-table-wrap table {
+  margin: 0;
+}
+.prose table {
+  width: auto;
+  min-width: 100%;
   border-collapse: collapse;
   border-spacing: 0;
   margin: 1.5em 0;
   font-size: 0.875em;
   display: table;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 /* Header */
