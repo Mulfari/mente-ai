@@ -18,7 +18,7 @@ import type { PublicFeed } from "@/lib/feed";
 import { resolveTier } from "@/lib/plans";
 import type { AppConfig } from "@/lib/appConfig";
 import { clearDraft, readDraft } from "@/lib/chatDraft";
-import { shouldSearchWeb, buildGroundedQuestion, type WebSource } from "@/lib/webSearch";
+import { shouldSearchWeb, buildGroundedQuestion, buildUngroundedNotice, type WebSource } from "@/lib/webSearch";
 
 type Message = {
   id: string;
@@ -1484,9 +1484,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       if (data.used && Array.isArray(data.sources) && data.sources.length > 0) {
         return buildGroundedQuestion(originalQuestion, data.sources as WebSource[], typeof data.answer === "string" ? data.answer : undefined);
       }
-      return originalQuestion;
+      // Buscamos pero no hubo fuentes: si la pregunta es sensible al tiempo
+      // (dólar, trámites, deportes), avísale al modelo que NO invente datos
+      // actuales desde memoria. Para el resto, va la original.
+      return buildUngroundedNotice(originalQuestion);
     } catch {
-      return originalQuestion;
+      return buildUngroundedNotice(originalQuestion);
     } finally {
       setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _status: undefined } : m));
     }

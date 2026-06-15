@@ -102,3 +102,25 @@ export function buildGroundedQuestion(question: string, sources: WebSource[], su
   );
   return parts.join("\n");
 }
+
+// Cuando la búsqueda web NO trajo fuentes (sin key, timeout, error o cero
+// resultados) pero la pregunta era sensible al tiempo, añade una nota para que
+// el modelo NO invente datos actuales desde su conocimiento congelado. Solo
+// aplica a intenciones con caducidad (dólar/trámites/deportes); para el resto
+// devuelve la pregunta tal cual (su conocimiento base suele bastar).
+export function buildUngroundedNotice(question: string): string {
+  const intent = searchIntent(question);
+  if (!intent) return question;
+  const tema =
+    intent === "dolar"
+      ? "una tasa o precio actual (como el dólar)"
+      : intent === "tramites"
+        ? "un requisito o dato de un trámite que pudo cambiar"
+        : "un resultado o dato reciente";
+  return [
+    `INSTRUCCIONES: No se pudo consultar internet en este momento y la pregunta pide ${tema}. NO inventes cifras, fechas ni datos actuales desde tu memoria: di con franqueza que no pudiste confirmar el dato al día de hoy y, si aplica, sugiere dónde verificarlo. Sí puedes dar el contexto general que sepas con certeza.`,
+    ``,
+    `PREGUNTA DEL USUARIO:`,
+    question,
+  ].join("\n");
+}

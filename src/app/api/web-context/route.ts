@@ -59,14 +59,18 @@ export async function POST(req: NextRequest) {
   const intent = searchIntent(question);
   const domainsMap = await getWebDomains();
   const includeDomains = intent ? domainsMap[intent] : undefined;
+  // El dólar es del DÍA: forzamos recencia (topic news + ventana corta) aunque
+  // la frase no traiga "hoy", para no servir una tasa de hace semanas. El resto
+  // de actualidad usa ventana amplia; trámites/general van sesgados a Venezuela.
+  const useNews = news || intent === "dolar";
   const tavilyBody: Record<string, unknown> = {
     query: question,
     max_results: MAX_RESULTS,
     search_depth: "advanced",
     include_answer: "advanced",
-    topic: news ? "news" : "general",
+    topic: useNews ? "news" : "general",
   };
-  if (news) tavilyBody.days = 30;
+  if (useNews) tavilyBody.days = intent === "dolar" ? 2 : 30;
   else tavilyBody.country = "venezuela";
   if (includeDomains && includeDomains.length) tavilyBody.include_domains = includeDomains;
 
