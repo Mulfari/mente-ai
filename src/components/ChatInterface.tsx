@@ -18,6 +18,7 @@ import type { PublicFeed } from "@/lib/feed";
 import { resolveTier } from "@/lib/plans";
 import type { AppConfig } from "@/lib/appConfig";
 import { clearDraft, readDraft } from "@/lib/chatDraft";
+import { shouldSearchWeb, buildGroundedQuestion, type WebSource } from "@/lib/webSearch";
 
 type Message = {
   id: string;
@@ -33,6 +34,7 @@ type Message = {
   _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
   mode?: string;
   _isDeep?: boolean;
+  _status?: "searching";
 };
 
 type Conversation = {
@@ -1265,12 +1267,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         historyText = `[Resumen de conversacion anterior]\n${convData.summary}\n\n[Mensajes recientes]\n${recentText.slice(-4000)}`;
       }
 
+      const groundedQuestion = await groundQuestionIfNeeded(s, msgId);
+
       const payload = {
         token: vpsToken,
         message_id: msgId,
         conversation_id: convId,
         mode: "deep",
-        question: s,
+        question: groundedQuestion,
         attachments: JSON.stringify([]),
         user_context: JSON.stringify(userContextPayload),
         conversation_history: historyText,
@@ -1462,6 +1466,31 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       // abort + cleanup happen in a deterministic order.
     }
   }, []);
+
+  // Si la pregunta parece de actualidad/factual, busca fuentes en /api/web-context
+  // y devuelve la pregunta AUMENTADA (lo que ve el modelo, no el usuario). Marca
+  // el mensaje del asistente con _status:'searching' mientras dura la búsqueda.
+  // Degrada con gracia: si no toca buscar o algo falla, devuelve la original.
+  async function groundQuestionIfNeeded(originalQuestion: string, assistantMsgId: string): Promise<string> {
+    if (!shouldSearchWeb(originalQuestion)) return originalQuestion;
+    setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _status: "searching" } : m));
+    try {
+      const res = await fetch("/api/web-context", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: originalQuestion }),
+      });
+      const data = res.ok ? await res.json() : { used: false, sources: [] };
+      if (data.used && Array.isArray(data.sources) && data.sources.length > 0) {
+        return buildGroundedQuestion(originalQuestion, data.sources as WebSource[]);
+      }
+      return originalQuestion;
+    } catch {
+      return originalQuestion;
+    } finally {
+      setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _status: undefined } : m));
+    }
+  }
 
   async function sendMessage() {
     const inputVal = input.trim();
@@ -1711,12 +1740,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         historyText = `[Resumen de conversacion anterior]\n${convData.summary}\n\n[Mensajes recientes]\n${recentText.slice(-4000)}`;
       }
 
+      const groundedQuestion = await groundQuestionIfNeeded(userMsg, msgId);
+
       const payload = {
         token: vpsToken,
         message_id: msgId,
         conversation_id: convId,
         mode: "deep",
-        question: userMsg,
+        question: groundedQuestion,
         attachments: contentParts,
         user_context: userContextPayload,
         conversation_history: historyText,
