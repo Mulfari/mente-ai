@@ -49,21 +49,77 @@ export const viewport: Viewport = {
   // ve a través de ella como una raya de color al fondo de la pantalla.
 };
 
+// URL canónica del sitio. `metadataBase` hace que las rutas relativas de OG /
+// iconos se resuelvan a absolutas (Google y las previews de WhatsApp/Telegram
+// las necesitan absolutas).
+const SITE_URL = "https://www.mulfai.com.ve";
+
 export const metadata: Metadata = {
-  title: "VeChat — Tu asistente de IA personal",
-  description: "Chatea con VeChat, tu asistente inteligente. Conversaciones naturales, respuestas instantaneas, codigo con syntax highlighting.",
-  keywords: ["chat AI", "asistente virtual", "IA conversacional", "VeChat"],
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "VeChat — La IA venezolana, la que sabe lo de aquí",
+    template: "%s · VeChat",
+  },
+  description:
+    "VeChat es la IA venezolana: te responde con lo de aquí y de ahorita — el dólar de hoy, lo que está pasando en el país y los trámites, en vivo. Y además, lo de siempre: estudio, trabajo y código. Empieza gratis.",
+  applicationName: "VeChat",
+  keywords: [
+    "VeChat",
+    "IA venezolana",
+    "inteligencia artificial Venezuela",
+    "IA hecha en Venezuela",
+    "dólar hoy Venezuela",
+    "tasa del dólar hoy",
+    "chat IA en español",
+    "asistente virtual venezolano",
+    "ChatGPT venezolano",
+    "trámites SAIME",
+  ],
+  authors: [{ name: "Mulfex" }],
+  creator: "Mulfex",
+  publisher: "Mulfex",
+  category: "technology",
+  alternates: { canonical: "/" },
   icons: {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
   },
   // Sin manifest: el archivo no existe en /public y la referencia generaba
   // un 404 en cada carga (si algún día se quiere PWA, crearlo de verdad).
-  other: {
-    "og:title": "VeChat",
-    "og:description": "Tu asistente de IA personal",
-    "og:site_name": "VeChat",
-    "og:type": "website",
+  openGraph: {
+    type: "website",
+    locale: "es_VE",
+    url: SITE_URL,
+    siteName: "VeChat",
+    title: "VeChat — La IA venezolana, la que sabe lo de aquí",
+    description:
+      "Lo que pasa en el país, VeChat lo sabe: el dólar de hoy, los trámites y lo de ahorita, en vivo. La IA venezolana que te resuelve con lo de aquí — y también con lo de siempre (estudio, trabajo, código). Empieza gratis.",
+    images: [
+      {
+        url: "/landing/app-desktop.png",
+        width: 1340,
+        height: 840,
+        alt: "VeChat — la IA venezolana que sabe lo de aquí, en vivo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VeChat — La IA venezolana, la que sabe lo de aquí",
+    description:
+      "La IA venezolana que te responde con lo de ahorita: el dólar de hoy, los trámites y lo que pasa en el país, en vivo. Empieza gratis.",
+    images: ["/landing/app-desktop.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
   },
 };
 
