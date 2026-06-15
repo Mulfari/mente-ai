@@ -486,6 +486,15 @@ html[data-sidebar="closed"] .sidebar-desktop {
 .prose .md-table-wrap table {
   margin: 0;
 }
+/* Dentro de la caja con scroll las celdas NO se parten a la mitad de la
+   palabra (antes 'Gratis' salía 'Grat-is'): cada columna se dimensiona a su
+   contenido en una línea y, si la tabla no cabe, se desliza horizontalmente. */
+.prose .md-table-wrap th,
+.prose .md-table-wrap td {
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
+}
 .prose table {
   width: auto;
   min-width: 100%;
