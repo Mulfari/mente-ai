@@ -141,11 +141,26 @@ const BLOCKED_PATTERNS = [
   /\b(coño|verga|mmg|mamague|marico|maldit[oa]|put[oa]|mierda|joder|carajo)\b/i,
 ];
 
+// Publicabilidad (filtro barato del feed EN VIVO; el cron LLM hace el pulido
+// fino). El feed mostraba texto crudo de query_events filtrado solo por largo:
+// se colaban mensajes personales ("me la acabo de comer sola completa…"). Estas
+// señales descartan charla personal / relato en 1ª persona que NO tenga forma
+// de pregunta. Conservador: ante la duda, fuera (las semillas rellenan).
+const INTERROGATIVE = /^\s*(¿|qué|cómo|cuándo|dónde|cuánto|cuánta|cuál|quién|por\s?qué|para\s?qué|a\s?cuánto|a\s?cómo)\b/i;
+const PERSONAL_CHATTER = /^\s*(me |mi |mis |yo |nos |nuestr|gracias|hola|hey|holi|buenas|ok\b|oka|vale|listo|ya |jaja|jeje|jiji|jaj|xd|lol|nada|no s[eé]|estoy|estaba|tengo|ten[ií]a|quiero|quer[ií]a|amo |odio|acabo de|me la|me lo|me las|me los|hoy |ayer|anoche)/i;
+const FIRST_PERSON_VERB = /\b(com[ií]|comí|compr[ée]|fui|fuimos|hice|dije|llegu[ée]|tuve|estuve|sent[ií])\b/i;
+
 export function sanitizePrompt(raw: string): string | null {
   const collapsed = raw.replace(/\s+/g, " ").trim();
   if (collapsed.length < 12 || collapsed.length > 90) return null;
   for (const pattern of BLOCKED_PATTERNS) {
     if (pattern.test(collapsed)) return null;
+  }
+  // Descartar charla personal salvo que tenga forma clara de pregunta.
+  const lower = collapsed.toLowerCase();
+  const looksQuestion = collapsed.includes("?") || INTERROGATIVE.test(lower);
+  if (!looksQuestion && (PERSONAL_CHATTER.test(lower) || FIRST_PERSON_VERB.test(lower))) {
+    return null;
   }
   const first = collapsed.search(/[a-záéíóúñ]/i);
   if (first === -1) return null;
