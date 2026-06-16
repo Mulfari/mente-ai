@@ -7,7 +7,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useResolvedTheme } from "@/lib/theme";
 import { useSpeechSynthesisServer } from "@/lib/voice-server";
-import { clampStreamingTable } from "@/lib/streamingMarkdown";
+import { clampStreamingTable, stripContextDelta } from "@/lib/streamingMarkdown";
 
 type Message = {
   id: string;
@@ -138,10 +138,14 @@ export default function MessageBubble({
 }: Props) {
   const isStreaming = message._loading || message.id === streamingMsgId || retryMode === message.id;
   const isUser = message.role === "user";
+  // Quita el bloque context_delta que el modelo a veces deja al final de la
+  // respuesta (defensa en el render: cubre también mensajes viejos ya guardados
+  // en la BD con el JSON pegado). No aplica a la burbuja del usuario.
+  const baseContent = isUser ? message.content : stripContextDelta(message.content);
   // Texto revelado suavemente (solo respuestas en streaming). Durante el
   // streaming se estabilizan las tablas a medio llegar (clampStreamingTable)
   // para que no parpadeen ni se re-formen frame a frame.
-  const revealed = useSmoothReveal(message.content, isStreaming && !isUser);
+  const revealed = useSmoothReveal(baseContent, isStreaming && !isUser);
   const displayedContent = isStreaming && !isUser ? clampStreamingTable(revealed) : revealed;
   // Tema resuelto (claro/oscuro) — decide el estilo del syntax highlighting.
   const resolvedTheme = useResolvedTheme();

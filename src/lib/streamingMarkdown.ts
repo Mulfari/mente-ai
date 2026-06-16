@@ -55,3 +55,26 @@ export function clampStreamingTable(md: string): string {
   // Tabla válida: mostrar solo filas completas (descartar la fila a medio).
   return lines.slice(0, completeRunEnd + 1).join("\n");
 }
+
+// Quita el bloque `context_delta` que el modelo a veces deja AL FINAL de la
+// respuesta. El orquestador instruye al modelo a anexar un JSON
+// `{ "context_delta": { "add_notes": ... } }` para actualizar el contexto del
+// usuario; eso debe viajar SOLO por el evento `done` (estructurado), pero a
+// veces el modelo lo escribe también en el texto (a veces envuelto en un bloque
+// ```json) y se colaba en la respuesta visible. Como el `done` ya trae la copia
+// estructurada, recortar la del texto no pierde nada.
+//
+// Localiza la clave "context_delta", retrocede al `{` que abre su objeto y, si
+// justo antes hay una cerca ```lang, la incluye en el recorte (para no dejar una
+// cerca colgando). Conserva bloques de código legítimos anteriores. Maneja el
+// caso en streaming donde el bloque aún no cerró.
+export function stripContextDelta(text: string): string {
+  const idx = text.lastIndexOf('"context_delta"');
+  if (idx === -1) return text;
+  let start = text.lastIndexOf("{", idx);
+  if (start === -1) start = idx;
+  const head = text.slice(0, start);
+  const fence = head.match(/```[^\n`]*\s*$/);
+  if (fence) start = head.length - fence[0].length;
+  return text.slice(0, start).replace(/\s+$/, "");
+}
