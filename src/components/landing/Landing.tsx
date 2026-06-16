@@ -7,7 +7,7 @@ import "./landingDesign.css";
 // `.lp` (no toca el chat), los CTA apuntan a /sign-up · /sign-in, los precios
 // salen de appConfig y se conserva el JSON-LD para SEO. Tema bloqueado en claro
 // (papel cálido), con contenedor de scroll propio porque el body global está
-// bloqueado. Para re-generar markup/CSS: scripts/build-landing.mjs.
+// bloqueado. Para re-generar markup/CSS: scripts/landing/build-landing.mjs.
 
 const SITE_URL = "https://www.mulfai.com.ve";
 

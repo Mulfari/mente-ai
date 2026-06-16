@@ -231,3 +231,8 @@
 .lp .cmp-cell { padding: 14px; font-size: 13.5px; }
 .lp .foot-grid { grid-template-columns: 1fr 1fr; gap: 28px; }
 }
+
+/* ── Parches de integración (no vienen del export) ───────────────────────── */
+@media (max-width: 768px) {
+  .lp .nav .lnk[href^="#"], .lp .nav .sep { display: none; }
+}
