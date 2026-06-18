@@ -81,8 +81,20 @@ const patches = `
    En el DOM el form va primero (mejor para lectores de pantalla); las columnas
    le dan a la marca el lado ancho a la derecha. */
 .av .shell { grid-template-columns: 0.98fr 1.02fr; }
-/* Clerk embebido en .formpane: ocupa el ancho del .formcard, sin tarjeta propia. */
-.av .av-clerk { margin-top: 22px; width: 100%; }
+/* Clerk embebido en .formpane: ocupa el ancho del .formcard, sin tarjeta propia.
+   min-height reserva el alto del formulario para que no salte al hidratar Clerk. */
+.av .av-clerk { margin-top: 22px; width: 100%; min-height: 360px; }
+
+/* Skeleton mientras Clerk carga (sin flash en blanco). Orden del diseño:
+   inputs ARRIBA, social ABAJO. */
+@keyframes av-shimmer { 0%,100% { opacity: .5; } 50% { opacity: .9; } }
+.av .av-sk { display: flex; flex-direction: column; gap: 13px; animation: av-shimmer 1.4s ease-in-out infinite; }
+.av .av-sk-lbl { width: 36%; height: 11px; border-radius: 6px; background: var(--line); }
+.av .av-sk-input { height: 48px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.av .av-sk-btn { height: 50px; border-radius: 12px; background: color-mix(in srgb, var(--green) 50%, var(--surface)); margin-top: 4px; }
+.av .av-sk-div { height: 1px; background: var(--line); margin: 16px 0; }
+.av .av-sk-social { height: 48px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+@media (prefers-reduced-motion: reduce) { .av .av-sk { animation: none; } }
 `;
 writeFileSync(OUT, banner + scoped + patches);
 const bal = (scoped.match(/{/g) || []).length - (scoped.match(/}/g) || []).length;

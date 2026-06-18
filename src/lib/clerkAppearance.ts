@@ -77,6 +77,11 @@ export const vechatAppearance = {
 // Se pasa por `appearance` al <SignIn>/<SignUp>; NO cambia el modal global.
 // Los valores replican el mockup del diseño (inputs/botón verde, social block).
 export const vechatAuthPageAppearance = {
+  layout: {
+    // Como el diseño enviado: campos ARRIBA, "Continuar con Google" ABAJO.
+    socialButtonsPlacement: "bottom" as const,
+    socialButtonsVariant: "blockButton" as const,
+  },
   variables: {
     colorPrimary: "#10A37F",
     colorText: "#221E1A",
@@ -85,9 +90,15 @@ export const vechatAuthPageAppearance = {
     colorInputBackground: "#FBF8F2",
     borderRadius: "12px",
     fontFamily: "var(--font-landing), var(--font-inter), system-ui, sans-serif",
+    spacingUnit: "1rem",
   },
   elements: {
     rootBox: { width: "100%" },
+    main: { gap: "18px" },
+    form: { gap: "14px" },
+    formField: { marginBottom: "2px" },
+    dividerRow: { margin: "18px 0" },
+    socialButtons: { gap: "10px" },
     cardBox: { width: "100%", border: "none", boxShadow: "none", borderRadius: "0" },
     card: { width: "100%", border: "none", boxShadow: "none", background: "transparent", padding: "0" },
     header: { display: "none" },
