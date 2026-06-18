@@ -1,0 +1,84 @@
+/* AUTO-GENERADO desde el export de Claude Design (auth). CSS del login/registro,
+   con CADA selector scoped bajo .av para no tocar el resto del app. Tokens de
+   marca y fuentes los hereda del app. No editar a mano: re-generar con
+   scripts/auth/build-auth.mjs. */
+.av {
+    --bg: #F1ECE3; --surface: #FBF8F2; --ink: #221E1A; --ink-2: #6E655A; --ink-3: #9B9183;
+    --line: #E2DBCD; --green: #10A37F; --green-h: #0D8B6A; --green-ink: #0A7355; --night: #12241E;
+  }
+.av * { box-sizing: border-box; }
+.av { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font-family: var(--font-landing); -webkit-font-smoothing: antialiased; }
+.av a { color: inherit; text-decoration: none; }
+.av .disp { font-family: var(--font-display); letter-spacing: -0.03em; font-weight: 700; }
+.av .grain { position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: 0.035; mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.av .shell { display: grid; grid-template-columns: 1.02fr 0.98fr; min-height: 100vh; }
+/* ── Brand panel (left, dark) ─────────────────────────── */
+.av .brandpane { position: relative; background: var(--night); color: #EAF4EF; padding: 44px 52px; display: flex; flex-direction: column; overflow: hidden; }
+.av .brandpane .glow { position: absolute; inset: 0; background: radial-gradient(closest-side at 30% 0%, rgba(16,163,127,0.32), transparent 62%); }
+.av .bp-top { position: relative; display: flex; align-items: center; justify-content: space-between; }
+.av .brand { display: inline-flex; align-items: center; gap: 9px; font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: -0.02em; }
+.av .bp-back { display: inline-flex; align-items: center; gap: 7px; font-size: 13.5px; font-weight: 600; color: #9FB3AB; }
+.av .bp-back:hover { color: #EAF4EF; }
+.av .bp-mid { position: relative; margin-top: auto; }
+.av .bp-kick { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: #5FCBA8; }
+.av .bp-kick .ln { width: 28px; height: 2px; background: #5FCBA8; }
+.av .bp-h { font-size: clamp(2rem, 3.2vw, 2.9rem); line-height: 0.98; margin: 18px 0 0; max-width: 14ch; }
+.av .bp-h .slab { display: inline-block; background: var(--green); color: #fff; padding: 0 0.16em 0.05em; border-radius: 12px; transform: rotate(-1.6deg); }
+/* mini live chat */
+.av .bp-chat { position: relative; margin-top: 34px; display: flex; flex-direction: column; gap: 9px; max-width: 340px; }
+.av .bp-cb { font-family: var(--font-inter); font-size: 13.5px; line-height: 1.45; padding: 10px 13px; border-radius: 15px; }
+.av .bp-cb.u { align-self: flex-end; background: var(--green); color: #fff; border-radius: 15px 15px 4px 15px; }
+.av .bp-cb.a { align-self: flex-start; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); color: #DCE7E2; border-radius: 15px 15px 15px 4px; min-height: 18px; }
+.av .bp-foot { position: relative; margin-top: 32px; display: flex; align-items: center; gap: 16px; font-size: 13px; color: #9FB3AB; }
+.av .bp-foot .dot { width: 4px; height: 4px; border-radius: 999px; background: #4B6058; }
+/* ── Form panel (right) ───────────────────────────────── */
+.av .formpane { display: flex; align-items: center; justify-content: center; padding: 40px 32px; }
+.av .formcard { width: 100%; max-width: 400px; }
+.av .tabs { display: inline-flex; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; gap: 2px; }
+.av .tab { border: none; background: transparent; cursor: pointer; font-family: var(--font-landing); font-weight: 600; font-size: 14px; color: var(--ink-2); padding: 9px 20px; border-radius: 999px; transition: color .18s; }
+.av .tab.on { background: var(--green); color: #fff; box-shadow: 0 6px 16px -8px rgba(16,163,127,0.8); }
+.av .f-h { font-size: 2.1rem; margin: 28px 0 0; }
+.av .f-sub { font-size: 15.5px; color: var(--ink-2); margin: 8px 0 0; line-height: 1.5; }
+.av .social { display: flex; flex-direction: column; gap: 10px; margin-top: 26px; }
+.av .sbtn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 48px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-family: var(--font-landing); font-weight: 600; font-size: 14.5px; color: var(--ink); transition: background-color .15s, border-color .15s; }
+.av .sbtn:hover { background: var(--surface-hover); border-color: var(--ink-3); }
+.av .divider { display: flex; align-items: center; gap: 14px; margin: 22px 0; color: var(--ink-3); font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+.av .divider::before, .av .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.av .field { margin-bottom: 14px; }
+.av .field label { display: block; font-size: 13px; font-weight: 600; color: var(--ink-2); margin-bottom: 7px; }
+.av .inp { display: flex; align-items: center; gap: 9px; height: 48px; padding: 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; transition: border-color .15s, box-shadow .15s; }
+.av .inp:focus-within { border-color: var(--green); box-shadow: var(--shadow-focus); }
+.av .inp svg { color: var(--ink-3); flex-shrink: 0; }
+.av .inp input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: var(--font-inter); font-size: 15px; color: var(--ink); }
+.av .inp .eye { cursor: pointer; color: var(--ink-3); display: inline-flex; }
+.av .inp .eye:hover { color: var(--ink-2); }
+.av .row-between { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 20px; }
+.av .check { display: inline-flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
+.av .check input { width: 16px; height: 16px; accent-color: var(--green); }
+.av .link-g { font-size: 13.5px; font-weight: 600; color: var(--green-ink); }
+.av .link-g:hover { text-decoration: underline; }
+.av .submit { width: 100%; height: 50px; border: none; border-radius: 12px; background: var(--green); color: #fff; font-family: var(--font-landing); font-weight: 700; font-size: 15.5px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 10px 24px -10px rgba(16,163,127,0.8); transition: background-color .18s, transform .18s; }
+.av .submit:hover { background: var(--green-h); transform: translateY(-1px); }
+.av .swap { text-align: center; margin-top: 22px; font-size: 14px; color: var(--ink-2); }
+.av .swap button { border: none; background: transparent; cursor: pointer; font-family: var(--font-landing); font-weight: 700; font-size: 14px; color: var(--green-ink); }
+.av .swap button:hover { text-decoration: underline; }
+.av .legal { margin-top: 22px; font-size: 12.5px; color: var(--ink-3); line-height: 1.5; text-align: center; }
+.av .legal a { color: var(--green-ink); font-weight: 600; }
+.av .reg-only { display: none; }
+.av body.mode-register .reg-only { display: block; }
+.av body.mode-register .login-only { display: none; }
+@media (max-width: 900px) {
+.av .shell { grid-template-columns: 1fr; }
+.av .brandpane { padding: 28px 28px 36px; min-height: 300px; }
+.av .bp-chat { display: none; }
+}
+
+/* ── Parches de integración (no vienen del export) ───────────────────────── */
+.av { height: 100dvh; overflow-y: auto; }
+/* SWAP de lados: el form va a la IZQUIERDA y la marca (oscura) a la DERECHA.
+   En el DOM el form va primero (mejor para lectores de pantalla); las columnas
+   le dan a la marca el lado ancho a la derecha. */
+.av .shell { grid-template-columns: 0.98fr 1.02fr; }
+/* Clerk embebido en .formpane: ocupa el ancho del .formcard, sin tarjeta propia. */
+.av .av-clerk { margin-top: 22px; width: 100%; }

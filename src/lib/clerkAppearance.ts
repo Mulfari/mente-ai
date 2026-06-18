@@ -70,3 +70,57 @@ export const vechatAppearance = {
     },
   },
 } as const;
+
+// Apariencia SOLO para las páginas /sign-in y /sign-up (split design): el
+// componente de Clerk va EMBEBIDO en el panel del formulario (.formpane) — sin
+// tarjeta/sombra propias y sin su header (lo pone AuthShell con .f-h/.f-sub).
+// Se pasa por `appearance` al <SignIn>/<SignUp>; NO cambia el modal global.
+// Los valores replican el mockup del diseño (inputs/botón verde, social block).
+export const vechatAuthPageAppearance = {
+  variables: {
+    colorPrimary: "#10A37F",
+    colorText: "#221E1A",
+    colorTextSecondary: "#6E655A",
+    colorBackground: "transparent",
+    colorInputBackground: "#FBF8F2",
+    borderRadius: "12px",
+    fontFamily: "var(--font-landing), var(--font-inter), system-ui, sans-serif",
+  },
+  elements: {
+    rootBox: { width: "100%" },
+    cardBox: { width: "100%", border: "none", boxShadow: "none", borderRadius: "0" },
+    card: { width: "100%", border: "none", boxShadow: "none", background: "transparent", padding: "0" },
+    header: { display: "none" },
+    socialButtonsBlockButton: {
+      height: "48px",
+      border: "1px solid #E2DBCD",
+      borderRadius: "12px",
+      backgroundColor: "#FBF8F2",
+      fontWeight: 600,
+      "&:hover": { backgroundColor: "#F0EADF", borderColor: "#9B9183" },
+    },
+    dividerLine: { backgroundColor: "#E2DBCD" },
+    dividerText: { color: "#9B9183", fontSize: "12.5px", letterSpacing: "0.08em", textTransform: "uppercase" as const },
+    formFieldLabel: { fontSize: "13px", fontWeight: 600, color: "#6E655A" },
+    formFieldInput: {
+      height: "48px",
+      border: "1px solid #E2DBCD",
+      borderRadius: "12px",
+      backgroundColor: "#FBF8F2",
+      fontSize: "15px",
+      "&:focus": { borderColor: "#10A37F", boxShadow: "0 0 0 3px rgba(16, 163, 127, 0.12)" },
+    },
+    formButtonPrimary: {
+      height: "50px",
+      fontSize: "15.5px",
+      fontWeight: 700,
+      textTransform: "none" as const,
+      borderRadius: "12px",
+      backgroundColor: "#10A37F",
+      boxShadow: "0 10px 24px -10px rgba(16, 163, 127, 0.8)",
+      "&:hover": { backgroundColor: "#0D8B6A" },
+    },
+    footer: { background: "transparent" },
+    footerActionLink: { color: "#0A7355", fontWeight: 700, "&:hover": { color: "#0D8B6A" } },
+  },
+} as const;
