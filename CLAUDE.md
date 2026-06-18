@@ -15,9 +15,16 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   al autenticarse sin redirect (email/contraseña) un efecto con `useAuth`
   recarga la página para que el server resuelva el perfil
 - Apariencia global en `src/lib/clerkAppearance.ts` (clara, verde VeChat),
-  inyectada UNA vez en el ClerkProvider — no pasar appearance por componente
+  inyectada UNA vez en el ClerkProvider para el MODAL (no pasar appearance por
+  componente al modal)
 - `/sign-in` y `/sign-up` quedan como fallback (correos de Clerk, links
-  directos, redirects del middleware) con `AuthShell` (tarjeta centrada)
+  directos, redirects del middleware): **diseño SPLIT de Claude Design**
+  (`AuthShell`) con los lados invertidos — formulario a la IZQUIERDA, panel de
+  marca oscuro ("Tu pana digital, aquí" + mini chat) a la DERECHA. El form lo
+  dibuja Clerk embebido en `.formpane`, estilizado con `vechatAuthPageAppearance`
+  (pasada por `appearance` SOLO a esas páginas, sin tocar el modal; oculta el
+  header de Clerk porque AuthShell pone `.f-h/.f-sub`). CSS scoped bajo `.av`
+  (authDesign.css); re-generar: `scripts/auth/build-auth.mjs`
 - Setup estándar con CNAME: Frontend API en `clerk.mulfai.com.ve`
   (DNS en Vercel DNS, `ns1/ns2.vercel-dns.com`; los 5 CNAME de Clerk —
   clerk, accounts, clkmail, clk._domainkey, clk2._domainkey — ya existen
