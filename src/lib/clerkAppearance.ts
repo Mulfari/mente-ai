@@ -76,12 +76,10 @@ export const vechatAppearance = {
 // tarjeta/sombra propias y sin su header (lo pone AuthShell con .f-h/.f-sub).
 // Se pasa por `appearance` al <SignIn>/<SignUp>; NO cambia el modal global.
 // Los valores replican el mockup del diseño (inputs/botón verde, social block).
+// OJO: el ORDEN (campos arriba, social abajo) NO se hace aquí — Clerk lee
+// `layout.socialButtonsPlacement` solo del ClerkProvider, no por componente. Se
+// resuelve con `order` en CSS (.av .cl-form/.cl-socialButtonsRoot, authDesign.css).
 export const vechatAuthPageAppearance = {
-  layout: {
-    // Como el diseño enviado: campos ARRIBA, "Continuar con Google" ABAJO.
-    socialButtonsPlacement: "bottom" as const,
-    socialButtonsVariant: "blockButton" as const,
-  },
   variables: {
     colorPrimary: "#10A37F",
     colorText: "#221E1A",

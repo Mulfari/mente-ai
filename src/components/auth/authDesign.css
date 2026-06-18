@@ -94,3 +94,11 @@
 .av .av-sk-div { height: 1px; background: var(--line); margin: 16px 0; }
 .av .av-sk-social { height: 48px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
 @media (prefers-reduced-motion: reduce) { .av .av-sk { animation: none; } }
+
+/* Orden del formulario de Clerk: campos ARRIBA, "Continuar con Google" ABAJO
+   (como el diseño). Clerk ignora layout.socialButtonsPlacement por componente,
+   así que reordenamos el flex de .cl-main. Scoped a .av → no toca el modal. */
+.av .cl-main { display: flex; flex-direction: column; }
+.av .cl-form { order: 1; }
+.av .cl-dividerRow { order: 2; margin: 18px 0; }
+.av .cl-socialButtonsRoot { order: 3; }
