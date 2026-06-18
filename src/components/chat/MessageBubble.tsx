@@ -7,6 +7,7 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneLight, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { useResolvedTheme } from "@/lib/theme";
 import { useSpeechSynthesisServer } from "@/lib/voice-server";
+import { clampStreamingTable, stripContextDelta } from "@/lib/streamingMarkdown";
 
 type Message = {
   id: string;
@@ -46,6 +47,11 @@ type Props = {
 // durante el streaming; el render final va sin él (markdown limpio). No toca
 // code/pre (no romper bloques de código). Los espacios quedan como texto
 // suelto para preservar el wrapping y el copiar/pegar.
+// No envolver palabras dentro de estos elementos: code/pre (no romper bloques de
+// código) y las TABLAS (th/td/tr/…): el blur por palabra re-anima cada celda en
+// cada frame del streaming y las tablas parpadean. Las celdas se renderizan como
+// texto plano (sin animación), que es lo que se quiere.
+const CB_SKIP = new Set(["code", "pre", "table", "thead", "tbody", "tfoot", "tr", "td", "th"]);
 function rehypeBlurWords() {
   const wrap = (node: any) => {
     if (!node || !Array.isArray(node.children)) return;
@@ -58,7 +64,7 @@ function rehypeBlurWords() {
           else out.push({ type: "element", tagName: "span", properties: { className: ["cb-w"] }, children: [{ type: "text", value: part }] });
         }
       } else {
-        if (child.type === "element" && child.tagName !== "code" && child.tagName !== "pre") wrap(child);
+        if (child.type === "element" && !CB_SKIP.has(child.tagName)) wrap(child);
         out.push(child);
       }
     }
@@ -132,8 +138,15 @@ export default function MessageBubble({
 }: Props) {
   const isStreaming = message._loading || message.id === streamingMsgId || retryMode === message.id;
   const isUser = message.role === "user";
-  // Texto revelado suavemente (solo respuestas en streaming).
-  const displayedContent = useSmoothReveal(message.content, isStreaming && !isUser);
+  // Quita el bloque context_delta que el modelo a veces deja al final de la
+  // respuesta (defensa en el render: cubre también mensajes viejos ya guardados
+  // en la BD con el JSON pegado). No aplica a la burbuja del usuario.
+  const baseContent = isUser ? message.content : stripContextDelta(message.content);
+  // Texto revelado suavemente (solo respuestas en streaming). Durante el
+  // streaming se estabilizan las tablas a medio llegar (clampStreamingTable)
+  // para que no parpadeen ni se re-formen frame a frame.
+  const revealed = useSmoothReveal(baseContent, isStreaming && !isUser);
+  const displayedContent = isStreaming && !isUser ? clampStreamingTable(revealed) : revealed;
   // Tema resuelto (claro/oscuro) — decide el estilo del syntax highlighting.
   const resolvedTheme = useResolvedTheme();
 

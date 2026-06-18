@@ -19,6 +19,7 @@ import { resolveTier } from "@/lib/plans";
 import type { AppConfig } from "@/lib/appConfig";
 import { clearDraft, readDraft } from "@/lib/chatDraft";
 import { shouldSearchWeb, buildGroundedQuestion, buildUngroundedNotice, type WebSource } from "@/lib/webSearch";
+import { stripContextDelta } from "@/lib/streamingMarkdown";
 
 type Message = {
   id: string;
@@ -1354,9 +1355,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         if (currentEvent === 'chunk' && data.type === 'chunk') {
           isDeep = data.is_deep ?? false;
           accumulatedText += data.text;
-          setDisplayedText(prev => ({ ...prev, [msgId]: accumulatedText }));
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _isDeep: isDeep } : m));
-          scheduleChunkUpsert(accumulatedText);
+          // Oculta el bloque context_delta que el modelo a veces deja al final
+          // (debe ir solo por el evento `done`, no en el texto visible).
+          const shown = stripContextDelta(accumulatedText);
+          setDisplayedText(prev => ({ ...prev, [msgId]: shown }));
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: shown, _isDeep: isDeep } : m));
+          scheduleChunkUpsert(shown);
         } else if (currentEvent === 'done' && data.type === 'done') {
           isDeep = data.is_deep ?? isDeep;
         } else if (currentEvent === 'error') {
@@ -1388,8 +1392,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           }
           flushEvent();
           flushChunkUpsert();
-          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
+          const finalText = stripContextDelta(accumulatedText);
+          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: finalText, role: 'assistant', in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalText, _loading: false, _isDeep: isDeep } : m));
           currentStreamReqRef.current = null;
           const now = new Date().toISOString();
           supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
@@ -1756,9 +1761,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         if (currentEvent === 'chunk' && data.type === 'chunk') {
           isDeep = data.is_deep ?? false;
           accumulatedText += data.text;
-          setDisplayedText(prev => ({ ...prev, [msgId]: accumulatedText }));
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _isDeep: isDeep } : m));
-          scheduleChunkUpsert(accumulatedText);
+          // Oculta el bloque context_delta que el modelo a veces deja al final
+          // (debe ir solo por el evento `done`, no en el texto visible).
+          const shown = stripContextDelta(accumulatedText);
+          setDisplayedText(prev => ({ ...prev, [msgId]: shown }));
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: shown, _isDeep: isDeep } : m));
+          scheduleChunkUpsert(shown);
         } else if (currentEvent === 'done' && data.type === 'done') {
           isDeep = data.is_deep ?? isDeep;
           contextDelta = data.context_delta ?? null;
@@ -1791,8 +1799,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           }
           flushEvent();
           flushChunkUpsert();
-          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: accumulatedText, role: 'assistant', in_progress: false });
-          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: accumulatedText, _loading: false, _isDeep: isDeep } : m));
+          const finalText = stripContextDelta(accumulatedText);
+          await supabase.from('messages').upsert({ id: msgId, conversation_id: convId, content: finalText, role: 'assistant', in_progress: false });
+          setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: finalText, _loading: false, _isDeep: isDeep } : m));
           const now = new Date().toISOString();
           supabase.from('conversations').update({ updated_at: now }).eq('id', convId);
           setConversations(prev => prev.map(c => c.id === convId ? { ...c, updated_at: now } : c));
