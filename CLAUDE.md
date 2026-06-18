@@ -78,16 +78,22 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
 - OJO (cambio de arquitectura): el visitante DESLOGUEADO ya NO ve el chat.
   `page.tsx` renderiza `src/components/landing/Landing.tsx` (página de venta)
   cuando no hay `userId`; el chat (`ChatInterface`) es solo para logueados.
-- `Landing` (server component) usa los MISMOS tokens del tema (papel cálido +
-  verde) → hereda claro/oscuro y marca. Su propio contenedor de scroll
-  (`h-[100dvh] overflow-y-auto`) porque el body global está bloqueado. Fuente
-  display SOLO aquí: Bricolage Grotesque (`--font-display`, cargada en layout;
-  el chat sigue en Inter). Secciones: hero (split + demo real de chat animado
-  `HeroDemo`), bento de casos de uso, 3 pasos, marquee de preguntas, precios
-  (de `appConfig`: gratis/semanal/mensual), CTA final, footer. Motion con
-  `Reveal` (IntersectionObserver, respeta reduced-motion) + CSS. Todos los CTA
-  van a `/sign-up` (Crear cuenta) o `/sign-in`. Hecha con la skill de diseño
-  `design-taste-frontend` (sin deps nuevas: SVG a mano, convención del repo).
+- `Landing` (server component) = **diseño v2 importado de Claude Design** (export
+  "vechat-landing"). Renderiza markup ESTÁTICO vía `dangerouslySetInnerHTML`
+  dentro de un wrapper `.lp`; el CSS (`landingDesign.css`) va con CADA selector
+  scoped bajo `.lp` para NO tocar el chat. Tema bloqueado en CLARO (papel cálido,
+  el diseño no define variante oscura). Contenedor de scroll propio
+  (`h-[100dvh] overflow-y-auto`) porque el body global está bloqueado. Usa las 4
+  fuentes que el app ya carga (Inter/Bricolage/Archivo/Plus Jakarta) y los tokens
+  de marca. CTAs a `/sign-up` · `/sign-in`; precios desde `appConfig` (placeholders
+  `__PRICE_*__`/`__FREE_LIMIT__` que sustituye el server); se conserva el JSON-LD
+  (WebApplication + FAQ + Org) para SEO. Secciones (11): hero + teléfono-demo,
+  marquee, 3 pasos, face-off vs IA genérica, "lo que sabe" (01–05), formatos de
+  respuesta, casos por persona, comparativa, testimonios, precios, FAQ, cierre,
+  footer. Parche móvil: el `<nav>` (desktop-first) oculta los links de sección en
+  ≤768px. **`landingMarkup.ts` y `landingDesign.css` son AUTO-GENERADOS — no
+  editar a mano; re-generar con `scripts/landing/build-landing.mjs`** (lee el
+  export crudo en `scripts/landing/landing-{body.html,design.css}`).
 - `ChatInterface` sigue siendo LA única superficie del LOGUEADO (hero criollo
   + input + feed). El visitante deslogueado del chat (p.ej. vía link a /chat)
   todavía existe como fallback, pero la home `/` deslogueada es la landing.
