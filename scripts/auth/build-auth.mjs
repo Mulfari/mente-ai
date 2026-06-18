@@ -85,16 +85,12 @@ const patches = `
    min-height reserva el alto del formulario para que no salte al hidratar Clerk. */
 .av .av-clerk { margin-top: 22px; width: 100%; min-height: 360px; }
 
-/* Skeleton mientras Clerk carga (sin flash en blanco). Orden del diseño:
-   inputs ARRIBA, social ABAJO. */
-@keyframes av-shimmer { 0%,100% { opacity: .5; } 50% { opacity: .9; } }
-.av .av-sk { display: flex; flex-direction: column; gap: 13px; animation: av-shimmer 1.4s ease-in-out infinite; }
-.av .av-sk-lbl { width: 36%; height: 11px; border-radius: 6px; background: var(--line); }
-.av .av-sk-input { height: 48px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
-.av .av-sk-btn { height: 50px; border-radius: 12px; background: color-mix(in srgb, var(--green) 50%, var(--surface)); margin-top: 4px; }
-.av .av-sk-div { height: 1px; background: var(--line); margin: 16px 0; }
-.av .av-sk-social { height: 48px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
-@media (prefers-reduced-motion: reduce) { .av .av-sk { animation: none; } }
+/* Estado de carga NEUTRO mientras Clerk hidrata: un spinner sutil centrado (no
+   finge el formulario, así no hay "doble cambio" al aparecer el form real). */
+.av .av-loading { display: flex; align-items: center; justify-content: center; min-height: 220px; }
+.av .av-spin { width: 30px; height: 30px; border-radius: 999px; border: 3px solid var(--line); border-top-color: var(--green); animation: av-rot 0.8s linear infinite; }
+@keyframes av-rot { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .av .av-spin { animation: none; opacity: .6; } }
 
 /* Orden del formulario de Clerk: campos ARRIBA, "Continuar con Google" ABAJO
    (como el diseño). Clerk ignora layout.socialButtonsPlacement por componente,

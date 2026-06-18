@@ -132,6 +132,10 @@ export default function RootLayout({
     <ClerkProvider localization={vechatLocalization} appearance={vechatAppearance}>
       <html lang="es" className={`${inter.variable} ${bricolage.variable} ${jakarta.variable} ${archivo.variable}`} suppressHydrationWarning>
         <head>
+          {/* Adelanta DNS + handshake TLS con Clerk (su frontend API y su JS
+              salen de clerk.mulfai.com.ve) para que el login pinte más rápido. */}
+          <link rel="dns-prefetch" href="https://clerk.mulfai.com.ve" />
+          <link rel="preconnect" href="https://clerk.mulfai.com.ve" />
           {/* Antes del primer paint: aplica el tema (claro/oscuro/sistema), el
               color del marco del navegador móvil (theme-color) y el estado del
               sidebar para que el layout nazca correcto — sin flash de tema,
