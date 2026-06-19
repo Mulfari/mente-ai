@@ -1,9 +1,10 @@
 // src/app/api/web-context/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { shouldSearchWeb, isNewsQuery, searchIntent, type WebSource } from "@/lib/webSearch";
+import { shouldSearchWeb, isNewsQuery, searchIntent, localQuery, type WebSource } from "@/lib/webSearch";
 import { getWebDomains } from "@/lib/appConfig";
 import { fetchDolarRates, buildDolarContext } from "@/lib/dolar";
+import { searchLocalBusinesses } from "@/lib/localBusinesses";
 
 export const runtime = "nodejs";
 
@@ -32,10 +33,36 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ used: false, sources: [] }, { status: 401 });
 
   let question = "";
+  let city: string | null = null;
+  let lat: number | null = null;
+  let lng: number | null = null;
   try {
-    ({ question } = await req.json());
+    const body = await req.json();
+    question = typeof body.question === "string" ? body.question : "";
+    city = typeof body.city === "string" && body.city.trim() ? body.city.trim() : null;
+    lat = typeof body.lat === "number" ? body.lat : null;
+    lng = typeof body.lng === "number" ? body.lng : null;
   } catch {
     return NextResponse.json({ used: false, sources: [] });
+  }
+
+  // VeLocal: descubrimiento de negocios locales. Va ANTES del gate de búsqueda
+  // web porque "¿dónde tomo un café?" NO dispara shouldSearchWeb. Self-gating:
+  // 0 negocios → no corta y cae al flujo web/genérico de abajo.
+  const lq = localQuery(question);
+  if (lq) {
+    const businesses = await searchLocalBusinesses({ city, term: lq.term, lat, lng });
+    if (businesses.length > 0) {
+      const list = businesses
+        .map((b) => `${b.name}${b.category ? " (" + b.category + ")" : ""}${b.openNow ? " — abierto ahora" : ""}`)
+        .join("; ");
+      const answerHint =
+        `Negocios locales reales (de VeLocal) para "${lq.term}"${city ? " en " + city : ""}: ${list}. ` +
+        `Recomiéndalos en 1-2 frases naturales y cálidas, como un pana que conoce la zona. ` +
+        `NO repitas sus datos de contacto ni horarios: ya salen en tarjetas debajo. ` +
+        `Si aplica, agrega un consejo general breve.`;
+      return NextResponse.json({ used: true, kind: "local_business", businesses, answerHint });
+    }
   }
 
   // Re-chequeo server-side del detector (defensa) y guardas.
