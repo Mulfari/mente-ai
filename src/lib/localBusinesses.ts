@@ -57,19 +57,6 @@ export function isOpenNow(hours: Hours | null | undefined, now: Date = new Date(
 }
 
 /**
- * Normaliza un número venezolano a formato internacional para wa.me
- * ("04141234567" -> "584141234567"; "+58 414-123 4567" -> "584141234567").
- */
-export function waLink(whatsapp: string | null | undefined): string | null {
-  if (!whatsapp) return null;
-  let d = whatsapp.replace(/\D/g, "");
-  if (!d) return null;
-  if (d.startsWith("0")) d = "58" + d.slice(1);
-  else if (!d.startsWith("58")) d = "58" + d;
-  return `https://wa.me/${d}`;
-}
-
-/**
  * Busca negocios de VeLocal por término + ciudad. Esquema ACTUAL: match por
  * ilike sobre name/description/category (la categoría es texto libre). Cuando
  * VeLocal agregue tags/lat/lng/visible_in_vechat, se enchufan aquí (ver spec,
