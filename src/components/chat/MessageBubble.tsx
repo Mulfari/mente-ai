@@ -8,6 +8,8 @@ import { oneLight, vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/
 import { useResolvedTheme } from "@/lib/theme";
 import { useSpeechSynthesisServer } from "@/lib/voice-server";
 import { clampStreamingTable, stripContextDelta } from "@/lib/streamingMarkdown";
+import LocalBusinessCard from "@/components/chat/LocalBusinessCard";
+import type { LocalBusiness } from "@/lib/localBusinesses";
 
 type Message = {
   id: string;
@@ -23,9 +25,10 @@ type Message = {
   _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
   mode?: string;
   _isDeep?: boolean;
-  _status?: "searching";
+  _status?: "searching" | "searching_local";
   _grounded?: boolean;
   _sources?: { title: string; url: string }[];
+  _businesses?: LocalBusiness[];
   _feedbackGiven?: boolean;
   feedback_vote?: boolean | null;
 };
@@ -277,17 +280,17 @@ export default function MessageBubble({
             }}
           >
             {isStreaming && !displayedContent ? (
-              message._status === "searching" ? (
-                // Buscando en internet: globo que gira + texto con shimmer (sin
-                // caja, en línea con la respuesta sin burbuja). Se mantiene hasta
+              message._status === "searching" || message._status === "searching_local" ? (
+                // Buscando (internet o negocios locales): globo que gira + texto
+                // con shimmer (sin caja, en línea sin burbuja). Se mantiene hasta
                 // que llega el primer token (no vuelve a los 3 puntos).
-                <div className="cb-searching inline-flex items-center gap-2 min-h-[24px]" aria-label="Buscando en internet">
+                <div className="cb-searching inline-flex items-center gap-2 min-h-[24px]" aria-label={message._status === "searching_local" ? "Buscando negocios cerca" : "Buscando en internet"}>
                   <svg className="cb-globe" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <circle cx="12" cy="12" r="9" />
                     <path d="M3 12h18" />
                     <path d="M12 3c2.6 2.4 4 5.6 4 9s-1.4 6.6-4 9c-2.6-2.4-4-5.6-4-9s1.4-6.6 4-9z" />
                   </svg>
-                  <span className="cb-searching-text">Buscando en internet</span>
+                  <span className="cb-searching-text">{message._status === "searching_local" ? "Buscando negocios cerca…" : "Buscando en internet"}</span>
                 </div>
               ) : (
                 // Aún sin texto visible: indicador "pensando".
@@ -316,6 +319,23 @@ export default function MessageBubble({
                 </ReactMarkdown>
               </div>
             )}
+          </div>
+        )}
+
+        {/* VeLocal: negocios locales (descubrimiento). Las tarjetas son los
+            protagonistas; la prosa del modelo las enmarca sin repetir sus datos.
+            Se muestran ni bien llegan (antes/durante el streaming del texto). */}
+        {!isUser && message._businesses && message._businesses.length > 0 && (
+          <div className="lb-cards">
+            <span className="lb-cards-head">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
+              </svg>
+              Negocios cerca de ti
+            </span>
+            {message._businesses.slice(0, 4).map((b) => (
+              <LocalBusinessCard key={b.slug} b={b} />
+            ))}
           </div>
         )}
 
