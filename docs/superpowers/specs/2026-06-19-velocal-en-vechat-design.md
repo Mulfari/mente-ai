@@ -136,6 +136,55 @@ el modelo que toque) hace tool-use fiable.
 - Promoción pagada/ranking por pago.
 - Vectores.
 
+## Riesgos — lo que MÁS impacta la calidad
+
+La correctitud depende **más de la riqueza de la data de VeLocal que del código
+de VeChat**. El código es directo; lo difícil es que haya con qué responder.
+
+1. **Recall del match (riesgo #1).** Con `category` de texto libre + descripción
+   corta, muchas preguntas específicas no encuentran match ("hamburguesas" no
+   está en ningún campo de un café que igual las vende; "desayuno" ≠ "brunch").
+   Resultado: VeChat se ve "ignorante" justo donde promete saber. **Mitigación:
+   tags/keywords en VeLocal (lo que más mueve la aguja) + expansión de sinónimos
+   en VeChat.** Sin esto, el feature decepciona aunque haya negocios.
+2. **Ciudad imprecisa.** Si la ciudad del usuario (IP/user_context) está mal o
+   vacía → no dispara o muestra otra ciudad. Mejor no disparar que equivocarse.
+3. **Datos desactualizados.** Horarios viejos → "Abierto ahora" miente y rompe
+   confianza. Depende de la higiene de VeLocal.
+4. **Falsos positivos de intención.** "¿dónde saco el RIF?" (trámite) NO debe
+   disparar negocios; "¿dónde desayuno?" sí. La heurística necesita afinarse (y
+   el mini-LLM extractor ayuda a desambiguar).
+
+## Mejoras necesarias para funcionar bien
+
+### VeLocal (la oferta — lo que más mueve la aguja)
+- **Categoría estructurada + tags buscables (lo #1).** Una taxonomía fija
+  (Comida → Hamburguesas / Café / Pizza / Arepas…, Servicios, Salud, Belleza…)
+  **+ `tags text[]` libres** por negocio. Es lo que decide si "hamburguesas",
+  "desayuno", "café" encuentran al negocio. Sin esto el match falla seguido.
+- **Perfiles completos.** Onboarding que asegure `category, description (qué
+  ofrece), hours, whatsapp`. Un perfil pelado es inútil para descubrimiento.
+- **Ciudad normalizada** (+ zona/barrio; y a futuro `lat/lng` para "cerca" de
+  verdad, no solo ciudad).
+- **Frescura de horarios** + estado "cerrado temporalmente" (sostiene el
+  "Abierto ahora").
+- **Visibilidad/calidad.** Flag "aparecer en VeChat" + un mínimo de calidad
+  (moderación ligera) para no surfacear spam/perfiles incompletos.
+
+### VeChat (la costura)
+- **Ciudad del usuario confiable.** Derivar/preguntar bien la ciudad (IP es
+  impreciso). Sin ciudad correcta el descubrimiento local falla.
+- **Desambiguar intención** (negocio vs trámite vs general) — aquí entra el
+  mini-LLM extractor.
+- **Expansión de sinónimos/términos** mientras VeLocal no tenga tags ricos.
+- **Coordinación tarjeta↔prosa:** el `answerHint` instruye al modelo a **no
+  repetir** los datos de las tarjetas (enmarcarlas, no recitarlas). Avatar de
+  respaldo (inicial) si el negocio no tiene logo.
+- **Analítica** de "mostrados/clics" (mide valor, alimenta ranking, prueba ROI
+  al negocio que captes).
+- **2da superficie:** que "Cerca de ti" del feed también se nutra de VeLocal, no
+  solo el chat.
+
 ## Plan por fases
 
 **Fase 0 — listo para tráfico (esto es lo que construimos ahora):**
