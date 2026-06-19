@@ -283,6 +283,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   // and we mark the message as `in_progress: false` with a "(detenido)" tag
   // so other devices see the partial response immediately.
   const streamAbortRef = useRef<AbortController | null>(null);
+  // Ubicación del usuario para "negocios cerca" (VeLocal). Se pide una vez, de
+  // forma contextual (al hacer una pregunta local), se cachea y NO bloquea.
+  const userLocRef = useRef<{ lat: number; lng: number } | null>(null);
+  const geoDeniedRef = useRef(false);
   // Identidad del stream activo. Cada envío incrementa la secuencia y captura
   // su valor; al abandonar la conversación (nuevo chat / cambiar de chat) se
   // incrementa SIN abortar: el stream viejo sigue persistiendo su respuesta a
@@ -1476,6 +1480,19 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }
   }, []);
 
+  // Pide la ubicación del navegador UNA vez (contextual, no bloqueante) y la
+  // cachea para las preguntas de "negocios cerca". Si el usuario la niega o el
+  // navegador no la soporta, queda en `denied` y se cae a la ciudad.
+  function ensureUserLocation() {
+    if (userLocRef.current || geoDeniedRef.current) return;
+    if (typeof navigator === "undefined" || !navigator.geolocation) { geoDeniedRef.current = true; return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { userLocRef.current = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+      () => { geoDeniedRef.current = true; },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 }
+    );
+  }
+
   // Si la pregunta parece de actualidad/factual, busca fuentes en /api/web-context
   // y devuelve la pregunta AUMENTADA (lo que ve el modelo, no el usuario). Marca
   // el mensaje del asistente con _status:'searching' mientras dura la búsqueda.
@@ -1483,12 +1500,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   async function groundQuestionIfNeeded(originalQuestion: string, assistantMsgId: string): Promise<string> {
     const isLocal = !!localQuery(originalQuestion);
     if (!shouldSearchWeb(originalQuestion) && !isLocal) return originalQuestion;
+    if (isLocal) ensureUserLocation(); // pide/cachea ubicación (no bloquea esta query)
     setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _status: isLocal ? "searching_local" : "searching" } : m));
     try {
+      const loc = userLocRef.current;
       const res = await fetch("/api/web-context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: originalQuestion, city: userContext?.city || null }),
+        body: JSON.stringify({ question: originalQuestion, city: userContext?.city || null, lat: loc?.lat ?? null, lng: loc?.lng ?? null }),
       });
       const data = res.ok ? await res.json() : { used: false, sources: [] };
       // VeLocal: negocios locales → tarjetas (desde _businesses) + prosa que el

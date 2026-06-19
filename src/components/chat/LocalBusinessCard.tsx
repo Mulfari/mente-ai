@@ -22,10 +22,12 @@ export default function LocalBusinessCard({ b }: { b: LocalBusiness }) {
           <span className="lb-name">{b.name}</span>
           {b.openNow && <span className="lb-open">Abierto</span>}
         </div>
-        {(b.category || b.distanceKm != null) && (
+        {(b.category || b.neighborhood || b.distanceKm != null) && (
           <div className="lb-cat">
-            {b.category}
-            {b.distanceKm != null ? `${b.category ? " · " : ""}${b.distanceKm.toFixed(1)} km` : ""}
+            {[b.category, b.neighborhood].filter(Boolean).join(" · ")}
+            {b.distanceKm != null
+              ? `${b.category || b.neighborhood ? " · " : ""}${b.distanceKm.toFixed(b.distanceKm < 10 ? 1 : 0)} km`
+              : ""}
           </div>
         )}
         <div className="lb-actions">
