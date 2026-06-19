@@ -76,10 +76,13 @@
 
 /* ── Parches de integración (no vienen del export) ───────────────────────── */
 .av { height: 100dvh; overflow-y: auto; }
-/* SWAP de lados: el form va a la IZQUIERDA y la marca (oscura) a la DERECHA.
-   En el DOM el form va primero (mejor para lectores de pantalla); las columnas
-   le dan a la marca el lado ancho a la derecha. */
-.av .shell { grid-template-columns: 0.98fr 1.02fr; }
+/* SWAP de lados (SOLO escritorio): el form va a la IZQUIERDA y la marca (oscura)
+   a la DERECHA. En el DOM el form va primero (mejor para lectores de pantalla).
+   OJO: con min-width para NO pisar el apilado de móvil (@media max-width:900 del
+   export pone 1 columna) — si va sin media, en móvil quedan 2 columnas apretadas. */
+@media (min-width: 901px) {
+  .av .shell { grid-template-columns: 0.98fr 1.02fr; }
+}
 /* Clerk embebido en .formpane: ocupa el ancho del .formcard, sin tarjeta propia.
    min-height reserva el alto del formulario para que no salte al hidratar Clerk. */
 .av .av-clerk { margin-top: 22px; width: 100%; min-height: 360px; }
