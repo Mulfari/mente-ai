@@ -879,11 +879,6 @@ function SidebarBody({
                   <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Cargando…</span>
                 </div>
               )}
-              {!hasMoreConvs && !loadingMoreConvs && conversations.length > 8 && (
-                <p className="text-center text-[10.5px] py-3" style={{ color: "var(--text-tertiary)" }}>
-                  Has visto todo tu historial
-                </p>
-              )}
             </div>
           )}
         </nav>
