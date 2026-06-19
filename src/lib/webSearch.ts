@@ -124,3 +124,39 @@ export function buildUngroundedNotice(question: string): string {
     question,
   ].join("\n");
 }
+
+// --- Intención "lugar/negocio" (descubrimiento de VeLocal en el chat) --------
+// Independiente de shouldSearchWeb/searchIntent: NO es búsqueda web sino un
+// lookup de negocios locales. Devuelve un término CANÓNICO (acentuado, como
+// está la data de VeLocal — resuelve "cafe"→"café") o null. Excluye trámites
+// para no confundir "¿dónde saco el RIF?" con un negocio. Fase 0 prioriza
+// PRECISIÓN: solo dispara con vocabulario de consumo claro (un falso positivo
+// muestra negocios irrelevantes; un falso negativo solo cae al flujo normal).
+
+const LOCAL_TRAMITE = /\b(saime|seniat|rif\b|pasaporte|c[ée]dula|tr[áa]mite|requisitos|gob\.ve|registro\s+civil|prefectura|notar[íi]a)\b/i;
+
+// Vocabulario de consumo → término canónico de búsqueda (acentuado, como en la
+// data). Puente hasta que VeLocal tenga `tags`. El primero que matchee gana.
+const LOCAL_VOCAB: [RegExp, string][] = [
+  [/\b(desayun\w*|brunch|caf[eé]\w*|merend\w*|merienda)\b/i, "café"],
+  [/\b(tasca\w*|vino\w*|tapa\w*|bodeg[óo]n\w*)\b/i, "tasca"],
+  [/\b(hamburgues\w*|comida\s+r[áa]pida|fast\s*food)\b/i, "hamburgues"],
+  [/\b(pizza\w*|pizzer\w*)\b/i, "pizza"],
+  [/\b(arepa\w*|arepera\w*)\b/i, "arepa"],
+  [/\b(parrilla\w*|asado\w*|churrasco\w*)\b/i, "carne"],
+  [/\b(postre\w*|dulce\w*|torta\w*|helad\w*|pasteler\w*)\b/i, "postre"],
+  [/\b(restaurante\w*|cenar|almorzar|almuerzo\w*|\bcomer\b)\b/i, "restaurante"],
+  [/\b(cerveza\w*|trago\w*|coctel\w*|c[óo]ctel\w*)\b/i, "bar"],
+  [/\b(farmacia\w*|medicina\w*|medicament\w*)\b/i, "farmacia"],
+  [/\b(peluquer[íi]a\w*|barber[íi]a\w*|corte\s+de\s+pelo)\b/i, "peluquería"],
+];
+
+export function localQuery(question: string): { term: string } | null {
+  const q = (question || "").trim();
+  if (q.length < 4) return null;
+  if (LOCAL_TRAMITE.test(q)) return null; // trámite, no negocio
+  for (const [re, term] of LOCAL_VOCAB) {
+    if (re.test(q)) return { term };
+  }
+  return null;
+}
