@@ -91,7 +91,9 @@ export const vechatAuthPageAppearance = {
     spacingUnit: "1rem",
   },
   elements: {
-    rootBox: { width: "100%" },
+    // El form aparece con un fade suave cuando Clerk termina de montar (en vez
+    // de un spinner) — ver @keyframes av-in en authDesign.css.
+    rootBox: { width: "100%", animation: "av-in 0.35s ease both" },
     main: { gap: "18px" },
     form: { gap: "14px" },
     formField: { marginBottom: "2px" },

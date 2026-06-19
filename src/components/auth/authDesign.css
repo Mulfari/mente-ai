@@ -84,12 +84,15 @@
    min-height reserva el alto del formulario para que no salte al hidratar Clerk. */
 .av .av-clerk { margin-top: 22px; width: 100%; min-height: 360px; }
 
-/* Estado de carga NEUTRO mientras Clerk hidrata: un spinner sutil centrado (no
-   finge el formulario, así no hay "doble cambio" al aparecer el form real). */
-.av .av-loading { display: flex; align-items: center; justify-content: center; min-height: 220px; }
-.av .av-spin { width: 30px; height: 30px; border-radius: 999px; border: 3px solid var(--line); border-top-color: var(--green); animation: av-rot 0.8s linear infinite; }
-@keyframes av-rot { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .av .av-spin { animation: none; opacity: .6; } }
+/* Sin spinner: el form de Clerk aparece con un fade suave (la animación va en
+   rootBox vía appearance) — no se siente "cargando", solo aparece. */
+@keyframes av-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .av .cl-rootBox { animation: none !important; } }
+
+/* "Secured by Clerk": reposicionado al pie del formulario, separado del link de
+   registro, centrado y sutil. (Reposicionar está permitido; ocultarlo no.) */
+.av .cl-footer { align-items: center; }
+.av .cl-footerItem { margin-top: 20px; opacity: .6; }
 
 /* Orden del formulario de Clerk: campos ARRIBA, "Continuar con Google" ABAJO
    (como el diseño). Clerk ignora layout.socialButtonsPlacement por componente,
