@@ -40,7 +40,9 @@ día), `whatsapp, instagram, maps_url, logo_url, images, slug, active`. `address
 viene NULL (lo cubre `maps_url`). Implicaciones:
 
 - **Match por full-text**, no por igualdad de `category` (es texto libre).
-- **"cerca" = misma ciudad** (no hay lat/lng).
+- **"cerca":** hoy ciudad (la tabla aún no tiene `lat/lng`); cuando VeLocal
+  agregue coordenadas, pasa a **distancia real** (cercanos primero). VeChat se
+  construye listo para ambos (ver Progressive enhancement).
 - **Recomendación a VeLocal (no bloquea v1):** agregar `tags text[]` /
   `keywords` para mejorar recall ("hamburguesa", "desayuno", "brunch", "café"
   → encuentran al negocio aunque la categoría diga "Café & cocina"). Mientras
@@ -53,23 +55,41 @@ viene NULL (lo cubre `maps_url`). Implicaciones:
 Función pura/servidor, reusable hoy (grounding) y mañana (tool):
 
 ```
-searchLocalBusinesses({ city, term, limit = 5 }): Promise<LocalBusiness[]>
+searchLocalBusinesses({ city, term, lat?, lng?, limit = 5 }): Promise<LocalBusiness[]>
 ```
 
 - Lee `velocal_businesses` con el **service role** (tabla con RLS ON sin
-  policies; igual que el resto del feed server-side).
-- Filtra `active = true` y `city ilike city` (normalizada; reusar
-  `normalizeCity` del feed).
-- **Ranking por relevancia de texto**: `websearch_to_tsquery('spanish', term)`
-  sobre un `to_tsvector('spanish', name||' '||coalesce(description,'')||' '||
-  coalesce(category,''))`, con `ts_rank`. Fallback a `ILIKE`/trigram
-  (`pg_trgm`) si la query es muy corta o sin match FTS.
-- Devuelve un shape limpio: `{ slug, name, category, city, description,
-  whatsapp, instagram, mapsUrl, logoUrl, hours, openNow }`.
+  policies; igual que el resto del feed server-side). Filtra `active = true`
+  (y `visible_in_vechat` si existe) + ciudad (normalizada; reusar `normalizeCity`).
+- **Match (texto):** `websearch_to_tsquery('spanish', term)` sobre un
+  `to_tsvector('spanish', name + description + category (+ tags si existe))`,
+  con `ts_rank`. Fallback a `ILIKE`/trigram (`pg_trgm`) si la query es corta o
+  sin match FTS.
+- **Ranking (orden):** si llegan `lat/lng` del usuario **Y** el negocio tiene
+  coordenadas → **distancia primero** (haversine; "los cercanos primero" — justo
+  lo que pide "cenar rápido"), con la relevancia de texto como desempate. Sin
+  geo → relevancia de texto. En ambos: **abiertos antes que cerrados** (`openNow`)
+  + leve bonus por perfil completo.
+- Devuelve: `{ slug, name, category, city, neighborhood, description, whatsapp,
+  instagram, mapsUrl, logoUrl, hours, openNow, distanceKm? }`.
 - **`openNow`** se calcula del `hours` jsonb contra la hora de Venezuela
-  (helper `isOpenNow(hours)` — reusar la lógica de medianoche VE que ya existe).
-- Índice (migración VeLocal o VeChat): GIN sobre el tsvector + `(city, active)`.
-  Con 2 filas no importa; dejarlo listo para escala.
+  (`isOpenNow(hours)`; respeta `temporarily_closed` si existe).
+- **Progressive enhancement (clave):** la función usa `tags`, `lat/lng`,
+  `visible_in_vechat` **solo si ya existen** en la tabla (las agrega VeLocal). Hoy,
+  sin ellas, corre con full-text sobre `name+description+category` y "cerca" =
+  ciudad; cuando VeLocal migra, se encienden tags + distancia **sin reescribir
+  VeChat**. Esto desacopla las dos entregas.
+- Índice: GIN sobre el tsvector + `(city, active)`.
+
+### 1b. Ubicación del usuario (cliente)
+
+Para "los cercanos primero" VeChat necesita la ubicación del usuario:
+- **Geolocalización del navegador** (`navigator.geolocation`, con permiso) →
+  `lat/lng` precisos. Se pide **contextual** (la 1ª vez que hace una pregunta
+  local, o un toggle "usar mi ubicación"), no de golpe al entrar. Se cachea.
+- **Fallback:** `user_context.city` (si la puso) o ciudad por IP. Sin ubicación
+  ni ciudad → no se dispara VeLocal (cae a genérico).
+- Se pasa `lat/lng` (o la ciudad) al grounding para `searchLocalBusinesses`.
 
 ### 2. Detección de intención — extender `searchIntent` (webSearch.ts)
 
@@ -88,7 +108,7 @@ Nueva intención `"local_business"`: heurística barata sobre la pregunta.
 
 Antes de Tavily, **short-circuit del intent `local_business`** (igual patrón que
 el dólar):
-1. `searchLocalBusinesses({ city, term })`.
+1. `searchLocalBusinesses({ city, term, lat, lng })`.
 2. Si hay ≥1 resultado: devolver `{ used: true, kind: "local_business",
    businesses: [...], answerHint }` — `businesses` estructurado para tarjetas, y
    `answerHint` (texto breve para el modelo: "Negocios locales en VeChat para
@@ -114,11 +134,14 @@ el dólar):
 - **Tracking**: clic en tarjeta/WhatsApp → evento (para medir y, a futuro,
   ranking). Reusar `track-query`/un evento nuevo.
 
-## Ranking y "cerca" (v1)
+## Ranking y "cerca"
 
-- Orden: relevancia de texto (`ts_rank`) → desempate por `openNow` (abiertos
-  primero) → completitud de perfil (logo+fotos+horario) como leve bonus.
-- "cerca" = misma ciudad. Distancia/barrio = futuro (requiere geo en VeLocal).
+- **Con geo** (usuario + negocio tienen `lat/lng`): **distancia primero** — en
+  ciudad grande "cenar rápido" trae lo de al lado —, relevancia de texto como
+  desempate, `openNow` (abiertos primero), leve bonus por perfil completo.
+- **Sin geo**: relevancia de texto + `openNow`, acotado a la ciudad del usuario.
+- Si el usuario pide explícitamente otra zona/algo no cercano, manda el término
+  (la cercanía es el default, no una jaula).
 - Sin sesgo por pago (no hay promoción pagada aún; cuando la haya, se etiqueta).
 
 ## Futuro (no v1) — tool-calling
