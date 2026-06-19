@@ -21,7 +21,9 @@ export default function Logo({
     <svg
       width={size}
       height={size}
-      viewBox="0 0 100 100"
+      // viewBox recortado al contenido (la burbuja vive en x15-85 / y16-84):
+      // así el mark llena el box y no se ve chico por el padding del lienzo.
+      viewBox="15 15 70 70"
       fill="none"
       className={className}
       role="img"

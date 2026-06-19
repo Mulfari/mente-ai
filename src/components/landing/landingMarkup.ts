@@ -5,7 +5,7 @@
 /* eslint-disable */
 export const LANDING_HTML = String.raw`<div class="grain"></div>
 <header><div class="wrap">
-  <span class="brand"><svg width="24" height="24" viewBox="0 0 100 100" fill="none"><rect x="15" y="16" width="70" height="52" rx="18" fill="#10A37F"></rect><path d="M32 62 L32 84 L50 66 Z" fill="#10A37F"></path><polyline points="37,34 50,48 63,34" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"></polyline></svg> VeChat</span>
+  <span class="brand"><svg width="24" height="24" viewBox="15 15 70 70" fill="none"><rect x="15" y="16" width="70" height="52" rx="18" fill="#10A37F"></rect><path d="M32 62 L32 84 L50 66 Z" fill="#10A37F"></path><polyline points="37,34 50,48 63,34" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"></polyline></svg> VeChat</span>
   <nav class="nav">
     <a class="lnk" href="#sabe">Qué sabe</a>
     <a class="lnk" href="#casos">Casos</a>
@@ -339,7 +339,7 @@ export const LANDING_HTML = String.raw`<div class="grain"></div>
 <footer><div class="wrap">
   <div class="foot-grid">
     <div class="foot-brand">
-      <span class="brand"><svg width="22" height="22" viewBox="0 0 100 100" fill="none"><rect x="15" y="16" width="70" height="52" rx="18" fill="#10A37F"></rect><path d="M32 62 L32 84 L50 66 Z" fill="#10A37F"></path><polyline points="37,34 50,48 63,34" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"></polyline></svg> VeChat</span>
+      <span class="brand"><svg width="22" height="22" viewBox="15 15 70 70" fill="none"><rect x="15" y="16" width="70" height="52" rx="18" fill="#10A37F"></rect><path d="M32 62 L32 84 L50 66 Z" fill="#10A37F"></path><polyline points="37,34 50,48 63,34" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none"></polyline></svg> VeChat</span>
       <p>La IA venezolana que sí sabe lo de aquí. Tu pana digital para el día a día.</p>
     </div>
     <div class="fcol">
