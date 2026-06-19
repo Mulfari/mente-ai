@@ -2,6 +2,7 @@
 
 import React from "react";
 import { createPortal } from "react-dom";
+import Logo from "@/components/Logo";
 
 type Conversation = {
   id: string;
@@ -78,22 +79,9 @@ type Props = {
   onUpgrade?: () => void;
 };
 
-function VeChatMark({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ color: "var(--primary)" }}
-    >
-      <path d="M4 5l8 14L20 5" />
-    </svg>
-  );
+function VeChatMark({ size = 20 }: { size?: number }) {
+  // Marca VeChat (burbuja + V). Antes era solo la "V" stroke; ahora el logo real.
+  return <Logo size={size} />;
 }
 
 function NewChatIcon() {

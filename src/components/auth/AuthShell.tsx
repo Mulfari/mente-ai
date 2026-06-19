@@ -1,4 +1,5 @@
 import React from "react";
+import Logo from "@/components/Logo";
 import "./authDesign.css";
 
 // Marco de /sign-in y /sign-up — diseño split importado de Claude Design (auth),
@@ -9,7 +10,6 @@ import "./authDesign.css";
 // (src/components/auth/authDesign.css). OJO: el flujo principal de auth dentro de
 // la app sigue siendo el MODAL de Clerk (apariencia global), que NO se toca.
 // Re-generar CSS: scripts/auth/build-auth.mjs.
-const GREEN = "#10A37F";
 
 export default function AuthShell({
   heading,
@@ -37,9 +37,7 @@ export default function AuthShell({
           <span className="glow" aria-hidden />
           <div className="bp-top">
             <span className="brand">
-              <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={GREEN} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 5l8 14L20 5" />
-              </svg>
+              <Logo size={26} />
               VeChat
             </span>
             <a className="bp-back" href="/">
