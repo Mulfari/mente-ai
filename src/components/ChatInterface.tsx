@@ -18,7 +18,8 @@ import type { PublicFeed } from "@/lib/feed";
 import { resolveTier } from "@/lib/plans";
 import type { AppConfig } from "@/lib/appConfig";
 import { clearDraft, readDraft } from "@/lib/chatDraft";
-import { shouldSearchWeb, buildGroundedQuestion, buildUngroundedNotice, type WebSource } from "@/lib/webSearch";
+import { shouldSearchWeb, buildGroundedQuestion, buildUngroundedNotice, localQuery, type WebSource } from "@/lib/webSearch";
+import type { LocalBusiness } from "@/lib/localBusinesses";
 import { stripContextDelta } from "@/lib/streamingMarkdown";
 
 type Message = {
@@ -35,9 +36,10 @@ type Message = {
   _retryReq?: { message: string; conversationId: string; contentParts: any[]; mode: string } | null;
   mode?: string;
   _isDeep?: boolean;
-  _status?: "searching";
+  _status?: "searching" | "searching_local";
   _grounded?: boolean;
   _sources?: { title: string; url: string }[];
+  _businesses?: LocalBusiness[];
 };
 
 type Conversation = {
@@ -1479,27 +1481,36 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   // el mensaje del asistente con _status:'searching' mientras dura la búsqueda.
   // Degrada con gracia: si no toca buscar o algo falla, devuelve la original.
   async function groundQuestionIfNeeded(originalQuestion: string, assistantMsgId: string): Promise<string> {
-    if (!shouldSearchWeb(originalQuestion)) return originalQuestion;
-    setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _status: "searching" } : m));
+    const isLocal = !!localQuery(originalQuestion);
+    if (!shouldSearchWeb(originalQuestion) && !isLocal) return originalQuestion;
+    setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _status: isLocal ? "searching_local" : "searching" } : m));
     try {
       const res = await fetch("/api/web-context", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: originalQuestion }),
+        body: JSON.stringify({ question: originalQuestion, city: userContext?.city || null }),
       });
       const data = res.ok ? await res.json() : { used: false, sources: [] };
+      // VeLocal: negocios locales → tarjetas (desde _businesses) + prosa que el
+      // modelo enmarca con el answerHint (NO repite los datos de las tarjetas).
+      if (data.kind === "local_business" && Array.isArray(data.businesses) && data.businesses.length > 0) {
+        const biz = data.businesses as LocalBusiness[];
+        setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _businesses: biz } : m));
+        const hint = typeof data.answerHint === "string" ? data.answerHint : "";
+        return `INSTRUCCIONES: ${hint}\n\nPREGUNTA DEL USUARIO:\n${originalQuestion}`;
+      }
       if (data.used && Array.isArray(data.sources) && data.sources.length > 0) {
         // Aterrizado: guarda las fuentes para el sello "con fuentes" + footer.
         const srcs = (data.sources as WebSource[]).map((s) => ({ title: s.title, url: s.url }));
         setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _grounded: true, _sources: srcs } : m));
         return buildGroundedQuestion(originalQuestion, data.sources as WebSource[], typeof data.answer === "string" ? data.answer : undefined);
       }
-      // Buscamos pero no hubo fuentes: si la pregunta es sensible al tiempo
-      // (dólar, trámites, deportes), avísale al modelo que NO invente datos
-      // actuales desde memoria. Para el resto, va la original.
-      return buildUngroundedNotice(originalQuestion);
+      // Buscamos pero no hubo fuentes/negocios: si la pregunta es sensible al
+      // tiempo (dólar, trámites, deportes), avísale al modelo que NO invente
+      // datos actuales. Para local sin resultados o el resto, va la original.
+      return isLocal ? originalQuestion : buildUngroundedNotice(originalQuestion);
     } catch {
-      return buildUngroundedNotice(originalQuestion);
+      return isLocal ? originalQuestion : buildUngroundedNotice(originalQuestion);
     }
     // OJO: _status NO se limpia aquí a propósito. El indicador "Buscando…" se
     // mantiene hasta que llega el primer token (el texto lo reemplaza en el
