@@ -12,9 +12,10 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<"signin" | "reset">("signin");
-  const [resetStep, setResetStep] = useState<"request" | "code">("request");
+  const [resetStep, setResetStep] = useState<"request" | "code" | "password">("request");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,13 +54,25 @@ export default function SignInPage() {
     } finally { setLoading(false); }
   }
 
-  async function handleResetSubmit(e: React.FormEvent) {
+  async function handleVerifyCode(e: React.FormEvent) {
     e.preventDefault();
     if (!signIn) return;
     setLoading(true); setError("");
     try {
       const { error: verifyErr } = await signIn.resetPasswordEmailCode.verifyCode({ code });
       if (verifyErr) { setError(verifyErr.message ?? "Código inválido."); return; }
+      setResetStep("password"); // código verificado → ahora se pide la nueva contraseña
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Código inválido.");
+    } finally { setLoading(false); }
+  }
+
+  async function handleSetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!signIn) return;
+    if (newPassword !== confirmPassword) { setError("Las contraseñas no coinciden."); return; }
+    setLoading(true); setError("");
+    try {
       const { error: pwErr } = await signIn.resetPasswordEmailCode.submitPassword({ password: newPassword });
       if (pwErr) { setError(pwErr.message ?? "No se pudo cambiar la contraseña."); return; }
       if (signIn.status === "complete") {
@@ -68,28 +81,40 @@ export default function SignInPage() {
         reloadToDest();
       } else setError("No se pudo completar el cambio.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Código inválido.");
+      setError(err instanceof Error ? err.message : "No se pudo cambiar la contraseña.");
     } finally { setLoading(false); }
   }
 
   if (view === "reset") {
+    const resetSub =
+      resetStep === "request" ? "Pon tu correo y te enviamos un código."
+      : resetStep === "code" ? "Escribe el código que te llegó al correo."
+      : "Crea tu nueva contraseña.";
     return (
-      <AuthShell heading="Recupera tu cuenta" sub="Te enviamos un código para crear una clave nueva.">
-        {resetStep === "request" ? (
+      <AuthShell heading="Recupera tu cuenta" sub={resetSub}>
+        {resetStep === "request" && (
           <form onSubmit={handleResetRequest} className="flex flex-col gap-4">
             <AuthInput id="email" label="Correo" type="email" placeholder="tu@correo.com" value={email} onChange={setEmail} autoComplete="email" autoFocus />
             <SubmitButton loading={loading}>Enviar código</SubmitButton>
             <ErrorMessage message={error} />
           </form>
-        ) : (
-          <form onSubmit={handleResetSubmit} className="flex flex-col gap-4">
+        )}
+        {resetStep === "code" && (
+          <form onSubmit={handleVerifyCode} className="flex flex-col gap-4">
             <AuthInput id="code" label="Código" type="text" placeholder="123456" value={code} onChange={setCode} autoComplete="one-time-code" autoFocus />
-            <AuthInput id="newPassword" label="Nueva contraseña" type="password" placeholder="Mínimo 8 caracteres" value={newPassword} onChange={setNewPassword} autoComplete="new-password" />
+            <SubmitButton loading={loading}>Verificar código</SubmitButton>
+            <ErrorMessage message={error} />
+          </form>
+        )}
+        {resetStep === "password" && (
+          <form onSubmit={handleSetPassword} className="flex flex-col gap-4">
+            <AuthInput id="newPassword" label="Nueva contraseña" type="password" placeholder="Mínimo 8 caracteres" value={newPassword} onChange={setNewPassword} autoComplete="new-password" autoFocus />
+            <AuthInput id="confirmPassword" label="Confirmar contraseña" type="password" placeholder="Repite la contraseña" value={confirmPassword} onChange={setConfirmPassword} autoComplete="new-password" />
             <SubmitButton loading={loading}>Cambiar contraseña</SubmitButton>
             <ErrorMessage message={error} />
           </form>
         )}
-        <button type="button" onClick={() => { setView("signin"); setError(""); setResetStep("request"); }}
+        <button type="button" onClick={() => { setView("signin"); setError(""); setResetStep("request"); setCode(""); setNewPassword(""); setConfirmPassword(""); }}
           className="mt-4 block w-full cursor-pointer text-center text-[13px] font-medium underline underline-offset-2"
           style={{ color: "var(--text-secondary)" }}>
           Volver a iniciar sesión
