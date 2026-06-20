@@ -1519,11 +1519,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       const data = res.ok ? await res.json() : { used: false, sources: [] };
       // VeLocal: negocios locales → tarjetas (desde _businesses) + prosa que el
       // modelo enmarca con el answerHint (NO repite los datos de las tarjetas).
-      if (data.kind === "local_business" && Array.isArray(data.businesses) && data.businesses.length > 0) {
-        const biz = data.businesses as LocalBusiness[];
-        setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _businesses: biz } : m));
-        const hint = typeof data.answerHint === "string" ? data.answerHint : "";
-        return `INSTRUCCIONES: ${hint}\n\nPREGUNTA DEL USUARIO:\n${originalQuestion}`;
+      // SIN tarjetas (no tenemos ese negocio) → solo el hint honesto: el modelo
+      // dice "aún no lo tengo" en vez de inventar.
+      if (data.kind === "local_business" && typeof data.answerHint === "string") {
+        const biz = Array.isArray(data.businesses) ? (data.businesses as LocalBusiness[]) : [];
+        if (biz.length > 0) {
+          setMessages(prev => prev.map(m => m.id === assistantMsgId ? { ...m, _businesses: biz } : m));
+        }
+        return `INSTRUCCIONES: ${data.answerHint}\n\nPREGUNTA DEL USUARIO:\n${originalQuestion}`;
       }
       if (data.used && Array.isArray(data.sources) && data.sources.length > 0) {
         // Aterrizado: guarda las fuentes para el sello "con fuentes" + footer.

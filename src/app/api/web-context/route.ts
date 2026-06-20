@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 import { shouldSearchWeb, isNewsQuery, searchIntent, localQuery, type WebSource } from "@/lib/webSearch";
 import { getWebDomains } from "@/lib/appConfig";
 import { fetchDolarRates, buildDolarContext } from "@/lib/dolar";
-import { searchLocalBusinesses } from "@/lib/localBusinesses";
+import { searchLocalBusinesses, logDemand } from "@/lib/localBusinesses";
 
 export const runtime = "nodejs";
 
@@ -64,6 +64,15 @@ export async function POST(req: NextRequest) {
         `Si aplica, agrega un consejo general breve.`;
       return NextResponse.json({ used: true, kind: "local_business", businesses, answerHint });
     }
+    // SIN negocios reales para esto → honestidad + captura de la demanda
+    // (cada hueco es una señal de a quién reclutar para VeLocal).
+    await logDemand({ city, term: lq.term, query: question, clerkUserId: userId });
+    const answerHint =
+      `No hay ningún negocio registrado en VeChat (VeLocal) para "${lq.term}"${city ? " en " + city : ""}. ` +
+      `Dile al usuario con honestidad y en tono sobrio que AÚN no tienes ese negocio en VeChat. ` +
+      `NUNCA inventes ni menciones nombres de negocios, direcciones, horarios ni datos que no estén verificados. ` +
+      `Ofrécele buscarlo en internet si quiere, o dile que estás sumando negocios pronto en esa zona. Breve, 1-2 frases.`;
+    return NextResponse.json({ used: true, kind: "local_business", businesses: [], answerHint });
   }
 
   // Re-chequeo server-side del detector (defensa) y guardas.
