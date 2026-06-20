@@ -601,14 +601,18 @@ function SidebarBody({
   // hasta llenar o agotar — si no, el usuario no podría disparar el scroll.
   // OJO: medir en rAF (tras el layout); en el primer render clientHeight es 0
   // y sin el guard `clientHeight > 0` el 0<=4 dispararía cargar TODO el historial.
+  // OJO 2: si hay grupos COLAPSADOS, el contenido es chico A PROPÓSITO; NO
+  // auto-cargar (si no, mediría "no llena" eternamente y traería todo el
+  // historial a grupos ocultos, con el skeleton saliendo sin parar). El scroll
+  // manual sigue paginando cuando sí hay para scrollear.
   React.useEffect(() => {
-    if (!expanded || isSearching || !hasMoreConvs || loadingMoreConvs) return;
+    if (!expanded || isSearching || !hasMoreConvs || loadingMoreConvs || collapsedGroups.size > 0) return;
     const id = requestAnimationFrame(() => {
       const el = navRef.current;
       if (el && el.clientHeight > 0 && el.scrollHeight <= el.clientHeight + 4) onLoadMoreConvs?.();
     });
     return () => cancelAnimationFrame(id);
-  }, [conversations, expanded, isSearching, hasMoreConvs, loadingMoreConvs, onLoadMoreConvs]);
+  }, [conversations, expanded, isSearching, hasMoreConvs, loadingMoreConvs, onLoadMoreConvs, collapsedGroups]);
 
   const isMobile = variant === "mobile";
   const avatarLetter = (userEmail || "U").charAt(0).toUpperCase();
