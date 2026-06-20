@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import MetricsTab from "@/components/admin/MetricsTab";
+import type { MetricsData } from "@/lib/adminStats";
 
 type Props = {
   initialProfiles?: any[];
@@ -46,7 +48,7 @@ type Coupon = {
 type CouponType = "trial" | "weekly" | "20weeks" | "unlimited";
 type CouponFilter = "all" | "available" | "used";
 
-type Tab = "users" | "coupons" | "places" | "config";
+type Tab = "users" | "coupons" | "places" | "config" | "stats";
 type PlaceTab = "places" | "categories" | "knowledge" | "submissions";
 type Toast = { id: string; type: "success" | "error"; message: string };
 type ConfigForm = { free_daily_limit: string; price_weekly_usd: string; price_monthly_usd: string; plan_weekly_days: string; plan_monthly_days: string; whatsapp_number: string };
@@ -87,6 +89,8 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
   const [configForm, setConfigForm] = useState<ConfigForm>({ free_daily_limit: "", price_weekly_usd: "", price_monthly_usd: "", plan_weekly_days: "", plan_monthly_days: "", whatsapp_number: "" });
   const [configLoading, setConfigLoading] = useState(false);
   const [configSaving, setConfigSaving] = useState(false);
+  const [metricsData, setMetricsData] = useState<MetricsData | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
 
   async function adminFetch(url: string, options?: RequestInit) {
     const res = await fetch(url, options);
@@ -238,6 +242,17 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
       showToast("error", "Error al cargar configuración");
     }
     setConfigLoading(false);
+  }
+
+  async function loadStats() {
+    setStatsLoading(true);
+    try {
+      const json = await adminFetch("/api/admin/data?type=stats");
+      setMetricsData(json.data ?? null);
+    } catch {
+      showToast("error", "Error al cargar métricas");
+    }
+    setStatsLoading(false);
   }
 
   async function saveConfig() {
@@ -522,14 +537,14 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
         {/* Tabs */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div className="flex items-center gap-1.5 p-1.5 rounded-xl self-start sm:self-auto" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-            {(["users", "coupons", "places", "config"] as const).map(t => (
-              <button key={t} onClick={() => { setActiveTab(t); if (t === "config") loadConfig(); }}
+            {(["users", "coupons", "places", "config", "stats"] as const).map(t => (
+              <button key={t} onClick={() => { setActiveTab(t); if (t === "config") loadConfig(); if (t === "stats") loadStats(); }}
                 className="px-4 py-2 rounded-lg text-xs font-semibold transition-all"
                 style={{
                   backgroundColor: activeTab === t ? "var(--primary)" : "transparent",
                   color: activeTab === t ? "white" : "var(--text-secondary)",
                 }}>
-                {t === "users" ? "Usuarios" : t === "coupons" ? "Cupones" : t === "places" ? "Lugares" : "Configuracion"}
+                {t === "users" ? "Usuarios" : t === "coupons" ? "Cupones" : t === "places" ? "Lugares" : t === "config" ? "Configuracion" : "Métricas"}
               </button>
             ))}
           </div>
@@ -1282,6 +1297,13 @@ export default function AdminPanel({ initialProfiles = [], initialCoupons = [], 
               </>
             )}
           </>
+        )}
+
+        {/* Métricas section */}
+        {activeTab === "stats" && (
+          statsLoading || !metricsData
+            ? <div style={{ padding: "24px 0", color: "var(--text-tertiary)", fontSize: 13 }}>Cargando métricas…</div>
+            : <MetricsTab data={metricsData} />
         )}
 
         {/* Config section */}
