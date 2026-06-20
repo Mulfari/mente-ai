@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { createClient } from "@/lib/supabase/server";
 import { activatePlan } from "@/lib/activatePlan";
+import { getStats } from "@/lib/adminStats";
 
 // Claves de app_config que el admin puede editar (whitelist anti-basura).
 const CONFIG_KEYS = [
@@ -70,6 +71,11 @@ export async function GET(request: Request) {
       const { data, error } = await supabase.from("app_config").select("key, value");
       if (error) return NextResponse.json({ error: "Failed to fetch config" }, { status: 500 });
       return NextResponse.json({ data });
+    }
+
+    if (type === "stats") {
+      const stats = await getStats(supabase);
+      return NextResponse.json({ data: stats });
     }
 
     return NextResponse.json({ error: "Invalid type" }, { status: 400 });

@@ -78,7 +78,7 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     count("conversations"),
     count("messages"),
     count("query_events"),
-    count("profiles", (q) => q.gte("daily_msg_count", cfg.free_daily_limit)),
+    count("profiles", (q) => q.gte("daily_msg_count", cfg.freeDailyLimit)),
   ]);
 
   const [registros, mensajes, consultas] = await Promise.all([
