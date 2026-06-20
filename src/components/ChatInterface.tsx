@@ -15,7 +15,7 @@ import LimitReachedCard from "./chat/LimitReachedCard";
 import PlansModal from "./chat/PlansModal";
 import { OnboardingTour } from "./OnboardingTour";
 import type { PublicFeed } from "@/lib/feed";
-import { resolveTier } from "@/lib/plans";
+import { resolveTier, nextVenezuelaMidnightUTC } from "@/lib/plans";
 import type { AppConfig } from "@/lib/appConfig";
 import { clearDraft, readDraft } from "@/lib/chatDraft";
 import { shouldSearchWeb, buildGroundedQuestion, buildUngroundedNotice, localQuery, type WebSource } from "@/lib/webSearch";
@@ -1221,7 +1221,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         const now = Date.now();
         const reset = p.daily_reset_at ? new Date(p.daily_reset_at).getTime() : 0;
         const fresh = !reset || now >= reset;
-        return { ...p, daily_msg_count: fresh ? 1 : (p.daily_msg_count ?? 0) + 1 };
+        return {
+          ...p,
+          daily_msg_count: fresh ? 1 : (p.daily_msg_count ?? 0) + 1,
+          // OJO: en el primer mensaje del día (fresh) hay que mover también el
+          // reset al futuro; si no, quotaLeft() ve `now >= resetAt` y descarta el
+          // contador → el pill se quedaba en 0 hasta recargar.
+          daily_reset_at: fresh ? nextVenezuelaMidnightUTC(new Date()).toISOString() : p.daily_reset_at,
+        };
       });
     }
 
@@ -1633,7 +1640,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         const now = Date.now();
         const reset = p.daily_reset_at ? new Date(p.daily_reset_at).getTime() : 0;
         const fresh = !reset || now >= reset;
-        return { ...p, daily_msg_count: fresh ? 1 : (p.daily_msg_count ?? 0) + 1 };
+        return {
+          ...p,
+          daily_msg_count: fresh ? 1 : (p.daily_msg_count ?? 0) + 1,
+          // OJO: en el primer mensaje del día (fresh) hay que mover también el
+          // reset al futuro; si no, quotaLeft() ve `now >= resetAt` y descarta el
+          // contador → el pill se quedaba en 0 hasta recargar.
+          daily_reset_at: fresh ? nextVenezuelaMidnightUTC(new Date()).toISOString() : p.daily_reset_at,
+        };
       });
     }
 
