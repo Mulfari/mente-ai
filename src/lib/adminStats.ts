@@ -77,7 +77,7 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     return new Set((data ?? []).map((r: any) => r.user_id).filter(Boolean)).size;
   };
 
-  const [users, new7, new30, active7, paid, convs, msgs, queries, atLimit] = await Promise.all([
+  const [users, new7, new30, active7, paid, convs, msgs, queries, atLimit, errores7d] = await Promise.all([
     count("profiles"),
     count("profiles", (q) => q.gte("created_at", sinceISO(7))),
     count("profiles", (q) => q.gte("created_at", sinceISO(30))),
@@ -87,6 +87,7 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     count("messages"),
     count("query_events"),
     count("profiles", (q) => q.gte("daily_msg_count", cfg.freeDailyLimit)),
+    count("error_logs", (q) => q.gte("created_at", sinceISO(7))),
   ]);
 
   const [registros, mensajes, consultas] = await Promise.all([
@@ -123,6 +124,7 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     { label: "Mensajes", value: msgs },
     { label: "Consultas", value: queries },
     { label: "Tocaron el límite · hoy", value: atLimit },
+    { label: "Errores · 7 días", value: errores7d },
   ];
 
   return { kpis, registros, mensajes, consultas, planes, ciudades, topConsultas };
