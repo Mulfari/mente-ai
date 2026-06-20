@@ -871,12 +871,15 @@ function SidebarBody({
 
               {/* Pie del scroll infinito: cargando / fin del historial */}
               {loadingMoreConvs && (
-                <div className="flex items-center justify-center gap-2 py-3" aria-label="Cargando más conversaciones">
-                  <span
-                    className="w-3.5 h-3.5 rounded-full border-2 animate-spin"
-                    style={{ borderColor: "var(--border)", borderTopColor: "var(--primary)" }}
-                  />
-                  <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>Cargando…</span>
+                <div className="space-y-0.5 pt-1 pb-3" role="status" aria-label="Cargando más conversaciones">
+                  {[64, 48, 58].map((w, i) => (
+                    <div key={i} className="flex items-center px-2.5 h-9" aria-hidden="true">
+                      <div
+                        className="h-3 rounded animate-pulse"
+                        style={{ width: `${w}%`, backgroundColor: "var(--surface-hover)", animationDelay: `${i * 120}ms` }}
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
