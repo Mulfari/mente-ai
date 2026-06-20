@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         .join("; ");
       const answerHint =
         `Negocios locales reales (de VeLocal) para "${lq.term}"${city ? " en " + city : ""}: ${list}. ` +
-        `Recomiéndalos en 1-2 frases naturales y cálidas, como un pana que conoce la zona. ` +
+        `Recomiéndalos en 1-2 frases naturales y útiles, con un toque venezolano SOBRIO: sin "pana/chamo" ni jerga excesiva, y con máximo un emoji. ` +
         `NO repitas sus datos de contacto ni horarios: ya salen en tarjetas debajo. ` +
         `Si aplica, agrega un consejo general breve.`;
       return NextResponse.json({ used: true, kind: "local_business", businesses, answerHint });
