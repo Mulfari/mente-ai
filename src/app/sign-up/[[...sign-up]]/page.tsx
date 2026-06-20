@@ -87,6 +87,9 @@ export default function SignUpPage() {
         <SubmitButton loading={loading}>Crear cuenta</SubmitButton>
         <ErrorMessage message={error} />
       </form>
+      <p className="mt-4 text-center text-[12px] leading-relaxed" style={{ color: "var(--text-tertiary)" }}>
+        Al crear tu cuenta aceptas los <a href="/terminos" className="underline underline-offset-2" style={{ color: "var(--text-secondary)" }}>Términos</a> y la <a href="/privacidad" className="underline underline-offset-2" style={{ color: "var(--text-secondary)" }}>Privacidad</a>.
+      </p>
       <p className="mt-5 text-center text-[13px]" style={{ color: "var(--text-secondary)" }}>
         ¿Ya tienes cuenta? <a href="/sign-in" className="font-medium underline underline-offset-2" style={{ color: "var(--primary)" }}>Iniciar sesión</a>
       </p>
