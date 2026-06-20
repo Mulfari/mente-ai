@@ -15,6 +15,7 @@ export type MetricsData = {
   planes: NamedCount[];  // Free, Semanal, Mensual, Ilimitado, Bloqueado
   ciudades: NamedCount[];      // top 10
   topConsultas: NamedCount[];  // top 10
+  demandaSinCobertura: NamedCount[]; // top: pedidos locales SIN negocio en VeLocal (a quién reclutar)
 };
 
 const DAYS = 30;
@@ -114,6 +115,15 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
   const { data: qs } = await supabase.from("query_events").select("prompt").not("prompt", "is", null).limit(50000);
   const topConsultas = topCounts((qs ?? []).map((r: any) => r.prompt));
 
+  // Demanda sin cobertura: lo que la gente pidió y NO tenemos en VeLocal.
+  // Agrupado por término + ciudad → la lista de a quién reclutar.
+  const { data: dem } = await supabase.from("demand_signals").select("term, city").gte("created_at", thirty).limit(50000);
+  const demandaSinCobertura = topCounts((dem ?? []).map((r: any) => {
+    const t = (r.term ?? "").trim();
+    const c = (r.city ?? "").trim();
+    return t ? (c ? `${t} · ${c}` : t) : null;
+  }));
+
   const kpis: Kpi[] = [
     { label: "Usuarios totales", value: users },
     { label: "Nuevos · 7 días", value: new7 },
@@ -127,5 +137,5 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     { label: "Errores · 7 días", value: errores7d },
   ];
 
-  return { kpis, registros, mensajes, consultas, planes, ciudades, topConsultas };
+  return { kpis, registros, mensajes, consultas, planes, ciudades, topConsultas, demandaSinCobertura };
 }

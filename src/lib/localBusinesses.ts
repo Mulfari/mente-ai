@@ -142,3 +142,30 @@ export async function searchLocalBusinesses(opts: {
     return [];
   }
 }
+
+/**
+ * Registra una SEÑAL DE DEMANDA: alguien pidió algo local con intención de
+ * consumo (categoría + ciudad) que NO tenemos en VeLocal. Alimenta el panel
+ * "Lo más pedido sin cobertura" del admin → la lista de a quién reclutar.
+ * Best-effort: jamás debe romper la respuesta del chat.
+ */
+export async function logDemand(opts: {
+  city?: string | null;
+  term: string;
+  query?: string | null;
+  clerkUserId?: string | null;
+}): Promise<void> {
+  try {
+    const term = (opts.term || "").trim().toLowerCase();
+    if (!term) return;
+    const supabase = createClient();
+    await supabase.from("demand_signals").insert({
+      city: opts.city?.trim() || null,
+      term,
+      query: (opts.query || "").slice(0, 500) || null,
+      clerk_user_id: opts.clerkUserId ?? null,
+    });
+  } catch {
+    // best-effort
+  }
+}

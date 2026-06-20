@@ -119,12 +119,26 @@ function ChatIcon() {
     </svg>
   );
 }
+function TargetIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
 
-function TopList({ title, items, icon }: { title: string; items: NamedCount[]; icon: "map" | "chat" }) {
+function TopList({ title, subtitle, items, icon }: { title: string; subtitle?: string; items: NamedCount[]; icon: "map" | "chat" | "target" }) {
   const rows = withWidth(items);
   return (
     <div style={card}>
-      <span style={cardTitle}>{title}</span>
+      {subtitle ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={cardTitle}>{title}</span>
+          <span style={{ font: "500 12px Inter", color: INK3 }}>{subtitle}</span>
+        </div>
+      ) : (
+        <span style={cardTitle}>{title}</span>
+      )}
       {rows.length > 0 ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
           {rows.map((t, i) => (
@@ -141,7 +155,7 @@ function TopList({ title, items, icon }: { title: string; items: NamedCount[]; i
         </div>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", color: INK3, font: "500 13px Inter" }}>
-          {icon === "map" ? <MapIcon /> : <ChatIcon />} Sin datos todavía
+          {icon === "map" ? <MapIcon /> : icon === "chat" ? <ChatIcon /> : <TargetIcon />} Sin datos todavía
         </div>
       )}
     </div>
@@ -207,6 +221,14 @@ export default function MetricsTab({ data }: { data: MetricsData }) {
         <TopList title="Top ciudades" items={data.ciudades} icon="map" />
         <TopList title="Top consultas" items={data.topConsultas} icon="chat" />
       </div>
+
+      <div style={{ ...sectionLabel, marginTop: 6 }}>Demanda sin cobertura · a quién reclutar</div>
+      <TopList
+        title="Lo más pedido que NO tenemos"
+        subtitle="Categorías + ciudad que la gente buscó y aún no están en VeLocal (últimos 30 días). Tu lista de a quién sumar."
+        items={data.demandaSinCobertura}
+        icon="target"
+      />
     </div>
   );
 }
