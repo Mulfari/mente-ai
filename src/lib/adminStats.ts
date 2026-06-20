@@ -69,11 +69,19 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     return bucket30((data ?? []).map((r: any) => r.created_at));
   };
 
+  // "Activos": usuarios DISTINTOS con actividad real (query_events) en 7 días.
+  // OJO: profiles.last_message_at NO se mantiene (siempre null) → no sirve como
+  // señal de actividad; se deriva de query_events.user_id.
+  const activeUsers7 = async (): Promise<number> => {
+    const { data } = await supabase.from("query_events").select("user_id").gte("created_at", sinceISO(7)).limit(50000);
+    return new Set((data ?? []).map((r: any) => r.user_id).filter(Boolean)).size;
+  };
+
   const [users, new7, new30, active7, paid, convs, msgs, queries, atLimit] = await Promise.all([
     count("profiles"),
     count("profiles", (q) => q.gte("created_at", sinceISO(7))),
     count("profiles", (q) => q.gte("created_at", sinceISO(30))),
-    count("profiles", (q) => q.gte("last_message_at", sinceISO(7))),
+    activeUsers7(),
     count("profiles", (q) => q.gt("subscription_end", now.toISOString())),
     count("conversations"),
     count("messages"),
