@@ -11,7 +11,9 @@ export default async function Home() {
   const [{ userId }, appConfig] = await Promise.all([auth(), getAppConfig()]);
 
   if (!userId) {
-    return <Landing appConfig={appConfig} />;
+    // Deslogueado → el CHAT directo (modo anónimo / trial). La landing de venta
+    // vive ahora en /landing. (Bloque 1 embudo.)
+    return <ChatInterface userId="" initialIsLoggedIn={false} appConfig={appConfig} />;
   }
 
   const profile = await getOrCreateProfile(userId);

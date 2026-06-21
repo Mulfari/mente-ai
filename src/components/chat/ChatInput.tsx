@@ -528,7 +528,6 @@ export default function ChatInput({
             }}
             onPaste={handlePaste}
             placeholder={(() => {
-              if (!isLoggedIn) return "Inicia sesion para chatear...";
               if (!block.canWrite) return "Sin suscripcion activa...";
               return "Pregúntale algo a VeChat...";
             })()}
