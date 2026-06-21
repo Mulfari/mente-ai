@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { LocalBusiness } from "@/lib/localBusinesses";
 import { useResolvedTheme } from "@/lib/theme";
 import { categoryGlyph } from "@/lib/businessVisual";
@@ -84,6 +85,14 @@ export default function BusinessMap({ businesses }: { businesses: LocalBusiness[
   const resolved = useResolvedTheme();
   const theme: "light" | "dark" = resolved === "dark" ? "dark" : "light";
   const [fullscreen, setFullscreen] = useState(false);
+  // Escape cierra la pantalla completa.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setFullscreen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullscreen]);
+
   const pts = businesses.filter((b): b is WithCoords => typeof b.lat === "number" && typeof b.lng === "number");
   if (pts.length === 0) return null;
 
@@ -106,7 +115,7 @@ export default function BusinessMap({ businesses }: { businesses: LocalBusiness[
         </span>
       </div>
 
-      {fullscreen && (
+      {fullscreen && createPortal(
         <div className="lb-map-modal" role="dialog" aria-modal="true">
           <button className="lb-map-close" onClick={() => setFullscreen(false)} aria-label="Cerrar mapa">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
