@@ -20,6 +20,7 @@ export type LocalBusiness = {
   mapsUrl: string | null;
   logoUrl: string | null;
   hours: Hours | null;
+  tags: string[];
   openNow: boolean;
   distanceKm?: number;
 };
@@ -93,7 +94,7 @@ export async function searchLocalBusinesses(opts: {
     const supabase = createClient();
     let q = supabase
       .from("velocal_businesses")
-      .select("slug,name,category,city,neighborhood,description,whatsapp,instagram,maps_url,logo_url,hours,lat,lng,temporarily_closed")
+      .select("slug,name,category,city,neighborhood,description,whatsapp,instagram,maps_url,logo_url,hours,lat,lng,temporarily_closed,tags")
       .eq("active", true)
       .eq("visible_in_vechat", true)
       .textSearch("search_tsv", safe, { type: "plain", config: "spanish" })
@@ -122,6 +123,7 @@ export async function searchLocalBusinesses(opts: {
         mapsUrl: (b.maps_url as string) ?? null,
         logoUrl: (b.logo_url as string) ?? null,
         hours: (b.hours as Hours) ?? null,
+        tags: Array.isArray(b.tags) ? (b.tags as string[]) : [],
         openNow: b.temporarily_closed ? false : isOpenNow(b.hours as Hours),
         ...(distanceKm != null ? { distanceKm } : {}),
       };
