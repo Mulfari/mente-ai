@@ -452,43 +452,49 @@ html[data-sidebar="closed"] .sidebar-desktop {
 }
 
 /* === VeLocal: tarjetas de negocios locales en el chat (descubrimiento) === */
-.lb-cards { display: flex; flex-direction: column; gap: 8px; margin: 12px 0 4px; }
-.lb-cards-head {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11.5px; font-weight: 600; color: var(--text-secondary);
-  margin-bottom: 2px;
-}
+.lb-cards { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }
 .lb-card {
-  display: flex; gap: 12px; padding: 12px;
-  border: 1px solid var(--border); border-radius: 14px; background: var(--surface);
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  border: 1px solid var(--border); border-radius: 18px; background: var(--surface);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
+.lb-head { display: flex; gap: 12px; align-items: flex-start; }
 .lb-logo {
-  width: 48px; height: 48px; border-radius: 10px; object-fit: cover;
+  width: 50px; height: 50px; border-radius: 13px; object-fit: cover;
   flex-shrink: 0; background: var(--surface-hover);
 }
-.lb-logo--ph {
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 20px; color: #fff; background: var(--primary);
+.lb-logo--glyph { display: flex; align-items: center; justify-content: center; color: #fff; }
+.lb-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.lb-top { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.lb-name {
+  font-family: 'Bricolage Grotesque', 'Inter', system-ui, sans-serif;
+  font-weight: 600; font-size: 16px; letter-spacing: -0.01em; color: var(--text-primary);
 }
-.lb-body { flex: 1; min-width: 0; }
-.lb-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.lb-name { font-weight: 600; font-size: 14px; color: var(--text-primary); }
-.lb-open {
-  font-size: 11px; font-weight: 600; color: var(--primary);
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
-  padding: 1px 7px; border-radius: 999px; white-space: nowrap;
+.lb-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap;
 }
-.lb-cat { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
-.lb-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.lb-status .lb-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; }
+.lb-open { color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.lb-closed { color: var(--text-secondary); background: color-mix(in srgb, var(--text-primary) 9%, transparent); }
+.lb-cat { font-size: 13px; color: var(--text-secondary); }
+.lb-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.lb-tag {
+  font-size: 11.5px; font-weight: 500; color: var(--text-secondary);
+  border: 1px solid var(--border); padding: 3px 10px; border-radius: 999px;
+}
+.lb-actions { display: flex; flex-direction: column; gap: 8px; }
+.lb-actions-row { display: flex; gap: 8px; }
 .lb-btn {
-  font-size: 12px; font-weight: 500; padding: 5px 11px; border-radius: 8px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  font-size: 13.5px; font-weight: 600; padding: 10px; border-radius: 12px;
   border: 1px solid var(--border); color: var(--text-primary);
-  text-decoration: none; transition: background-color 0.15s, border-color 0.15s;
+  text-decoration: none; transition: background-color 0.15s, border-color 0.15s, opacity 0.15s;
 }
-.lb-btn:hover { background: var(--surface-hover); }
-.lb-btn--profile { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); color: var(--primary); }
 .lb-btn--wa { background: var(--primary); border-color: var(--primary); color: #fff; }
-.lb-btn--wa:hover { background: color-mix(in srgb, var(--primary) 88%, #000); }
+.lb-btn--wa:hover { opacity: 0.92; }
+.lb-btn--sec { flex: 1; font-weight: 500; font-size: 13px; padding: 9px; }
+.lb-btn--sec:hover { background: var(--surface-hover); }
 
 /* === PROSE / MARKDOWN === */
 .prose {

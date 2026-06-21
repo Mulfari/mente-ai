@@ -327,12 +327,6 @@ export default function MessageBubble({
             Se muestran ni bien llegan (antes/durante el streaming del texto). */}
         {!isUser && message._businesses && message._businesses.length > 0 && (
           <div className="lb-cards">
-            <span className="lb-cards-head">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" />
-              </svg>
-              Negocios cerca de ti
-            </span>
             {message._businesses.slice(0, 4).map((b) => (
               <LocalBusinessCard key={b.slug} b={b} />
             ))}
