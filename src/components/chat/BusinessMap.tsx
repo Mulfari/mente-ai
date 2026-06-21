@@ -129,7 +129,8 @@ export default function BusinessMap({ businesses }: { businesses: LocalBusiness[
             <div className="lb-map-list-head">{pts.length} {pts.length === 1 ? "lugar" : "lugares"}</div>
             {pts.map((b) => <LocalBusinessCard key={b.slug} b={b} />)}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
