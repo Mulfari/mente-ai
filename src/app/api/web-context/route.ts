@@ -1,6 +1,7 @@
 // src/app/api/web-context/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 import { shouldSearchWeb, isNewsQuery, searchIntent, localQuery, type WebSource } from "@/lib/webSearch";
 import { getWebDomains } from "@/lib/appConfig";
 import { fetchDolarRates, buildDolarContext } from "@/lib/dolar";
@@ -30,7 +31,12 @@ function cacheSet(key: string, data: CacheEntry) {
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
-  if (!userId) return NextResponse.json({ used: false, sources: [] }, { status: 401 });
+  if (!userId) {
+    // Anónimo con cookie de trial → permitir grounding (sin personalización),
+    // para que el trial impresione. Sin cookie → 401.
+    const anon = (await cookies()).get("vechat_anon")?.value;
+    if (!anon) return NextResponse.json({ used: false, sources: [] }, { status: 401 });
+  }
 
   let question = "";
   let city: string | null = null;

@@ -179,6 +179,9 @@ export default function ChatInterface({
   const [copiedAnimId, setCopiedAnimId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(initialIsLoggedIn);
   const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
+  // Trial anónimo (Bloque 1 embudo): mensajes que le quedan al visitante antes
+  // del muro. null = aún no ha enviado nada (no se muestra píldora).
+  const [anonLeft, setAnonLeft] = useState<number | null>(null);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -1160,7 +1163,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
   ) {
     if (sending) return;
-    if (!isLoggedIn) { requireSignIn(s); return; }
+    if (!isLoggedIn) { sendAnonMessage(s); return; }
     // Cuenta bloqueada (0 semanas): en vez de fallar en el servidor, abrir
     // el menú de cuenta donde está el botón de añadir tiempo.
     if (!getBlockReason().canSend) {
@@ -1551,9 +1554,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     const hasAttachments = attachments.length > 0;
     // Early returns before any async
     if (!inputVal && !hasAttachments) return;
-    // Deslogueado: guardar la pregunta y mandar a crear cuenta — tras el
-    // registro se envía sola (ver el efecto de vechat-pending-question).
-    if (!isLoggedIn) { requireSignIn(inputVal); return; }
+    // Deslogueado: trial anónimo (envía hasta N por el camino aislado; el muro
+    // sale al agotar). El flujo logueado sigue abajo sin cambios.
+    if (!isLoggedIn) { sendAnonMessage(inputVal); return; }
     const block = getBlockReason();
     if (!block.canSend) { setShowAccountMenu(true); return; }
     // Prevent double-submit: capture sending state BEFORE any state change
@@ -1924,6 +1927,94 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }
   }
 
+  // Envío ANÓNIMO (trial del embudo). Camino AISLADO: NO toca la DB ni el flujo
+  // logueado. El visitante envía hasta N mensajes; el 429 {register} dispara el
+  // muro (requireSignIn). Mensajes efímeros (solo estado local).
+  async function sendAnonMessage(text: string) {
+    const q = (text || "").trim();
+    if (!q || sending) return;
+    const userMsgId = crypto.randomUUID();
+    const aiId = crypto.randomUUID();
+    setInput("");
+    setMessages(prev => [
+      ...prev,
+      { id: userMsgId, role: "user", content: q, created_at: new Date().toISOString() },
+      { id: aiId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true },
+    ]);
+    setSending(true);
+    setStreamingMsgId(aiId);
+    try {
+      const tokenRes = await fetch("/api/auth/vps-token", { method: "POST" });
+      if (!tokenRes.ok) {
+        const err = await tokenRes.json().catch(() => ({}));
+        setMessages(prev => prev.filter(m => m.id !== aiId && m.id !== userMsgId));
+        setSending(false);
+        setStreamingMsgId(null);
+        if (err && err.register) requireSignIn(q); // el muro de registro
+        else setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: err?.error || "Error de autenticación", created_at: new Date().toISOString() }]);
+        return;
+      }
+      const { token, vpsUrl, anonLeft: left } = await tokenRes.json();
+      if (typeof left === "number") setAnonLeft(left);
+      const grounded = await groundQuestionIfNeeded(q, aiId);
+      const history = messages
+        .filter(m => m.role === "user" || m.role === "assistant")
+        .slice(-8)
+        .map(m => `${m.role === "user" ? "Usuario" : "Asistente"}: ${m.content || ""}`)
+        .join("\n");
+      const payload = {
+        token, message_id: aiId, conversation_id: "anon", mode: "deep",
+        question: grounded, attachments: "[]", user_context: "null", conversation_history: history,
+      };
+      const res = await fetch(`${vpsUrl}/api/stream`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`Error de conexión (${res.status})`);
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "", ev = "", dt = "", acc = "";
+      const flush = () => {
+        if (!ev || !dt) return;
+        let data: any;
+        try { data = JSON.parse(dt); } catch { ev = ""; dt = ""; return; }
+        if (ev === "chunk" && data.type === "chunk") {
+          acc += data.text;
+          const shown = stripContextDelta(acc);
+          setDisplayedText(prev => ({ ...prev, [aiId]: shown }));
+          setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: shown } : m));
+        } else if (ev === "error") {
+          setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: data.message || "Error", _loading: false } : m));
+        }
+        ev = ""; dt = "";
+      };
+      let r = await reader.read();
+      while (!r.done) {
+        buffer += decoder.decode(r.value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines[lines.length - 1] ?? "";
+        for (const line of lines) {
+          if (line === "") { flush(); continue; }
+          const em = line.match(/^event: (.+)/);
+          const dm = line.match(/^data: (.+)/);
+          if (em) { flush(); ev = em[1]; }
+          else if (dm) { dt = dm[1]; }
+        }
+        r = await reader.read();
+      }
+      flush();
+      const finalText = stripContextDelta(acc);
+      setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: finalText, _loading: false } : m));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Error de conexión";
+      setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: msg, _loading: false } : m));
+    } finally {
+      setSending(false);
+      setStreamingMsgId(null);
+    }
+  }
+
   const isDisabled = !isLoggedIn;
 
   const isFreeTier = isLoggedIn && resolveTier(profile ?? {}, new Date()) === "free";
@@ -2124,12 +2215,25 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             above that). La entrada de la primera vez NO es una clase CSS:
             el efecto FLIP de arriba lo hace volar desde el centro de la
             pantalla (donde estaba en EmptyState) hasta aquí. */}
-        {activeConv?.id && (
+        {(activeConv?.id || (!isLoggedIn && messages.length > 0)) && (
         <div
           ref={bottomInputRef}
           className="w-full flex-none pt-2"
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         >
+          {!isLoggedIn && anonLeft !== null && (
+            <div className="flex justify-center mb-2">
+              <button
+                onClick={() => requireSignIn()}
+                className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1 rounded-full cursor-pointer"
+                style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
+              >
+                {anonLeft > 0
+                  ? `Te ${anonLeft === 1 ? "queda 1 mensaje gratis" : `quedan ${anonLeft} mensajes gratis`} · regístrate`
+                  : "Regístrate gratis para seguir"}
+              </button>
+            </div>
+          )}
           {freeExhausted ? (
             <LimitReachedCard resetAt={profile?.daily_reset_at ?? null} onSeePlans={() => setShowPlans(true)} onRedeem={() => setShowPlans(true)} />
           ) : (

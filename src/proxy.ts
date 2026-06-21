@@ -11,7 +11,8 @@ const isProtectedRoute = createRouteMatcher([
   "/api/user-context(.*)",
   "/api/coupons(.*)",
   "/api/admin(.*)",
-  "/api/auth/vps-token(.*)",
+  // OJO: /api/auth/vps-token YA NO va aquí — hace su propio gate (logueado vs
+  // anónimo). Protegerlo aquí bloquearía el trial anónimo (Bloque 1 embudo).
   "/api/analyze(.*)",
 ]);
 
