@@ -10,6 +10,11 @@ import { useSpeechSynthesisServer } from "@/lib/voice-server";
 import { clampStreamingTable, stripContextDelta } from "@/lib/streamingMarkdown";
 import LocalBusinessCard from "@/components/chat/LocalBusinessCard";
 import type { LocalBusiness } from "@/lib/localBusinesses";
+import dynamic from "next/dynamic";
+
+// Mapa de negocios — carga DIFERIDA: Leaflet usa `window`, así que solo entra al
+// bundle (y se baja) cuando se renderiza una respuesta con negocios.
+const BusinessMap = dynamic(() => import("@/components/chat/BusinessMap"), { ssr: false, loading: () => null });
 
 type Message = {
   id: string;
@@ -327,6 +332,7 @@ export default function MessageBubble({
             Se muestran ni bien llegan (antes/durante el streaming del texto). */}
         {!isUser && message._businesses && message._businesses.length > 0 && (
           <div className="lb-cards">
+            <BusinessMap businesses={message._businesses} />
             {message._businesses.slice(0, 4).map((b) => (
               <LocalBusinessCard key={b.slug} b={b} />
             ))}

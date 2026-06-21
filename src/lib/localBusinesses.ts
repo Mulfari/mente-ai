@@ -22,6 +22,8 @@ export type LocalBusiness = {
   hours: Hours | null;
   tags: string[];
   openNow: boolean;
+  lat?: number;
+  lng?: number;
   distanceKm?: number;
 };
 
@@ -125,6 +127,7 @@ export async function searchLocalBusinesses(opts: {
         hours: (b.hours as Hours) ?? null,
         tags: Array.isArray(b.tags) ? (b.tags as string[]) : [],
         openNow: b.temporarily_closed ? false : isOpenNow(b.hours as Hours),
+        ...(lat != null && lng != null ? { lat, lng } : {}),
         ...(distanceKm != null ? { distanceKm } : {}),
       };
     });
