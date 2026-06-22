@@ -541,6 +541,28 @@ html[data-sidebar="closed"] .sidebar-desktop {
 .leaflet-popup-content { font: 13px Inter, sans-serif; margin: 9px 12px; }
 .leaflet-container { font-family: Inter, sans-serif; }
 
+/* A/B de respuestas — tarjeta de comparación sobre el input */
+.ab-card {
+  max-width: 672px; margin: 0 auto 8px;
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border));
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  border-radius: 14px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.ab-head { font: 600 12.5px Inter, sans-serif; color: var(--text-secondary); }
+.ab-variant {
+  font: 14px/1.55 Inter, sans-serif; color: var(--text-primary);
+  white-space: pre-wrap; max-height: 220px; overflow-y: auto;
+}
+.ab-actions { display: flex; gap: 8px; }
+.ab-btn {
+  flex: 1; font: 600 13px Inter, sans-serif; padding: 9px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer;
+}
+.ab-btn:disabled { opacity: 0.5; cursor: default; }
+.ab-btn--b { border-color: var(--primary); color: var(--primary); }
+.ab-thanks { font: 500 13px Inter, sans-serif; color: var(--text-secondary); text-align: center; }
+
 /* === PROSE / MARKDOWN === */
 .prose {
   color: var(--text-primary);

@@ -1,0 +1,91 @@
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - complementary [ref=e4]:
+        - generic [ref=e6]:
+          - paragraph [ref=e7]: Express Printer
+          - heading "Panel administrativo" [level=1] [ref=e8]
+        - generic [ref=e9]:
+          - navigation [ref=e11]:
+            - link "Resumen *" [ref=e12] [cursor=pointer]:
+              - /url: /dashboard?view=resumen
+              - generic [ref=e13]: Resumen
+              - generic [ref=e14]: "*"
+            - link "Pedidos +" [ref=e15] [cursor=pointer]:
+              - /url: /dashboard?view=pedidos
+              - generic [ref=e16]: Pedidos
+              - generic [ref=e17]: +
+            - link "Pagos +" [ref=e18] [cursor=pointer]:
+              - /url: /dashboard?view=pagos
+              - generic [ref=e19]: Pagos
+              - generic [ref=e20]: +
+            - link "Clientes +" [ref=e21] [cursor=pointer]:
+              - /url: /dashboard?view=clientes
+              - generic [ref=e22]: Clientes
+              - generic [ref=e23]: +
+          - generic [ref=e24]:
+            - paragraph [ref=e25]: Opciones administrativas
+            - navigation [ref=e26]:
+              - link "Inventario +" [ref=e27] [cursor=pointer]:
+                - /url: /dashboard?view=inventario
+                - generic [ref=e28]: Inventario
+                - generic [ref=e29]: +
+              - link "Productos +" [ref=e30] [cursor=pointer]:
+                - /url: /dashboard?view=productos
+                - generic [ref=e31]: Productos
+                - generic [ref=e32]: +
+              - link "Proveedores +" [ref=e33] [cursor=pointer]:
+                - /url: /dashboard?view=proveedores
+                - generic [ref=e34]: Proveedores
+                - generic [ref=e35]: +
+              - link "Equipo +" [ref=e36] [cursor=pointer]:
+                - /url: /dashboard?view=equipo
+                - generic [ref=e37]: Equipo
+                - generic [ref=e38]: +
+        - generic [ref=e39]:
+          - generic [ref=e40]:
+            - paragraph [ref=e41]: Nuevos pedidos
+            - paragraph [ref=e42]: "0"
+            - paragraph [ref=e43]: Pendientes por iniciar
+          - generic [ref=e44]:
+            - paragraph [ref=e45]: Pedidos activos
+            - paragraph [ref=e46]: "0"
+            - paragraph [ref=e47]: Pedidos en curso
+        - button "Cerrar sesion" [ref=e49] [cursor=pointer]
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - heading "Resumen" [level=2] [ref=e56]
+          - button "Notificaciones Sin novedades" [ref=e58] [cursor=pointer]:
+            - generic [ref=e59]:
+              - img [ref=e61]
+              - generic [ref=e64]:
+                - paragraph [ref=e65]: Notificaciones
+                - paragraph [ref=e66]: Sin novedades
+            - img [ref=e67]
+          - complementary [ref=e69]:
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - generic [ref=e72]: A
+                - generic [ref=e73]:
+                  - paragraph [ref=e74]: Administrador
+                  - paragraph [ref=e75]: Admin
+              - button "Cerrar sesion" [ref=e77] [cursor=pointer]:
+                - img [ref=e78]
+        - generic [ref=e81]:
+          - generic [ref=e82]:
+            - article [ref=e83]:
+              - paragraph [ref=e84]: Pedidos completados de hoy
+              - paragraph [ref=e85]: "0"
+              - paragraph [ref=e86]: Entregados durante la jornada
+            - article [ref=e87]:
+              - paragraph [ref=e88]: Caja
+              - paragraph [ref=e89]: USD 0,00
+              - paragraph [ref=e90]: Facturado hoy
+            - button "Personal activo 0 Pulsa para ver quien esta conectado" [ref=e91] [cursor=pointer]:
+              - paragraph [ref=e92]: Personal activo
+              - paragraph [ref=e93]: "0"
+              - paragraph [ref=e94]: Pulsa para ver quien esta conectado
+          - article [ref=e95]:
+            - heading "Alertas de administracion" [level=3] [ref=e98]
+            - generic [ref=e100]: No hay notificaciones administrativas registradas.
+  - alert [ref=e101]

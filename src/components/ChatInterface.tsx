@@ -12,6 +12,8 @@ import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import LimitReachedCard from "./chat/LimitReachedCard";
+import ABCompare from "./chat/ABCompare";
+import { shouldShowAB } from "@/lib/abTest";
 import PlansModal from "./chat/PlansModal";
 import { OnboardingTour } from "./OnboardingTour";
 import type { PublicFeed } from "@/lib/feed";
@@ -182,6 +184,9 @@ export default function ChatInterface({
   // Trial anónimo (Bloque 1 embudo): mensajes que le quedan al visitante antes
   // del muro. null = aún no ha enviado nada (no se muestra píldora).
   const [anonLeft, setAnonLeft] = useState<number | null>(null);
+  // A/B de respuestas: cuando un turno logueado fue elegido para A/B, aquí va el
+  // prompt para ofrecer la 2ª versión tras responder. null = sin A/B este turno.
+  const [abTurn, setAbTurn] = useState<{ prompt: string } | null>(null);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -1559,6 +1564,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (!isLoggedIn) { sendAnonMessage(inputVal); return; }
     const block = getBlockReason();
     if (!block.canSend) { setShowAccountMenu(true); return; }
+    // A/B de respuestas (~12% de turnos logueados): tras responder se ofrece una
+    // 2ª versión más concisa para que el usuario elija (feedback de estilo).
+    setAbTurn(null);
+    const doAB = shouldShowAB(Math.random(), isLoggedIn);
     // Prevent double-submit: capture sending state BEFORE any state change
     const sendingNow = sending;
     if (sendingNow) return;
@@ -1691,6 +1700,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       // Install a fresh AbortController for this stream — ChatInput's Stop
       // button will call .abort() on it. Replaces any prior handle.
       streamAbortRef.current = new AbortController();
+      if (doAB) setAbTurn({ prompt: userMsg });
 
       // Now get VPS token and stream — other devices already see the message
       const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
@@ -2221,6 +2231,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           className="w-full flex-none pt-2"
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         >
+          {abTurn && !sending && !streamingMsgId && (
+            <ABCompare prompt={abTurn.prompt} onDone={() => setAbTurn(null)} />
+          )}
           {!isLoggedIn && anonLeft !== null && (
             <div className="flex justify-center mb-2">
               <button
