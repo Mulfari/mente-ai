@@ -1279,7 +1279,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       }
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
 
-      const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
+      const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: '', notes: userContext.custom_notes || '' } : null;
 
       // Build conversation history text - use summary + recent messages
       const historyMessages = messages.filter(m => m.role === "user" || m.role === "assistant").slice(-30);
@@ -1720,7 +1720,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       }
       const { token: vpsToken, vpsUrl } = await tokenRes.json();
 
-      const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: userContext.interests || '', notes: userContext.custom_notes || '' } : null;
+      const userContextPayload = userContext ? { name: userContext.full_name || '', city: userContext.city || '', interests: '', notes: userContext.custom_notes || '' } : null;
       
 
       // Build conversation history text for VPS - use summary + recent messages
