@@ -600,6 +600,20 @@ html[data-sidebar="closed"] .sidebar-desktop {
 .lens-seg--skel { height: 44px; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 14px; }
 .lens-skel-row { height: 22px; margin: 16px 2px; border-radius: 6px; background: var(--surface-hover); animation: pulse 1.5s ease-in-out infinite; }
 
+/* Composer (diseño "Composer") — fidelidad al HANDOFF: placeholder que se
+   desvanece, anillo de foco por :focus-within (sin JS), onda de voz,
+   "pensando" y el anillo girando del botón stop. */
+.vc-ph { transition: opacity .3s ease; }
+.vc-ph.vc-ph-show { opacity: .7; }
+.vc-ph.vc-ph-hide { opacity: 0; }
+.vc-surface { transition: border-color .16s ease, box-shadow .16s ease; }
+.vc-surface:focus-within { border-color: var(--primary) !important; box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 14%, transparent), 0 8px 26px rgba(0,0,0,.07) !important; }
+@keyframes vc-wave { 0%, 100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+@keyframes vc-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.78); } }
+@keyframes vc-blink { 0%, 80%, 100% { opacity: .2; } 40% { opacity: 1; } }
+@keyframes vc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .vc-ph, .vc-surface, .vc-wavebar, .vc-blinkdot, .vc-spinring, .vc-recdot { animation: none !important; transition: none !important; } }
+
 /* === PROSE / MARKDOWN === */
 .prose {
   color: var(--text-primary);

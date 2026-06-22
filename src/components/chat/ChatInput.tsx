@@ -37,15 +37,23 @@ type Props = {
 // @/lib/chatDraft para que el camino de envío en ChatInterface pueda limpiar
 // el borrador de la conversación de origen (ver el comentario de ese módulo).
 
-// Placeholder que rota por preguntas reales (estilo del diseño "Composer"):
-// solo cicla con el input vacío y sin foco, para no cambiar bajo el usuario.
+// Placeholder que se desvanece y rota (HANDOFF §1.1): es un <span> superpuesto
+// (no el atributo nativo, que no se puede animar), fade .3s, rota cada 3400ms,
+// se oculta al escribir o al grabar.
 const PLACEHOLDER_PROMPTS = [
-  "Pregúntale algo a VeChat...",
+  "Pregúntale a VeChat…",
   "¿A cómo está el dólar hoy?",
   "Requisitos del pasaporte 2026",
-  "¿Dónde desayunar cerca?",
+  "¿Dónde desayunar en Maracay?",
   "Recetas con plátano",
 ];
+
+// Onda de voz (HANDOFF §1.4): 22 barras con stagger NEGATIVO para que parezca
+// una onda viajando; alturas pseudoaleatorias 6 + 14*|sin(i*1.1+0.5)|.
+const WAVE_BARS = Array.from({ length: 22 }, (_, i) => ({
+  delay: `${(-(i * 0.08)).toFixed(2)}s`,
+  h: 6 + Math.round(14 * Math.abs(Math.sin(i * 1.1 + 0.5))),
+}));
 
 export default function ChatInput({
   input,
@@ -67,10 +75,11 @@ export default function ChatInput({
 }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [isFocused, setIsFocused] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [phIdx, setPhIdx] = useState(0);
+  const [phClass, setPhClass] = useState<"vc-ph-show" | "vc-ph-hide">("vc-ph-show");
+  const [recSec, setRecSec] = useState(0);
   // Tracks whether the current `input` value originated from a localStorage
   // draft. We use it to avoid wiping a draft before the user actually edits
   // (e.g. when the parent re-renders the same value back to us).
@@ -177,30 +186,45 @@ export default function ChatInput({
     }
   }, [autoFocus]);
 
-  // Placeholder que rota por preguntas (solo con input vacío y sin foco).
-  // Se congela mientras el usuario escribe, dicta o llega una respuesta.
+  const block = getBlockReason();
+
+  // Rotación del placeholder (HANDOFF §1.1): cada 3400ms, si NO hay texto y
+  // NO se está grabando/generando, desvanece (vc-ph-hide), y a los 300ms
+  // avanza el índice y reaparece (vc-ph-show). Congelado mientras se escribe.
   useEffect(() => {
-    if (isFocused || input || isListening || isStreaming) return;
+    if (input || isListening || isStreaming || !block.canWrite) return;
     const id = setInterval(() => {
-      setPhIdx((i) => (i + 1) % PLACEHOLDER_PROMPTS.length);
+      setPhClass("vc-ph-hide");
+      setTimeout(() => {
+        setPhIdx((i) => (i + 1) % PLACEHOLDER_PROMPTS.length);
+        setPhClass("vc-ph-show");
+      }, 300);
     }, 3400);
     return () => clearInterval(id);
-  }, [isFocused, input, isListening, isStreaming]);
+  }, [input, isListening, isStreaming, block.canWrite]);
+
+  // Contador m:ss mientras graba (HANDOFF §1.4).
+  useEffect(() => {
+    if (!isListening) {
+      setRecSec(0);
+      return;
+    }
+    const id = setInterval(() => setRecSec((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [isListening]);
 
   // Auto-resize the textarea to fit its content. useLayoutEffect runs
   // before paint so we never see the old height flash. Reset to "auto"
   // first so scrollHeight reflects natural content height, then cap at
-  // 160px (~6 lines at 24px line-height). When the cap is hit, the
-  // textarea scrolls internally; the project hides scrollbars globally.
-  // The wrapper keeps a fixed `rounded-2xl` shape — the height grows
-  // monotonically, the geometry never changes.
+  // 180px (HANDOFF §1.2). When the cap is hit, the textarea scrolls
+  // internally; the project hides scrollbars globally.
   useLayoutEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    const next = Math.min(ta.scrollHeight, 160);
+    const next = Math.min(ta.scrollHeight, 180);
     ta.style.height = `${next}px`;
-  }, [input, isExpanded]);
+  }, [input, isExpanded, isListening]);
 
   // Hidrata el borrador al montar / cambiar de conversación. El padre es dueño
   // del estado `input`; lo empujamos vía setInput. OJO: el borrado del texto
@@ -337,27 +361,26 @@ export default function ChatInput({
     }
   }, [isStreaming, onStop, onSend]);
 
-  const block = getBlockReason();
-  const canSend = !isStreaming && (input.trim() || attachments.length > 0) && !sending && block.canWrite;
-  // The primary button is interactive in two mutually-exclusive cases:
-  // streaming (becomes Stop) or ready to send. If neither, it's disabled.
+  const hasText = input.trim().length > 0;
+  const canSend = !isStreaming && (hasText || attachments.length > 0) && !sending && block.canWrite;
   const primaryActive = isStreaming || canSend;
+  // Micrófono-primario (HANDOFF §1.3): sin texto NI adjuntos → a la derecha el
+  // mic; con texto → el botón enviar. Si el navegador no soporta dictado,
+  // mostramos enviar (deshabilitado) en vez del mic.
+  const showMicPrimary =
+    !hasText && attachments.length === 0 && !isStreaming && isLoggedIn && isSupported && block.canWrite;
+  const showPlaceholder = input.length === 0;
+  const recTimer = `${Math.floor(recSec / 60)}:${String(recSec % 60).padStart(2, "0")}`;
 
   return (
-    // Wrapper exterior: padding lateral más generoso en desktop, compacto
-    // en móvil para que el textarea gane ancho de escritura. El padding
-    // inferior respeta el safe area del dispositivo (home bar del iPhone,
-    // gesture bar de Android) — `max(0.75rem, env(safe-area-inset-bottom))`
-    // toma el mayor entre 12px y el inset del SO.
     <div
       className="px-3 sm:px-4 pt-2 flex-none"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
       {/* max-w-2xl (672px): un pelo más angosto que la columna de mensajes
-          (3xl) — el input queda recogido y cómodo de leer. OJO: si cambias
-          este ancho, ajusta el max-w-[704px] del wrapper en EmptyState
-          (672 + 32 de padding propio) para que el despegue FLIP siga
-          siendo un deslizamiento puro sin saltos de ancho. */}
+          (3xl). OJO: si cambias este ancho, ajusta el max-w-[704px] del wrapper
+          en EmptyState para que el despegue FLIP siga siendo un deslizamiento
+          puro, sin saltos de ancho. */}
       <div className="max-w-2xl mx-auto">
         {showQuota && quotaLeft !== undefined && quotaLeft <= 3 && quotaLeft > 0 && (
           <div className="flex justify-center mb-2">
@@ -367,56 +390,8 @@ export default function ChatInput({
             </span>
           </div>
         )}
-        {/* Pill de estado cuando está grabando — sobre el input. La ✕
-            CANCELA (descarta el audio, no transcribe ni envía); para
-            enviar lo dictado se toca el botón del mic (cuadrado rojo). */}
-        {isListening && (
-          <div
-            className="flex items-center justify-center gap-2 mb-2 px-3 py-1.5 rounded-full text-xs font-medium animate-fadeInUp"
-            style={{
-              backgroundColor: "color-mix(in srgb, var(--danger) 15%, transparent)",
-              color: "var(--danger)",
-              border: "1px solid color-mix(in srgb, var(--danger) 30%, transparent)",
-              width: "fit-content",
-              margin: "0 auto 8px",
-            }}
-          >
-            <span className="inline-block w-2 h-2 rounded-full recording-pulse" style={{ backgroundColor: "var(--danger)" }} />
-            Escuchando...
-            <button
-              onClick={cancel}
-              className="ml-2 opacity-70 hover:opacity-100"
-              title="Cancelar dictado"
-              aria-label="Cancelar dictado"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-        {/* Pill mientras se transcribe (1-3s tras soltar el mic) — antes
-            no había feedback y el mensaje "se enviaba solo" de la nada. */}
-        {!isListening && isProcessing && (
-          <div
-            className="flex items-center justify-center gap-2 mb-2 px-3 py-1.5 rounded-full text-xs font-medium animate-fadeInUp"
-            style={{
-              backgroundColor: "var(--surface-hover)",
-              color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
-              width: "fit-content",
-              margin: "0 auto 8px",
-            }}
-          >
-            <span
-              className="inline-block w-3 h-3 rounded-full animate-spin"
-              style={{
-                border: "2px solid var(--border)",
-                borderTopColor: "var(--primary)",
-              }}
-            />
-            Transcribiendo...
-          </div>
-        )}
-        {/* Attachment previews */}
+
+        {/* Chips de adjuntos (HANDOFF §1.6) — arriba del input */}
         {attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
             {attachments.map((file, i) => {
@@ -449,193 +424,212 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Composer (diseño "Composer"): caja cálida con el textarea a todo
-            el ancho arriba y una fila de acciones debajo. Al enfocar, borde
-            verde + anillo. data-chat-input-pill lo mide el FLIP del empty
-            state — no lo quites. */}
+        {/* Superficie del composer. .vc-surface activa el anillo de foco por
+            :focus-within (HANDOFF §1.7, sin JS). data-chat-input-pill lo mide
+            el FLIP del empty state. */}
         <div
           data-chat-input-pill
-          className="relative rounded-[24px] px-3.5 pt-3 pb-2.5"
+          className="vc-surface relative rounded-[24px] px-3.5 pt-3.5 pb-2.5"
           style={{
             backgroundColor: "color-mix(in srgb, var(--surface) 96%, transparent)",
-            border: `1px solid ${isFocused ? "var(--primary)" : "var(--border)"}`,
+            border: "1px solid var(--border)",
             backdropFilter: "blur(20px) saturate(1.2)",
             WebkitBackdropFilter: "blur(20px) saturate(1.2)",
-            boxShadow: isFocused
-              ? "0 0 0 4px color-mix(in srgb, var(--primary) 13%, transparent), 0 8px 26px rgba(0,0,0,0.07)"
-              : "0 6px 22px rgba(0,0,0,0.06)",
-            transition: "box-shadow 0.16s, border-color 0.16s",
-          }}
-          onFocus={() => setIsFocused(true)}
-          onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-              setIsFocused(false);
-            }
+            boxShadow: "0 6px 22px rgba(0,0,0,0.06)",
           }}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
         >
-          {/* Drag & drop overlay — non-interactive (pointer-events:none) so
-              the drop event still reaches the wrapper. */}
+          {/* Drag & drop overlay (HANDOFF §1.6) — punteado + "Suelta para
+              adjuntar". pointer-events:none para que el drop llegue al wrapper. */}
           {isDragging && (
             <div
-              className="absolute inset-0 rounded-[24px] pointer-events-none z-20 flex items-center justify-center"
+              className="absolute inset-0 rounded-[24px] pointer-events-none z-20 flex items-center justify-center gap-2.5"
               style={{
-                backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
+                backgroundColor: "color-mix(in srgb, var(--primary) 16%, transparent)",
                 border: "2px dashed var(--primary)",
               }}
             >
-              <div
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
-                style={{
-                  backgroundColor: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  color: "var(--text-primary)",
-                }}
-              >
-                <svg className="w-4 h-4" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                Suelta el archivo
-              </div>
+              <svg className="w-5 h-5" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              <span className="text-[15px] font-semibold" style={{ color: "var(--primary)" }}>Suelta para adjuntar</span>
             </div>
           )}
 
-          {/* Textarea a todo el ancho. Enter envía, Shift+Enter nueva línea.
-              Altura dinámica (useLayoutEffect), tope 160px. Pegar imagen
-              dispara el flujo de adjunto. */}
-          <textarea
-            ref={textareaRef}
-            rows={1}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                // Enter solo envía. Durante el streaming NO detiene (era una
-                // sorpresa desagradable mientras redactabas el siguiente).
-                if (canSend) onSend();
-              }
-            }}
-            onPaste={handlePaste}
-            placeholder={block.canWrite ? PLACEHOLDER_PROMPTS[phIdx] : "Sin suscripcion activa..."}
-            // El textarea NO se deshabilita mientras se envía/streamea:
-            // perder el foco y bloquear la escritura castigaba al usuario
-            // que quería ir redactando el siguiente mensaje.
-            disabled={!block.canWrite}
-            className="w-full bg-transparent text-base outline-none resize-none px-0.5 pt-0.5 placeholder:text-[var(--text-tertiary)] overflow-hidden chat-input-field"
-            style={{
-              color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)",
-              maxHeight: "160px",
-              lineHeight: "24px",
-            }}
-          />
-          <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple
-            onChange={handleFileSelect} className="hidden" />
-
-          {/* Fila de acciones — adjuntar + dictar a la izquierda, enviar a
-              la derecha. Siempre visibles ambos (mic y enviar): VeChat usa
-              dictado real, no el patrón "mic O enviar". */}
-          <div className="flex items-center justify-between gap-2 mt-1.5">
-            <div className="flex items-center gap-0.5">
-              {/* Adjuntar */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={!isLoggedIn || attachments.length >= 3 || !block.canWrite || sending || isStreaming}
-                className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)] disabled:opacity-30"
-                style={{ color: "var(--text-tertiary)" }}
-                title="Adjuntar archivo"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          {isListening ? (
+            /* Vista de grabación (HANDOFF §1.4) — reemplaza al textarea. */
+            <div className="flex items-center gap-2.5 min-h-[42px]">
+              <span className="vc-recdot w-[9px] h-[9px] rounded-full shrink-0"
+                style={{ backgroundColor: "#E5484D", animation: "vc-pulse 1.2s ease-in-out infinite" }} />
+              <span className="text-[14.5px] font-semibold shrink-0" style={{ color: "var(--text-primary)" }}>Escuchando</span>
+              <span className="text-[13px] font-medium shrink-0 tabular-nums" style={{ color: "var(--text-secondary)" }}>{recTimer}</span>
+              <div className="flex-1 flex items-center justify-center gap-[3px] h-6 overflow-hidden">
+                {WAVE_BARS.map((b, i) => (
+                  <span key={i} className="vc-wavebar w-[3px] rounded-[2px] shrink-0"
+                    style={{ height: b.h, backgroundColor: "var(--primary)", transformOrigin: "center", animation: `vc-wave .95s ease-in-out ${b.delay} infinite` }} />
+                ))}
+              </div>
+              <button onClick={cancel} title="Cancelar"
+                className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-colors hover:bg-[var(--surface-hover)]"
+                style={{ color: "var(--text-secondary)" }}>
+                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-
-              {/* Micrófono — STT. Se muestra aunque el navegador no lo
-                  soporte, pero deshabilitado con tooltip explicativo. */}
-              <button
-                onClick={handleMicClick}
-                disabled={!isLoggedIn || !isSupported || !block.canWrite || sending || isStreaming}
-                className={`shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                  !isSupported
-                    ? "opacity-30 cursor-not-allowed"
-                    : isListening
-                    ? "recording-pulse"
-                    : "hover:bg-[var(--surface-hover)]"
-                }`}
-                style={{
-                  color: isListening ? "white" : "var(--text-tertiary)",
-                  backgroundColor: isListening ? "var(--danger)" : "transparent",
-                }}
-                title={
-                  !isSupported
-                    ? "Tu navegador no soporta dictado por voz. Prueba Chrome o Safari."
-                    : isListening
-                    ? "Detener grabación"
-                    : "Dictar mensaje"
-                }
-              >
-                {isListening ? (
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="6" y="6" width="12" height="12" rx="2" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
-                  </svg>
-                )}
+              <button onClick={stop} title="Listo"
+                className="w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0 text-white transition-transform active:scale-95"
+                style={{ backgroundColor: "var(--primary)", boxShadow: "0 2px 8px color-mix(in srgb, var(--primary) 22%, transparent)" }}>
+                <svg className="w-[19px] h-[19px]" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7" />
+                </svg>
               </button>
             </div>
+          ) : (
+            <>
+              {/* Textarea + placeholder superpuesto (HANDOFF §1.1) */}
+              <div className="relative">
+                {showPlaceholder && (
+                  <span
+                    className={`vc-ph ${block.canWrite ? phClass : "vc-ph-show"} absolute left-0.5 top-1 right-0.5 pointer-events-none truncate`}
+                    style={{ font: "400 16px/1.5 Inter, sans-serif", color: "var(--text-secondary)" }}
+                  >
+                    {block.canWrite ? PLACEHOLDER_PROMPTS[phIdx] : "Sin suscripcion activa..."}
+                  </span>
+                )}
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
+                  value={input}
+                  placeholder=""
+                  onChange={e => setInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (canSend) onSend();
+                    }
+                  }}
+                  onPaste={handlePaste}
+                  disabled={!block.canWrite}
+                  className="w-full bg-transparent text-base outline-none resize-none px-0.5 pt-0.5 overflow-hidden chat-input-field"
+                  style={{
+                    color: block.canWrite ? "var(--text-primary)" : "var(--text-tertiary)",
+                    maxHeight: "180px",
+                    lineHeight: "24px",
+                  }}
+                />
+              </div>
+              <input ref={fileInputRef} type="file" accept="image/*,.pdf,.doc,.docx,.txt" multiple
+                onChange={handleFileSelect} className="hidden" />
 
-            {/* Acción principal — Enviar (flecha ↑) en reposo, Detener
-                (cuadrado) durante el streaming. El stop usa PRIMARY, no rojo
-                (el rojo+cuadrado es el lenguaje del mic grabando). El hover
-                vive en CSS (.chat-primary-action) por el vuelo FLIP al dock. */}
-            <button
-              onClick={handlePrimaryClick}
-              disabled={!primaryActive}
-              aria-label={isStreaming ? "Detener respuesta" : "Enviar mensaje"}
-              className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center transition-all duration-200 chat-primary-action ${primaryActive ? "is-active" : ""}`}
-              title={isStreaming ? "Detener respuesta" : "Enviar"}
-              style={primaryActive && !isStreaming ? { boxShadow: "0 3px 10px color-mix(in srgb, var(--primary) 24%, transparent)" } : undefined}
-            >
-              {isStreaming ? (
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="6" y="6" width="12" height="12" rx="2" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <path d="M12 19V5M5 12l7-7 7 7" />
-                </svg>
+              {/* Fila de acciones — adjuntar a la izquierda; a la derecha el
+                  mic (vacío) o enviar/stop (con texto / generando). */}
+              <div className="flex items-center justify-between gap-2 mt-1.5">
+                <div className="flex items-center gap-0.5">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!isLoggedIn || attachments.length >= 3 || !block.canWrite || sending || isStreaming}
+                    className="shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)] disabled:opacity-30"
+                    style={{ color: "var(--text-tertiary)" }}
+                    title="Adjuntar archivo"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="flex items-center">
+                  {showMicPrimary ? (
+                    /* Mic-primario (vacío) */
+                    <button
+                      onClick={handleMicClick}
+                      className="shrink-0 w-[42px] h-[42px] rounded-full flex items-center justify-center transition-transform active:scale-95"
+                      style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)", color: "var(--primary)" }}
+                      title="Dictar mensaje"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                      </svg>
+                    </button>
+                  ) : isStreaming ? (
+                    /* Stop con anillo girando (HANDOFF §1.5) */
+                    <button
+                      onClick={handlePrimaryClick}
+                      aria-label="Detener respuesta"
+                      title="Detener respuesta"
+                      className="shrink-0 relative w-[42px] h-[42px] rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: "var(--primary)" }}
+                    >
+                      <span className="vc-spinring absolute rounded-full"
+                        style={{ inset: -4, border: "2px solid var(--primary)", borderTopColor: "transparent", opacity: 0.45, animation: "vc-spin .8s linear infinite" }} />
+                      <span className="rounded-[3px]" style={{ width: 12, height: 12, backgroundColor: "#fff" }} />
+                    </button>
+                  ) : (
+                    /* Enviar (flecha ↑) */
+                    <button
+                      onClick={handlePrimaryClick}
+                      disabled={!primaryActive}
+                      aria-label="Enviar mensaje"
+                      title="Enviar"
+                      className="shrink-0 w-[42px] h-[42px] rounded-full flex items-center justify-center transition-all duration-200"
+                      style={
+                        canSend
+                          ? { backgroundColor: "var(--primary)", color: "#fff", boxShadow: "0 3px 10px color-mix(in srgb, var(--primary) 24%, transparent)" }
+                          : { backgroundColor: "transparent", color: "var(--text-tertiary)", border: "1px solid var(--border)", opacity: 0.55 }
+                      }
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M12 19V5M5 12l7-7 7 7" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Expandir — editor a pantalla completa para mensajes largos. */}
+              {!isStreaming && input.length > 240 && !isExpanded && (
+                <button
+                  onClick={() => setIsExpanded(true)}
+                  className="absolute top-2.5 right-2.5 w-6 h-6 rounded-md flex items-center justify-center hover:bg-[var(--surface-hover)] transition-colors z-10"
+                  style={{ color: "var(--text-tertiary)" }}
+                  title="Expandir editor"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                </button>
               )}
-            </button>
-          </div>
-
-          {/* Expandir — editor a pantalla completa para mensajes largos.
-              Absoluto en la esquina para no mover el layout. */}
-          {!isStreaming && input.length > 240 && !isExpanded && (
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="absolute top-2.5 right-2.5 w-6 h-6 rounded-md flex items-center justify-center hover:bg-[var(--surface-hover)] transition-colors z-10"
-              style={{ color: "var(--text-tertiary)" }}
-              title="Expandir editor"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-5h-4m4 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-              </svg>
-            </button>
+            </>
           )}
         </div>
 
-        {/* Disclaimer (estilo ChatGPT) */}
-        <p className="text-center mt-3 text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-          VeChat puede equivocarse. Verifica lo importante.
-        </p>
+        {/* Debajo del input: "pensando" (generando) / "transcribiendo" /
+            disclaimer (HANDOFF §1.5). */}
+        {isStreaming ? (
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <span className="inline-flex gap-[3px]">
+              {[0, 0.2, 0.4].map((d, i) => (
+                <span key={i} className="vc-blinkdot w-[5px] h-[5px] rounded-full"
+                  style={{ backgroundColor: "var(--primary)", animation: `vc-blink 1.2s ease-in-out ${d}s infinite` }} />
+              ))}
+            </span>
+            <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>VeChat está pensando…</span>
+          </div>
+        ) : !isListening && isProcessing ? (
+          <div className="flex items-center justify-center gap-2 mt-3">
+            <span className="inline-block w-3 h-3 rounded-full animate-spin"
+              style={{ border: "2px solid var(--border)", borderTopColor: "var(--primary)" }} />
+            <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>Transcribiendo…</span>
+          </div>
+        ) : (
+          <p className="text-center mt-3 text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+            VeChat puede equivocarse. Verifica lo importante.
+          </p>
+        )}
 
-        {/* Full-screen editor modal. Local to the input — commits the new
-            text into the parent's `input` state and re-syncs the height. */}
         {isExpanded && (
           <ExpandInputModal
             initialValue={input}
@@ -646,14 +640,13 @@ export default function ChatInput({
                 const ta = textareaRef.current;
                 if (!ta) return;
                 ta.style.height = "auto";
-                ta.style.height = `${Math.min(ta.scrollHeight, 160)}px`;
+                ta.style.height = `${Math.min(ta.scrollHeight, 180)}px`;
               });
             }}
             onCancel={() => setIsExpanded(false)}
           />
         )}
 
-        {/* Voice error message — auto-clears after 4s */}
         {error && (
           <p className="text-[0.7rem] mt-1.5 text-center" style={{ color: "var(--danger)" }}>
             {error}
