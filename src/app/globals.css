@@ -570,6 +570,36 @@ html[data-sidebar="closed"] .sidebar-desktop {
 .ab-btn--b { border-color: var(--primary); color: var(--primary); }
 .ab-thanks { font: 500 13px Inter, sans-serif; color: var(--text-secondary); text-align: center; }
 
+/* "El Lente" — zona de descubrimiento: una superficie + control segmentado */
+@keyframes vc-ping { 0% { transform: scale(1); opacity: .5; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes vc-beat { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+.lens-card { background: var(--background); border: 1px solid var(--border); border-radius: 24px; padding: 16px 14px 18px; margin: 14px 0 4px; }
+.lens-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.lens-dot { position: relative; display: inline-flex; width: 8px; height: 8px; }
+.lens-dot-ping { position: absolute; inset: 0; border-radius: 999px; background: var(--primary); opacity: .5; animation: vc-ping 2s ease-out infinite; }
+.lens-dot-core { position: relative; width: 8px; height: 8px; border-radius: 999px; background: var(--primary); }
+.lens-sub { font: 600 11px/1 Inter, sans-serif; letter-spacing: .13em; text-transform: uppercase; color: var(--text-secondary); }
+.lens-seg { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 4px; }
+.lens-tab { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 8px; border-radius: 11px; border: none; cursor: pointer; font: 600 13px Inter, sans-serif; background: transparent; color: var(--text-secondary); transition: background-color .15s, color .15s; }
+.lens-tab.is-on { background: var(--primary); color: #fff; }
+.lens-featured { display: flex; flex-direction: column; gap: 7px; width: 100%; text-align: left; cursor: pointer; margin-top: 14px; padding: 16px; border-radius: 18px; background: color-mix(in srgb, var(--primary) 14%, transparent); border: 1px solid var(--border); transition: transform .12s ease; }
+.lens-featured:hover { transform: translateY(-2px); }
+.lens-featured-label { display: inline-flex; align-items: center; gap: 6px; font: 600 9.5px Inter, sans-serif; letter-spacing: .11em; text-transform: uppercase; color: var(--primary); }
+.lens-beat { width: 6px; height: 6px; border-radius: 999px; background: var(--primary); animation: vc-beat 1.6s ease-in-out infinite; }
+.lens-featured-row { display: flex; align-items: flex-end; gap: 12px; }
+.lens-featured-q { flex: 1; font: 600 20px/1.2 'Bricolage Grotesque', Inter, sans-serif; color: var(--text-primary); }
+.lens-rows { margin-top: 4px; }
+.lens-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer; padding: 13px 2px; border: none; background: transparent; border-top: 1px solid var(--border); transition: transform .12s ease; }
+.lens-row:hover { transform: translateX(3px); }
+.lens-row-tile { width: 30px; height: 30px; border-radius: 9px; flex: none; display: flex; align-items: center; justify-content: center; color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); }
+.lens-row-q { flex: 1; font: 500 15px/1.3 Inter, sans-serif; color: var(--text-primary); }
+.lens-row-arrow { color: var(--text-tertiary); flex: none; display: inline-flex; }
+.lens-empty { padding: 18px 2px; font: 500 14px Inter, sans-serif; color: var(--text-tertiary); }
+.lens-sig { display: inline-flex; align-items: flex-end; gap: 2px; height: 13px; flex: none; }
+.lens-sig > span { width: 3px; border-radius: 2px; }
+.lens-seg--skel { height: 44px; background: var(--surface-hover); border: 1px solid var(--border); border-radius: 14px; }
+.lens-skel-row { height: 22px; margin: 16px 2px; border-radius: 6px; background: var(--surface-hover); animation: pulse 1.5s ease-in-out infinite; }
+
 /* === PROSE / MARKDOWN === */
 .prose {
   color: var(--text-primary);
