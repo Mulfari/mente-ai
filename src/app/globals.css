@@ -573,7 +573,7 @@ html[data-sidebar="closed"] .sidebar-desktop {
 /* "El Lente" — zona de descubrimiento: una superficie + control segmentado */
 @keyframes vc-ping { 0% { transform: scale(1); opacity: .5; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
 @keyframes vc-beat { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
-.lens-card { background: var(--background); border: 1px solid var(--border); border-radius: 24px; padding: 16px 14px 18px; margin: 14px 0 4px; }
+.lens-card { margin: 10px 0 4px; }
 .lens-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .lens-dot { position: relative; display: inline-flex; width: 8px; height: 8px; }
 .lens-dot-ping { position: absolute; inset: 0; border-radius: 999px; background: var(--primary); opacity: .5; animation: vc-ping 2s ease-out infinite; }
