@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useClerk } from "@clerk/nextjs";
+import { useState, useEffect, type ReactNode } from "react";
 import { applyThemePreference, getThemePreference, type ThemePreference } from "@/lib/theme";
 import type { AppConfig } from "@/lib/appConfig";
+
+// Menú de cuenta — diseño "MenuPopover" (HANDOFF §3, dirección A recomendada):
+// popover compacto de 316px anclado al chip del pie del sidebar (abre hacia
+// arriba), con navegación por sub-vistas main → sus → coupon. Reusa el
+// cableado real (tema, contexto+GPS, countdown, planes, métodos de pago,
+// cupón, cerrar sesión). El MenuPanel (B) se descartó.
 
 type Props = {
   userId: string;
@@ -21,243 +26,293 @@ type Props = {
   appConfig?: AppConfig;
 };
 
-type Tab = "context" | "personalization" | "subscription" | "coupon";
+type View = "main" | "sus" | "coupon";
 
-export default function AccountMenu({ userId, email, profile: profileProp, userContext, onSignOut, onClose, onSave, appConfig }: Props) {
-  const [tab, setTab] = useState<Tab>("context");
-  const [tick, setTick] = useState(0);
+// --- helpers de suscripción (countdown) ---
+function endTimeOf(profile: Props["profile"]): number {
+  if (!profile?.subscription_end) return 0;
+  const normalized = profile.subscription_end.replace(/([+-]\d{2}):?(\d{2})?$/, "Z").replace(" ", "T");
+  const t = new Date(normalized).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+export default function AccountMenu({ email, profile: profileProp, userContext, onSignOut, onClose, onSave, appConfig }: Props) {
+  const [view, setView] = useState<View>("main");
   const [profile, setProfile] = useState(profileProp ?? null);
-  const { signOut } = useClerk();
+  const [, setTick] = useState(0);
 
-  // Always fetch fresh profile so it's never null
   useEffect(() => {
     fetch("/api/profile")
       .then((r) => r.json())
-      .then((res) => {
-        if (res.profile) setProfile(res.profile);
-      })
+      .then((res) => { if (res.profile) setProfile(res.profile); })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => setTick(t => t + 1), 1000);
+    const interval = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const _ = tick;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const weeks = (profile?.subscription_weeks ?? 0) || 0;
+  const isUnlimited = weeks < 0;
+  const isPlus = isUnlimited || (weeks > 0 && endTimeOf(profile) > Date.now());
+  const isFree = !isPlus;
+  const initial = (userContext?.full_name || email || "U").trim().charAt(0).toUpperCase();
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50"
-      style={{ backgroundColor: "rgba(17,24,39,0.45)", backdropFilter: "blur(8px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="w-full max-w-[48rem] max-h-[78vh] rounded-2xl overflow-hidden flex animate-fade-in"
-        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 60px rgba(0,0,0,0.18)" }}>
+    <>
+      {/* Backdrop transparente — cierra al tocar fuera (no oscurece como el
+          modal viejo; un popover no atenúa la pantalla). */}
+      <div className="fixed inset-0 z-40" onClick={onClose} />
 
-        {/* Left sidebar */}
-        <div className="w-14 sm:w-52 shrink-0 self-start sticky top-0 flex flex-col py-5 sm:py-6"
-          style={{ backgroundColor: "var(--background)", borderRight: "1px solid var(--border)", height: "78vh" }}>
+      <div
+        className="mp-pop fixed z-50"
+        style={{
+          left: 12,
+          bottom: 70,
+          width: 316,
+          maxWidth: "calc(100vw - 24px)",
+          maxHeight: "min(80vh, 640px)",
+          overflowY: "auto",
+          backgroundColor: "var(--surface)",
+          border: "1px solid var(--border)",
+          borderRadius: 20,
+          boxShadow: "0 18px 48px rgba(0,0,0,0.16), 0 2px 6px rgba(0,0,0,0.06)",
+          padding: 8,
+        }}
+      >
+        {view === "main" && (
+          <MainView
+            email={email}
+            initial={initial}
+            isPlus={isPlus}
+            isFree={isFree}
+            userContext={userContext}
+            onSave={onSave}
+            onGoSus={() => setView("sus")}
+            onGoCoupon={() => setView("coupon")}
+            onSignOut={onSignOut}
+          />
+        )}
+        {view === "sus" && (
+          <SusView
+            isPlus={isPlus}
+            profile={profile}
+            appConfig={appConfig}
+            onBack={() => setView("main")}
+          />
+        )}
+        {view === "coupon" && (
+          <CouponView onBack={() => setView("main")} onClose={onClose} />
+        )}
+      </div>
+    </>
+  );
+}
 
-          {/* Header */}
-          <div className="px-4 sm:px-5 mb-5 sm:mb-6">
-            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
-                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </div>
-              <span className="text-xs sm:text-sm font-bold hidden sm:block" style={{ color: "var(--text-primary)" }}>VeChat</span>
-            </div>
-            <div className="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-xl"
-              style={{ backgroundColor: "var(--surface)" }}>
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0"
-                style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
-                {email.charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0 hidden sm:block">
-                <p className="text-[10px] sm:text-[11px] truncate" style={{ color: "var(--text-tertiary)" }}>{email}</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 px-2 sm:px-3 space-y-1">
-            {([
-              { id: "context" as Tab, label: "Mi contexto", icon: (
-                <svg className="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
-              )},
-              { id: "personalization" as Tab, label: "Personalizacion", icon: (
-                <svg className="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="4" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-                </svg>
-              )},
-              { id: "subscription" as Tab, label: "Suscripcion", icon: (
-                <svg className="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )},
-              { id: "coupon" as Tab, label: "Anadir cupon", icon: (
-                <svg className="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
-                </svg>
-              )},
-            ] as { id: Tab; label: string; icon: React.ReactNode }[]).map(({ id, label, icon }) => (
-              <button key={id} onClick={() => setTab(id)}
-                className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
-                style={{
-                  backgroundColor: tab === id ? "var(--surface)" : "transparent",
-                  color: tab === id ? "var(--primary)" : "var(--text-secondary)",
-                  boxShadow: tab === id ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                }}>
-                <span style={{ color: tab === id ? "var(--primary)" : "var(--text-tertiary)" }}>{icon}</span>
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            ))}
-          </nav>
-
-          {/* Sign out */}
-          <div className="px-2 sm:px-3 mt-2">
-            <button onClick={onSignOut}
-              className="w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
-              style={{ color: "var(--danger)" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "rgba(239,68,68,0.08)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; }}>
-              <svg className="w-[18px] h-[18px] sm:w-4 sm:h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              <span className="hidden sm:inline">Cerrar sesion</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right content */}
-        <div className="flex-1 flex flex-col min-w-0" style={{ height: "78vh" }}>
-          {/* Top bar */}
-          <div className="flex items-center justify-between px-6 sm:px-8 py-4 shrink-0"
-            style={{ borderBottom: "1px solid var(--border)" }}>
-            <div>
-              <h2 className="text-base sm:text-lg font-semibold" style={{ color: "var(--text-primary)" }}>
-                {tab === "context" ? "Mi contexto" :
-                 tab === "personalization" ? "Personalizacion" :
-                 tab === "subscription" ? "Suscripcion" : "Anadir cupon"}
-              </h2>
-              <p className="text-xs sm:text-sm mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-                {tab === "context" ? "Personaliza tu experiencia de chat" :
-                 tab === "personalization" ? "Apariencia de la aplicacion" :
-                 tab === "subscription" ? "Gestiona tu suscripcion" :
-                 "Introduce un codigo de cupon"}
-              </p>
-            </div>
-            <button onClick={onClose}
-              className="p-2 rounded-xl transition-colors hover:bg-[var(--surface-hover)]"
-              style={{ color: "var(--text-tertiary)" }}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Tab content */}
-          <div className="flex-1 overflow-y-auto" style={{ height: "calc(78vh - 69px)" }}>
-            {tab === "context" ? <ContextTab userId={userId} userContext={userContext} onSave={onSave} /> :
-             tab === "personalization" ? <PersonalizationTab /> :
-             tab === "subscription" ? <SubscriptionTab profile={profile} tick={tick} appConfig={appConfig} /> :
-             <CouponTab email={email} onClose={onClose} />}
+// ============================ MAIN VIEW ============================
+function MainView({
+  email, initial, isPlus, isFree, userContext, onSave, onGoSus, onGoCoupon, onSignOut,
+}: {
+  email: string; initial: string; isPlus: boolean; isFree: boolean;
+  userContext: Props["userContext"]; onSave?: Props["onSave"];
+  onGoSus: () => void; onGoCoupon: () => void; onSignOut: () => void;
+}) {
+  return (
+    <div className="mp-view">
+      {/* Cabecera de cuenta */}
+      <div className="flex items-center gap-2.5 px-2 pt-2.5 pb-3">
+        <span className="relative w-[42px] h-[42px] rounded-full flex items-center justify-center text-[18px] font-semibold shrink-0 text-white"
+          style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+          {initial}
+          {isPlus && (
+            <span className="absolute -right-0.5 -bottom-0.5 w-[18px] h-[18px] rounded-full flex items-center justify-center"
+              style={{ backgroundColor: "var(--warning)", border: "2px solid var(--surface)" }}>
+              <svg className="w-2.5 h-2.5" fill="white" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+            </span>
+          )}
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="truncate text-[14.5px] font-semibold" style={{ color: "var(--text-primary)" }}>{email}</div>
+          <div className="text-[12px] font-medium mt-px" style={{ color: isPlus ? "var(--primary)" : "var(--text-tertiary)" }}>
+            {isPlus ? "VeChat Plus · Activo" : "Plan gratis"}
           </div>
         </div>
       </div>
+
+      {/* Contexto (nombre · ciudad + Detectar) */}
+      <ContextCard userContext={userContext} onSave={onSave} />
+
+      {/* Tema */}
+      <ThemeSeg />
+
+      {/* Filas */}
+      <div className="px-1">
+        <button onClick={onGoSus} className="mp-row flex items-center gap-3 w-full px-2.5 py-2.5 rounded-[11px] text-left">
+          <svg className="w-[19px] h-[19px] shrink-0" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 16L3 5l5.5 4L12 4l3.5 5L21 5l-2 11H5zm0 3h14" /></svg>
+          <span className="flex-1 text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>Suscripción</span>
+          <span className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>{isPlus ? "Activo" : "Gratis"}</span>
+          <Caret />
+        </button>
+        <button onClick={onGoCoupon} className="mp-row flex items-center gap-3 w-full px-2.5 py-2.5 rounded-[11px] text-left">
+          <svg className="w-[19px] h-[19px] shrink-0" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
+          <span className="flex-1 text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>Añadir cupón</span>
+          <Caret />
+        </button>
+      </div>
+
+      {/* CTA (solo free) */}
+      {isFree && (
+        <div className="px-1.5 pt-2 pb-1.5">
+          <button onClick={onGoSus}
+            className="w-full h-11 rounded-[13px] flex items-center justify-center gap-2 text-[14.5px] font-semibold text-white transition-transform active:scale-[.98]"
+            style={{ backgroundColor: "var(--primary)", boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent)" }}>
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l1.8 4.6L18 8.4l-4.2 1.8L12 15l-1.8-4.8L6 8.4l4.2-1.8L12 2z" /></svg>
+            Hazte VeChat Plus
+          </button>
+        </div>
+      )}
+
+      <div className="h-px my-1.5 mx-2" style={{ backgroundColor: "var(--border)", opacity: 0.6 }} />
+      <button onClick={onSignOut} className="mp-row flex items-center gap-3 w-full px-2.5 py-2.5 rounded-[11px] text-left">
+        <svg className="w-[19px] h-[19px] shrink-0" style={{ color: "var(--danger)" }} fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+        <span className="flex-1 text-[14px] font-medium" style={{ color: "var(--danger)" }}>Cerrar sesión</span>
+      </button>
     </div>
   );
 }
 
-// --- Personalization Tab ---
-function PersonalizationTab() {
-  const [pref, setPref] = useState<ThemePreference>("system");
-  useEffect(() => {
-    setPref(getThemePreference());
-  }, []);
+function Caret() {
+  return (
+    <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+    </svg>
+  );
+}
 
-  const choose = (next: ThemePreference) => {
-    setPref(next);
-    applyThemePreference(next);
+// --- Contexto: muestra "nombre · ciudad" + Detectar; toca para editar ---
+function ContextCard({ userContext, onSave }: { userContext: Props["userContext"]; onSave?: Props["onSave"] }) {
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(userContext?.full_name || "");
+  const [city, setCity] = useState(userContext?.city || "");
+  const [locating, setLocating] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const persist = async (nextName: string, nextCity: string) => {
+    setSaving(true);
+    try {
+      await fetch("/api/user-context/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ full_name: nextName.trim(), city: nextCity.trim() }),
+      });
+      onSave?.({
+        full_name: nextName.trim(), city: nextCity.trim(),
+        custom_notes: userContext?.custom_notes ?? "", interests: userContext?.interests ?? "",
+      });
+    } catch { /* best-effort */ }
+    setSaving(false);
   };
 
-  const OPTIONS: { id: ThemePreference; label: string; detail: string; icon: React.ReactNode }[] = [
-    {
-      id: "light",
-      label: "Claro",
-      detail: "Fondo blanco, ideal de día",
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="4" />
-          <path strokeLinecap="round" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-        </svg>
-      ),
-    },
-    {
-      id: "dark",
-      label: "Oscuro",
-      detail: "Los colores clásicos de VeChat",
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
-        </svg>
-      ),
-    },
-    {
-      id: "system",
-      label: "Sistema",
-      detail: "Sigue la preferencia de tu dispositivo",
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-          <rect x="2" y="4" width="20" height="13" rx="2" />
-          <path strokeLinecap="round" d="M8 21h8m-4-4v4" />
-        </svg>
-      ),
-    },
+  const detect = () => {
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);
+          const json = await res.json();
+          const detected = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
+          if (detected) { setCity(detected); await persist(name, detected); }
+        } catch { /* ignore */ } finally { setLocating(false); }
+      },
+      () => setLocating(false)
+    );
+  };
+
+  const label = "Mi contexto";
+  const display = [name || "Sin nombre", city || "Sin ciudad"].join(" · ");
+
+  return (
+    <div className="rounded-[13px] mx-0.5 mb-2 px-3 py-2.5" style={{ backgroundColor: "var(--surface-hover)" }}>
+      {!editing ? (
+        <div className="flex items-center gap-2.5">
+          <svg className="w-[17px] h-[17px] shrink-0" style={{ color: "var(--primary)" }} fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6.5a2.5 2.5 0 010 5z" /></svg>
+          <button onClick={() => setEditing(true)} className="flex-1 min-w-0 text-left">
+            <div className="text-[9.5px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>{label}</div>
+            <div className="truncate text-[13.5px] font-medium" style={{ color: "var(--text-primary)" }}>{display}</div>
+          </button>
+          <button onClick={detect} disabled={locating}
+            className="shrink-0 flex items-center gap-1.5 h-[30px] px-2.5 rounded-[9px] text-[12px] font-semibold transition-colors hover:brightness-105 disabled:opacity-50"
+            style={{ backgroundColor: "var(--surface)", color: "var(--primary)" }}>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path strokeLinecap="round" d="M12 2v3m0 14v3M2 12h3m14 0h3" /></svg>
+            {locating ? "…" : "Detectar"}
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="text-[9.5px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>{label}</div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" maxLength={60}
+            className="h-9 rounded-[9px] px-3 text-[13.5px] outline-none"
+            style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+          <div className="flex gap-2">
+            <input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Tu ciudad"
+              className="flex-1 h-9 rounded-[9px] px-3 text-[13.5px] outline-none"
+              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-primary)" }} />
+            <button onClick={detect} disabled={locating} title="Detectar por GPS"
+              className="shrink-0 w-9 h-9 rounded-[9px] flex items-center justify-center disabled:opacity-50"
+              style={{ backgroundColor: "var(--surface)", color: "var(--primary)", border: "1px solid var(--border)" }}>
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" /><path strokeLinecap="round" d="M12 2v3m0 14v3M2 12h3m14 0h3" /></svg>
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={async () => { await persist(name, city); setEditing(false); }} disabled={saving}
+              className="flex-1 h-9 rounded-[9px] text-[13px] font-semibold text-white disabled:opacity-50"
+              style={{ backgroundColor: "var(--primary)" }}>
+              {saving ? "Guardando…" : "Guardar"}
+            </button>
+            <button onClick={() => { setName(userContext?.full_name || ""); setCity(userContext?.city || ""); setEditing(false); }}
+              className="h-9 px-3 rounded-[9px] text-[13px] font-medium"
+              style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Tema: segmentado Claro / Oscuro / Auto con pastilla deslizante ---
+function ThemeSeg() {
+  const [pref, setPref] = useState<ThemePreference>("system");
+  useEffect(() => { setPref(getThemePreference()); }, []);
+  const choose = (next: ThemePreference) => { setPref(next); applyThemePreference(next); };
+
+  const OPTS: { id: ThemePreference; label: string; icon: ReactNode }[] = [
+    { id: "light", label: "Claro", icon: <svg className="w-[15px] h-[15px]" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2" /><g stroke="currentColor" strokeWidth={2} strokeLinecap="round"><path d="M12 2.5v2.2M12 19.3v2.2M4.6 4.6l1.6 1.6M17.8 17.8l1.6 1.6M2.5 12h2.2M19.3 12h2.2M4.6 19.4l1.6-1.6M17.8 6.2l1.6-1.6" /></g></svg> },
+    { id: "dark", label: "Oscuro", icon: <svg className="w-[15px] h-[15px]" fill="currentColor" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z" /></svg> },
+    { id: "system", label: "Auto", icon: <svg className="w-[15px] h-[15px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2" /><path strokeLinecap="round" d="M8.5 21h7m-3.5-4v4" /></svg> },
   ];
 
   return (
-    <div className="p-6 sm:p-8">
-      <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Tema</p>
-      <p className="text-xs mb-5" style={{ color: "var(--text-tertiary)" }}>
-        Elige cómo se ve VeChat. Con &quot;Sistema&quot; cambia solo según tu dispositivo.
-      </p>
-      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
-        {OPTIONS.map((opt) => {
-          const selected = pref === opt.id;
+    <div className="px-2 pb-2">
+      <div className="text-[9.5px] font-semibold uppercase tracking-wider mx-0.5 mt-1 mb-1.5" style={{ color: "var(--text-tertiary)" }}>Tema</div>
+      <div className="flex gap-1 rounded-[12px] p-1" style={{ backgroundColor: "var(--surface-hover)" }}>
+        {OPTS.map((o) => {
+          const on = pref === o.id;
           return (
-            <button
-              key={opt.id}
-              onClick={() => choose(opt.id)}
-              aria-pressed={selected}
-              className="text-left rounded-2xl p-4 transition-all"
-              style={{
-                backgroundColor: "var(--surface)",
-                border: `2px solid ${selected ? "var(--primary)" : "var(--border)"}`,
-                boxShadow: selected ? "0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent)" : "none",
-              }}
-            >
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
-                style={{
-                  backgroundColor: selected
-                    ? "color-mix(in srgb, var(--primary) 12%, transparent)"
-                    : "var(--surface-hover)",
-                  color: selected ? "var(--primary)" : "var(--text-secondary)",
-                }}
-              >
-                {opt.icon}
-              </div>
-              <p className="text-sm font-semibold mb-0.5" style={{ color: "var(--text-primary)" }}>
-                {opt.label}
-              </p>
-              <p className="text-[11.5px] leading-snug" style={{ color: "var(--text-tertiary)" }}>
-                {opt.detail}
-              </p>
+            <button key={o.id} onClick={() => choose(o.id)}
+              className="relative flex-1 h-[34px] rounded-[9px] flex items-center justify-center gap-1.5 text-[12.5px] font-semibold transition-colors"
+              style={{ color: on ? "var(--text-primary)" : "var(--text-secondary)" }}>
+              {on && <span className="absolute inset-0 rounded-[9px]" style={{ backgroundColor: "var(--surface)", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />}
+              <span className="relative inline-flex items-center gap-1.5">{o.icon}{o.label}</span>
             </button>
           );
         })}
@@ -266,605 +321,194 @@ function PersonalizationTab() {
   );
 }
 
-// --- Context Tab ---
-function ContextTab({ userContext, onSave }: {
-  userId: string;
-  userContext: { full_name: string; city: string; custom_notes: string; interests: string } | null;
-  onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
+// ============================ SUS VIEW ============================
+function SusView({ isPlus, profile, appConfig, onBack }: {
+  isPlus: boolean; profile: Props["profile"]; appConfig?: AppConfig; onBack: () => void;
 }) {
-  const [data, setData] = useState(() => ({
-    full_name: userContext?.full_name || "",
-    city: userContext?.city || "",
-  }));
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-  const [locating, setLocating] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const emitSave = (city: string) =>
-    onSave?.({
-      full_name: data.full_name.trim(),
-      city: city.trim(),
-      custom_notes: userContext?.custom_notes ?? "",
-      interests: userContext?.interests ?? "",
-    });
-
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-    if (data.full_name.length > 60) { setError("El nombre es muy largo"); return; }
-    setSaving(true); setError(""); setSaved(false);
-    try {
-      const res = await fetch("/api/user-context/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ full_name: data.full_name, city: data.city }),
-      });
-      const result = await res.json();
-      if (!res.ok || result.error) {
-        setError("Error al guardar: " + (result.error || "Intenta de nuevo"));
-      } else {
-        setSaved(true);
-        setTimeout(() => setSaved(false), 2500);
-        emitSave(data.city);
-      }
-    } catch {
-      setError("Error al guardar: Intenta de nuevo");
-    }
-    setSaving(false);
-  }
-
-  function handleUpdateClick() {
-    if (!navigator.geolocation) return;
-    if (data.city && !showConfirm) {
-      setShowConfirm(true);
-      return;
-    }
-    doDetectCity();
-  }
-
-  function doDetectCity() {
-    setShowConfirm(false);
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
-          );
-          const json = await res.json();
-          const city = json.address?.city || json.address?.town || json.address?.village || json.address?.state || "";
-          if (city) {
-            setData(d => ({ ...d, city }));
-            try {
-              await fetch("/api/user-context/save", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ city }),
-              });
-            } catch { /* el guardado de ciudad es best-effort */ }
-            setSaved(true);
-            setTimeout(() => setSaved(false), 2000);
-            emitSave(city);
-          }
-        } catch {
-          // ignore
-        } finally {
-          setLocating(false);
-        }
-      },
-      () => { setLocating(false); }
-    );
-  }
-
-  return (
-    <form onSubmit={handleSave} className="px-5 sm:px-8 py-6 space-y-6">
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Tu nombre</label>
-          <input type="text" value={data.full_name} onChange={e => setData(d => ({ ...d, full_name: e.target.value }))}
-            placeholder="Ej: Juan Perez" maxLength={60} className="w-full px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
-            style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-            onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-            onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Ubicacion</label>
-          <div className="flex items-center gap-2">
-            <div className="flex-1 px-4 py-2.5 rounded-xl text-sm flex items-center gap-2"
-              style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: data.city ? "var(--text-primary)" : "var(--text-tertiary)" }}>
-              <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {data.city || "Sin configurar"}
-            </div>
-            <button type="button" onClick={handleUpdateClick} disabled={locating}
-              className="px-3 py-2.5 rounded-xl text-xs font-medium shrink-0 transition-all disabled:opacity-50"
-              style={{ backgroundColor: showConfirm ? "rgba(245,158,11,0.15)" : "var(--surface)", border: "1px solid var(--border)", color: showConfirm ? "var(--warning)" : "var(--text-secondary)" }}
-              onMouseEnter={e => { e.currentTarget.style.backgroundColor = "var(--surface-hover)"; }}
-              onMouseLeave={e => { e.currentTarget.style.backgroundColor = showConfirm ? "rgba(245,158,11,0.15)" : "var(--surface)"; }}>
-              {locating ? "..." : data.city ? "Actualizar" : "Detectar"}
-            </button>
-          </div>
-          <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Mejora las recomendaciones locales de tu feed.</p>
-
-          {showConfirm && (
-            <div className="flex items-center gap-2 mt-2">
-              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
-                Ya tienes: <strong style={{ color: "var(--text-primary)" }}>{data.city}</strong>. Sobrescribir?
-              </p>
-              <button type="button" onClick={doDetectCity}
-                className="px-3 py-1 rounded-lg text-xs font-medium"
-                style={{ backgroundColor: "var(--primary)", color: "white" }}>
-                Si
-              </button>
-              <button type="button" onClick={() => setShowConfirm(false)}
-                className="px-3 py-1 rounded-lg text-xs font-medium"
-                style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", color: "var(--text-secondary)" }}>
-                No
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {error && <ErrorBanner message={error} />}
-      {saved && <SuccessBanner message="Guardado correctamente" />}
-
-      <button type="submit" disabled={saving}
-        className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all hover:opacity-90"
-        style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
-        {saving ? "Guardando..." : "Guardar"}
-      </button>
-    </form>
-  );
-}
-
-// --- Interest Chips (Mi contexto) ---
-type Chip = { tag: string; label: string; source: string; pinned: boolean };
-
-function InterestChips() {
-  const [chips, setChips] = useState<Chip[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function load() {
-    try {
-      const res = await fetch("/api/user-context/interests");
-      const json = await res.json();
-      setChips(Array.isArray(json.chips) ? json.chips : []);
-    } catch { /* deja la lista como está */ }
-    setLoading(false);
-  }
-  useEffect(() => { load(); }, []);
-
-  async function act(body: Record<string, string>) {
-    setBusy(true);
-    try {
-      await fetch("/api/user-context/interests", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      await load();
-    } catch { /* best-effort */ }
-    setBusy(false);
-  }
-
-  function addDraft() {
-    const label = draft.trim();
-    if (!label) return;
-    setDraft("");
-    act({ action: "add", label });
-  }
-
-  return (
-    <div className="space-y-2.5">
-      <div>
-        <label className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Tus temas e intereses</label>
-        <p className="text-xs mt-0.5" style={{ color: "var(--text-tertiary)" }}>
-          VeChat aprende de lo que buscas. Toca un tema detectado para fijarlo, o quita los que no quieras.
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addDraft(); } }}
-          placeholder="Agrega un tema (ej: programacion)"
-          maxLength={40}
-          className="flex-1 px-4 py-2.5 rounded-xl text-sm outline-none transition-all"
-          style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
-        />
-        <button type="button" onClick={addDraft} disabled={busy || !draft.trim()}
-          className="px-4 py-2.5 rounded-xl text-sm font-medium shrink-0 disabled:opacity-50 transition-all text-white"
-          style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)" }}>
-          Añadir
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="flex flex-wrap gap-2">
-          {[44, 60, 52].map((w, i) => (
-            <div key={i} className="h-7 rounded-full animate-pulse" style={{ width: w, backgroundColor: "var(--surface-hover)" }} />
-          ))}
-        </div>
-      ) : chips.length === 0 ? (
-        <p className="text-xs py-2" style={{ color: "var(--text-tertiary)" }}>
-          Aún no hay temas. Escribe uno arriba o haz preguntas y VeChat irá aprendiendo solo.
-        </p>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          {chips.map((c) => {
-            const isAuto = c.source === "learned" && !c.pinned;
-            return (
-              <span
-                key={c.tag}
-                className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-full text-[12.5px] transition-colors"
-                style={{
-                  backgroundColor: isAuto ? "var(--background)" : "color-mix(in srgb, var(--primary) 10%, transparent)",
-                  border: `1px solid ${isAuto ? "var(--border)" : "color-mix(in srgb, var(--primary) 35%, var(--border))"}`,
-                  color: "var(--text-primary)",
-                }}
-              >
-                {isAuto ? (
-                  <button
-                    type="button"
-                    onClick={() => act({ action: "pin", tag: c.tag })}
-                    title="Detectado de tu actividad — toca para fijarlo"
-                    aria-label={`Fijar ${c.label}`}
-                    className="w-1.5 h-1.5 rounded-full shrink-0"
-                    style={{ backgroundColor: "var(--primary)" }}
-                  />
-                ) : null}
-                <span>{c.label}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setChips((prev) => prev.filter((x) => x.tag !== c.tag)); // optimista
-                    act({ action: "remove", tag: c.tag });
-                  }}
-                  aria-label={`Quitar ${c.label}`}
-                  className="w-5 h-5 rounded-full flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)]"
-                  style={{ color: "var(--text-tertiary)" }}
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </span>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// --- Subscription Tab ---
-function SubscriptionTab({ profile, tick, appConfig }: { profile: Props["profile"]; tick: number; appConfig?: AppConfig }) {
-  const weeks = (profile?.subscription_weeks ?? 0) || 0;
-  const isUnlimited = weeks < 0;
-  const isActive = profile && (weeks > 0 || isUnlimited);
-  const [showPaymentInfo, setShowPaymentInfo] = useState(false);
+  const [price, setPrice] = useState<"week" | "month">("month");
+  const [openMethod, setOpenMethod] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  function getEndTime() {
-    if (!profile?.subscription_end) return 0;
-    const s = profile.subscription_end;
-    // Normalize: +00 or +00:00 -> Z so Date parses as UTC
-    const normalized = s.replace(/([+-]\d{2}):?(\d{2})?$/, "Z").replace(" ", "T");
-    return new Date(normalized).getTime();
-  }
+  // countdown
+  const endTime = endTimeOf(profile);
+  const rem = Math.max(0, endTime - Date.now());
+  const total = Math.floor(rem / 1000);
+  const cd = [
+    { v: Math.floor(total / 86400), l: "Días" },
+    { v: Math.floor((total % 86400) / 3600), l: "Horas" },
+    { v: Math.floor((total % 3600) / 60), l: "Min" },
+    { v: total % 60, l: "Seg" },
+  ];
+  const pad = (n: number) => String(n).padStart(2, "0");
 
-  function getStatusColor() {
-    if (isUnlimited) return { bg: "rgba(139,92,246,0.15)", color: "#8b5cf6" };
-    if (!profile || weeks == null || weeks <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
-    const diff = getEndTime() - Date.now();
-    if (diff <= 0) return { bg: "rgba(239,68,68,0.15)", color: "var(--danger)" };
-    if (diff < 3 * 24 * 60 * 60 * 1000) return { bg: "rgba(245,158,11,0.15)", color: "var(--warning)" };
-    return { bg: "rgba(16,163,127,0.15)", color: "var(--primary)" };
-  }
+  const priceWeek = appConfig?.priceWeeklyUsd ?? 2;
+  const priceMonth = appConfig?.priceMonthlyUsd ?? 6;
 
-  function getCountdown() {
-    if (isUnlimited) return null;
-    if (!profile || weeks == null || weeks <= 0) return null;
-    const endTime = getEndTime();
-    if (!endTime) return null;
-    const diff = endTime - Date.now();
-    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true };
-    const total = Math.floor(diff / 1000);
-    return { days: Math.floor(total / 86400), hours: Math.floor((total % 86400) / 3600), minutes: Math.floor((total % 3600) / 60), seconds: total % 60, expired: false };
-  }
+  // Métodos de pago — PLACEHOLDERS (igual que el modal viejo; pendientes de
+  // configurar antes de cobrar de verdad).
+  const methods: { id: string; label: string; sub: string; detail: string; icon: ReactNode; href?: string }[] = [
+    { id: "pm", label: "Pago Móvil", sub: "Bancos nacionales", detail: "Banco: 0102 · Tel: 0414-1234567 · CI: J12345678 · Mulfari C.A.", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><circle cx="12" cy="18" r="1" fill="var(--tint)" /></svg> },
+    { id: "zelle", label: "Zelle", sub: "Transferencia en USD", detail: "pagos@mulfai.com.ve", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6v1H3v-1zm1 3h2v5H4v-5zm5 0h2v5H9v-5zm4 0h2v5h-2v-5zm5 0h2v5h-2v-5zM3 20h18v2H3v-2z" /></svg> },
+    { id: "binance", label: "Binance USDT", sub: "Cripto estable", detail: "TXyZ123abc456def789ghi", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3 3-3 3-3-3 3-3zm-5 5l3 3-3 3-3-3 3-3zm10 0l3 3-3 3-3-3 3-3zm-5 5l3 3-3 3-3-3 3-3z" /></svg> },
+    { id: "wa", label: "WhatsApp", sub: "Coordina con un asesor", detail: "Abrir chat", href: "https://wa.me/584141234567?text=Hola%2C%20quiero%20activar%20mi%20cuenta%20VeChat", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.747 5.634l-.999 3.648 3.741-.981z" /></svg> },
+  ];
 
-  function copyToClipboard(value: string, label: string) {
-    navigator.clipboard.writeText(value).then(() => {
-      setCopied(label);
-      setTimeout(() => setCopied(null), 1500);
-    }).catch(() => {});
-  }
-
-  const sc = getStatusColor();
-  const cd = getCountdown();
-  const isFreeUser = weeks === 0 && !profile?.subscription_start;
+  const copy = (id: string, value: string) => {
+    navigator.clipboard.writeText(value).then(() => { setCopied(id); setTimeout(() => setCopied(null), 1500); }).catch(() => {});
+  };
 
   return (
-    <div className="px-5 sm:px-8 py-6 space-y-5">
-      <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
-        <div className="flex items-center gap-3 mb-4">
-          {(() => {
-            const endTime = getEndTime();
-            const now = Date.now();
-            return (
-              <>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: sc.bg, color: sc.color }}>
-                  {isUnlimited ? <span className="text-lg font-bold">∞</span> : isFreeUser ? (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Estado</p>
-                  <p className="text-sm font-semibold" style={{ color: sc.color }}>
-                    {isUnlimited ? "Ilimitado" : isFreeUser ? "Plan gratis" : !endTime || (now >= endTime) ? "Expirada" : "Activa"}
-                  </p>
-                </div>
-              </>
-            );
-          })()}
-        </div>
-
-        {isUnlimited ? (
-          <div className="text-center py-4">
-            <span className="text-4xl font-bold" style={{ color: "#8b5cf6" }}>∞</span>
-            <p className="text-xs mt-2" style={{ color: "var(--text-tertiary)" }}>Acceso ilimitado</p>
-          </div>
-        ) : isFreeUser ? (
-          <div className="space-y-4">
-            <div className="text-center py-2">
-              <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>Plan gratis</p>
-              <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>20 mensajes por hora. Sin tarjeta.</p>
-            </div>
-            <button
-              onClick={() => setShowPaymentInfo((v) => !v)}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-[1.01]"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)" }}
-            >
-              {showPaymentInfo ? "Ocultar metodos de pago" : "Hazte VeChat Plus"}
-            </button>
-          </div>
-        ) : !cd || cd.expired ? (
-          <div className="space-y-4">
-            <div className="text-center py-2">
-              <p className="text-sm font-semibold" style={{ color: "var(--danger)" }}>Suscripcion expirada</p>
-              <p className="text-xs mt-1" style={{ color: "var(--text-tertiary)" }}>Renueva con un pago local o un cupon</p>
-            </div>
-            <button
-              onClick={() => setShowPaymentInfo((v) => !v)}
-              className="w-full py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:scale-[1.01]"
-              style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))", boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 35%, transparent)" }}
-            >
-              {showPaymentInfo ? "Ocultar metodos de pago" : "Renueva ahora"}
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-4 gap-2 text-center mb-4">
-              {([
-                { value: cd.days, label: "dias" },
-                { value: cd.hours, label: "hrs" },
-                { value: cd.minutes, label: "min" },
-                { value: cd.seconds, label: "seg" },
-              ] as { value: number; label: string }[]).map(({ value, label }) => (
-                <div key={label} className="rounded-xl py-3" style={{ backgroundColor: "var(--surface)" }}>
-                  <span className="text-xl font-bold block" style={{ color: sc.color }}>
-                    {String(value).padStart(2, "0")}
-                  </span>
-                  <span className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>{label}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Finaliza</span>
-              <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                {(() => {
-                  if (!profile?.subscription_end) return "—";
-                  const s = profile.subscription_end;
-                  const normalized = s.replace(/([+-]\d{2}):?(\d{2})?$/, "Z").replace(" ", "T");
-                  const d = new Date(normalized);
-                  if (isNaN(d.getTime())) return "—";
-                  return d.toLocaleDateString("es-VE", { timeZone: "America/Caracas" });
-                })()}
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-
-      {appConfig && (
-        <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold mb-3" style={{ color: "var(--text-primary)" }}>VeChat Plus</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl p-4 text-center" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-              <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-secondary)" }}>Semanal</p>
-              <p className="text-lg font-bold" style={{ color: "var(--primary)" }}>${appConfig.priceWeeklyUsd}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{appConfig.planWeeklyDays} dias</p>
-            </div>
-            <div className="rounded-xl p-4 text-center" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-              <p className="text-xs font-semibold mb-1" style={{ color: "var(--text-secondary)" }}>Mensual</p>
-              <p className="text-lg font-bold" style={{ color: "var(--primary)" }}>${appConfig.priceMonthlyUsd}</p>
-              <p className="text-[10px] mt-0.5" style={{ color: "var(--text-tertiary)" }}>{appConfig.planMonthlyDays} dias</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TODO(pagos): los datos de abajo son PLACEHOLDERS de ejemplo —
-          reemplazar por los reales (Pago Móvil / Zelle / Binance / WhatsApp)
-          antes de cobrar de verdad. El usuario los proveerá. */}
-      {showPaymentInfo && (
-        <div className="rounded-xl p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
-          <p className="text-sm font-semibold mb-1" style={{ color: "var(--text-primary)" }}>Paga con metodo local</p>
-          <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
-            Envianos el comprobante y activamos tu cuenta en menos de 24h.
-          </p>
-          <div className="flex items-start gap-2 mb-4 px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
-            <svg className="w-3.5 h-3.5 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--warning)" }}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.84-2.75L13.74 4a2 2 0 00-3.5 0L3.18 16.25A2 2 0 005 19z" />
-            </svg>
-            <span className="text-[11px]" style={{ color: "var(--warning)" }}>Datos de ejemplo — pendientes de configurar.</span>
-          </div>
-          <div className="space-y-2">
-            <PaymentRow label="Pago Movil" detail="Banco: 0102 (Venezuela) · Tel: 0414-1234567 · CI: J12345678 · Titular: Mulfari C.A." copyable onCopy={copyToClipboard} copied={copied} />
-            <PaymentRow label="Zelle" detail="pagos@mulfai.com.ve" copyable onCopy={copyToClipboard} copied={copied} />
-            <PaymentRow label="Binance USDT (TRC20)" detail="TXyZ123abc456def789ghi" copyable onCopy={copyToClipboard} copied={copied} />
-          </div>
-          <div className="mt-4 pt-4 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
-            <a href="https://wa.me/584141234567?text=Hola%2C%20quiero%20activar%20mi%20cuenta%20VeChat" target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-xs transition-colors hover:underline"
-              style={{ color: "var(--primary)" }}>
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-              Contactanos por WhatsApp
-            </a>
-            <a href="mailto:pagos@mulfai.com.ve?subject=Comprobante%20VeChat"
-              className="flex items-center gap-2 text-xs transition-colors hover:underline"
-              style={{ color: "var(--primary)" }}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              pagos@mulfai.com.ve
-            </a>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function PaymentRow({ label, detail, copyable, onCopy, copied }: { label: string; detail: string; copyable?: boolean; onCopy?: (v: string, l: string) => void; copied?: string | null }) {
-  return (
-    <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
-      style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>{label}</p>
-        <p className="text-xs truncate" style={{ color: "var(--text-primary)" }}>{detail}</p>
-      </div>
-      {copyable && onCopy && (
-        <button
-          onClick={() => onCopy(detail, label)}
-          className="shrink-0 p-1.5 rounded-lg transition-colors"
-          style={{ color: copied === label ? "var(--primary)" : "var(--text-tertiary)" }}
-          aria-label={`Copiar ${label}`}
-        >
-          {copied === label ? (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          )}
+    <div className="mp-view">
+      <div className="flex items-center gap-2 px-1.5 pt-1 pb-2.5">
+        <button onClick={onBack} className="mp-row w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0">
+          <svg className="w-4 h-4" style={{ color: "var(--text-primary)" }} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         </button>
+        <span className="text-[16px] font-semibold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Suscripción</span>
+      </div>
+
+      {isPlus ? (
+        <div className="mx-1 mb-2.5 rounded-[15px] p-3.5" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
+          <div className="flex items-center gap-2 mb-2.5">
+            <span className="w-[7px] h-[7px] rounded-full" style={{ backgroundColor: "var(--primary)" }} />
+            <span className="text-[12.5px] font-semibold" style={{ color: "var(--primary)" }}>Plan activo · se renueva en</span>
+          </div>
+          <div className="flex gap-1.5">
+            {cd.map((c) => (
+              <div key={c.l} className="flex-1 rounded-[11px] py-2 text-center" style={{ backgroundColor: "var(--surface)" }}>
+                <div className="text-[20px] font-bold tabular-nums leading-tight" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>{pad(c.v)}</div>
+                <div className="text-[9px] font-semibold uppercase tracking-wide mt-0.5" style={{ color: "var(--text-tertiary)" }}>{c.l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="mx-1 mb-2.5 rounded-[15px] p-3.5" style={{ backgroundColor: "var(--surface-hover)" }}>
+          <div className="text-[14px] font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Desbloquea VeChat Plus</div>
+          <div className="text-[12.5px] leading-snug" style={{ color: "var(--text-secondary)" }}>Mensajes ilimitados y respuestas más rápidas, hechas para Venezuela.</div>
+        </div>
       )}
+
+      {/* Selector de plan */}
+      <div className="flex gap-2 px-1 pb-3">
+        <button onClick={() => setPrice("week")} className="relative flex-1 rounded-[13px] p-3 text-left" style={{ backgroundColor: "var(--surface-hover)" }}>
+          {price === "week" && <span className="absolute inset-0 rounded-[13px]" style={{ border: "2px solid var(--primary)" }} />}
+          <div className="relative text-[11.5px] font-medium mb-0.5" style={{ color: "var(--text-secondary)" }}>Semanal</div>
+          <div className="relative text-[20px] font-bold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>${priceWeek}</div>
+        </button>
+        <button onClick={() => setPrice("month")} className="relative flex-1 rounded-[13px] p-3 text-left" style={{ backgroundColor: "var(--surface-hover)" }}>
+          {price === "month" && <span className="absolute inset-0 rounded-[13px]" style={{ border: "2px solid var(--primary)" }} />}
+          <span className="absolute top-2.5 right-2.5 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md"
+            style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }}>Mejor precio</span>
+          <div className="relative text-[11.5px] font-medium mb-0.5" style={{ color: "var(--text-secondary)" }}>Mensual</div>
+          <div className="relative text-[20px] font-bold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>${priceMonth}</div>
+        </button>
+      </div>
+
+      <div className="text-[9.5px] font-semibold uppercase tracking-wider mx-2 mb-1.5" style={{ color: "var(--text-tertiary)" }}>Métodos de pago</div>
+      <div className="px-1 pb-1">
+        {methods.map((m) => (
+          <div key={m.id}>
+            {m.href ? (
+              <a href={m.href} target="_blank" rel="noopener noreferrer" className="mp-row flex items-center gap-2.5 w-full p-2 rounded-[11px] text-left">
+                <MethodIcon>{m.icon}</MethodIcon>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13.5px] font-medium" style={{ color: "var(--text-primary)" }}>{m.label}</span>
+                  <span className="block text-[11.5px]" style={{ color: "var(--text-tertiary)" }}>{m.sub}</span>
+                </span>
+                <Caret />
+              </a>
+            ) : (
+              <button onClick={() => setOpenMethod(openMethod === m.id ? null : m.id)} className="mp-row flex items-center gap-2.5 w-full p-2 rounded-[11px] text-left">
+                <MethodIcon>{m.icon}</MethodIcon>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13.5px] font-medium" style={{ color: "var(--text-primary)" }}>{m.label}</span>
+                  <span className="block text-[11.5px]" style={{ color: "var(--text-tertiary)" }}>{m.sub}</span>
+                </span>
+                <Caret />
+              </button>
+            )}
+            {openMethod === m.id && !m.href && (
+              <div className="flex items-center gap-2 mx-2 mb-1.5 mt-0.5 px-3 py-2 rounded-[10px]" style={{ backgroundColor: "var(--surface-hover)" }}>
+                <span className="flex-1 min-w-0 text-[11.5px] break-words" style={{ color: "var(--text-primary)" }}>{m.detail}</span>
+                <button onClick={() => copy(m.id, m.detail)} className="shrink-0 text-[11px] font-semibold" style={{ color: copied === m.id ? "var(--primary)" : "var(--text-tertiary)" }}>
+                  {copied === m.id ? "Copiado" : "Copiar"}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="px-2 pb-1 pt-1">
+        <span className="text-[10.5px]" style={{ color: "var(--warning)" }}>Datos de ejemplo — pendientes de configurar.</span>
+      </div>
     </div>
   );
 }
 
-// --- Coupon Tab ---
-function CouponTab({ email, onClose }: { email: string; onClose: () => void }) {
+function MethodIcon({ children }: { children: ReactNode }) {
+  return (
+    <span className="w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0"
+      style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)", color: "var(--primary)" }}>
+      {children}
+    </span>
+  );
+}
+
+// ============================ COUPON VIEW ============================
+function CouponView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [showAdded, setShowAdded] = useState<number | null>(null);
 
-  async function handleApply(e: React.FormEvent) {
-    e.preventDefault();
-    if (!code.trim()) return;
+  async function apply() {
+    if (!code.trim() || loading) return;
     setLoading(true); setError(""); setSuccess("");
-    const res = await fetch("/api/coupons/apply", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code.trim() }),
-    });
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/coupons/apply", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json();
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      const added = data.weeks_added;
+      setSuccess(added ? `+${added} días añadidos` : "Cupón aplicado");
+      setCode("");
+      setTimeout(() => { onClose(); window.location.reload(); }, 1800);
+    } catch {
+      setError("Error al aplicar. Intenta de nuevo.");
+    }
     setLoading(false);
-    if (data.error) { setError(data.error); return; }
-    const added = data.weeks_added;
-    setShowAdded(added);
-    setSuccess(added ? `+${added} dias anadidos` : "Cupo aplicado");
-    setCode("");
-    setTimeout(() => { onClose(); window.location.reload(); }, 2500);
   }
 
   return (
-    <form onSubmit={handleApply} className="px-6 sm:px-8 py-6 space-y-5">
-      <div>
-        <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--text-primary)" }}>Codigo de cupon</label>
-        <input type="text" value={code} onChange={e => setCode(e.target.value.toUpperCase())}
-          placeholder="MLF-XXXXXX" className="w-full px-4 py-3 rounded-xl text-sm outline-none transition-all uppercase tracking-wider"
-          style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)", color: "var(--text-primary)" }}
-          onFocus={e => { e.currentTarget.style.borderColor = "var(--primary)"; }}
-          onBlur={e => { e.currentTarget.style.borderColor = "var(--border)"; }} />
+    <div className="mp-view">
+      <div className="flex items-center gap-2 px-1.5 pt-1 pb-3">
+        <button onClick={onBack} className="mp-row w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0">
+          <svg className="w-4 h-4" style={{ color: "var(--text-primary)" }} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <span className="text-[16px] font-semibold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Añadir cupón</span>
       </div>
-
-      {error && <ErrorBanner message={error} />}
-      {success && <SuccessBanner message={success} />}
-
-      {showAdded && (
-        <div className="flex items-center gap-3 p-4 rounded-xl animate-fade-in"
-          style={{ backgroundColor: "rgba(16,163,127,0.12)", border: "1px solid rgba(16,163,127,0.25)" }}>
-          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" />
-          </svg>
-          <div>
-            <p className="text-sm font-semibold" style={{ color: "var(--primary)" }}>+{showAdded} dias anadidos</p>
-            <p className="text-xs" style={{ color: "var(--text-secondary)" }}>Tu suscripcion ha sido extendida</p>
-          </div>
+      <div className="px-2 pb-2">
+        <div className="text-[13px] leading-normal mb-3" style={{ color: "var(--text-secondary)" }}>¿Tienes un código? Canjéalo para activar tu beneficio.</div>
+        <div className="flex gap-2">
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); apply(); } }}
+            placeholder="MLF-XXXXXX"
+            className="flex-1 h-11 rounded-[12px] px-3.5 text-[14px] font-semibold tracking-wider uppercase outline-none"
+            style={{ backgroundColor: "var(--surface-hover)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
+          />
+          <button onClick={apply} disabled={loading || !code.trim()}
+            className="h-11 px-4 rounded-[12px] text-[14px] font-semibold text-white disabled:opacity-50"
+            style={{ backgroundColor: "var(--primary)" }}>
+            {loading ? "…" : "Canjear"}
+          </button>
         </div>
-      )}
-
-      <button type="submit" disabled={loading || !code.trim()}
-        className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-50 transition-all hover:opacity-90"
-        style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
-        {loading ? "Aplicando..." : "Aplicar cupon"}
-      </button>
-    </form>
-  );
-}
-
-function ErrorBanner({ message }: { message: string }) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
-      style={{ backgroundColor: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
-      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--danger)" }}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-      <span className="text-xs" style={{ color: "var(--danger)" }}>{message}</span>
-    </div>
-  );
-}
-
-function SuccessBanner({ message }: { message: string }) {
-  return (
-    <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
-      style={{ backgroundColor: "rgba(16,163,127,0.1)", border: "1px solid rgba(16,163,127,0.2)" }}>
-      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" style={{ color: "var(--primary)" }}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-      </svg>
-      <span className="text-xs" style={{ color: "var(--primary)" }}>{message}</span>
+        {error && <div className="text-[12px] mt-2.5" style={{ color: "var(--danger)" }}>{error}</div>}
+        {success && <div className="text-[12px] mt-2.5 font-medium" style={{ color: "var(--primary)" }}>{success}</div>}
+      </div>
     </div>
   );
 }

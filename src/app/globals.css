@@ -614,6 +614,16 @@ html[data-sidebar="closed"] .sidebar-desktop {
 @keyframes vc-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .vc-ph, .vc-surface, .vc-wavebar, .vc-blinkdot, .vc-spinring, .vc-recdot { animation: none !important; transition: none !important; } }
 
+/* Popover de cuenta (MenuPopover, HANDOFF §3) — aparición + transición entre
+   sub-vistas (main → sus → coupon). */
+@keyframes mp-pop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+.mp-pop { animation: mp-pop .18s ease; transform-origin: bottom left; }
+@keyframes mp-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: translateX(0); } }
+.mp-view { animation: mp-in .22s ease; }
+.mp-row { transition: background-color .14s ease; }
+.mp-row:hover { background: var(--surface-hover); }
+@media (prefers-reduced-motion: reduce) { .mp-pop, .mp-view { animation: none !important; } }
+
 /* === PROSE / MARKDOWN === */
 .prose {
   color: var(--text-primary);
