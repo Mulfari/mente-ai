@@ -8,6 +8,7 @@ export type AppConfig = {
   planWeeklyDays: number;
   planMonthlyDays: number;
   whatsappNumber: string;
+  agentEnabled: boolean; // FLAG: usar el cerebro agéntico (tool-calling) en el chat
 };
 
 const DEFAULTS: AppConfig = {
@@ -17,6 +18,7 @@ const DEFAULTS: AppConfig = {
   planWeeklyDays: 7,
   planMonthlyDays: 30,
   whatsappNumber: "",
+  agentEnabled: false,
 };
 
 // Lee app_config y cae a DEFAULTS si falta una clave o falla la query.
@@ -37,6 +39,7 @@ export async function getAppConfig(): Promise<AppConfig> {
       planWeeklyDays: num("plan_weekly_days", DEFAULTS.planWeeklyDays),
       planMonthlyDays: num("plan_monthly_days", DEFAULTS.planMonthlyDays),
       whatsappNumber: String(m.get("whatsapp_number") ?? DEFAULTS.whatsappNumber),
+      agentEnabled: String(m.get("agent_enabled") ?? "").toLowerCase() === "true",
     };
   } catch {
     return DEFAULTS;

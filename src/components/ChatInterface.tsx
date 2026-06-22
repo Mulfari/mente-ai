@@ -1169,6 +1169,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   ) {
     if (sending) return;
     if (!isLoggedIn) { sendAnonMessage(s); return; }
+    if (appConfig.agentEnabled) { sendAgentMessage(s); return; }
     // Cuenta bloqueada (0 semanas): en vez de fallar en el servidor, abrir
     // el menú de cuenta donde está el botón de añadir tiempo.
     if (!getBlockReason().canSend) {
@@ -1564,6 +1565,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (!isLoggedIn) { sendAnonMessage(inputVal); return; }
     const block = getBlockReason();
     if (!block.canSend) { setShowAccountMenu(true); return; }
+    // Cerebro agéntico (flag): el modelo decide las herramientas. Camino aislado.
+    if (appConfig.agentEnabled) { sendAgentMessage(inputVal); return; }
     // A/B de respuestas (~12% de turnos logueados): tras responder se ofrece una
     // 2ª versión más concisa para que el usuario elija (feedback de estilo).
     setAbTurn(null);
@@ -2025,6 +2028,40 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }
   }
 
+  // Camino AGÉNTICO (flag agent_enabled): el modelo decide qué herramientas usar
+  // (dólar/negocios/web). AISLADO + EFÍMERO (no persiste) — v1 detrás del flag;
+  // la migración completa añade streaming + persistencia. Solo logueado.
+  async function sendAgentMessage(text: string) {
+    const q = (text || "").trim();
+    if (!q || sending) return;
+    const userMsgId = crypto.randomUUID();
+    const aiId = crypto.randomUUID();
+    setInput("");
+    setMessages(prev => [
+      ...prev,
+      { id: userMsgId, role: "user", content: q, created_at: new Date().toISOString() },
+      { id: aiId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true },
+    ]);
+    setSending(true);
+    setStreamingMsgId(aiId);
+    try {
+      const res = await fetch("/api/agent", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: q }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || j.error) throw new Error(j.error || "error del agente");
+      const biz = Array.isArray(j.businesses) && j.businesses.length ? (j.businesses as LocalBusiness[]) : undefined;
+      setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: j.answer || "…", _loading: false, ...(biz ? { _businesses: biz } : {}) } : m));
+    } catch {
+      setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: "Hubo un problema con el agente. Intenta de nuevo.", _loading: false } : m));
+    } finally {
+      setSending(false);
+      setStreamingMsgId(null);
+    }
+  }
+
   const isDisabled = !isLoggedIn;
 
   const isFreeTier = isLoggedIn && resolveTier(profile ?? {}, new Date()) === "free";
@@ -2225,7 +2262,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             above that). La entrada de la primera vez NO es una clase CSS:
             el efecto FLIP de arriba lo hace volar desde el centro de la
             pantalla (donde estaba en EmptyState) hasta aquí. */}
-        {(activeConv?.id || (!isLoggedIn && messages.length > 0)) && (
+        {(activeConv?.id || ((!isLoggedIn || appConfig.agentEnabled) && messages.length > 0)) && (
         <div
           ref={bottomInputRef}
           className="w-full flex-none pt-2"

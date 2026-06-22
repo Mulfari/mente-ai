@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { fetchDolarRates, buildDolarContext } from "@/lib/dolar";
-import { searchLocalBusinesses } from "@/lib/localBusinesses";
+import { searchLocalBusinesses, type LocalBusiness } from "@/lib/localBusinesses";
 
-// PILOTO de tool-calling (Bloque 3). AISLADO — no toca el chat en vivo. El
-// modelo decide cuándo llamar herramientas en vez de que Vercel adivine.
-// Soporta DOS proveedores para comparar viabilidad:
-//   - "minimax" (default, formato OpenAI vía FEED_LLM_*) — el modelo de Jose
-//   - "claude"  (formato Anthropic vía ANTHROPIC_*) — referencia probada
-// Devuelve { answer, trace, model, provider } para inspección (sin streaming).
+// Cerebro agéntico (Bloque 3). El modelo decide cuándo llamar herramientas en
+// vez de que Vercel adivine. Dos proveedores (param `provider`): "minimax"
+// (default, formato OpenAI vía FEED_LLM_*) y "claude" (Anthropic). Devuelve
+// { answer, trace, model, provider, businesses } — `businesses` permite que el
+// chat renderice las tarjetas/mapa (no solo texto). Sin streaming aún (v1
+// detrás de un flag).
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,7 +23,7 @@ const TOOLS = [
   {
     name: "search_local_businesses",
     description:
-      "Busca negocios REALES y verificados (cafés, restaurantes, tiendas, servicios) en VeLocal. Úsalo cuando el usuario quiere comer, comprar o un servicio en su ciudad. Si no devuelve resultados, NO inventes: dilo con honestidad.",
+      "Busca negocios REALES y verificados (cafés, restaurantes, tiendas, servicios) en VeLocal. Úsalo UNA vez cuando el usuario quiere comer, comprar o un servicio en su ciudad. Si no devuelve resultados, NO inventes: dilo con honestidad.",
     parameters: {
       type: "object",
       properties: {
@@ -45,13 +45,15 @@ const TOOLS = [
   },
 ];
 
-async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
+type ToolResult = { text: string; businesses?: LocalBusiness[] };
+
+async function runTool(name: string, input: Record<string, unknown>): Promise<ToolResult> {
   if (name === "get_dolar") {
     try {
       const rates = await fetchDolarRates();
-      return buildDolarContext(rates).answer || "No hay tasa disponible ahora.";
+      return { text: buildDolarContext(rates).answer || "No hay tasa disponible ahora." };
     } catch {
-      return "No se pudo obtener la tasa del dólar.";
+      return { text: "No se pudo obtener la tasa del dólar." };
     }
   }
   if (name === "search_local_businesses") {
@@ -59,41 +61,43 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
       term: String(input?.termino ?? ""),
       city: input?.ciudad ? String(input.ciudad) : null,
     });
-    if (!biz.length) return "No hay negocios verificados en VeLocal para eso. Dile al usuario con honestidad que aún no lo tienes; NO inventes.";
-    return biz
+    if (!biz.length) return { text: "No hay negocios verificados en VeLocal para eso. Dile al usuario con honestidad que aún no lo tienes; NO inventes." };
+    const text = biz
       .map((b) => `- ${b.name}${b.category ? ` (${b.category})` : ""}${b.neighborhood ? ` · ${b.neighborhood}` : ""} · ${b.openNow ? "abierto" : "cerrado"}`)
       .join("\n");
+    return { text, businesses: biz };
   }
   if (name === "search_web") {
     const q = String(input?.query ?? "");
-    if (!q) return "Falta la consulta.";
+    if (!q) return { text: "Falta la consulta." };
     const apiKey = process.env.TAVILY_API_KEY;
-    if (!apiKey) return "Búsqueda web no disponible.";
+    if (!apiKey) return { text: "Búsqueda web no disponible." };
     try {
       const res = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
         body: JSON.stringify({ query: q, search_depth: "advanced", include_answer: "advanced", country: "venezuela", max_results: 5 }),
       });
-      if (!res.ok) return "No se pudo buscar en la web ahora.";
+      if (!res.ok) return { text: "No se pudo buscar en la web ahora." };
       const data = await res.json();
       const ans = typeof data.answer === "string" ? data.answer : "";
       const srcs = (data.results || []).slice(0, 4).map((r: { title?: string; url: string }) => `- ${r.title || r.url}: ${r.url}`).join("\n");
-      return [ans, srcs ? `Fuentes:\n${srcs}` : ""].filter(Boolean).join("\n\n") || "Sin resultados.";
+      return { text: [ans, srcs ? `Fuentes:\n${srcs}` : ""].filter(Boolean).join("\n\n") || "Sin resultados." };
     } catch {
-      return "Error buscando en la web.";
+      return { text: "Error buscando en la web." };
     }
   }
-  return "Herramienta desconocida.";
+  return { text: "Herramienta desconocida." };
 }
 
 const SYSTEM =
-  "Eres VeChat, un asistente de IA para Venezuela. Responde directo y sobrio, con sabor venezolano natural sin exceso de jerga. Usa las herramientas SOLO cuando aplique (la tasa del dólar; negocios locales reales; o búsqueda web). REGLA CRÍTICA: NUNCA inventes negocios, precios ni datos locales — si una herramienta no devuelve resultados, dilo con honestidad.";
+  "Eres VeChat, un asistente de IA para Venezuela. Responde directo y sobrio, con un toque venezolano natural pero SIN abusar de jerga (nada de 'pana'/'chamo' a cada rato) ni de emojis. Usa las herramientas SOLO cuando aplique (la tasa del dólar; negocios locales reales; o búsqueda web), y llama cada herramienta UNA sola vez. REGLA CRÍTICA: NUNCA inventes negocios, precios ni datos locales — si una herramienta no devuelve resultados, dilo con honestidad. No repitas los datos de contacto de los negocios: ya salen en tarjetas.";
 
 type Trace = { tool: string; input: unknown; output: string }[];
+type AgentOut = { answer: string; trace: Trace; model: string; businesses: LocalBusiness[] };
 
-// ===== MiniMax / OpenAI-compatible (tools como functions, tool_calls) =====
-async function runMiniMax(question: string): Promise<{ answer: string; trace: Trace; model: string }> {
+// ===== MiniMax / OpenAI-compatible =====
+async function runMiniMax(question: string): Promise<AgentOut> {
   const URL = (process.env.FEED_LLM_URL || "").replace(/\/+$/, "");
   const KEY = process.env.FEED_LLM_KEY || "";
   const MODEL = process.env.FEED_LLM_MODEL || "MiniMax-M3";
@@ -104,6 +108,7 @@ async function runMiniMax(question: string): Promise<{ answer: string; trace: Tr
     { role: "user", content: question },
   ];
   const trace: Trace = [];
+  const businesses: LocalBusiness[] = [];
   for (let step = 0; step < 4; step++) {
     const res = await fetch(`${URL}/chat/completions`, {
       method: "POST",
@@ -118,21 +123,22 @@ async function runMiniMax(question: string): Promise<{ answer: string; trace: Tr
     const calls = msg.tool_calls || [];
     if (!calls.length) {
       const text = (msg.content || "").replace(/<think>[\s\S]*?<\/think>/g, "").trim();
-      return { answer: text, trace, model: MODEL };
+      return { answer: text, trace, model: MODEL, businesses };
     }
     for (const tc of calls) {
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(tc.function?.arguments || "{}"); } catch {}
       const out = await runTool(tc.function?.name, args);
-      trace.push({ tool: tc.function?.name, input: args, output: out.slice(0, 300) });
-      messages.push({ role: "tool", tool_call_id: tc.id, content: out });
+      if (out.businesses) businesses.push(...out.businesses);
+      trace.push({ tool: tc.function?.name, input: args, output: out.text.slice(0, 300) });
+      messages.push({ role: "tool", tool_call_id: tc.id, content: out.text });
     }
   }
-  return { answer: "(agente MiniMax: máximo de pasos)", trace, model: MODEL };
+  return { answer: "(agente MiniMax: máximo de pasos)", trace, model: MODEL, businesses };
 }
 
-// ===== Claude / Anthropic (tool_use / tool_result) — referencia probada =====
-async function runClaude(question: string): Promise<{ answer: string; trace: Trace; model: string }> {
+// ===== Claude / Anthropic (referencia) =====
+async function runClaude(question: string): Promise<AgentOut> {
   const KEY = process.env.ANTHROPIC_API_KEY || "";
   const BASE = (process.env.ANTHROPIC_BASE_URL || "https://api.anthropic.com").replace(/\/+$/, "");
   const MODEL = process.env.AGENT_MODEL || "claude-haiku-4-5-20251001";
@@ -140,6 +146,7 @@ async function runClaude(question: string): Promise<{ answer: string; trace: Tra
   const antTools = TOOLS.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
   const messages: { role: "user" | "assistant"; content: unknown }[] = [{ role: "user", content: question }];
   const trace: Trace = [];
+  const businesses: LocalBusiness[] = [];
   for (let step = 0; step < 4; step++) {
     const res = await fetch(`${BASE}/v1/messages`, {
       method: "POST",
@@ -152,17 +159,18 @@ async function runClaude(question: string): Promise<{ answer: string; trace: Tra
     const toolUses = (data.content || []).filter((c: { type: string }) => c.type === "tool_use");
     if (data.stop_reason !== "tool_use" || !toolUses.length) {
       const text = (data.content || []).filter((c: { type: string }) => c.type === "text").map((c: { text: string }) => c.text).join("");
-      return { answer: text, trace, model: MODEL };
+      return { answer: text, trace, model: MODEL, businesses };
     }
     const results = [];
     for (const tu of toolUses) {
       const out = await runTool(tu.name, tu.input || {});
-      trace.push({ tool: tu.name, input: tu.input, output: out.slice(0, 300) });
-      results.push({ type: "tool_result", tool_use_id: tu.id, content: out });
+      if (out.businesses) businesses.push(...out.businesses);
+      trace.push({ tool: tu.name, input: tu.input, output: out.text.slice(0, 300) });
+      results.push({ type: "tool_result", tool_use_id: tu.id, content: out.text });
     }
     messages.push({ role: "user", content: results });
   }
-  return { answer: "(agente Claude: máximo de pasos)", trace, model: MODEL };
+  return { answer: "(agente Claude: máximo de pasos)", trace, model: MODEL, businesses };
 }
 
 export async function POST(req: Request) {
