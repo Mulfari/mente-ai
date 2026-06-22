@@ -16,6 +16,7 @@ export type MetricsData = {
   ciudades: NamedCount[];      // top 10
   topConsultas: NamedCount[];  // top 10
   demandaSinCobertura: NamedCount[]; // top: pedidos locales SIN negocio en VeLocal (a quién reclutar)
+  abFeedback: { total: number; concisoPct: number; normalPct: number }; // % de victoria del A/B de estilo
 };
 
 const DAYS = 30;
@@ -124,6 +125,16 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     return t ? (c ? `${t} · ${c}` : t) : null;
   }));
 
+  // A/B de respuestas: % de victoria por estilo (informa el prompt por defecto).
+  const { data: fb } = await supabase.from("response_feedback").select("winner").limit(50000);
+  const fbTotal = (fb ?? []).length;
+  const fbConciso = (fb ?? []).filter((r: any) => r.winner === "conciso").length;
+  const abFeedback = {
+    total: fbTotal,
+    concisoPct: fbTotal ? Math.round((fbConciso / fbTotal) * 100) : 0,
+    normalPct: fbTotal ? Math.round(((fbTotal - fbConciso) / fbTotal) * 100) : 0,
+  };
+
   const kpis: Kpi[] = [
     { label: "Usuarios totales", value: users },
     { label: "Nuevos · 7 días", value: new7 },
@@ -137,5 +148,5 @@ export async function getStats(supabase: SupabaseClient): Promise<MetricsData> {
     { label: "Errores · 7 días", value: errores7d },
   ];
 
-  return { kpis, registros, mensajes, consultas, planes, ciudades, topConsultas, demandaSinCobertura };
+  return { kpis, registros, mensajes, consultas, planes, ciudades, topConsultas, demandaSinCobertura, abFeedback };
 }

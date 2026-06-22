@@ -50,6 +50,9 @@ vps/
 # Playwright MCP debug artifacts
 .playwright-mcp/
 
+# Brainstorm visual companion (mockups efimeros de sesiones de diseno)
+.superpowers/
+
 # Mockups sueltos de otros proyectos / artefactos de pruebas
 demo-*.png
 .playwright-mcp/
@@ -61,3 +64,8 @@ modal-*.png
 scroll-*.png
 share-*.png
 prod-*.png
+
+# Skills de diseno instalados con `npx skills` / `impeccable` (herramientas locales, no codigo de la app)
+.agents/
+.claude/skills/
+skills-lock.json

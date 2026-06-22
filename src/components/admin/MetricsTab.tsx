@@ -229,6 +229,35 @@ export default function MetricsTab({ data }: { data: MetricsData }) {
         items={data.demandaSinCobertura}
         icon="target"
       />
+
+      <div style={{ ...sectionLabel, marginTop: 6 }}>A/B de respuestas · qué estilo gana</div>
+      <div style={card}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <span style={cardTitle}>Preferencia de estilo</span>
+          <span style={{ font: "500 12px Inter", color: INK3 }}>
+            {data.abFeedback.total} comparaciones. El ganador te dice qué estilo poner por defecto en el prompt.
+          </span>
+        </div>
+        {data.abFeedback.total > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 13 }}>
+            {[{ name: "Conciso", pct: data.abFeedback.concisoPct }, { name: "Normal", pct: data.abFeedback.normalPct }].map((v, i) => (
+              <div key={i} className="mt-row" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                  <span style={{ font: "500 13px Inter", color: INK }}>{v.name}</span>
+                  <span style={{ font: "600 12.5px Inter", color: INK }}>{v.pct}%</span>
+                </div>
+                <div style={{ height: 8, borderRadius: 999, background: TRACK, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${v.pct}%`, borderRadius: 999, background: BRAND }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", color: INK3, font: "500 13px Inter" }}>
+            Sin comparaciones todavía
+          </div>
+        )}
+      </div>
     </div>
   );
 }
