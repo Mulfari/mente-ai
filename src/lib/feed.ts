@@ -571,28 +571,19 @@ export async function getPublicFeed(
   let forYou: PublicFeed["forYou"] = null;
   if (userId) {
     const since30d = new Date(now - 30 * 86_400_000).toISOString();
-    const [{ data: mine }, { data: myTags }] = await Promise.all([
-      supabase
-        .from("query_events")
-        .select("prompt, category_id, created_at")
-        .eq("user_id", userId)
-        .gte("created_at", since30d)
-        .order("created_at", { ascending: false })
-        .limit(200),
-      supabase
-        .from("user_interests")
-        .select("tag, weight")
-        .eq("user_id", userId)
-        .order("weight", { ascending: false })
-        .limit(40),
-    ]);
+    const { data: mine } = await supabase
+      .from("query_events")
+      .select("prompt, category_id, created_at")
+      .eq("user_id", userId)
+      .gte("created_at", since30d)
+      .order("created_at", { ascending: false })
+      .limit(200);
 
     const myEvents = mine ?? [];
-    const interestTags = (myTags ?? []).map((r) => r.tag as string);
-    if (myEvents.length > 0 || interestTags.length > 0) {
+    if (myEvents.length > 0) {
       // Perfil de interés: tags aprendidos + categorías y palabras del historial.
       const myCategories = new Map<string, number>();
-      const myKeywords = new Set<string>(interestTags); // los tags persistentes pesan
+      const myKeywords = new Set<string>(); // del historial reciente (sin tags ruidosos)
       const myKeys = new Set<string>();
       const myOwn: { prompt: string; categoryId: string }[] = [];
       for (const e of myEvents) {

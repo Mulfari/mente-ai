@@ -418,12 +418,6 @@ function ContextTab({ userContext, onSave }: {
         style={{ background: "linear-gradient(135deg, var(--primary), #0d8b6a)", color: "white" }}>
         {saving ? "Guardando..." : "Guardar"}
       </button>
-
-      {/* Intereses como chips: manuales + aprendidos de tus búsquedas. Guardan
-          al instante (no dependen del botón de arriba). */}
-      <div className="pt-2" style={{ borderTop: "1px solid var(--border)" }} onClick={(e) => e.preventDefault()}>
-        <InterestChips />
-      </div>
     </form>
   );
 }
