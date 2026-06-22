@@ -365,7 +365,11 @@ export default function MessageBubble({
                 if (uniq.length >= 4) break;
               }
               return uniq.map((s, i) => (
-                <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="cb-source-chip" title={s.title}>{s.host}</a>
+                <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="cb-source-chip" title={s.title}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img className="cb-source-favicon" src={`https://www.google.com/s2/favicons?domain=${s.host}&sz=64`} alt="" loading="lazy" width={14} height={14} />
+                  <span className="cb-source-host">{s.host}</span>
+                </a>
               ));
             })()}
           </div>
