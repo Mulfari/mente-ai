@@ -935,30 +935,55 @@ function SidebarBody({
         </div>
       )}
 
-      {/* Account chip — avatar + email (sin etiqueta de plan debajo) */}
+      {/* Account chip — avatar (estrella si Plus) + email + etiqueta de plan
+          + caret ↑. Es el disparador del menú de cuenta (abre hacia arriba).
+          showUpgrade === isFreeTier, así que lo usamos como señal de plan. */}
       <div className="shrink-0 px-2 pt-2 pb-3">
         {expanded ? (
           <button
             onClick={onShowAccountMenu}
             disabled={!canInteract}
-            className="w-full flex items-center gap-2.5 h-12 px-2.5 rounded-lg transition-colors duration-150 hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
+            className="w-full flex items-center gap-2.5 px-2 py-2 rounded-[13px] transition-colors duration-150 hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
           >
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold shrink-0 text-white"
+              className="relative w-[34px] h-[34px] rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 text-white"
               style={{
                 background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
               }}
             >
               {avatarLetter}
+              {!showUpgrade && (
+                <span className="absolute -right-0.5 -bottom-0.5 w-4 h-4 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: "var(--warning)", border: "2px solid var(--background)" }}>
+                  <svg className="w-2 h-2" fill="white" viewBox="0 0 24 24">
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                  </svg>
+                </span>
+              )}
             </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p
-                className="truncate text-[13px] font-medium leading-tight"
+            <div className="flex-1 min-w-0 text-left flex flex-col">
+              <span
+                className="truncate text-[13.5px] font-medium leading-tight"
                 style={{ color: "var(--text-primary)" }}
               >
                 {userEmail || "Cuenta"}
-              </p>
+              </span>
+              {showUpgrade ? (
+                <span className="text-[11.5px] leading-tight" style={{ color: "var(--text-tertiary)" }}>
+                  Plan gratis
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold leading-tight" style={{ color: "var(--primary)" }}>
+                  <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                  </svg>
+                  VeChat Plus
+                </span>
+              )}
             </div>
+            <svg className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--text-tertiary)" }} fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+            </svg>
           </button>
         ) : (
           <div className="flex justify-center">
@@ -967,13 +992,21 @@ function SidebarBody({
               disabled={!canInteract}
               aria-label="Cuenta"
               title={userEmail || "Cuenta"}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-bold cursor-pointer transition-opacity text-white focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
+              className="relative w-10 h-10 rounded-full flex items-center justify-center text-[12px] font-bold cursor-pointer transition-opacity text-white focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
               style={{
                 background: "linear-gradient(135deg, var(--primary), var(--primary-hover))",
                 opacity: canInteract ? 1 : 0.6,
               }}
             >
               {avatarLetter}
+              {!showUpgrade && (
+                <span className="absolute -right-0.5 -bottom-0.5 w-4 h-4 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: "var(--warning)", border: "2px solid var(--background)" }}>
+                  <svg className="w-2 h-2" fill="white" viewBox="0 0 24 24">
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                  </svg>
+                </span>
+              )}
             </button>
           </div>
         )}
