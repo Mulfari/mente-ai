@@ -36,6 +36,16 @@ const TOOLS = [
       required: ["termino"],
     },
   },
+  {
+    name: "search_web",
+    description:
+      "Busca en internet información ACTUAL (noticias, trámites, datos recientes) que no cubran las otras herramientas. NO lo uses para negocios locales (usa search_local_businesses) ni para el dólar (usa get_dolar).",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string", description: "qué buscar en la web" } },
+      required: ["query"],
+    },
+  },
 ];
 
 async function runTool(name: string, input: Record<string, unknown>): Promise<string> {
@@ -56,6 +66,29 @@ async function runTool(name: string, input: Record<string, unknown>): Promise<st
     return biz
       .map((b) => `- ${b.name}${b.category ? ` (${b.category})` : ""}${b.neighborhood ? ` · ${b.neighborhood}` : ""} · ${b.openNow ? "abierto" : "cerrado"}`)
       .join("\n");
+  }
+  if (name === "search_web") {
+    const q = String(input?.query ?? "");
+    if (!q) return "Falta la consulta.";
+    const apiKey = process.env.TAVILY_API_KEY;
+    if (!apiKey) return "Búsqueda web no disponible.";
+    try {
+      const res = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({ query: q, search_depth: "advanced", include_answer: "advanced", country: "venezuela", max_results: 5 }),
+      });
+      if (!res.ok) return "No se pudo buscar en la web ahora.";
+      const data = await res.json();
+      const ans = typeof data.answer === "string" ? data.answer : "";
+      const srcs = (data.results || [])
+        .slice(0, 4)
+        .map((r: { title?: string; url: string }) => `- ${r.title || r.url}: ${r.url}`)
+        .join("\n");
+      return [ans, srcs ? `Fuentes:\n${srcs}` : ""].filter(Boolean).join("\n\n") || "Sin resultados.";
+    } catch {
+      return "Error buscando en la web.";
+    }
   }
   return "Herramienta desconocida.";
 }
