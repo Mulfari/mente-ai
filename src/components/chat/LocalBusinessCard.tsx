@@ -6,7 +6,7 @@ import BizIcon from "@/components/chat/BizIcon";
 // Tarjeta de un negocio de VeLocal dentro de una respuesta del chat. Solo enlaces
 // (sin estado) → segura en el cliente. Logo = ícono por categoría (sin "logo
 // gris"), WhatsApp como acción principal (el canal en VE). Ver spec Bloque 2.
-export default function LocalBusinessCard({ b }: { b: LocalBusiness }) {
+export default function LocalBusinessCard({ b, detailed = false }: { b: LocalBusiness; detailed?: boolean }) {
   const wa = waLink(b.whatsapp);
   const profile = `https://velocal.vercel.app/${b.slug}`;
   const glyph = categoryGlyph(b.category);
@@ -41,6 +41,8 @@ export default function LocalBusinessCard({ b }: { b: LocalBusiness }) {
           {meta && <div className="lb-cat">{meta}</div>}
         </div>
       </div>
+
+      {detailed && b.description && <p className="lb-desc">{b.description}</p>}
 
       {tags.length > 0 && (
         <div className="lb-tags">

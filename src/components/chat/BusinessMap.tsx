@@ -57,7 +57,9 @@ function MapCanvas({
         boxZoom: interactive,
         keyboard: interactive,
         touchZoom: interactive,
-        attributionControl: true,
+        // La atribución (OSM/CARTO) solo en pantalla completa; la miniatura va
+        // limpia. La atribución sigue presente en el producto al expandir.
+        attributionControl: interactive,
       });
       L.tileLayer(theme === "dark" ? TILES.dark : TILES.light, { attribution: ATTR, maxZoom: 19 }).addTo(map);
       for (const b of pts) {
@@ -126,8 +128,8 @@ export default function BusinessMap({ businesses }: { businesses: LocalBusiness[
             <MapCanvas pts={pts} theme={theme} interactive />
           </div>
           <div className="lb-map-modal-list">
-            <div className="lb-map-list-head">{pts.length} {pts.length === 1 ? "lugar" : "lugares"}</div>
-            {pts.map((b) => <LocalBusinessCard key={b.slug} b={b} />)}
+            <div className="lb-map-list-head">{pts.length} {pts.length === 1 ? "lugar" : "lugares"} en el mapa</div>
+            {pts.map((b) => <LocalBusinessCard key={b.slug} b={b} detailed />)}
           </div>
         </div>,
         document.body
