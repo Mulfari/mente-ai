@@ -388,13 +388,9 @@ export async function runFeedDigest(): Promise<DigestStats> {
   );
   if (cacheErr) throw new Error(`feed_cache: ${cacheErr.message}`);
 
-  // 7) Refinar los intereses aprendidos de usuarios activos (agrupar con IA).
-  //    Best-effort: si falla, el feed ya quedó materializado arriba.
-  try {
-    await refineUserInterests(supabase, stats);
-  } catch (e) {
-    console.error("[feed-digest] refineUserInterests:", e instanceof Error ? e.message : e);
-  }
+  // (7) Antes refinaba/re-materializaba intereses auto-aprendidos → era RUIDO
+  //     y re-poblaba user_context.interests cada corrida. Se quitó (ver plan
+  //     memoria-explicita). La función refineUserInterests queda muerta.
 
   return stats;
 }
