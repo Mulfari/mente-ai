@@ -624,6 +624,13 @@ html[data-sidebar="closed"] .sidebar-desktop {
 .mp-row:hover { background: var(--surface-hover); }
 @media (prefers-reduced-motion: reduce) { .mp-pop, .mp-view { animation: none !important; } }
 
+/* Suscripción (Plans + Checkout) — resplandor del plan Plus + "en revisión". */
+@keyframes pl-glow { 0%, 100% { opacity: .5; } 50% { opacity: .85; } }
+.pl-glow { animation: pl-glow 3.4s ease-in-out infinite; }
+@keyframes co-rev { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+.co-rev { animation: co-rev 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .pl-glow, .co-rev { animation: none !important; } }
+
 /* === PROSE / MARKDOWN === */
 .prose {
   color: var(--text-primary);
