@@ -159,11 +159,13 @@ export default function EmptyState(props: Props) {
         if (el && !el.contains(e.target as Node)) el.scrollTop += e.deltaY;
       }}
     >
-      {/* Hero + input: FIJOS — ocupan la mitad superior anclados a su
-          fondo (input centrado en pantalla); nada los tapa ni los mueve. */}
+      {/* Hero + input: FIJOS — el bloque se ancla a su fondo (justify-end) y
+          la sección mide ~59% del alto, así el INPUT cae centrado vertical en
+          la pantalla, con espacio libre arriba y el feed asomando debajo.
+          Nada los tapa ni los mueve. */}
       <section
         className="flex-none flex flex-col items-center justify-end"
-        style={{ minHeight: "46%" }}
+        style={{ minHeight: "59%" }}
       >
         <header className={`text-center mb-6 px-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms", ...leaveStyle }}>
           <h1
