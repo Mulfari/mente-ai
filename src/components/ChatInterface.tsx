@@ -312,6 +312,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const upsertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mainScrollRef = useRef<HTMLElement>(null);
+  // ¿El usuario está pegado al fondo? Si sube a leer, el onScroll del <main>
+  // suelta esta bandera y dejamos de arrastrarlo al fondo en cada token / al
+  // terminar la respuesta. Se re-engancha al enviar.
+  const stickToBottomRef = useRef(true);
   const initialScrollPendingRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const supabase = createClient();
@@ -862,9 +866,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }
 
     if (!force) {
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      const NEAR_BOTTOM_PX = 120;
-      if (distanceFromBottom > NEAR_BOTTOM_PX) return;
+      // Solo seguir al fondo si el usuario sigue PEGADO al fondo. Si subió a
+      // leer (la bandera se soltó en onScroll), NO lo arrastramos de vuelta.
+      if (!stickToBottomRef.current) return;
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
       return;
     }
@@ -899,6 +903,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     el.scrollTo({ top: pendingPinScrollRef.current, behavior: "smooth" });
     pendingPinScrollRef.current = null;
   }, [bottomSpacer]);
+
+  // Al enviar, re-enganchar el seguimiento al fondo (por si el usuario había
+  // subido a leer antes de mandar otra pregunta).
+  useEffect(() => {
+    if (sending) stickToBottomRef.current = true;
+  }, [sending]);
 
   // Cancel any pending reveal when the user navigates to a different conv.
   // También suelta el anclaje y el spacer (cada conversación arranca limpia).
@@ -2189,7 +2199,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             24px ANTES del borde de la página — el feed se recortaba ahí
             (tarjetas cortadas con el borde visible) y quedaba una franja
             de fondo pegada al borde inferior. */}
-        <main ref={mainScrollRef} className={`flex-1 overflow-y-auto ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "pt-6 flex flex-col" : "py-6"}`}>
+        <main ref={mainScrollRef}
+          onScroll={(e) => { const el = e.currentTarget; stickToBottomRef.current = (el.scrollHeight - el.scrollTop - el.clientHeight) < 48; }}
+          className={`flex-1 overflow-y-auto ${!activeConv?.id && !loadingConvId && messages.length === 0 ? "pt-6 flex flex-col" : "py-6"}`}>
           {(isLoadingMsgs && activeConv?.id) ? (
             <div className="max-w-4xl mx-auto px-4 py-5">
               {/* Skeleton while loading direct URL conversation */}

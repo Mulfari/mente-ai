@@ -57,6 +57,7 @@ function MethodIcon({ id }: { id: Method }) {
 export default function PlansModal({ appConfig, initialTab = "plans", onClose, onActivated }: Props) {
   const [screen, setScreen] = useState<Screen>(initialTab === "coupon" ? "coupon" : "plans");
   const [bill, setBill] = useState<"week" | "month">("month");
+  const [couponOpen, setCouponOpen] = useState(false); // cupón inline en la pantalla de planes
 
   // checkout
   const [method, setMethod] = useState<Method | null>(null);
@@ -155,17 +156,13 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
         {screen === "plans" && (
           <div className="min-h-[calc(100dvh-64px)] flex flex-col items-center justify-center px-5 sm:px-8 py-8">
             <div className="text-center max-w-[560px] mx-auto mb-7">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4" style={{ backgroundColor: tint }}>
-                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: "var(--primary)" }}><path d="M12 2l1.8 4.6L18 8.4l-4.2 1.8L12 15l-1.8-4.8L6 8.4l4.2-1.8L12 2z" /></svg>
-                <span className="text-[12px] font-semibold" style={{ color: "var(--primary)" }}>VeChat Plus</span>
-              </div>
               <h1 className="text-[28px] sm:text-[32px] font-bold leading-tight" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Hazte VeChat Plus</h1>
               <p className="text-[15px] mt-2.5" style={{ color: "var(--text-secondary)" }}>Desbloquea la IA venezolana sin límites. Paga local, fácil y sin tarjetas.</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 sm:items-stretch justify-center max-w-[740px] mx-auto">
+            <div className="flex flex-col sm:flex-row gap-4 sm:items-stretch w-full max-w-[760px] mx-auto">
               {/* Gratis */}
-              <div className="flex-1 sm:max-w-[360px] rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <div className="flex-1 sm:basis-0 min-w-0 rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
                 <div className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>Gratis</div>
                 <div className="text-[13px] mt-0.5 mb-4" style={{ color: "var(--text-tertiary)" }}>Lo básico para empezar</div>
                 <div className="flex items-baseline gap-1 mb-5">
@@ -184,11 +181,11 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
               </div>
 
               {/* Plus */}
-              <div className="relative flex-1 sm:max-w-[360px]">
+              <div className="relative flex-1 sm:basis-0 min-w-0">
                 <div className="pl-glow absolute -inset-0.5 rounded-[24px] z-0" style={{ background: "var(--primary)", filter: "blur(16px)" }} />
-                <div className="relative z-[1] rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1.5px solid var(--primary)", boxShadow: "0 14px 40px color-mix(in srgb, var(--primary) 16%, transparent)" }}>
+                <div className="relative z-[1] w-full rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1.5px solid var(--primary)", boxShadow: "0 14px 40px color-mix(in srgb, var(--primary) 16%, transparent)" }}>
                   <div className="flex items-center justify-between">
-                    <div className="text-[15px] font-semibold" style={{ color: "var(--primary)" }}>VeChat Plus</div>
+                    <div className="text-[15px] font-semibold" style={{ color: "var(--primary)" }}>Plus</div>
                     <span className="inline-flex items-center gap-1.5 text-[9.5px] font-bold uppercase tracking-wide text-white px-2.5 py-1 rounded-full" style={{ backgroundColor: "var(--primary)" }}>
                       <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>Popular
                     </span>
@@ -232,11 +229,27 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
               </div>
             </div>
 
-            <div className="text-center mt-6">
-              <button onClick={() => setScreen("coupon")} className="inline-flex items-center gap-2 text-[14px] font-medium transition-colors hover:text-[var(--primary)]" style={{ color: "var(--text-secondary)" }}>
+            <div className="mt-6 flex flex-col items-center">
+              <button onClick={() => setCouponOpen((v) => !v)} className="inline-flex items-center gap-2 text-[14px] font-medium transition-colors hover:text-[var(--primary)]" style={{ color: couponOpen ? "var(--primary)" : "var(--text-secondary)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
                 ¿Tienes un cupón? Canjéalo
               </button>
+              {couponOpen && (
+                <div className="w-full max-w-[360px] mt-3 animate-fade-in">
+                  <form onSubmit={applyCoupon} className="flex gap-2">
+                    <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="MLF-XXXXXX" autoFocus
+                      className="flex-1 h-11 rounded-[12px] px-4 text-[14px] font-semibold tracking-wider uppercase outline-none"
+                      style={{ backgroundColor: "var(--surface)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = "var(--primary)"; }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }} />
+                    <button type="submit" disabled={loading || !code.trim()} className="h-11 px-5 rounded-[12px] text-[14px] font-semibold text-white disabled:opacity-50" style={{ backgroundColor: "var(--primary)" }}>
+                      {loading ? "…" : "Canjear"}
+                    </button>
+                  </form>
+                  {error && <div className="text-[12.5px] mt-2 text-center" style={{ color: "var(--danger)" }}>{error}</div>}
+                  {success && <div className="text-[12.5px] mt-2 text-center font-semibold" style={{ color: "var(--primary)" }}>{success}</div>}
+                </div>
+              )}
             </div>
           </div>
         )}

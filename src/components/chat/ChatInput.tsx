@@ -191,8 +191,10 @@ export default function ChatInput({
   // Rotación del placeholder (HANDOFF §1.1): cada 3400ms, si NO hay texto y
   // NO se está grabando/generando, desvanece (vc-ph-hide), y a los 300ms
   // avanza el índice y reaparece (vc-ph-show). Congelado mientras se escribe.
+  // Solo rota en el EMPTY STATE (convId null). Dentro de una conversación el
+  // placeholder queda fijo en "Pregúntale a VeChat…", no cambia.
   useEffect(() => {
-    if (input || isListening || isStreaming || !block.canWrite) return;
+    if (input || isListening || isStreaming || !block.canWrite || convId) return;
     const id = setInterval(() => {
       setPhClass("vc-ph-hide");
       setTimeout(() => {
@@ -201,7 +203,7 @@ export default function ChatInput({
       }, 300);
     }, 3400);
     return () => clearInterval(id);
-  }, [input, isListening, isStreaming, block.canWrite]);
+  }, [input, isListening, isStreaming, block.canWrite, convId]);
 
   // Contador m:ss mientras graba (HANDOFF §1.4).
   useEffect(() => {
@@ -374,10 +376,11 @@ export default function ChatInput({
 
   return (
     <div
-      className="px-3 sm:px-4 pt-2 flex-none"
-      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      className="px-3 sm:px-4 pt-2 flex-none pb-[max(0.25rem,env(safe-area-inset-bottom))] sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
     >
-      {/* max-w-2xl (672px): un pelo más angosto que la columna de mensajes
+      {/* En móvil el disclaimer queda más abajo (menos padding inferior); en
+          escritorio se mantiene el respiro. max-w-2xl (672px): un pelo más
+          angosto que la columna de mensajes
           (3xl). OJO: si cambias este ancho, ajusta el max-w-[704px] del wrapper
           en EmptyState para que el despegue FLIP siga siendo un deslizamiento
           puro, sin saltos de ancho. */}
@@ -487,10 +490,10 @@ export default function ChatInput({
               <div className="relative">
                 {showPlaceholder && (
                   <span
-                    className={`vc-ph ${block.canWrite ? phClass : "vc-ph-show"} absolute left-0.5 top-1 right-0.5 pointer-events-none truncate`}
+                    className={`vc-ph ${block.canWrite && !convId ? phClass : "vc-ph-show"} absolute left-0.5 top-1 right-0.5 pointer-events-none truncate`}
                     style={{ font: "400 16px/1.5 Inter, sans-serif", color: "var(--text-secondary)" }}
                   >
-                    {block.canWrite ? PLACEHOLDER_PROMPTS[phIdx] : "Sin suscripcion activa..."}
+                    {!block.canWrite ? "Sin suscripcion activa..." : convId ? "Pregúntale a VeChat…" : PLACEHOLDER_PROMPTS[phIdx]}
                   </span>
                 )}
                 <textarea
@@ -600,26 +603,17 @@ export default function ChatInput({
           )}
         </div>
 
-        {/* Debajo del input: "pensando" (generando) / "transcribiendo" /
-            disclaimer (HANDOFF §1.5). */}
-        {isStreaming ? (
-          <div className="flex items-center justify-center gap-2 mt-3">
-            <span className="inline-flex gap-[3px]">
-              {[0, 0.2, 0.4].map((d, i) => (
-                <span key={i} className="vc-blinkdot w-[5px] h-[5px] rounded-full"
-                  style={{ backgroundColor: "var(--primary)", animation: `vc-blink 1.2s ease-in-out ${d}s infinite` }} />
-              ))}
-            </span>
-            <span className="text-[13px]" style={{ color: "var(--text-secondary)" }}>VeChat está pensando…</span>
-          </div>
-        ) : !isListening && isProcessing ? (
+        {/* Debajo del input: "transcribiendo" (dictado) o el disclaimer.
+            (Se quitó el estado "VeChat está pensando" — el indicador de
+            respuesta vive en el área de mensajes, no aquí.) */}
+        {!isListening && isProcessing ? (
           <div className="flex items-center justify-center gap-2 mt-3">
             <span className="inline-block w-3 h-3 rounded-full animate-spin"
               style={{ border: "2px solid var(--border)", borderTopColor: "var(--primary)" }} />
             <span className="text-[12px]" style={{ color: "var(--text-secondary)" }}>Transcribiendo…</span>
           </div>
         ) : (
-          <p className="text-center mt-3 text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+          <p className="text-center mt-2.5 sm:mt-3 text-[12px]" style={{ color: "var(--text-tertiary)" }}>
             VeChat puede equivocarse. Verifica lo importante.
           </p>
         )}
