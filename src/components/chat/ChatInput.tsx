@@ -382,14 +382,8 @@ export default function ChatInput({
           en EmptyState para que el despegue FLIP siga siendo un deslizamiento
           puro, sin saltos de ancho. */}
       <div className="max-w-2xl mx-auto">
-        {showQuota && quotaLeft !== undefined && quotaLeft <= 3 && quotaLeft > 0 && (
-          <div className="flex justify-center mb-2">
-            <span className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1 rounded-full"
-              style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}>
-              Te {quotaLeft === 1 ? "queda 1 mensaje" : `quedan ${quotaLeft} mensajes`} gratis hoy
-            </span>
-          </div>
-        )}
+        {/* (Se quitó la píldora "Te quedan N mensajes": ya no mostramos el
+            conteo restante; el límite lo comunica el chat al agotarse.) */}
 
         {/* Chips de adjuntos (HANDOFF §1.6) — arriba del input */}
         {attachments.length > 0 && (

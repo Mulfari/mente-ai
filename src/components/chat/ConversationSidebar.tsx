@@ -894,46 +894,9 @@ function SidebarBody({
       {/* Spacer when collapsed — pushes the avatar to the bottom */}
       {!expanded && <div className="flex-1" />}
 
-      {/* Upsell VeChat Plus — solo free y expandido. Conversión pasiva:
-          cuota del día + barra + CTA al modal de planes. No toca el chip. */}
-      {showUpgrade && expanded && (
-        <div className="shrink-0 px-2 pt-2">
-          <div
-            className="rounded-xl p-3"
-            style={{
-              backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)",
-              border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)",
-            }}
-          >
-            <div className="flex items-center gap-1.5 mb-1.5">
-              <VeChatMark size={13} />
-              <span className="text-[12px] font-semibold" style={{ color: "var(--text-primary)" }}>
-                VeChat Plus
-              </span>
-            </div>
-            <p className="text-[11px] mb-1.5" style={{ color: "var(--text-secondary)" }}>
-              {quotaUsed} de {quotaTotal} mensajes hoy
-            </p>
-            <div className="h-1.5 rounded-full overflow-hidden mb-2.5" style={{ backgroundColor: "var(--surface-hover)" }}>
-              <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${quotaTotal > 0 ? Math.min(100, Math.round((quotaUsed / quotaTotal) * 100)) : 0}%`,
-                  backgroundColor: "var(--primary)",
-                }}
-              />
-            </div>
-            <button
-              onClick={onUpgrade}
-              disabled={!canInteract}
-              className="w-full h-8 rounded-lg text-[12px] font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "var(--primary)" }}
-            >
-              Hazte Plus
-            </button>
-          </div>
-        </div>
-      )}
+      {/* (Se quitó el cuadro de upsell "N de N mensajes hoy" del pie: el
+          límite ahora lo comunica el chat con un mensaje al agotarse, y la
+          etiqueta de plan vive en el chip de abajo.) */}
 
       {/* Account chip — avatar (estrella si Plus) + email + etiqueta de plan
           + caret ↑. Es el disparador del menú de cuenta (abre hacia arriba).
