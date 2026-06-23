@@ -204,7 +204,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
                     <button onClick={() => setBill("month")} className="relative flex-1 h-[38px] rounded-[9px] flex items-center justify-center gap-2 text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
                       {bill === "month" && <span className="absolute inset-0 rounded-[9px]" style={{ backgroundColor: "var(--surface)", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }} />}
                       <span className="relative">Mensual</span>
-                      <span className="relative text-[8.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--primary)", backgroundColor: tint }}>Mejor precio</span>
+                      <span className="relative whitespace-nowrap text-[8.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded" style={{ color: "var(--primary)", backgroundColor: tint }}>Mejor precio</span>
                     </button>
                   </div>
 
