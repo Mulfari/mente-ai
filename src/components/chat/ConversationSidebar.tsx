@@ -675,18 +675,19 @@ function SidebarBody({
           </>
         ) : (
           <div className="w-full flex justify-center">
+            {/* Colapsado: el LOGO de VeChat arriba (clic = expandir en
+                escritorio), como pidió el diseño. */}
             {!isMobile && canInteract ? (
               <button
                 onClick={onToggleExpanded}
                 aria-label="Expandir sidebar"
                 title="Expandir"
-                className={iconButtonClass}
-                style={{ color: "var(--text-tertiary)" }}
+                className="rounded-xl p-1 transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
               >
-                <ExpandIcon />
+                <VeChatMark size={28} />
               </button>
             ) : (
-              <VeChatMark size={18} />
+              <VeChatMark size={28} />
             )}
           </div>
         )}
@@ -750,6 +751,18 @@ function SidebarBody({
               style={{ color: "var(--text-secondary)" }}
             >
               <NewChatIcon />
+            </button>
+            <button
+              onClick={onToggleExpanded}
+              disabled={!canInteract}
+              aria-label="Conversaciones"
+              title="Conversaciones"
+              className={railButtonClass}
+              style={{ color: "var(--text-secondary)" }}
+            >
+              <svg className="w-[18px] h-[18px] shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.85L3 20l.9-3.6A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
             </button>
             <button
               onClick={() => {
