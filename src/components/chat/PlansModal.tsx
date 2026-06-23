@@ -160,9 +160,9 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
               <p className="text-[15px] mt-2.5" style={{ color: "var(--text-secondary)" }}>Desbloquea la IA venezolana sin límites. Paga local, fácil y sin tarjetas.</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 sm:items-stretch w-full max-w-[760px] mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch w-full max-w-[760px] mx-auto">
               {/* Gratis */}
-              <div className="flex-1 sm:basis-0 min-w-0 rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
+              <div className="min-w-0 rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
                 <div className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>Gratis</div>
                 <div className="text-[13px] mt-0.5 mb-4" style={{ color: "var(--text-tertiary)" }}>Lo básico para empezar</div>
                 <div className="flex items-baseline gap-1 mb-5">
@@ -181,7 +181,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
               </div>
 
               {/* Plus */}
-              <div className="relative flex-1 sm:basis-0 min-w-0">
+              <div className="relative min-w-0">
                 <div className="pl-glow absolute -inset-0.5 rounded-[24px] z-0" style={{ background: "var(--primary)", filter: "blur(16px)" }} />
                 <div className="relative z-[1] w-full rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1.5px solid var(--primary)", boxShadow: "0 14px 40px color-mix(in srgb, var(--primary) 16%, transparent)" }}>
                   <div className="flex items-center justify-between">
