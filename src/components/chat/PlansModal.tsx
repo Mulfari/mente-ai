@@ -137,22 +137,23 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
   const METHOD_TAG: Record<Method, string> = { pagomovil: "Bancos nacionales", zelle: "Transferencia USD", binance: "Cripto estable", whatsapp: "Con un asesor" };
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ backgroundColor: "rgba(17,24,39,0.5)", backdropFilter: "blur(6px)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div
-        className="relative w-full max-w-[880px] rounded-[22px] animate-modal-in"
-        style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)", boxShadow: "0 25px 60px rgba(0,0,0,0.22)", maxHeight: "92vh", overflowY: "auto" }}
-      >
-        <button onClick={onClose} className="absolute top-4 right-4 z-10 p-2 rounded-xl transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--text-tertiary)" }} aria-label="Cerrar">
+    <div className="fixed inset-0 z-50 overflow-y-auto animate-modal-in" style={{ backgroundColor: "var(--background)" }}>
+      {/* Barra superior full-screen (estilo ChatGPT): marca + cerrar. */}
+      <div className="sticky top-0 z-20 flex items-center justify-between h-16 px-5 sm:px-8" style={{ backgroundColor: "var(--background)" }}>
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l1.8 4.6L18 8.4l-4.2 1.8L12 15l-1.8-4.8L6 8.4l4.2-1.8L12 2z" /></svg>
+          </span>
+          <span className="text-[16px] font-bold" style={{ color: "var(--text-primary)" }}>Ve<span style={{ color: "var(--primary)" }}>Chat</span></span>
+        </div>
+        <button onClick={onClose} className="p-2 rounded-xl transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--text-secondary)" }} aria-label="Cerrar">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
+      </div>
 
         {/* ===================== PLANES ===================== */}
         {screen === "plans" && (
-          <div className="px-6 sm:px-8 pt-9 pb-7">
+          <div className="min-h-[calc(100dvh-64px)] flex flex-col items-center justify-center px-5 sm:px-8 py-8">
             <div className="text-center max-w-[560px] mx-auto mb-7">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4" style={{ backgroundColor: tint }}>
                 <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24" style={{ color: "var(--primary)" }}><path d="M12 2l1.8 4.6L18 8.4l-4.2 1.8L12 15l-1.8-4.8L6 8.4l4.2-1.8L12 2z" /></svg>
@@ -164,7 +165,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
 
             <div className="flex flex-col sm:flex-row gap-4 sm:items-stretch justify-center max-w-[740px] mx-auto">
               {/* Gratis */}
-              <div className="flex-1 sm:max-w-[360px] rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+              <div className="flex-1 sm:max-w-[360px] rounded-[22px] p-6 flex flex-col" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
                 <div className="text-[15px] font-semibold" style={{ color: "var(--text-primary)" }}>Gratis</div>
                 <div className="text-[13px] mt-0.5 mb-4" style={{ color: "var(--text-tertiary)" }}>Lo básico para empezar</div>
                 <div className="flex items-baseline gap-1 mb-5">
@@ -242,7 +243,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
 
         {/* ===================== CHECKOUT ===================== */}
         {screen === "checkout" && (
-          <div className="px-6 sm:px-8 pt-9 pb-7">
+          <div className="max-w-[940px] mx-auto px-5 sm:px-8 pt-4 pb-16">
             <div className="flex items-center gap-3 mb-5">
               <button onClick={() => { setScreen("plans"); setReview(false); }} className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-colors hover:bg-[var(--surface-hover)]" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--text-primary)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -256,7 +257,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
             <div className="flex flex-col md:flex-row gap-5 items-start">
               {/* IZQUIERDA — método */}
               <div className="flex-1 min-w-0 w-full">
-                <div className="rounded-[20px] p-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+                <div>
                   <div className="text-[15px] font-semibold mb-4" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Método de pago</div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
@@ -353,7 +354,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
 
               {/* DERECHA — resumen */}
               <div className="w-full md:w-[312px] shrink-0">
-                <div className="rounded-[20px] p-5 md:sticky md:top-5" style={{ backgroundColor: "var(--background)", border: "1px solid var(--border)" }}>
+                <div className="rounded-[20px] p-5 md:sticky md:top-[84px]" style={{ backgroundColor: "var(--surface)", border: "1px solid var(--border)" }}>
                   {review ? (
                     <>
                       <div className="text-center pt-1.5 pb-3.5">
@@ -413,7 +414,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
 
         {/* ===================== CUPÓN ===================== */}
         {screen === "coupon" && (
-          <div className="px-6 sm:px-8 pt-9 pb-7 max-w-[440px] mx-auto">
+          <div className="max-w-[460px] mx-auto px-5 sm:px-8 pt-14 pb-16">
             <div className="flex items-center gap-3 mb-5">
               <button onClick={() => setScreen("plans")} className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-colors hover:bg-[var(--surface-hover)]" style={{ border: "1px solid var(--border)", backgroundColor: "var(--surface)", color: "var(--text-primary)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
@@ -435,7 +436,6 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
             {success && <div className="text-[12.5px] mt-3 font-semibold" style={{ color: "var(--primary)" }}>{success}</div>}
           </div>
         )}
-      </div>
     </div>
   );
 }
