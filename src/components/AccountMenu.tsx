@@ -23,6 +23,8 @@ type Props = {
   onClose: () => void;
   onProfileUpdate?: (updates: Partial<Props["profile"]>) => void;
   onSave?: (data: { full_name: string; city: string; custom_notes: string; interests: string }) => void;
+  /** Abre el flujo full-screen de planes (Plans + Checkout). */
+  onSeePlans?: () => void;
   appConfig?: AppConfig;
 };
 
@@ -36,7 +38,7 @@ function endTimeOf(profile: Props["profile"]): number {
   return isNaN(t) ? 0 : t;
 }
 
-export default function AccountMenu({ email, profile: profileProp, userContext, onSignOut, onClose, onSave, appConfig }: Props) {
+export default function AccountMenu({ email, profile: profileProp, userContext, onSignOut, onClose, onSave, onSeePlans, appConfig }: Props) {
   const [view, setView] = useState<View>("main");
   const [profile, setProfile] = useState(profileProp ?? null);
   const [, setTick] = useState(0);
@@ -97,6 +99,7 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
             onSave={onSave}
             onGoSus={() => setView("sus")}
             onGoCoupon={() => setView("coupon")}
+            onSeePlans={onSeePlans}
             onSignOut={onSignOut}
           />
         )}
@@ -118,11 +121,11 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
 
 // ============================ MAIN VIEW ============================
 function MainView({
-  email, initial, isPlus, isFree, userContext, onSave, onGoSus, onGoCoupon, onSignOut,
+  email, initial, isPlus, isFree, userContext, onSave, onGoSus, onGoCoupon, onSeePlans, onSignOut,
 }: {
   email: string; initial: string; isPlus: boolean; isFree: boolean;
   userContext: Props["userContext"]; onSave?: Props["onSave"];
-  onGoSus: () => void; onGoCoupon: () => void; onSignOut: () => void;
+  onGoSus: () => void; onGoCoupon: () => void; onSeePlans?: () => void; onSignOut: () => void;
 }) {
   return (
     <div className="mp-view">
@@ -170,7 +173,7 @@ function MainView({
       {/* CTA (solo free) */}
       {isFree && (
         <div className="px-1.5 pt-2 pb-1.5">
-          <button onClick={onGoSus}
+          <button onClick={onSeePlans ?? onGoSus}
             className="w-full h-11 rounded-[13px] flex items-center justify-center gap-2 text-[14.5px] font-semibold text-white transition-transform active:scale-[.98]"
             style={{ backgroundColor: "var(--primary)", boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent)" }}>
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l1.8 4.6L18 8.4l-4.2 1.8L12 15l-1.8-4.8L6 8.4l4.2-1.8L12 2z" /></svg>

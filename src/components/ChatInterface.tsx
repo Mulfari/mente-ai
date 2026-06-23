@@ -2315,6 +2315,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           userContext={userContext}
           userId={userId}
           appConfig={appConfig}
+          onSeePlans={() => { setShowAccountMenu(false); setShowPlans(true); }}
           onSave={(data) => { setUserContext(prev => prev ? { ...prev, ...data } : prev); }}
           onSignOut={async () => { await clerkSignOut(); window.location.href = "/"; }}
           onClose={() => setShowAccountMenu(false)}
