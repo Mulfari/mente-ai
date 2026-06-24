@@ -6,7 +6,6 @@ import { useClerk, useAuth } from "@clerk/nextjs";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import AccountMenu from "./AccountMenu";
-import ShareModal from "./share/ShareModal";
 import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
@@ -191,8 +190,25 @@ export default function ChatInterface({
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-  // Conversación cuyo modal de "Compartir" está abierto (null = cerrado).
-  const [shareConv, setShareConv] = useState<Conversation | null>(null);
+  // Feedback transitorio "Enlace copiado" tras copiar el enlace de una conversación.
+  const [shareCopied, setShareCopied] = useState(false);
+  // Copiar el enlace público (PERMANENTE) de una conversación de UN TOQUE: acuña/
+  // refresca la foto y copia el URL al portapapeles, sin abrir ningún modal.
+  const copyShareLink = useCallback(async (conversationId: string) => {
+    try {
+      const r = await fetch("/api/share", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId }),
+      });
+      const j = await r.json();
+      if (j?.token) {
+        await navigator.clipboard.writeText(`${window.location.origin}/c/${j.token}`);
+        setShareCopied(true);
+        window.setTimeout(() => setShareCopied(false), 1900);
+      }
+    } catch { /* noop */ }
+  }, []);
   const [showPlans, setShowPlans] = useState(false);
   // Clerk hooks
   const { signOut: clerkSignOut, openSignIn, openSignUp } = useClerk();
@@ -2221,7 +2237,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onSelectConv={selectConv}
           onDeleteConv={deleteConv}
           onRenameConv={renameConv}
-          onShareConv={(c) => setShareConv(c)}
+          onShareConv={(c) => copyShareLink(c.id)}
           conversationsLoaded={convsLoaded}
           hasMoreConvs={hasMoreConvs}
           loadingMoreConvs={loadingMoreConvs}
@@ -2263,22 +2279,26 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             (debajo del header en móvil, arriba a la derecha en escritorio). */}
         {isLoggedIn && activeConv?.id && (
           <button
-            onClick={() => setShareConv(activeConv)}
-            title="Compartir conversación"
-            aria-label="Compartir conversación"
-            className="absolute right-3 top-[3.75rem] md:top-3 z-20 flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[12.5px] font-medium transition-colors hover:bg-[var(--surface-hover)]"
+            onClick={() => copyShareLink(activeConv.id)}
+            title="Copiar enlace de la conversación"
+            aria-label="Copiar enlace de la conversación"
+            className="absolute right-3 top-3 z-20 hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-medium transition-colors hover:bg-[var(--surface-hover)]"
             style={{
               backgroundColor: "color-mix(in srgb, var(--surface) 90%, transparent)",
               border: "1px solid var(--border)",
-              color: "var(--text-secondary)",
+              color: shareCopied ? "var(--primary)" : "var(--text-secondary)",
               backdropFilter: "blur(8px)",
             }}
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
-            </svg>
-            <span className="hidden sm:inline">Compartir</span>
+            {shareCopied ? (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" /></svg>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" />
+              </svg>
+            )}
+            <span>{shareCopied ? "Copiado" : "Copiar enlace"}</span>
           </button>
         )}
         {isLoggedIn ? (
@@ -2302,16 +2322,30 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               <Logo size={18} />
               <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
             </span>
-            {mounted && userEmail ? (
-              <button onClick={() => setShowAccountMenu(true)}
-                aria-label="Cuenta"
-                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white cursor-pointer transition-opacity hover:opacity-80"
-                style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-                {userEmail.charAt(0).toUpperCase()}
-              </button>
-            ) : (
-              <div className="w-8 h-8" />
-            )}
+            <div className="flex items-center gap-1">
+              {activeConv?.id && (
+                <button onClick={() => copyShareLink(activeConv.id)}
+                  aria-label="Copiar enlace de la conversación" title="Copiar enlace"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)]"
+                  style={{ color: shareCopied ? "var(--primary)" : "var(--text-secondary)" }}>
+                  {shareCopied ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" /></svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path strokeLinecap="round" strokeLinejoin="round" d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
+                  )}
+                </button>
+              )}
+              {mounted && userEmail ? (
+                <button onClick={() => setShowAccountMenu(true)}
+                  aria-label="Cuenta"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white cursor-pointer transition-opacity hover:opacity-80"
+                  style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+                  {userEmail.charAt(0).toUpperCase()}
+                </button>
+              ) : (
+                <div className="w-8 h-8" />
+              )}
+            </div>
           </header>
         ) : (
           /* Header público (deslogueado, todos los tamaños): marca + CTAs */
@@ -2464,12 +2498,12 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onClose={() => setShowAccountMenu(false)}
         />
       )}
-      {shareConv && (
-        <ShareModal
-          conversationId={shareConv.id}
-          title={shareConv.title}
-          onClose={() => setShareConv(null)}
-        />
+      {shareCopied && (
+        <div className="fixed left-1/2 -translate-x-1/2 top-4 z-[100] px-4 py-2 rounded-full text-[13px] font-medium text-white flex items-center gap-2 animate-fade-in"
+          style={{ background: "var(--primary)", boxShadow: "0 8px 24px rgba(0,0,0,0.18)" }}>
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" /></svg>
+          Enlace copiado
+        </div>
       )}
       {showPlans && (
         <PlansModal

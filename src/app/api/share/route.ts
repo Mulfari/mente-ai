@@ -54,15 +54,16 @@ export async function GET(req: NextRequest) {
     .eq("conversation_id", conversationId)
     .eq("owner_id", ownerId)
     .maybeSingle();
-  // Un enlace vencido (>24h) se trata como inexistente.
-  const live = data && new Date(data.expires_at as string).getTime() > Date.now();
+  // Enlace PERMANENTE: si existe, está vivo (ya no caduca).
   return NextResponse.json({
-    token: live ? (data!.token as string) : null,
-    expiresAt: live ? (data!.expires_at as string) : null,
+    token: data?.token ?? null,
+    expiresAt: data?.expires_at ?? null,
   });
 }
 
-const SHARE_TTL_MS = 24 * 60 * 60 * 1000; // 24 horas
+// Enlaces PERMANENTES: una fecha muy lejana hace de "no caduca" sin tocar el
+// esquema ni el barrido del cron (que borra expires_at <= now()).
+const PERMANENT_EXPIRY = "2099-12-31T00:00:00.000Z";
 
 export async function POST(req: NextRequest) {
   const ownerId = await ownerProfileId();
@@ -89,19 +90,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "La conversación está vacía" }, { status: 400 });
   }
 
-  // ¿Ya hay enlace vivo? Conservar token Y su caducidad (reabrir refresca el
-  // contenido pero NO reinicia el reloj de 24h). Si no hay o ya venció, se
-  // acuña un token nuevo con 24h frescas (el URL viejo, ya vencido, muere).
+  // Enlace PERMANENTE y estable: si la conversación ya tiene token se REUSA (el
+  // mismo URL para siempre); si no, se acuña uno. Reabrir/recopiar solo refresca
+  // la foto. expires_at va muy al futuro (no caduca).
   const { data: existing } = await supabase
     .from("shared_conversations")
-    .select("token, expires_at")
+    .select("token")
     .eq("conversation_id", conversationId)
     .maybeSingle();
-  const live = existing && new Date(existing.expires_at as string).getTime() > Date.now();
-  const token = live ? (existing!.token as string) : newToken();
-  const expiresAt = live
-    ? (existing!.expires_at as string)
-    : new Date(Date.now() + SHARE_TTL_MS).toISOString();
+  const token = (existing?.token as string) || newToken();
+  const expiresAt = PERMANENT_EXPIRY;
 
   const { error } = await supabase.from("shared_conversations").upsert(
     {
