@@ -1991,6 +1991,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   async function sendAnonMessage(text: string) {
     const q = (text || "").trim();
     if (!q || sending) return;
+    // Follow-up anónimo: ancla la nueva pregunta arriba (como el logueado), así
+    // se ve solo la pregunta + su respuesta y el historial queda arriba (scroll).
+    const wasFollowUp = messages.length > 0;
     const userMsgId = crypto.randomUUID();
     const aiId = crypto.randomUUID();
     setInput("");
@@ -1999,6 +2002,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       { id: userMsgId, role: "user", content: q, created_at: new Date().toISOString() },
       { id: aiId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true },
     ]);
+    if (wasFollowUp) pendingPinRef.current = userMsgId;
     setSending(true);
     setStreamingMsgId(aiId);
     try {
