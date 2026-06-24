@@ -745,6 +745,7 @@ function SidebarBody({
               <NewChatIcon />
               <span className="truncate">Nuevo chat</span>
             </button>
+            {!anonMode && (
             <div
               className="w-full flex items-center gap-2 h-9 px-2.5 rounded-lg"
               style={{ backgroundColor: "var(--surface-hover)" }}
@@ -778,6 +779,7 @@ function SidebarBody({
                 </button>
               )}
             </div>
+            )}
           </>
         ) : (
           <div className="flex flex-col items-center gap-1">
@@ -803,6 +805,7 @@ function SidebarBody({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.77 9.77 0 01-4-.85L3 20l.9-3.6A7.86 7.86 0 013 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </button>
+            {!anonMode && (
             <button
               onClick={() => {
                 pendingSearchFocus.current = true;
@@ -816,6 +819,7 @@ function SidebarBody({
             >
               <SearchIcon />
             </button>
+            )}
           </div>
         )}
       </div>

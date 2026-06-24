@@ -2249,10 +2249,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onRenameConv={() => {}}
           onShareConv={() => {}}
           conversationsLoaded
-          onSearchConversations={async (q) => {
-            const t = q.toLowerCase();
-            return anonConvsMapped.filter((c) => c.title.toLowerCase().includes(t));
-          }}
           onNewConversation={newAnonConv}
           onShowAccountMenu={() => {}}
           onSignUp={() => openSignUp({ forceRedirectUrl: "/", signInForceRedirectUrl: "/" })}
