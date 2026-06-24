@@ -680,7 +680,7 @@ function SidebarBody({
         {expanded ? (
           <>
             <div className="flex items-center gap-2 min-w-0">
-              <VeChatMark size={18} />
+              <VeChatMark size={22} />
               <span
                 className="text-[15px] font-semibold tracking-tight whitespace-nowrap"
                 style={{ color: "var(--text-primary)" }}
@@ -702,31 +702,20 @@ function SidebarBody({
           </>
         ) : (
           <div className="w-full flex justify-center">
-            {/* Colapsado: el LOGO de VeChat arriba (clic = expandir en
-                escritorio), como pidió el diseño. */}
+            {/* Colapsado: el MISMO logo (igual tamaño que expandido) — no brinca
+                ni se transforma al colapsar/expandir (estilo ChatGPT). En
+                escritorio, clic = expandir. */}
             {!isMobile && canInteract ? (
               <button
                 onClick={onToggleExpanded}
                 aria-label="Expandir sidebar"
                 title="Expandir"
-                className="group relative w-10 h-10 rounded-xl flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
+                className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)] focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
               >
-                {/* En reposo el logo; al hover se transforma en ">" (señal de
-                    expandir) con un cross-fade. */}
-                <span className="transition-all duration-200 group-hover:opacity-0 group-hover:scale-90">
-                  <VeChatMark size={28} />
-                </span>
-                <span
-                  className="absolute inset-0 flex items-center justify-center opacity-0 scale-90 transition-all duration-200 group-hover:opacity-100 group-hover:scale-100"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  <svg className="w-[22px] h-[22px]" fill="none" stroke="currentColor" strokeWidth={2.4} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
+                <VeChatMark size={22} />
               </button>
             ) : (
-              <VeChatMark size={28} />
+              <VeChatMark size={22} />
             )}
           </div>
         )}

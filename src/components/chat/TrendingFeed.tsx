@@ -105,7 +105,7 @@ export default function TrendingFeed({
         {LENSES.map((l) => (
           <button key={l.id} type="button" role="tab" aria-selected={lens === l.id}
             onClick={() => setLens(l.id)} className={`lens-tab${lens === l.id ? " is-on" : ""}`}>
-            <Icon k={l.icon} size={14} fill />
+            <Icon k={l.icon} size={16} />
             <span>{l.label}</span>
           </button>
         ))}

@@ -56,7 +56,7 @@ type Props = ChatInputProps & {
 // Saludos genéricos (sin nombre): visitante deslogueado + logueado sin nombre.
 const OPENERS_NO_NAME = [
   "Hola, ¿en qué te ayudo?",
-  "¿En qué te ayudo hoy?",
+  "Hola, ¿en qué te ayudo hoy?",
   "Hola, ¿qué necesitas?",
   "Hola, ¿qué resolvemos hoy?",
   "Buenas, ¿en qué te ayudo?",

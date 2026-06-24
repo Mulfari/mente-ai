@@ -114,15 +114,11 @@ html, body {
 html { background: var(--background); }
 body { background: var(--background); }
 
-/* Transición suave al cambiar de tema (claro<->oscuro): cross-fade de colores
-   ~400ms. Solo activa mientras la clase está puesta (theme.ts la pone al
-   togglear y la quita a los 450ms); el primer paint va instantáneo, sin animar. */
-html.theme-transition,
-html.theme-transition *,
-html.theme-transition *::before,
-html.theme-transition *::after {
-  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, fill 0.4s ease !important;
-}
+/* Transición de tema (claro<->oscuro) con la View Transitions API: cross-fade
+   suave de TODA la página (no animamos color por color, que se veía disparejo).
+   theme.ts envuelve el cambio en document.startViewTransition. */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 0.3s; }
 
 /* === SCROLLBAR — hidden, scroll still works via wheel/touchpad/keyboard === */
 * {

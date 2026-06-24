@@ -2322,8 +2322,8 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               <Logo size={18} />
               <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
             </span>
-            <div className="flex items-center gap-1">
-              {activeConv?.id && (
+            <div className="flex items-center justify-end" style={{ minWidth: 32 }}>
+              {activeConv?.id ? (
                 <button onClick={() => copyShareLink(activeConv.id)}
                   aria-label="Copiar enlace de la conversación" title="Copiar enlace"
                   className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-[var(--surface-hover)]"
@@ -2333,14 +2333,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                   ) : (
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path strokeLinecap="round" strokeLinejoin="round" d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4" /></svg>
                   )}
-                </button>
-              )}
-              {mounted && userEmail ? (
-                <button onClick={() => setShowAccountMenu(true)}
-                  aria-label="Cuenta"
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white cursor-pointer transition-opacity hover:opacity-80"
-                  style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-                  {userEmail.charAt(0).toUpperCase()}
                 </button>
               ) : (
                 <div className="w-8 h-8" />

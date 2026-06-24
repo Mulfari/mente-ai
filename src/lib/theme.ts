@@ -57,11 +57,19 @@ function syncBrowserChrome(resolved: ResolvedTheme) {
 // cross-fade de colores ~400ms (globals.css) y se quita al terminar. NO se usa
 // en el primer paint: el script anti-flash del layout va instantáneo.
 function applyResolvedToDom(resolved: ResolvedTheme) {
-  const root = document.documentElement;
-  root.classList.add("theme-transition");
-  root.setAttribute("data-theme", resolved);
-  syncBrowserChrome(resolved);
-  window.setTimeout(() => root.classList.remove("theme-transition"), 450);
+  const apply = () => {
+    document.documentElement.setAttribute("data-theme", resolved);
+    syncBrowserChrome(resolved);
+  };
+  // View Transitions API: cross-fade suave de TODA la página entre temas (sin el
+  // "flashazo" ni el barrido disparejo de animar color por color). Donde no está
+  // soportada (no-Chromium), cambia al instante.
+  const doc = document as Document & { startViewTransition?: (cb: () => void) => void };
+  if (typeof doc.startViewTransition === "function") {
+    doc.startViewTransition(apply);
+  } else {
+    apply();
+  }
 }
 
 export function applyThemePreference(pref: ThemePreference) {
