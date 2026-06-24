@@ -183,9 +183,6 @@ export default function ChatInterface({
   const [copiedAnimId, setCopiedAnimId] = useState<string | null>(null);
   const [mounted, setMounted] = useState(initialIsLoggedIn);
   const [isLoggedIn, setIsLoggedIn] = useState(initialIsLoggedIn);
-  // Trial anónimo (Bloque 1 embudo): mensajes que le quedan al visitante antes
-  // del muro. null = aún no ha enviado nada (no se muestra píldora).
-  const [anonLeft, setAnonLeft] = useState<number | null>(null);
   // Historial del visitante SIN cuenta (localStorage, últimas 3, caducan 3 días).
   const [anonConvs, setAnonConvs] = useState<AnonConv[]>([]);
   const [anonConvId, setAnonConvId] = useState<string | null>(null);
@@ -2083,7 +2080,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: limitMsg, _loading: false } : m));
           setSending(false);
           setStreamingMsgId(null);
-          setAnonLeft(0);
           return;
         }
         setMessages(prev => prev.filter(m => m.id !== aiId && m.id !== userMsgId));
@@ -2092,8 +2088,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: err?.error || "Error de autenticación", created_at: new Date().toISOString() }]);
         return;
       }
-      const { token, vpsUrl, anonLeft: left } = await tokenRes.json();
-      if (typeof left === "number") setAnonLeft(left);
+      const { token, vpsUrl } = await tokenRes.json();
       const grounded = await groundQuestionIfNeeded(q, aiId);
       const history = messages
         .filter(m => m.role === "user" || m.role === "assistant")
@@ -2425,19 +2420,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         >
           {abTurn && !sending && !streamingMsgId && (
             <ABCompare prompt={abTurn.prompt} onDone={() => setAbTurn(null)} />
-          )}
-          {!isLoggedIn && anonLeft !== null && (
-            <div className="flex justify-center mb-2">
-              <button
-                onClick={() => requireSignIn()}
-                className="inline-flex items-center gap-1.5 text-[12px] font-medium px-3 py-1 rounded-full cursor-pointer"
-                style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
-              >
-                {anonLeft > 0
-                  ? `Te ${anonLeft === 1 ? "queda 1 mensaje gratis" : `quedan ${anonLeft} mensajes gratis`} · regístrate`
-                  : "Regístrate gratis para seguir"}
-              </button>
-            </div>
           )}
           <ChatInput
             input={input}
