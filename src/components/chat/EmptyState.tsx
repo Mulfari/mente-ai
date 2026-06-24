@@ -53,30 +53,37 @@ type Props = ChatInputProps & {
   showQuota?: boolean;
 };
 
+// Saludos genéricos (sin nombre): visitante deslogueado + logueado sin nombre.
 const OPENERS_NO_NAME = [
-  "¿Qué te cuenta?",
-  "Dime, ¿qué se te ofrece?",
-  "A la orden",
-  "¿En qué te ayudo?",
-  "Cuéntame",
-  "¿Qué tocamos hoy?",
+  "Hola, ¿en qué te ayudo?",
+  "¿En qué te ayudo hoy?",
+  "Hola, ¿qué necesitas?",
+  "Hola, ¿qué resolvemos hoy?",
+  "Buenas, ¿en qué te ayudo?",
+  "Hola, ¿en qué te ayudo? — yo sé lo de aquí",
 ];
 
+// Saludos con nombre (logueado).
 const OPENERS_WITH_NAME = [
-  "A ver, {name}, ¿qué hay?",
-  "Dime, {name}, ¿qué se te ofrece?",
-  "¿Qué te cuenta, {name}?",
-  "Cuéntame, {name}",
-  "A la orden, {name}",
-  "¿Cómo te puedo ayudar, {name}?",
-  "Aquí estoy, {name}, ¿qué toca?",
-  "Hola, {name}, ¿qué vamos a hacer?",
-  "Buenas, {name}, ¿qué necesitas?",
-  "{name}, ¿qué se te ocurre?",
-  "¿Qué hay de nuevo, {name}?",
+  "Hola, {name}. ¿En qué te ayudo?",
+  "¿En qué te ayudo, {name}?",
+  "¿Qué resolvemos hoy, {name}?",
+  "Buenas, {name}. ¿Qué necesitas?",
+  "Hola, {name} 👋 ¿En qué te ayudo?",
 ];
 
-const OPENER_GUEST = "Epa, ¿qué te cuenta?";
+// Saludos según la franja horaria (hora del dispositivo = hora de Venezuela).
+// Se MEZCLAN con los genéricos en el pool del que se elige al azar.
+const TIME_NO_NAME: Record<"morning" | "afternoon" | "night", string[]> = {
+  morning: ["Buenos días, ¿en qué te ayudo?", "Buenos días, ¿qué necesitas?", "Buenos días, ¿arrancamos?"],
+  afternoon: ["Buenas tardes, ¿en qué te ayudo?", "Buenas tardes, ¿qué resolvemos?"],
+  night: ["Buenas noches, ¿en qué te ayudo?", "Buenas noches, ¿qué necesitas?"],
+};
+const TIME_WITH_NAME: Record<"morning" | "afternoon" | "night", string[]> = {
+  morning: ["Buenos días, {name}. ¿En qué te ayudo?"],
+  afternoon: ["Buenas tardes, {name}. ¿En qué te ayudo?"],
+  night: ["Buenas noches, {name}. ¿En qué te ayudo?"],
+};
 
 function getFirstName(fullName?: string): string | null {
   const trimmed = fullName?.trim();
@@ -84,27 +91,31 @@ function getFirstName(fullName?: string): string | null {
   return trimmed.split(/\s+/)[0];
 }
 
-// FNV-1a 32-bit hash — stable across SSR and client, so the same firstName
-// always renders the same opener (no hydration mismatch).
-function hashString(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
+function timeBucket(hour: number): "morning" | "afternoon" | "night" {
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 19) return "afternoon";
+  return "night";
 }
 
-function pickStable<T>(arr: readonly T[], seed: string): T {
-  return arr[hashString(seed) % arr.length];
-}
-
-function pickOpener(firstName: string | null, isLoggedIn: boolean): string {
-  if (!isLoggedIn) return OPENER_GUEST;
-  if (firstName) {
-    return pickStable(OPENERS_WITH_NAME, firstName).replace("{name}", firstName);
-  }
+// Saludo inicial DETERMINISTA (SSR + primer render del cliente) — evita el
+// mismatch de hidratación. El saludo real (azar + hora) se elige en el cliente
+// tras montar; como el hero está oculto (opacity-0) hasta el fade-in, este
+// placeholder nunca se ve.
+function initialOpener(firstName: string | null, isLoggedIn: boolean): string {
+  if (isLoggedIn && firstName) return OPENERS_WITH_NAME[0].replace("{name}", firstName);
   return OPENERS_NO_NAME[0];
+}
+
+// Saludo final: al AZAR de un pool que combina los genéricos + los de la franja
+// horaria actual. Solo en el cliente (usa Math.random y la hora local).
+function pickRandomOpener(firstName: string | null, isLoggedIn: boolean): string {
+  const b = timeBucket(new Date().getHours());
+  if (isLoggedIn && firstName) {
+    const pool = [...OPENERS_WITH_NAME, ...TIME_WITH_NAME[b]];
+    return pool[Math.floor(Math.random() * pool.length)].replace("{name}", firstName);
+  }
+  const pool = [...OPENERS_NO_NAME, ...TIME_NO_NAME[b]];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 export default function EmptyState(props: Props) {
@@ -129,10 +140,12 @@ export default function EmptyState(props: Props) {
     : {};
 
   const firstName = getFirstName(userName);
-  const opener = React.useMemo(
-    () => pickOpener(firstName, isLoggedIn),
-    [firstName, isLoggedIn]
-  );
+  // SSR-safe: arranca con un saludo determinista; tras montar, el cliente elige
+  // uno al azar según la hora (el hero está oculto hasta el fade-in, sin salto).
+  const [opener, setOpener] = React.useState(() => initialOpener(firstName, isLoggedIn));
+  React.useEffect(() => {
+    setOpener(pickRandomOpener(firstName, isLoggedIn));
+  }, [firstName, isLoggedIn]);
 
   // Cascada de entrada: input primero, hero después, feed al final.
   const [heroShown, setHeroShown] = React.useState(false);
@@ -174,11 +187,6 @@ export default function EmptyState(props: Props) {
           >
             {opener}
           </h1>
-          {!isLoggedIn && (
-            <p className="text-[13.5px] mt-1.5" style={{ color: "var(--text-secondary)" }}>
-              La IA que sí sabe de Venezuela — pregunta lo que sea
-            </p>
-          )}
         </header>
 
         {/* 704px = max-w-2xl del contenido del input (672) + su propio
