@@ -60,7 +60,6 @@ const OPENERS_NO_NAME = [
   "Hola, ¿qué necesitas?",
   "Hola, ¿qué resolvemos hoy?",
   "Buenas, ¿en qué te ayudo?",
-  "Hola, ¿en qué te ayudo? — yo sé lo de aquí",
 ];
 
 // Saludos con nombre (logueado).
