@@ -13,7 +13,7 @@ import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import Logo from "@/components/Logo";
 import AnonSidebar from "./chat/AnonSidebar";
-import { listAnonConvs, saveAnonConv, deleteAnonConv, type AnonConv } from "@/lib/anonConvs";
+import { listAnonConvs, saveAnonConv, deleteAnonConv, clearAnonConvs, type AnonConv } from "@/lib/anonConvs";
 import ABCompare from "./chat/ABCompare";
 import { shouldShowAB } from "@/lib/abTest";
 import PlansModal from "./chat/PlansModal";
@@ -1997,6 +1997,39 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   useEffect(() => {
     if (!isLoggedIn) setAnonConvs(listAnonConvs());
   }, [isLoggedIn]);
+
+  // Al loguearse: migra las conversaciones anónimas (localStorage) a la cuenta
+  // (Supabase) y limpia el local — así los chats que tuvo sin cuenta lo siguen
+  // al registrarse. Best-effort: si falla, no rompe nada.
+  useEffect(() => {
+    if (!isLoggedIn || !userId) return;
+    const pending = listAnonConvs();
+    if (pending.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const inserted: Conversation[] = [];
+        for (const c of pending) {
+          const nowIso = new Date().toISOString();
+          const { data: conv } = await supabase
+            .from("conversations")
+            .insert({ user_id: userId, title: (c.title || "Conversación").slice(0, 40), created_at: nowIso, updated_at: nowIso })
+            .select().single();
+          if (!conv) continue;
+          const rows = (c.messages || [])
+            .filter((m) => (m.role === "user" || m.role === "assistant") && String(m.content || "").trim())
+            .map((m) => ({ conversation_id: conv.id, role: m.role, content: String(m.content || "") }));
+          if (rows.length) await supabase.from("messages").insert(rows);
+          inserted.push(conv as Conversation);
+        }
+        clearAnonConvs();
+        if (!cancelled && inserted.length) {
+          setConversations(prev => [...inserted, ...prev.filter(p => !inserted.some(i => i.id === p.id))]);
+        }
+      } catch { /* best-effort: nunca romper el login */ }
+    })();
+    return () => { cancelled = true; };
+  }, [isLoggedIn, userId]);
 
   function newAnonConv() {
     setMessages([]);

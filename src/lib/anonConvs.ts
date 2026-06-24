@@ -72,3 +72,9 @@ export function deleteAnonConv(id: string): AnonConv[] {
   writeAll(next);
   return listAnonConvs();
 }
+
+// Borra TODO el historial anónimo (tras migrarlo a la cuenta al loguearse).
+export function clearAnonConvs() {
+  if (typeof window === "undefined") return;
+  try { localStorage.removeItem(KEY); } catch { /* best-effort */ }
+}
