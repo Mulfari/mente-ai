@@ -2060,6 +2060,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     const aiId = crypto.randomUUID();
     const nowIso = new Date().toISOString();
     setInput("");
+    // Limpia el borrador "new" (igual que sendMessage): si no, al pasar del empty
+    // state al dock, ChatInput re-hidrata el texto recién enviado.
+    clearDraft(null);
     setMessages(prev => [
       ...prev,
       { id: userMsgId, role: "user", content: q, created_at: nowIso },
@@ -2449,7 +2452,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             onRemoveAttachment={removeAttachment}
             isStreaming={!!streamingMsgId}
             onStop={stopStream}
-            convId={activeConv?.id}
+            convId={activeConv?.id ?? anonConvId}
             quotaLeft={quotaLeft()}
             showQuota={isFreeTier}
           />
