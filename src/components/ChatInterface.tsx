@@ -2321,10 +2321,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 className="md:hidden p-2 -ml-2 rounded-lg transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--text-secondary)" }}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
               </button>
-              <span className="flex items-center gap-2">
-                <Logo size={22} />
-                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
-              </span>
             </div>
             <div className="flex items-center gap-2.5">
               {/* Modales de Clerk en vez de navegar: el visitante no pierde

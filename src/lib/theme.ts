@@ -52,13 +52,23 @@ function syncBrowserChrome(resolved: ResolvedTheme) {
   meta.setAttribute("content", CHROME_COLORS[resolved]);
 }
 
+// Aplica el tema al DOM con una transición SUAVE (evita el "flashazo" que quema
+// la vista al pasar de oscuro a claro). La clase .theme-transition activa un
+// cross-fade de colores ~400ms (globals.css) y se quita al terminar. NO se usa
+// en el primer paint: el script anti-flash del layout va instantáneo.
+function applyResolvedToDom(resolved: ResolvedTheme) {
+  const root = document.documentElement;
+  root.classList.add("theme-transition");
+  root.setAttribute("data-theme", resolved);
+  syncBrowserChrome(resolved);
+  window.setTimeout(() => root.classList.remove("theme-transition"), 450);
+}
+
 export function applyThemePreference(pref: ThemePreference) {
   try {
     localStorage.setItem(STORAGE_KEY, pref);
   } catch { /* storage bloqueado */ }
-  const resolved = resolveTheme(pref);
-  document.documentElement.setAttribute("data-theme", resolved);
-  syncBrowserChrome(resolved);
+  applyResolvedToDom(resolveTheme(pref));
   window.dispatchEvent(new CustomEvent(EVENT));
 }
 
@@ -70,9 +80,7 @@ export function useResolvedTheme(): ResolvedTheme {
       const onSystem = () => {
         // Solo re-aplica si la preferencia sigue al sistema.
         if (getThemePreference() === "system") {
-          const resolved = systemTheme();
-          document.documentElement.setAttribute("data-theme", resolved);
-          syncBrowserChrome(resolved);
+          applyResolvedToDom(systemTheme());
         }
         onChange();
       };

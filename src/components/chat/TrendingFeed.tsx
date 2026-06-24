@@ -92,6 +92,7 @@ export default function TrendingFeed({
 
   return (
     <div className="lens-card">
+      <div className="lens-sticky">
       <div className="lens-head">
         <span className="lens-dot">
           <span className="lens-dot-ping" />
@@ -108,6 +109,7 @@ export default function TrendingFeed({
             <span>{l.label}</span>
           </button>
         ))}
+      </div>
       </div>
 
       {featured && (

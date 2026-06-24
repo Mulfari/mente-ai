@@ -114,6 +114,16 @@ html, body {
 html { background: var(--background); }
 body { background: var(--background); }
 
+/* Transición suave al cambiar de tema (claro<->oscuro): cross-fade de colores
+   ~400ms. Solo activa mientras la clase está puesta (theme.ts la pone al
+   togglear y la quita a los 450ms); el primer paint va instantáneo, sin animar. */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease, fill 0.4s ease !important;
+}
+
 /* === SCROLLBAR — hidden, scroll still works via wheel/touchpad/keyboard === */
 * {
   scrollbar-width: none;
@@ -574,6 +584,10 @@ html[data-sidebar="closed"] .sidebar-desktop {
 @keyframes vc-ping { 0% { transform: scale(1); opacity: .5; } 70%, 100% { transform: scale(2.6); opacity: 0; } }
 @keyframes vc-beat { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
 .lens-card { margin: 10px 0 4px; }
+/* Cabecera fija del feed: el subtítulo + el control (Tendencias/Cerca/Para ti)
+   quedan pegados arriba mientras los resultados se deslizan debajo. Fondo sólido
+   + márgenes -10px (que igualan el desborde de las filas) tapan lo de atrás. */
+.lens-sticky { position: sticky; top: 0; z-index: 6; background: var(--background); margin: 0 -10px; padding: 6px 10px 10px; }
 .lens-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
 .lens-dot { position: relative; display: inline-flex; width: 8px; height: 8px; }
 .lens-dot-ping { position: absolute; inset: 0; border-radius: 999px; background: var(--primary); opacity: .5; animation: vc-ping 2s ease-out infinite; }

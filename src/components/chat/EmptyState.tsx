@@ -178,7 +178,7 @@ export default function EmptyState(props: Props) {
           Nada los tapa ni los mueve. */}
       <section
         className="flex-none flex flex-col items-center justify-end"
-        style={{ minHeight: "59%" }}
+        style={{ minHeight: "50%" }}
       >
         <header className={`text-center mb-6 px-4 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ animationDelay: "80ms", ...leaveStyle }}>
           <h1
@@ -232,7 +232,7 @@ export default function EmptyState(props: Props) {
       >
         {/* En escritorio el feed gana ancho (3xl = 768px) para aprovechar
             mejor el espacio; en móvil se queda en 2xl. */}
-        <div className="max-w-2xl md:max-w-3xl mx-auto px-4 pt-7 pb-20">
+        <div className="max-w-2xl md:max-w-3xl mx-auto px-4 pt-5 pb-20">
           <TrendingFeed
             feed={feed}
             onAsk={(prompt) => submitSuggestion(prompt, { source: "discover" })}
