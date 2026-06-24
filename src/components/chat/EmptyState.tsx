@@ -164,13 +164,39 @@ export default function EmptyState(props: Props) {
   // reenvía al feed para que la página no se sienta muerta fuera de él.
   const feedScrollRef = React.useRef<HTMLElement>(null);
 
+  // Reenvío SUAVE de la rueda cuando el mouse está FUERA del feed: en vez del
+  // salto instantáneo (scrollTop += deltaY, que se siente brusco), acumulamos un
+  // objetivo y lo perseguimos con interpolación por rAF (como el scroll nativo
+  // sobre el feed). Solo actúa si de verdad hay contenido que desborda — si todo
+  // cabe en pantalla no hace nada (no toda pantalla necesita desplazarse).
+  const wheelTarget = React.useRef<number | null>(null);
+  const wheelRaf = React.useRef(0);
+  React.useEffect(() => () => { if (wheelRaf.current) cancelAnimationFrame(wheelRaf.current); }, []);
+  const handleOuterWheel = React.useCallback((e: React.WheelEvent) => {
+    const el = feedScrollRef.current;
+    // Sobre el feed: scroll nativo (ya es suave). Fuera: reenviamos suavizado.
+    if (!el || el.contains(e.target as Node)) { wheelTarget.current = null; return; }
+    const max = el.scrollHeight - el.clientHeight;
+    if (max <= 1) return; // todo cabe: nada que desplazar
+    const base = wheelTarget.current == null ? el.scrollTop : wheelTarget.current;
+    wheelTarget.current = Math.max(0, Math.min(max, base + e.deltaY));
+    if (!wheelRaf.current) {
+      const step = () => {
+        const node = feedScrollRef.current;
+        if (!node || wheelTarget.current == null) { wheelRaf.current = 0; return; }
+        const diff = wheelTarget.current - node.scrollTop;
+        if (Math.abs(diff) < 0.5) { node.scrollTop = wheelTarget.current; wheelRaf.current = 0; wheelTarget.current = null; return; }
+        node.scrollTop = node.scrollTop + diff * 0.2;
+        wheelRaf.current = requestAnimationFrame(step);
+      };
+      wheelRaf.current = requestAnimationFrame(step);
+    }
+  }, []);
+
   return (
     <div
       className="h-full flex flex-col overflow-hidden"
-      onWheel={(e) => {
-        const el = feedScrollRef.current;
-        if (el && !el.contains(e.target as Node)) el.scrollTop += e.deltaY;
-      }}
+      onWheel={handleOuterWheel}
     >
       {/* Hero + input: FIJOS — el bloque se ancla a su fondo (justify-end) y
           la sección mide ~59% del alto, así el INPUT cae centrado vertical en
