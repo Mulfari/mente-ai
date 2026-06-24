@@ -11,7 +11,6 @@ import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
-import LimitReachedCard from "./chat/LimitReachedCard";
 import ABCompare from "./chat/ABCompare";
 import { shouldShowAB } from "@/lib/abTest";
 import PlansModal from "./chat/PlansModal";
@@ -1173,6 +1172,33 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setInput(v);
   }, []);
 
+  // Límite diario COMO RESPUESTA DEL CHAT (no una tarjeta en el input): el
+  // usuario envía normal y la "respuesta" es un mensaje del asistente diciendo
+  // que agotó el plan gratis. No llama al modelo ni persiste (efímero); el
+  // input queda intacto.
+  function dailyLimitWaitLabel(): string {
+    const resetAt = profile?.daily_reset_at;
+    if (!resetAt) return "vuelve mañana";
+    const ms = new Date(resetAt).getTime() - Date.now();
+    if (ms <= 0) return "vuelve pronto";
+    const h = Math.floor(ms / 3_600_000), m = Math.floor((ms % 3_600_000) / 60_000);
+    return h > 0 ? `vuelve en ${h} h ${m} min` : `vuelve en ${m} min`;
+  }
+  function sendDailyLimitReply(userText: string) {
+    const txt = userText.trim();
+    if (!txt) return;
+    setInput("");
+    const now = new Date().toISOString();
+    const convId = activeConv?.id ?? "daily-limit";
+    const reply = `Llegaste a tu límite de preguntas de hoy del plan gratis. Para seguir sin límites pásate a **VeChat Plus** — o ${dailyLimitWaitLabel()} y sigues gratis. 🌱`;
+    const base = Date.now();
+    setMessages(prev => [
+      ...prev,
+      { id: `lim-u-${base}`, role: "user", content: txt, created_at: now, conversation_id: convId },
+      { id: `lim-a-${base + 1}`, role: "assistant", content: reply, created_at: now, conversation_id: convId },
+    ]);
+  }
+
   async function submitSuggestion(
     s: string,
     meta?: { categoryId?: string; subOptionId?: string; source?: "discover" | "typed" }
@@ -1180,12 +1206,16 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     if (sending) return;
     if (!isLoggedIn) { sendAnonMessage(s); return; }
     if (appConfig.agentEnabled) { sendAgentMessage(s); return; }
-    // Cuenta bloqueada (0 semanas): en vez de fallar en el servidor, abrir
-    // el menú de cuenta donde está el botón de añadir tiempo.
-    if (!getBlockReason().canSend) {
-      setInput(s);
-      setShowAccountMenu(true);
-      return;
+    // Límite diario agotado → responder en el chat (no abrir nada).
+    // Cuenta bloqueada (0 semanas) → menú de cuenta para reactivar.
+    {
+      const block = getBlockReason();
+      if (!block.canSend) {
+        if (block.reason === "limit-daily") { sendDailyLimitReply(s); return; }
+        setInput(s);
+        setShowAccountMenu(true);
+        return;
+      }
     }
     setSending(true);
     const myStream = ++streamSeqRef.current;
@@ -1574,7 +1604,11 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     // sale al agotar). El flujo logueado sigue abajo sin cambios.
     if (!isLoggedIn) { sendAnonMessage(inputVal); return; }
     const block = getBlockReason();
-    if (!block.canSend) { setShowAccountMenu(true); return; }
+    if (!block.canSend) {
+      if (block.reason === "limit-daily") { sendDailyLimitReply(inputVal); return; }
+      setShowAccountMenu(true);
+      return;
+    }
     // Cerebro agéntico (flag): el modelo decide las herramientas. Camino aislado.
     if (appConfig.agentEnabled) { sendAgentMessage(inputVal); return; }
     // A/B de respuestas (~12% de turnos logueados): tras responder se ofrece una
@@ -2075,7 +2109,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   const isDisabled = !isLoggedIn;
 
   const isFreeTier = isLoggedIn && resolveTier(profile ?? {}, new Date()) === "free";
-  const freeExhausted = isFreeTier && quotaLeft() <= 0;
 
   return (
     <div
@@ -2245,7 +2278,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               onSend={sendMessage}
               onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
               onRemoveAttachment={removeAttachment}
-              limitReached={freeExhausted}
               resetAt={profile?.daily_reset_at ?? null}
               onSeePlans={() => setShowPlans(true)}
               quotaLeft={quotaLeft()}
@@ -2274,7 +2306,7 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
             above that). La entrada de la primera vez NO es una clase CSS:
             el efecto FLIP de arriba lo hace volar desde el centro de la
             pantalla (donde estaba en EmptyState) hasta aquí. */}
-        {(activeConv?.id || ((!isLoggedIn || appConfig.agentEnabled) && messages.length > 0)) && (
+        {(activeConv?.id || messages.length > 0) && (
         <div
           ref={bottomInputRef}
           className="w-full flex-none pt-2"
@@ -2296,27 +2328,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
               </button>
             </div>
           )}
-          {freeExhausted ? (
-            <LimitReachedCard resetAt={profile?.daily_reset_at ?? null} onSeePlans={() => setShowPlans(true)} onRedeem={() => setShowPlans(true)} />
-          ) : (
-            <ChatInput
-              input={input}
-              setInput={setInputFromUser}
-              sending={sending}
-              attachments={attachments}
-              previewUrls={previewUrls}
-              getBlockReason={getBlockReason}
-              isLoggedIn={isLoggedIn}
-              onSend={sendMessage}
-              onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
-              onRemoveAttachment={removeAttachment}
-              isStreaming={!!streamingMsgId}
-              onStop={stopStream}
-              convId={activeConv?.id}
-              quotaLeft={quotaLeft()}
-              showQuota={isFreeTier}
-            />
-          )}
+          <ChatInput
+            input={input}
+            setInput={setInputFromUser}
+            sending={sending}
+            attachments={attachments}
+            previewUrls={previewUrls}
+            getBlockReason={getBlockReason}
+            isLoggedIn={isLoggedIn}
+            onSend={sendMessage}
+            onFileSelect={(files) => handleFileSelect({ target: { files } } as any)}
+            onRemoveAttachment={removeAttachment}
+            isStreaming={!!streamingMsgId}
+            onStop={stopStream}
+            convId={activeConv?.id}
+            quotaLeft={quotaLeft()}
+            showQuota={isFreeTier}
+          />
         </div>
         )}
       </div>

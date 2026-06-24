@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Logo from "@/components/Logo";
 import type { AppConfig } from "@/lib/appConfig";
 
 // Flujo de suscripción — diseño "Plans" + "Checkout" (adaptado del flujo de
@@ -142,9 +143,7 @@ export default function PlansModal({ appConfig, initialTab = "plans", onClose, o
       {/* Barra superior full-screen (estilo ChatGPT): marca + cerrar. */}
       <div className="sticky top-0 z-20 flex items-center justify-between h-16 px-5 sm:px-8" style={{ backgroundColor: "var(--background)" }}>
         <div className="flex items-center gap-2">
-          <span className="w-7 h-7 rounded-lg flex items-center justify-center text-white" style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l1.8 4.6L18 8.4l-4.2 1.8L12 15l-1.8-4.8L6 8.4l4.2-1.8L12 2z" /></svg>
-          </span>
+          <Logo size={28} />
           <span className="text-[16px] font-bold" style={{ color: "var(--text-primary)" }}>Ve<span style={{ color: "var(--primary)" }}>Chat</span></span>
         </div>
         <button onClick={onClose} className="p-2 rounded-xl transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--text-secondary)" }} aria-label="Cerrar">
