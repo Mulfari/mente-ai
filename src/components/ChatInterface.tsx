@@ -11,6 +11,7 @@ import MessageList from "./chat/MessageList";
 import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
+import Logo from "@/components/Logo";
 import ABCompare from "./chat/ABCompare";
 import { shouldShowAB } from "@/lib/abTest";
 import PlansModal from "./chat/PlansModal";
@@ -2188,7 +2189,10 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
+            <span className="flex items-center gap-1.5">
+              <Logo size={18} />
+              <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
+            </span>
             {mounted && userEmail ? (
               <button onClick={() => setShowAccountMenu(true)}
                 aria-label="Cuenta"
@@ -2203,8 +2207,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         ) : (
           /* Header público (deslogueado, todos los tamaños): marca + CTAs */
           <header className="h-14 flex items-center justify-between px-5 sm:px-7 shrink-0">
-            <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              <span style={{ color: "var(--primary)" }}>V</span> VeChat
+            <span className="flex items-center gap-2">
+              <Logo size={22} />
+              <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
             </span>
             <div className="flex items-center gap-2.5">
               {/* Modales de Clerk en vez de navegar: el visitante no pierde
