@@ -12,6 +12,8 @@ import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import Logo from "@/components/Logo";
+import AnonSidebar from "./chat/AnonSidebar";
+import { listAnonConvs, saveAnonConv, deleteAnonConv, type AnonConv } from "@/lib/anonConvs";
 import ABCompare from "./chat/ABCompare";
 import { shouldShowAB } from "@/lib/abTest";
 import PlansModal from "./chat/PlansModal";
@@ -184,6 +186,9 @@ export default function ChatInterface({
   // Trial anónimo (Bloque 1 embudo): mensajes que le quedan al visitante antes
   // del muro. null = aún no ha enviado nada (no se muestra píldora).
   const [anonLeft, setAnonLeft] = useState<number | null>(null);
+  // Historial del visitante SIN cuenta (localStorage, últimas 3, caducan 3 días).
+  const [anonConvs, setAnonConvs] = useState<AnonConv[]>([]);
+  const [anonConvId, setAnonConvId] = useState<string | null>(null);
   // A/B de respuestas: cuando un turno logueado fue elegido para A/B, aquí va el
   // prompt para ofrecer la 2ª versión tras responder. null = sin A/B este turno.
   const [abTurn, setAbTurn] = useState<{ prompt: string } | null>(null);
@@ -1988,19 +1993,44 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   // Envío ANÓNIMO (trial del embudo). Camino AISLADO: NO toca la DB ni el flujo
   // logueado. El visitante envía hasta N mensajes; el 429 {register} dispara el
   // muro (requireSignIn). Mensajes efímeros (solo estado local).
+  // Carga el historial anónimo (deslogueado). Se poda solo (caducidad 3 días).
+  useEffect(() => {
+    if (!isLoggedIn) setAnonConvs(listAnonConvs());
+  }, [isLoggedIn]);
+
+  function newAnonConv() {
+    setMessages([]);
+    setAnonConvId(null);
+    setInput("");
+    setShowSidebar(false);
+  }
+  function loadAnonConv(c: AnonConv) {
+    setMessages(c.messages as any);
+    setAnonConvId(c.id);
+    setShowSidebar(false);
+  }
+  function removeAnonConv(id: string) {
+    setAnonConvs(deleteAnonConv(id));
+    if (anonConvId === id) newAnonConv();
+  }
+
   async function sendAnonMessage(text: string) {
     const q = (text || "").trim();
     if (!q || sending) return;
     // Follow-up anónimo: ancla la nueva pregunta arriba (como el logueado), así
     // se ve solo la pregunta + su respuesta y el historial queda arriba (scroll).
     const wasFollowUp = messages.length > 0;
+    const histBefore = messages;                  // para persistir el hilo completo
+    const cid = anonConvId || crypto.randomUUID(); // id de la conversación anónima
+    if (!anonConvId) setAnonConvId(cid);
     const userMsgId = crypto.randomUUID();
     const aiId = crypto.randomUUID();
+    const nowIso = new Date().toISOString();
     setInput("");
     setMessages(prev => [
       ...prev,
-      { id: userMsgId, role: "user", content: q, created_at: new Date().toISOString() },
-      { id: aiId, role: "assistant", content: "", created_at: new Date().toISOString(), _loading: true },
+      { id: userMsgId, role: "user", content: q, created_at: nowIso },
+      { id: aiId, role: "assistant", content: "", created_at: nowIso, _loading: true },
     ]);
     if (wasFollowUp) pendingPinRef.current = userMsgId;
     setSending(true);
@@ -2009,11 +2039,21 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       const tokenRes = await fetch("/api/auth/vps-token", { method: "POST" });
       if (!tokenRes.ok) {
         const err = await tokenRes.json().catch(() => ({}));
+        if (err && err.register) {
+          // Límite del trial anónimo COMO RESPUESTA del chat (no un muro modal):
+          // se conserva la pregunta y la "respuesta" es el aviso. El CTA para
+          // registrarse vive en la píldora de abajo y en el sidebar.
+          const limitMsg = "Llegaste al límite de mensajes gratis sin cuenta. Crea tu cuenta (es gratis y toma 10 segundos) y sigue chateando sin límites — además te guardamos tus chats. 🌱";
+          setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: limitMsg, _loading: false } : m));
+          setSending(false);
+          setStreamingMsgId(null);
+          setAnonLeft(0);
+          return;
+        }
         setMessages(prev => prev.filter(m => m.id !== aiId && m.id !== userMsgId));
         setSending(false);
         setStreamingMsgId(null);
-        if (err && err.register) requireSignIn(q); // el muro de registro
-        else setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: err?.error || "Error de autenticación", created_at: new Date().toISOString() }]);
+        setMessages(prev => [...prev, { id: crypto.randomUUID(), role: "assistant", content: err?.error || "Error de autenticación", created_at: new Date().toISOString() }]);
         return;
       }
       const { token, vpsUrl, anonLeft: left } = await tokenRes.json();
@@ -2068,6 +2108,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       flush();
       const finalText = stripContextDelta(acc);
       setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: finalText, _loading: false } : m));
+      // Persistir el hilo en el historial anónimo (localStorage) + refrescar sidebar.
+      const finalConv = [
+        ...histBefore,
+        { id: userMsgId, role: "user", content: q, created_at: nowIso },
+        { id: aiId, role: "assistant", content: finalText, created_at: nowIso },
+      ];
+      const title = (((histBefore.find(m => m.role === "user") as any)?.content as string) || q).slice(0, 60);
+      setAnonConvs(saveAnonConv({ id: cid, title, messages: finalConv as any }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Error de conexión";
       setMessages(prev => prev.map(m => m.id === aiId ? { ...m, content: msg, _loading: false } : m));
@@ -2124,8 +2172,9 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           the ViewportHeight client component) so the container shrinks
           with the on-screen keyboard instead of staying at the
           pre-keyboard height. */}
-      {/* Sidebar — solo con sesión; el visitante ve el chat limpio */}
-      {isLoggedIn && (
+      {/* Sidebar: el logueado ve sus conversaciones; el visitante ve el sidebar
+          anónimo (últimas 3, localStorage, caducan 3 días). */}
+      {isLoggedIn ? (
         <ConversationSidebar
           conversations={conversations}
           activeConv={activeConv}
@@ -2149,6 +2198,17 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           quotaUsed={Math.max(0, appConfig.freeDailyLimit - quotaLeft())}
           quotaTotal={appConfig.freeDailyLimit}
           onUpgrade={() => setShowPlans(true)}
+        />
+      ) : (
+        <AnonSidebar
+          convs={anonConvs}
+          activeId={anonConvId}
+          onSelect={loadAnonConv}
+          onNew={newAnonConv}
+          onDelete={removeAnonConv}
+          onSignUp={() => openSignUp({ forceRedirectUrl: "/", signInForceRedirectUrl: "/" })}
+          showMobile={showSidebar}
+          onCloseMobile={() => setShowSidebar(false)}
         />
       )}
 
@@ -2211,10 +2271,16 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
         ) : (
           /* Header público (deslogueado, todos los tamaños): marca + CTAs */
           <header className="h-14 flex items-center justify-between px-5 sm:px-7 shrink-0">
-            <span className="flex items-center gap-2">
-              <Logo size={22} />
-              <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
-            </span>
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => setShowSidebar(true)} aria-label="Abrir menú"
+                className="md:hidden p-2 -ml-2 rounded-lg transition-colors hover:bg-[var(--surface-hover)]" style={{ color: "var(--text-secondary)" }}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" /></svg>
+              </button>
+              <span className="flex items-center gap-2">
+                <Logo size={22} />
+                <span className="text-[15px] font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>VeChat</span>
+              </span>
+            </div>
             <div className="flex items-center gap-2.5">
               {/* Modales de Clerk en vez de navegar: el visitante no pierde
                   el feed ni lo que tenga escrito en el input. */}

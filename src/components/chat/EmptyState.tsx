@@ -208,11 +208,6 @@ export default function EmptyState(props: Props) {
           bloqueada ya NO muestra panel aquí: el placeholder del input lo
           dice y cualquier intento de enviar abre el menú de cuenta. */}
       <div className="flex-none flex flex-col items-center px-4" style={leaveStyle}>
-        {!isLoggedIn && (
-          <p className={`text-[12px] mt-3.5 ${heroShown ? "lm-fade-up" : "opacity-0"}`} style={{ color: "var(--text-tertiary)" }}>
-            Gratis para empezar — crea tu cuenta en 10 segundos con Google
-          </p>
-        )}
       </div>
 
       {/* Feed de tendencias — asoma justo debajo del input y scrollea en su
