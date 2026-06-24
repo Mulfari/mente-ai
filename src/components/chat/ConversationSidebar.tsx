@@ -77,6 +77,11 @@ type Props = {
   quotaUsed?: number;
   quotaTotal?: number;
   onUpgrade?: () => void;
+  // Modo visitante SIN cuenta: MISMA UI que el logueado, pero el pie es un CTA
+  // de registro y las filas solo se borran (sin compartir/renombrar). onSignUp
+  // abre el registro de Clerk.
+  anonMode?: boolean;
+  onSignUp?: () => void;
 };
 
 function VeChatMark({ size = 20 }: { size?: number }) {
@@ -201,6 +206,8 @@ type RowProps = {
   disabled: boolean;
   // Touch (mobile sheet): hover no existe, el kebab es siempre visible.
   alwaysShowDelete: boolean;
+  // Visitante sin cuenta: solo botón de borrar (sin kebab/compartir/renombrar).
+  anonMode?: boolean;
 };
 
 function ConversationRow({
@@ -212,6 +219,7 @@ function ConversationRow({
   onShare,
   disabled,
   alwaysShowDelete,
+  anonMode = false,
 }: RowProps) {
   // Acciones por fila: un menú "⋮" (kebab) UNIFICADO en móvil y escritorio
   // (en escritorio aparece al hover; en móvil siempre, pero es UN solo ícono).
@@ -359,7 +367,7 @@ function ConversationRow({
           {conv.title}
         </span>
       )}
-      {!disabled && !editing && (
+      {!disabled && !editing && !anonMode && (
         <button
           ref={kebabRef}
           onClick={(e) => {
@@ -376,6 +384,21 @@ function ConversationRow({
           style={{ color: "var(--text-tertiary)" }}
         >
           <KebabIcon />
+        </button>
+      )}
+
+      {/* Visitante: solo borrar (las convs anónimas no se comparten/renombran). */}
+      {!disabled && anonMode && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          aria-label={`Eliminar "${conv.title}"`}
+          title="Eliminar"
+          className={`shrink-0 p-1 rounded-md transition-opacity duration-100 hover:text-[var(--text-primary)] hover:bg-[var(--surface-hover)] focus-visible:opacity-100 ${
+            alwaysShowDelete ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+          }`}
+          style={{ color: "var(--text-tertiary)" }}
+        >
+          <DeleteIcon />
         </button>
       )}
 
@@ -483,6 +506,8 @@ type SidebarBodyProps = {
   quotaUsed: number;
   quotaTotal: number;
   onUpgrade?: () => void;
+  anonMode: boolean;
+  onSignUp?: () => void;
 };
 
 // Skeleton del historial: barras con el ritmo visual de las filas reales
@@ -541,6 +566,8 @@ function SidebarBody({
   quotaUsed,
   quotaTotal,
   onUpgrade,
+  anonMode,
+  onSignUp,
 }: SidebarBodyProps) {
   // Agrupar el historial cargado por fecha (Hoy / Ayer / Últimos 7 / 30 días /
   // Más antiguas). La búsqueda NO filtra esto: va por separado al servidor.
@@ -824,6 +851,7 @@ function SidebarBody({
                   <ConversationRow
                     key={conv.id}
                     conv={conv}
+                    anonMode={anonMode}
                     isActive={activeConv?.id === conv.id}
                     onSelect={() => onSelectConv(conv)}
                     onDelete={() => onDeleteConv(conv.id)}
@@ -844,10 +872,10 @@ function SidebarBody({
                 <NewChatIcon />
               </div>
               <p className="text-[13px] font-medium mb-1" style={{ color: "var(--text-secondary)" }}>
-                Tu primera conversación
+                {anonMode ? "Sin chats recientes" : "Tu primera conversación"}
               </p>
               <p className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                Escribe abajo para empezar
+                {anonMode ? "Se guardan 3 días en este dispositivo" : "Escribe abajo para empezar"}
               </p>
             </div>
           ) : (
@@ -883,6 +911,7 @@ function SidebarBody({
                           <ConversationRow
                             key={conv.id}
                             conv={conv}
+                            anonMode={anonMode}
                             isActive={activeConv?.id === conv.id}
                             onSelect={() => onSelectConv(conv)}
                             onDelete={() => onDeleteConv(conv.id)}
@@ -927,7 +956,26 @@ function SidebarBody({
           + caret ↑. Es el disparador del menú de cuenta (abre hacia arriba).
           showUpgrade === isFreeTier, así que lo usamos como señal de plan. */}
       <div className="shrink-0 px-2 pt-2 pb-3">
-        {expanded ? (
+        {anonMode ? (
+          expanded ? (
+            <div className="rounded-[13px] p-3" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)", border: "1px solid color-mix(in srgb, var(--primary) 20%, transparent)" }}>
+              <p className="text-[11.5px] mb-2 leading-snug" style={{ color: "var(--text-secondary)" }}>
+                Crea tu cuenta en VeChat, es gratis y rápido.
+              </p>
+              <button onClick={onSignUp} className="w-full h-8 rounded-lg text-[12px] font-semibold text-white transition-opacity hover:opacity-90" style={{ backgroundColor: "var(--primary)" }}>
+                Crear cuenta gratis
+              </button>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <button onClick={onSignUp} aria-label="Crear cuenta" title="Crear cuenta"
+                className="relative w-10 h-10 rounded-full flex items-center justify-center cursor-pointer transition-opacity text-white focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
+                style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
+                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 7a4 4 0 108 0 4 4 0 00-8 0M20 8v6M23 11h-6" /></svg>
+              </button>
+            </div>
+          )
+        ) : expanded ? (
           <button
             onClick={onShowAccountMenu}
             disabled={!canInteract}
@@ -1026,6 +1074,8 @@ export default function ConversationSidebar({
   quotaUsed,
   quotaTotal,
   onUpgrade,
+  anonMode,
+  onSignUp,
 }: Props) {
   // La búsqueda es estado interno del sidebar — el resto de la app no la usa.
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -1118,6 +1168,8 @@ export default function ConversationSidebar({
           quotaUsed={quotaUsed ?? 0}
           quotaTotal={quotaTotal ?? 0}
           onUpgrade={onUpgrade}
+          anonMode={!!anonMode}
+          onSignUp={onSignUp}
         />
         </div>
       </div>
@@ -1179,6 +1231,8 @@ export default function ConversationSidebar({
           quotaUsed={quotaUsed ?? 0}
           quotaTotal={quotaTotal ?? 0}
           onUpgrade={onUpgrade}
+          anonMode={!!anonMode}
+          onSignUp={onSignUp}
         />
       </div>
     </>

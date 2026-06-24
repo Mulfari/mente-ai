@@ -12,7 +12,6 @@ import EmptyState from "./chat/EmptyState";
 import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import Logo from "@/components/Logo";
-import AnonSidebar from "./chat/AnonSidebar";
 import { listAnonConvs, saveAnonConv, deleteAnonConv, clearAnonConvs, type AnonConv } from "@/lib/anonConvs";
 import ABCompare from "./chat/ABCompare";
 import { shouldShowAB } from "@/lib/abTest";
@@ -2043,6 +2042,14 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     setAnonConvs(deleteAnonConv(id));
     if (anonConvId === id) newAnonConv();
   }
+  // Convs anónimas mapeadas a la forma de ConversationSidebar — reusamos el
+  // MISMO sidebar del logueado en modo visitante, así entra IGUAL (slide L→R).
+  const anonConvsMapped = anonConvs.map((c) => ({
+    id: c.id,
+    title: c.title || "Conversación",
+    created_at: new Date(c.updatedAt).toISOString(),
+    updated_at: new Date(c.updatedAt).toISOString(),
+  }));
 
   async function sendAnonMessage(text: string) {
     const q = (text || "").trim();
@@ -2231,12 +2238,23 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           onUpgrade={() => setShowPlans(true)}
         />
       ) : (
-        <AnonSidebar
-          convs={anonConvs}
-          activeId={anonConvId}
-          onSelect={loadAnonConv}
-          onNew={newAnonConv}
-          onDelete={removeAnonConv}
+        <ConversationSidebar
+          anonMode
+          conversations={anonConvsMapped}
+          activeConv={anonConvsMapped.find((c) => c.id === anonConvId) ?? null}
+          userEmail=""
+          profile={null}
+          onSelectConv={(conv) => { const c = anonConvs.find((x) => x.id === conv.id); if (c) loadAnonConv(c); }}
+          onDeleteConv={(id) => removeAnonConv(id)}
+          onRenameConv={() => {}}
+          onShareConv={() => {}}
+          conversationsLoaded
+          onSearchConversations={async (q) => {
+            const t = q.toLowerCase();
+            return anonConvsMapped.filter((c) => c.title.toLowerCase().includes(t));
+          }}
+          onNewConversation={newAnonConv}
+          onShowAccountMenu={() => {}}
           onSignUp={() => openSignUp({ forceRedirectUrl: "/", signInForceRedirectUrl: "/" })}
           showMobile={showSidebar}
           onCloseMobile={() => setShowSidebar(false)}
