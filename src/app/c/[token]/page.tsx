@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import SharedConversation from "@/components/share/SharedConversation";
+import ContinueButton from "@/components/share/ContinueButton";
 
 // Página PÚBLICA de una conversación compartida (solo lectura, sin cuenta).
 // Lee la "foto fija" por token con el service role. Marca VeChat + CTA de
@@ -91,18 +92,21 @@ export default async function SharePage({ params }: Props) {
           <SharedConversation title={share.title} messages={share.messages} />
         </main>
 
-        {/* Footer CTA — embudo de registro */}
+        {/* Footer CTA — "Continuar" bifurca a una copia propia (la original
+            queda intacta) + enlace secundario para empezar de cero. */}
         <footer className="px-4 py-10 text-center" style={{ borderTop: "1px solid var(--border)" }}>
           <p className="text-sm mb-1" style={{ color: "var(--text-secondary)" }}>
-            Esta conversación se creó con VeChat.
+            ¿Quieres seguir esta conversación?
           </p>
           <p className="text-[13px] mb-5" style={{ color: "var(--text-tertiary)" }}>
-            La IA que sí sabe de Venezuela — gratis para empezar.
+            Continúa donde quedó — en tu propia copia, sin perder el hilo.
           </p>
-          <Link href="/" className="inline-block px-6 py-3 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, var(--primary), var(--primary-hover))" }}>
-            Empieza tu propia conversación →
-          </Link>
+          <ContinueButton token={token} title={share.title} messages={share.messages} />
+          <div className="mt-4">
+            <Link href="/" className="text-[13px] font-medium transition-opacity hover:opacity-80" style={{ color: "var(--text-tertiary)" }}>
+              o empieza una nueva →
+            </Link>
+          </div>
         </footer>
       </div>
     </div>

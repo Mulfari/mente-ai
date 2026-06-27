@@ -2006,8 +2006,20 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
   // logueado. El visitante envía hasta N mensajes; el 429 {register} dispara el
   // muro (requireSignIn). Mensajes efímeros (solo estado local).
   // Carga el historial anónimo (deslogueado). Se poda solo (caducidad 3 días).
+  // Si la URL trae ?ac=<id> (bifurcación de un enlace compartido SIN cuenta),
+  // abre esa copia recién creada y limpia el query.
   useEffect(() => {
-    if (!isLoggedIn) setAnonConvs(listAnonConvs());
+    if (isLoggedIn) return;
+    const convs = listAnonConvs();
+    setAnonConvs(convs);
+    try {
+      const ac = new URLSearchParams(window.location.search).get("ac");
+      if (ac) {
+        const c = convs.find((x) => x.id === ac);
+        if (c) { setMessages(c.messages as any); setAnonConvId(c.id); }
+        window.history.replaceState(null, "", "/");
+      }
+    } catch { /* noop */ }
   }, [isLoggedIn]);
 
   // Al loguearse: migra las conversaciones anónimas (localStorage) a la cuenta
