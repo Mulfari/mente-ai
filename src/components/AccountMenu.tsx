@@ -28,8 +28,6 @@ type Props = {
   appConfig?: AppConfig;
 };
 
-type View = "main" | "sus" | "coupon";
-
 // --- helpers de suscripción (countdown) ---
 function endTimeOf(profile: Props["profile"]): number {
   if (!profile?.subscription_end) return 0;
@@ -38,8 +36,7 @@ function endTimeOf(profile: Props["profile"]): number {
   return isNaN(t) ? 0 : t;
 }
 
-export default function AccountMenu({ email, profile: profileProp, userContext, onSignOut, onClose, onSave, onSeePlans, appConfig }: Props) {
-  const [view, setView] = useState<View>("main");
+export default function AccountMenu({ email, profile: profileProp, userContext, onSignOut, onClose, onSave, onSeePlans }: Props) {
   const [profile, setProfile] = useState(profileProp ?? null);
   const [, setTick] = useState(0);
 
@@ -64,7 +61,6 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
   const weeks = (profile?.subscription_weeks ?? 0) || 0;
   const isUnlimited = weeks < 0;
   const isPlus = isUnlimited || (weeks > 0 && endTimeOf(profile) > Date.now());
-  const isFree = !isPlus;
   const initial = (userContext?.full_name || email || "U").trim().charAt(0).toUpperCase();
 
   return (
@@ -89,31 +85,17 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
           padding: 8,
         }}
       >
-        {view === "main" && (
-          <MainView
-            email={email}
-            initial={initial}
-            isPlus={isPlus}
-            isFree={isFree}
-            userContext={userContext}
-            onSave={onSave}
-            onGoSus={() => setView("sus")}
-            onGoCoupon={() => setView("coupon")}
-            onSeePlans={onSeePlans}
-            onSignOut={onSignOut}
-          />
-        )}
-        {view === "sus" && (
-          <SusView
-            isPlus={isPlus}
-            profile={profile}
-            appConfig={appConfig}
-            onBack={() => setView("main")}
-          />
-        )}
-        {view === "coupon" && (
-          <CouponView onBack={() => setView("main")} onClose={onClose} />
-        )}
+        <MainView
+          email={email}
+          initial={initial}
+          isPlus={isPlus}
+          isUnlimited={isUnlimited}
+          profile={profile}
+          userContext={userContext}
+          onSave={onSave}
+          onSeePlans={onSeePlans}
+          onSignOut={onSignOut}
+        />
       </div>
     </>
   );
@@ -121,12 +103,18 @@ export default function AccountMenu({ email, profile: profileProp, userContext, 
 
 // ============================ MAIN VIEW ============================
 function MainView({
-  email, initial, isPlus, isFree, userContext, onSave, onGoSus, onGoCoupon, onSeePlans, onSignOut,
+  email, initial, isPlus, isUnlimited, profile, userContext, onSave, onSeePlans, onSignOut,
 }: {
-  email: string; initial: string; isPlus: boolean; isFree: boolean;
-  userContext: Props["userContext"]; onSave?: Props["onSave"];
-  onGoSus: () => void; onGoCoupon: () => void; onSeePlans?: () => void; onSignOut: () => void;
+  email: string; initial: string; isPlus: boolean; isUnlimited: boolean;
+  profile: Props["profile"]; userContext: Props["userContext"]; onSave?: Props["onSave"];
+  onSeePlans?: () => void; onSignOut: () => void;
 }) {
+  // Tiempo restante del plan (para el card de estado, mostrado en el menú).
+  const rem = Math.max(0, endTimeOf(profile) - Date.now());
+  const days = Math.floor(rem / 86_400_000);
+  const hours = Math.floor((rem % 86_400_000) / 3_600_000);
+  const mins = Math.floor((rem % 3_600_000) / 60_000);
+
   return (
     <div className="mp-view">
       {/* Cabecera de cuenta */}
@@ -155,32 +143,44 @@ function MainView({
       {/* Tema */}
       <ThemeSeg />
 
-      {/* Filas */}
-      <div className="px-1">
-        <button onClick={onGoSus} className="mp-row flex items-center gap-3 w-full px-2.5 py-2.5 rounded-[11px] text-left">
-          <svg className="w-[19px] h-[19px] shrink-0" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 16L3 5l5.5 4L12 4l3.5 5L21 5l-2 11H5zm0 3h14" /></svg>
-          <span className="flex-1 text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>Suscripción</span>
-          <span className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>{isPlus ? "Activo" : "Gratis"}</span>
-          <Caret />
-        </button>
-        <button onClick={onGoCoupon} className="mp-row flex items-center gap-3 w-full px-2.5 py-2.5 rounded-[11px] text-left">
-          <svg className="w-[19px] h-[19px] shrink-0" style={{ color: "var(--primary)" }} fill="none" stroke="currentColor" strokeWidth={1.6} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" /></svg>
-          <span className="flex-1 text-[14px] font-medium" style={{ color: "var(--text-primary)" }}>Añadir cupón</span>
-          <Caret />
-        </button>
-      </div>
-
-      {/* CTA (solo free) */}
-      {isFree && (
-        <div className="px-1.5 pt-2 pb-1.5">
-          <button onClick={onSeePlans ?? onGoSus}
+      {/* Estado del plan — organizado en el propio menú. Plus: tarjeta con el
+          tiempo restante (toca para gestionar / ver planes). Free: CTA a Plus.
+          Ambos van a la página de planes, donde vive el canje de cupón. */}
+      <div className="px-1.5 pt-1 pb-1.5">
+        {isPlus ? (
+          <button onClick={onSeePlans}
+            className="w-full text-left rounded-[14px] p-3.5 transition-colors hover:brightness-[1.03]"
+            style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
+            <div className="flex items-center justify-between mb-2.5">
+              <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold" style={{ color: "var(--primary)" }}>
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" /></svg>
+                VeChat Plus
+              </span>
+              <Caret />
+            </div>
+            {isUnlimited ? (
+              <div className="text-[13.5px] font-medium" style={{ color: "var(--text-primary)" }}>Acceso ilimitado</div>
+            ) : (
+              <div className="flex items-center gap-3.5">
+                {[{ v: days, l: "días" }, { v: hours, l: "horas" }, { v: mins, l: "min" }].map((c) => (
+                  <div key={c.l} className="flex items-baseline gap-1">
+                    <span className="text-[20px] font-bold tabular-nums leading-none" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>{c.v}</span>
+                    <span className="text-[11px]" style={{ color: "var(--text-tertiary)" }}>{c.l}</span>
+                  </div>
+                ))}
+                <span className="ml-auto text-[10.5px] font-medium uppercase tracking-wide" style={{ color: "var(--text-tertiary)" }}>restantes</span>
+              </div>
+            )}
+          </button>
+        ) : (
+          <button onClick={onSeePlans}
             className="w-full h-11 rounded-[13px] flex items-center justify-center gap-2 text-[14.5px] font-semibold text-white transition-transform active:scale-[.98]"
             style={{ backgroundColor: "var(--primary)", boxShadow: "0 4px 14px color-mix(in srgb, var(--primary) 28%, transparent)" }}>
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l1.8 4.6L18 8.4l-4.2 1.8L12 15l-1.8-4.8L6 8.4l4.2-1.8L12 2z" /></svg>
             Hazte VeChat Plus
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="h-px my-1.5 mx-2" style={{ backgroundColor: "var(--border)", opacity: 0.6 }} />
       <button onClick={onSignOut} className="mp-row flex items-center gap-3 w-full px-2.5 py-2.5 rounded-[11px] text-left">
@@ -319,198 +319,6 @@ function ThemeSeg() {
             </button>
           );
         })}
-      </div>
-    </div>
-  );
-}
-
-// ============================ SUS VIEW ============================
-function SusView({ isPlus, profile, appConfig, onBack }: {
-  isPlus: boolean; profile: Props["profile"]; appConfig?: AppConfig; onBack: () => void;
-}) {
-  const [price, setPrice] = useState<"week" | "month">("month");
-  const [openMethod, setOpenMethod] = useState<string | null>(null);
-  const [copied, setCopied] = useState<string | null>(null);
-
-  // countdown
-  const endTime = endTimeOf(profile);
-  const rem = Math.max(0, endTime - Date.now());
-  const total = Math.floor(rem / 1000);
-  const cd = [
-    { v: Math.floor(total / 86400), l: "Días" },
-    { v: Math.floor((total % 86400) / 3600), l: "Horas" },
-    { v: Math.floor((total % 3600) / 60), l: "Min" },
-    { v: total % 60, l: "Seg" },
-  ];
-  const pad = (n: number) => String(n).padStart(2, "0");
-
-  const priceWeek = appConfig?.priceWeeklyUsd ?? 2;
-  const priceMonth = appConfig?.priceMonthlyUsd ?? 6;
-
-  // Métodos de pago — PLACEHOLDERS (igual que el modal viejo; pendientes de
-  // configurar antes de cobrar de verdad).
-  const methods: { id: string; label: string; sub: string; detail: string; icon: ReactNode; href?: string }[] = [
-    { id: "pm", label: "Pago Móvil", sub: "Bancos nacionales", detail: "Banco: 0102 · Tel: 0414-1234567 · CI: J12345678 · Mulfari C.A.", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="2.5" width="12" height="19" rx="2.5" /><circle cx="12" cy="18" r="1" fill="var(--tint)" /></svg> },
-    { id: "zelle", label: "Zelle", sub: "Transferencia en USD", detail: "pagos@mulfai.com.ve", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M3 10l9-6 9 6v1H3v-1zm1 3h2v5H4v-5zm5 0h2v5H9v-5zm4 0h2v5h-2v-5zm5 0h2v5h-2v-5zM3 20h18v2H3v-2z" /></svg> },
-    { id: "binance", label: "Binance USDT", sub: "Cripto estable", detail: "TXyZ123abc456def789ghi", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2l3 3-3 3-3-3 3-3zm-5 5l3 3-3 3-3-3 3-3zm10 0l3 3-3 3-3-3 3-3zm-5 5l3 3-3 3-3-3 3-3z" /></svg> },
-    { id: "wa", label: "WhatsApp", sub: "Coordina con un asesor", detail: "Abrir chat", href: "https://wa.me/584141234567?text=Hola%2C%20quiero%20activar%20mi%20cuenta%20VeChat", icon: <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.747 5.634l-.999 3.648 3.741-.981z" /></svg> },
-  ];
-
-  const copy = (id: string, value: string) => {
-    navigator.clipboard.writeText(value).then(() => { setCopied(id); setTimeout(() => setCopied(null), 1500); }).catch(() => {});
-  };
-
-  return (
-    <div className="mp-view">
-      <div className="flex items-center gap-2 px-1.5 pt-1 pb-2.5">
-        <button onClick={onBack} className="mp-row w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0">
-          <svg className="w-4 h-4" style={{ color: "var(--text-primary)" }} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-        </button>
-        <span className="text-[16px] font-semibold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Suscripción</span>
-      </div>
-
-      {isPlus ? (
-        <div className="mx-1 mb-2.5 rounded-[15px] p-3.5" style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)" }}>
-          <div className="flex items-center gap-2 mb-2.5">
-            <span className="w-[7px] h-[7px] rounded-full" style={{ backgroundColor: "var(--primary)" }} />
-            <span className="text-[12.5px] font-semibold" style={{ color: "var(--primary)" }}>Plan activo · se renueva en</span>
-          </div>
-          <div className="flex gap-1.5">
-            {cd.map((c) => (
-              <div key={c.l} className="flex-1 rounded-[11px] py-2 text-center" style={{ backgroundColor: "var(--surface)" }}>
-                <div className="text-[20px] font-bold tabular-nums leading-tight" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>{pad(c.v)}</div>
-                <div className="text-[9px] font-semibold uppercase tracking-wide mt-0.5" style={{ color: "var(--text-tertiary)" }}>{c.l}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="mx-1 mb-2.5 rounded-[15px] p-3.5" style={{ backgroundColor: "var(--surface-hover)" }}>
-          <div className="text-[14px] font-semibold mb-1" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Desbloquea VeChat Plus</div>
-          <div className="text-[12.5px] leading-snug" style={{ color: "var(--text-secondary)" }}>Mensajes ilimitados y respuestas más rápidas, hechas para Venezuela.</div>
-        </div>
-      )}
-
-      {/* Selector de plan */}
-      <div className="flex gap-2 px-1 pb-3">
-        <button onClick={() => setPrice("week")} className="relative flex-1 rounded-[13px] p-3 text-left" style={{ backgroundColor: "var(--surface-hover)" }}>
-          {price === "week" && <span className="absolute inset-0 rounded-[13px]" style={{ border: "2px solid var(--primary)" }} />}
-          <div className="relative text-[11.5px] font-medium mb-0.5" style={{ color: "var(--text-secondary)" }}>Semanal</div>
-          <div className="relative text-[20px] font-bold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>${priceWeek}</div>
-        </button>
-        <button onClick={() => setPrice("month")} className="relative flex-1 rounded-[13px] p-3 text-left" style={{ backgroundColor: "var(--surface-hover)" }}>
-          {price === "month" && <span className="absolute inset-0 rounded-[13px]" style={{ border: "2px solid var(--primary)" }} />}
-          <span className="absolute top-2.5 right-2.5 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md"
-            style={{ color: "var(--primary)", backgroundColor: "color-mix(in srgb, var(--primary) 10%, transparent)" }}>Mejor precio</span>
-          <div className="relative text-[11.5px] font-medium mb-0.5" style={{ color: "var(--text-secondary)" }}>Mensual</div>
-          <div className="relative text-[20px] font-bold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>${priceMonth}</div>
-        </button>
-      </div>
-
-      <div className="text-[9.5px] font-semibold uppercase tracking-wider mx-2 mb-1.5" style={{ color: "var(--text-tertiary)" }}>Métodos de pago</div>
-      <div className="px-1 pb-1">
-        {methods.map((m) => (
-          <div key={m.id}>
-            {m.href ? (
-              <a href={m.href} target="_blank" rel="noopener noreferrer" className="mp-row flex items-center gap-2.5 w-full p-2 rounded-[11px] text-left">
-                <MethodIcon>{m.icon}</MethodIcon>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[13.5px] font-medium" style={{ color: "var(--text-primary)" }}>{m.label}</span>
-                  <span className="block text-[11.5px]" style={{ color: "var(--text-tertiary)" }}>{m.sub}</span>
-                </span>
-                <Caret />
-              </a>
-            ) : (
-              <button onClick={() => setOpenMethod(openMethod === m.id ? null : m.id)} className="mp-row flex items-center gap-2.5 w-full p-2 rounded-[11px] text-left">
-                <MethodIcon>{m.icon}</MethodIcon>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[13.5px] font-medium" style={{ color: "var(--text-primary)" }}>{m.label}</span>
-                  <span className="block text-[11.5px]" style={{ color: "var(--text-tertiary)" }}>{m.sub}</span>
-                </span>
-                <Caret />
-              </button>
-            )}
-            {openMethod === m.id && !m.href && (
-              <div className="flex items-center gap-2 mx-2 mb-1.5 mt-0.5 px-3 py-2 rounded-[10px]" style={{ backgroundColor: "var(--surface-hover)" }}>
-                <span className="flex-1 min-w-0 text-[11.5px] break-words" style={{ color: "var(--text-primary)" }}>{m.detail}</span>
-                <button onClick={() => copy(m.id, m.detail)} className="shrink-0 text-[11px] font-semibold" style={{ color: copied === m.id ? "var(--primary)" : "var(--text-tertiary)" }}>
-                  {copied === m.id ? "Copiado" : "Copiar"}
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="px-2 pb-1 pt-1">
-        <span className="text-[10.5px]" style={{ color: "var(--warning)" }}>Datos de ejemplo — pendientes de configurar.</span>
-      </div>
-    </div>
-  );
-}
-
-function MethodIcon({ children }: { children: ReactNode }) {
-  return (
-    <span className="w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0"
-      style={{ backgroundColor: "color-mix(in srgb, var(--primary) 8%, transparent)", color: "var(--primary)" }}>
-      {children}
-    </span>
-  );
-}
-
-// ============================ COUPON VIEW ============================
-function CouponView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
-  const [code, setCode] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  async function apply() {
-    if (!code.trim() || loading) return;
-    setLoading(true); setError(""); setSuccess("");
-    try {
-      const res = await fetch("/api/coupons/apply", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim() }),
-      });
-      const data = await res.json();
-      if (data.error) { setError(data.error); setLoading(false); return; }
-      const added = data.weeks_added;
-      setSuccess(added ? `+${added} días añadidos` : "Cupón aplicado");
-      setCode("");
-      setTimeout(() => { onClose(); window.location.reload(); }, 1800);
-    } catch {
-      setError("Error al aplicar. Intenta de nuevo.");
-    }
-    setLoading(false);
-  }
-
-  return (
-    <div className="mp-view">
-      <div className="flex items-center gap-2 px-1.5 pt-1 pb-3">
-        <button onClick={onBack} className="mp-row w-[34px] h-[34px] rounded-[10px] flex items-center justify-center shrink-0">
-          <svg className="w-4 h-4" style={{ color: "var(--text-primary)" }} fill="none" stroke="currentColor" strokeWidth={2.2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
-        </button>
-        <span className="text-[16px] font-semibold" style={{ color: "var(--text-primary)", fontFamily: "'Bricolage Grotesque', Inter, sans-serif" }}>Añadir cupón</span>
-      </div>
-      <div className="px-2 pb-2">
-        <div className="text-[13px] leading-normal mb-3" style={{ color: "var(--text-secondary)" }}>¿Tienes un código? Canjéalo para activar tu beneficio.</div>
-        <div className="flex gap-2">
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); apply(); } }}
-            placeholder="MLF-XXXXXX"
-            className="flex-1 h-11 rounded-[12px] px-3.5 text-[14px] font-semibold tracking-wider uppercase outline-none"
-            style={{ backgroundColor: "var(--surface-hover)", border: "1.5px solid var(--border)", color: "var(--text-primary)" }}
-          />
-          <button onClick={apply} disabled={loading || !code.trim()}
-            className="h-11 px-4 rounded-[12px] text-[14px] font-semibold text-white disabled:opacity-50"
-            style={{ backgroundColor: "var(--primary)" }}>
-            {loading ? "…" : "Canjear"}
-          </button>
-        </div>
-        {error && <div className="text-[12px] mt-2.5" style={{ color: "var(--danger)" }}>{error}</div>}
-        {success && <div className="text-[12px] mt-2.5 font-medium" style={{ color: "var(--primary)" }}>{success}</div>}
       </div>
     </div>
   );
