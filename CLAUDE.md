@@ -170,36 +170,45 @@ Chat AI tipo ChatGPT orientado a público venezolano. Registro público con Cler
   el tono claro, muévelos juntos.
 
 ## Compartir conversaciones
-- Modelo "foto fija" (snapshot) EFÍMERA: al compartir se congela una copia de
-  solo lectura que CADUCA SOLA a las 24h. No hay "dejar de compartir" manual.
-  Tabla `shared_conversations` (token PK aleatorio base62, conversation_id
-  UNIQUE, owner_id, title, messages jsonb, `expires_at` = now()+24h). RLS ON
-  sin policies (solo API).
-- Caducidad: GET y la página pública tratan un enlace con `expires_at <= now()`
-  como inexistente (correctitud). El cron diario (`/api/cron/feed-digest`)
-  barre las filas vencidas (`purgeExpiredShares`, best-effort, solo higiene).
+- Modelo "foto fija" (snapshot) PERMANENTE: al compartir se congela una copia de
+  solo lectura. El enlace NO caduca y es ESTABLE (el mismo URL para siempre, no
+  se regenera); reabrir/recopiar solo refresca la foto. Tabla
+  `shared_conversations` (token PK aleatorio base62, conversation_id UNIQUE,
+  owner_id, title, messages jsonb, `expires_at`). RLS ON sin policies (solo API).
+- "Permanente" sin tocar el esquema: `expires_at` se pone MUY al futuro
+  (`PERMANENT_EXPIRY` = 2099) en vez de null, así los chequeos viejos de
+  caducidad y el barrido del cron (`expires_at <= now()`) lo dejan vivo sin
+  cambios. (El cron `purgeExpiredShares` queda inerte salvo enlaces 24h legacy.)
+- COPIAR DE UN TOQUE (sin modal): `copyShareLink(convId)` en ChatInterface hace
+  POST `/api/share`, copia `${origin}/c/{token}` al portapapeles y muestra el
+  toast "Enlace copiado". Disparadores: botón flotante "Copiar enlace" (desktop,
+  arriba-dcha del chat), ícono de compartir en el header MÓVIL, e item
+  "Compartir" del menú ⋮ del sidebar. **`ShareModal` ELIMINADO** (Jose no quería
+  pasar por un modal).
 - `/api/share` valida que la conversación es del usuario; el snapshot excluye
   mensajes `in_progress` o vacíos (OJO: `public.messages` NO tiene columna
   `private` — esa pertenece a `realtime.messages`; pedirla rompe el query).
-  - GET ?conversationId → { token, expiresAt } solo si está vivo, si no null.
-  - POST: si hay enlace VIVO reusa token Y conserva su `expires_at` (reabrir
-    refresca el contenido pero NO reinicia el reloj); si no hay o venció, acuña
-    token nuevo con 24h frescas. Upsert onConflict `conversation_id`.
-  - DELETE existe pero ya no lo usa la UI (la caducidad reemplaza al revoke).
+  - GET ?conversationId → { token } si existe (ya sin chequeo de caducidad).
+  - POST: REUSA el token existente (permanente) o acuña uno; `expires_at` =
+    `PERMANENT_EXPIRY`. Upsert onConflict `conversation_id`.
+  - DELETE existe pero la UI no lo usa.
+- "Continuar" = BIFURCAR (fork-on-continue): quien abre el enlace puede seguir la
+  conversación en SU PROPIA copia; la original queda intacta y cada quien tiene
+  su rama (por eso el enlace nunca se regenera). Botón `ContinueButton` (client)
+  en la página pública:
+  - Logueado → POST `/api/share/fork` { token } copia la foto a una conversación
+    nueva en su cuenta (Supabase) y abre `/chat/{id}` (esa ruta abre la conv vía
+    `convIdFromUrl`).
+  - Sin cuenta → copia la foto a su historial anónimo (`saveAnonConv`, localStorage)
+    y abre `/?ac={id}`; ChatInterface lee `?ac=` al montar y abre esa copia (y si
+    luego se registra, la migración anón→cuenta se la lleva).
 - Página pública `/c/[token]` (server, lee por token con service role; NO está
   en el middleware → pública, sin cuenta): solo lectura con los bubbles del
-  chat (`SharedConversation`), marca VeChat + CTA "Pruébalo gratis" arriba y
-  "Empieza tu propia conversación" abajo (embudo). `generateMetadata` con OG
-  para previews en WhatsApp/Telegram. Su contenedor de scroll es propio
-  (`h-[100dvh]` + `overflow-y-auto`) porque el body global está bloqueado.
-- Entradas: item "Compartir" en el menú ⋮ del sidebar (solo Compartir/Renombrar/
-  Eliminar) y botón flotante arriba del chat → `ShareModal`. El dueño nunca
-  aparece en la página pública.
-- `ShareModal` MINIMALISTA (a propósito): una sola acción protagonista. Sin
-  enlace aún → botón "Crear enlace" (avisa que caduca a las 24h). Ya compartido
-  → el enlace con "Copiar" + botón grande "Enviar por WhatsApp" (el canal real
-  en VE) + una línea gris con las horas que le quedan. NADA más (sin Telegram/X,
-  sin "Actualizar", sin "Desactivar"). La foto se pone al día sola al reabrir.
+  chat (`SharedConversation`), marca VeChat + CTA "Pruébalo gratis" arriba y en
+  el pie "Continuar esta conversación" (el fork) + "o empieza una nueva" (embudo).
+  `generateMetadata` con OG para previews en WhatsApp/Telegram. Su contenedor de
+  scroll es propio (`h-[100dvh]` + `overflow-y-auto`) porque el body global está
+  bloqueado. El dueño nunca aparece en la página pública.
 
 ## Modelo de negocio (FREEMIUM)
 - Spec/plan: `docs/superpowers/specs/2026-06-13-modelo-negocio-design.md` +
