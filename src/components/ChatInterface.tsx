@@ -12,8 +12,6 @@ import ConversationSidebar from "./chat/ConversationSidebar";
 import ChatInput from "./chat/ChatInput";
 import Logo from "@/components/Logo";
 import { listAnonConvs, saveAnonConv, deleteAnonConv, clearAnonConvs, type AnonConv } from "@/lib/anonConvs";
-import ABCompare from "./chat/ABCompare";
-import { shouldShowAB } from "@/lib/abTest";
 import PlansModal from "./chat/PlansModal";
 import { OnboardingTour } from "./OnboardingTour";
 import type { PublicFeed } from "@/lib/feed";
@@ -184,9 +182,6 @@ export default function ChatInterface({
   // Historial del visitante SIN cuenta (localStorage, últimas 3, caducan 3 días).
   const [anonConvs, setAnonConvs] = useState<AnonConv[]>([]);
   const [anonConvId, setAnonConvId] = useState<string | null>(null);
-  // A/B de respuestas: cuando un turno logueado fue elegido para A/B, aquí va el
-  // prompt para ofrecer la 2ª versión tras responder. null = sin A/B este turno.
-  const [abTurn, setAbTurn] = useState<{ prompt: string } | null>(null);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [userEmail, setUserEmail] = useState(initialUserEmail);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
@@ -1629,10 +1624,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
     }
     // Cerebro agéntico (flag): el modelo decide las herramientas. Camino aislado.
     if (appConfig.agentEnabled) { sendAgentMessage(inputVal); return; }
-    // A/B de respuestas (~12% de turnos logueados): tras responder se ofrece una
-    // 2ª versión más concisa para que el usuario elija (feedback de estilo).
-    setAbTurn(null);
-    const doAB = shouldShowAB(Math.random(), isLoggedIn);
     // Prevent double-submit: capture sending state BEFORE any state change
     const sendingNow = sending;
     if (sendingNow) return;
@@ -1765,7 +1756,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
       // Install a fresh AbortController for this stream — ChatInput's Stop
       // button will call .abort() on it. Replaces any prior handle.
       streamAbortRef.current = new AbortController();
-      if (doAB) setAbTurn({ prompt: userMsg });
 
       // Now get VPS token and stream — other devices already see the message
       const tokenRes = await fetch('/api/auth/vps-token', { method: 'POST' });
@@ -2466,9 +2456,6 @@ function smoothReveal(msgId: string, text: string, _isDeep?: boolean) {
           className="w-full flex-none pt-2"
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         >
-          {abTurn && !sending && !streamingMsgId && (
-            <ABCompare prompt={abTurn.prompt} onDone={() => setAbTurn(null)} />
-          )}
           <ChatInput
             input={input}
             setInput={setInputFromUser}
